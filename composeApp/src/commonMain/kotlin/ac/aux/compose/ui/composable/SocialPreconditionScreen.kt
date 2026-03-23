@@ -3,35 +3,110 @@ package ac.aux.compose.ui.composable
 import ac.aux.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun SocialPreconditionScreen(
-    text: String
+    onNavigateToSkipForNow: () -> Unit,
+    onNavigateToInviteFriend: () -> Unit,
+    onNavigateToViewInvites: () -> Unit,
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(
+        bottomBar = {
+            BottomAppBar(
+                modifier = Modifier,
+                actions = {
+
+                },
+                floatingActionButton = {
+                    ExtendedFloatingActionButton(
+                        modifier = Modifier,
+                        icon = {
+                            Icon(
+                                Icons.Default.SkipNext,
+                                contentDescription = "Skip for now"
+                            )
+                        },
+                        text = {
+                            Text("Skip for now")
+                        },
+                        onClick = {
+                            onNavigateToSkipForNow.invoke()
+                        }
+                    )
+                }
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {
-            // Invite A Friend
-            // Accept an invite
             Column(
-                modifier = Modifier.padding(20.dp).fillMaxSize(),
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
                 Text(
-                    "\"$text\" functionality coming soon",
+                    "Who will you be passing the aux to?",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge
                 )
+
+                Spacer(
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    "Tell friends to join you on Aux so your feed stays lively and fresh.",
+                    textAlign = TextAlign.Center
+                )
+
+                Button(
+                    onClick = {
+                        onNavigateToInviteFriend.invoke()
+                    }
+                ) {
+                    Text(
+                        "Invite a Friend"
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    "View and accept invites you may have received to stay connected with others.",
+                    textAlign = TextAlign.Center
+                )
+
+                Button(
+                    onClick = {
+                        onNavigateToViewInvites.invoke()
+                    }
+                ) {
+                    Text("View invites")
+                }
             }
         }
     }
@@ -45,7 +120,9 @@ private fun SocialPreconditionScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             SocialPreconditionScreen(
-                "Social Precondition"
+                onNavigateToSkipForNow = {},
+                onNavigateToInviteFriend = {},
+                onNavigateToViewInvites = {}
             )
         }
     }
