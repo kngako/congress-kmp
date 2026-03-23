@@ -97,7 +97,7 @@ fun CreateProfileScreen(
                             modifier = Modifier.fillMaxWidth(),
                             value = createProfileViewModel.createProfileFormState.nameField.text.value,
                             onValueChange = {
-
+                                createProfileViewModel.createProfileFormState.nameField.text.value = it
                             },
                             isError = createProfileViewModel.createProfileFormState.nameField.errorMessage.value != null,
                             supportingText = createProfileViewModel.createProfileFormState.nameField.errorMessage.value?.let {
@@ -112,7 +112,7 @@ fun CreateProfileScreen(
                             },
                             maxLines = 1,
                             keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
+                                keyboardType = KeyboardType.Text,
                             ),
                             label = {
                                 Text(
@@ -144,7 +144,7 @@ fun CreateProfileScreen(
                             modifier = Modifier.fillMaxWidth(),
                             value = createProfileViewModel.createProfileFormState.biographyField.text.value,
                             onValueChange = {
-
+                                createProfileViewModel.createProfileFormState.biographyField.text.value = it
                             },
                             isError = createProfileViewModel.createProfileFormState.biographyField.errorMessage.value != null,
                             supportingText = createProfileViewModel.createProfileFormState.biographyField.errorMessage.value?.let {
@@ -159,7 +159,7 @@ fun CreateProfileScreen(
                             },
                             maxLines = 1,
                             keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Phone,
+                                keyboardType = KeyboardType.Text,
                             ),
                             label = {
                                 Text(

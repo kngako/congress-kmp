@@ -46,7 +46,7 @@ fun AuxNavHost(
             CreateProfileScreen(
                 onNavigateToChatListRoute = {
                     navController.navigate(
-                        route = ImplementationPendingRoute("Chat List")
+                        route = ImplementationPendingRoute("Feed")
                     )
                 }
             )
