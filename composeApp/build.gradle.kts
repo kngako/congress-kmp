@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinPluginSerialization)
 }
 
 kotlin {
@@ -32,6 +33,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.okhttp.coroutines)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -50,7 +52,7 @@ kotlin {
 
             implementation(libs.kermit)
 
-            implementation("com.vitorpamplona.quartz:quartz:1:05.0")
+            implementation("com.vitorpamplona.quartz:quartz:1.05.1")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -76,11 +78,16 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+        }
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-DEBUG"
         }
     }
     compileOptions {
