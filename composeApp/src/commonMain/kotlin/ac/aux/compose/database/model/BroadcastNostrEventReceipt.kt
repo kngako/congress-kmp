@@ -23,7 +23,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 )
 data class BroadcastNostrEventReceipt(
     @PrimaryKey(autoGenerate = true)
-    val id: Long,
+    val id: Long = 0,
     override val nostrEventId: HexKey,
     val isAccepted: Boolean,
     val relayURL: String,

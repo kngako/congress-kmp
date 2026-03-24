@@ -21,9 +21,9 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
         Index("status"),
     ],
 )
-data class BroadcastRequest(
+data class BroadcastNostrEventRequest(
     @PrimaryKey(autoGenerate = true)
-    val id: Long,
+    val id: Long = 0,
     override val nostrEventId: HexKey,
     val status: String = "pending",
     val relayURL: String,

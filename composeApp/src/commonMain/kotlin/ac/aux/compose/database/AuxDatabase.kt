@@ -1,6 +1,8 @@
 package ac.aux.compose.database
 
 import ac.aux.compose.database.converters.Converters
+import ac.aux.compose.database.dao.BroadcastNostrEventReceiptDao
+import ac.aux.compose.database.dao.BroadcastNostrEventRequestDao
 import ac.aux.compose.database.dao.NostrDao
 import ac.aux.compose.database.dao.NostrEventDao
 import ac.aux.compose.database.dao.PostDao
@@ -31,6 +33,8 @@ import androidx.room.TypeConverters
 )
 @TypeConverters(Converters::class)
 abstract class AuxDatabase: RoomDatabase() {
+    abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao
+    abstract fun broadcastNostrEventRequestDao(): BroadcastNostrEventRequestDao
     abstract fun nostrDao(): NostrDao
 
     abstract fun nostrEventDao(): NostrEventDao

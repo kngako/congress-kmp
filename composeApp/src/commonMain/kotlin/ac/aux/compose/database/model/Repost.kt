@@ -12,8 +12,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -36,20 +34,20 @@ import kotlin.time.Instant
         ForeignKey(
             entity = Post::class,
             parentColumns = ["id"],
-            childColumns = ["postId"],
+            childColumns = ["repostedPostId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
     indices = [
         Index("profilePublicKey"),
         Index("nostrEventId"),
-        Index("postId")
+        Index("repostedPostId")
     ],
 )
 data class Repost(
     @PrimaryKey
     val id: HexKey,
-    val postId: HexKey? = null,
+    val repostedPostId: HexKey? = null,
     val content: String,
 
     override val nostrEventId: HexKey, // Might be a replaceable nostr event?
