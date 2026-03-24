@@ -3,6 +3,7 @@ package ac.aux.compose.ui.composable.widgets.feed
 import ac.aux.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +29,9 @@ fun Event.ListView() {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Row {
+
+                }
                 Text(
                     text = content,
                 )

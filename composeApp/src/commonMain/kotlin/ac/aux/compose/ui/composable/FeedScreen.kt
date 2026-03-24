@@ -1,11 +1,12 @@
 package ac.aux.compose.ui.composable
 
 import ac.aux.compose.ui.composable.widgets.LoadingDataIndicator
+import ac.aux.compose.ui.composable.widgets.feed.FeedListItem
 import ac.aux.compose.ui.composable.widgets.feed.ListView
-import ac.aux.compose.ui.composable.widgets.feed.LoadedFeedView
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.FeedListViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
@@ -91,10 +93,23 @@ fun FeedScreen(
                     Text("Something went wrong")
                 }
                 is FeedListUIState.Loaded -> {
-                    LoadedFeedView(
-                        events = feedListUIState.events,
-                        onNavigateToEvent = onNavigateToEvent
-                    )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(
+                            items = feedListUIState.events,
+                            key = { e -> e.id }
+                        ) { event ->
+                            FeedListItem(
+                                event = event,
+                                onNavigateToEvent = {
+                                    onNavigateToEvent.invoke(event)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
