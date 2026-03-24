@@ -1,5 +1,11 @@
 package ac.aux.compose.database.model
 
+import ac.aux.compose.database.model.traits.BroadcastableEntity
+import ac.aux.compose.database.model.traits.LocalStoreEntity
+import ac.aux.compose.database.model.traits.NostrEventEntity
+import ac.aux.compose.database.model.traits.SoftDeletableEntity
+import ac.aux.compose.database.model.traits.TimestampedEntity
+import ac.aux.compose.database.model.traits.UserViewableEntity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -50,27 +56,17 @@ import kotlin.time.Instant
 data class Post(
     @PrimaryKey
     val id: HexKey,
-    val nostrEventId: HexKey, // Might be a replaceable nostr event?
+    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
     val replyToId: HexKey? = null,
     val repostId: HexKey? = null,
     val quote: HexKey? = null,
     val profilePublicKey: HexKey,
-    val createdAt: Instant,
-    val savedAt: Instant,
-    val broadcastedAt: Instant,
     val content: String,
-) {
-    companion object {
-        val DUMMY_POSTS = arrayOf(
-            Post(
-                id = "genesisnoteid",
-                nostrEventId = "genesisnoteid", // Need to check how to handle addressableEvents...
-                profilePublicKey = "satoshi",
-                createdAt = Clock.System.now(),
-                savedAt = Clock.System.now(),
-                broadcastedAt = Clock.System.now(),
-                content = "Chancellor the rapper...",
-            )
-        )
-    }
-}
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = Clock.System.now(),
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null,
+    override val broadcastedAt: Instant? = null,
+): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity

@@ -1,10 +1,17 @@
 package ac.aux.compose.database.model
 
+import ac.aux.compose.database.model.traits.BroadcastableEntity
+import ac.aux.compose.database.model.traits.LocalStoreEntity
+import ac.aux.compose.database.model.traits.NostrEventEntity
+import ac.aux.compose.database.model.traits.SoftDeletableEntity
+import ac.aux.compose.database.model.traits.TimestampedEntity
+import ac.aux.compose.database.model.traits.UserViewableEntity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -45,11 +52,16 @@ import kotlin.time.Instant
 data class Zap(
     @PrimaryKey
     val id: HexKey,
-    val nostrEventId: HexKey, // Might be a replaceable nostr event?
+    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
     val postId: HexKey,
     val senderPublicKey: HexKey,
     val receiverPublicKey: HexKey,
-    val createdAt: Instant,
     val message: String?,
     val invoice: String?,
-)
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = Clock.System.now(),
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null,
+    override val broadcastedAt: Instant? = null,
+) : NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity

@@ -1,9 +1,17 @@
 package ac.aux.compose.database.model
 
+import ac.aux.compose.database.model.traits.BroadcastableEntity
+import ac.aux.compose.database.model.traits.LocalStoreEntity
+import ac.aux.compose.database.model.traits.NostrEventEntity
+import ac.aux.compose.database.model.traits.SoftDeletableEntity
+import ac.aux.compose.database.model.traits.TimestampedEntity
+import ac.aux.compose.database.model.traits.UserViewableEntity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Entity(
     foreignKeys = [
@@ -21,7 +29,7 @@ import androidx.room.PrimaryKey
 data class Profile(
     @PrimaryKey
     val publicKey: String,
-    val nostrEventId: String,
+    override val nostrEventId: String,
     val userName: String? = null, // name in the nostr event...
     val displayName: String? = null,
     val picture: String? = null,
@@ -34,9 +42,12 @@ data class Profile(
     val domain: String? = null,
     val lud06: String? = null,
     val lud16: String? = null,
-    val twitter: String? = null
-) {
-    companion object {
-        val DUMMAY_PROFILES = arrayOf<Profile>()
-    }
-}
+    val twitter: String? = null,
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = Clock.System.now(),
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null,
+    override val broadcastedAt: Instant? = null,
+): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity

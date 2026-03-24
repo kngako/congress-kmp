@@ -1,5 +1,10 @@
 package ac.aux.compose.database.model
 
+import ac.aux.compose.database.model.traits.BroadcastableEntity
+import ac.aux.compose.database.model.traits.LocalStoreEntity
+import ac.aux.compose.database.model.traits.SoftDeletableEntity
+import ac.aux.compose.database.model.traits.TimestampedEntity
+import ac.aux.compose.database.model.traits.UserViewableEntity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Fts4
@@ -8,6 +13,7 @@ import androidx.room.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity
@@ -15,14 +21,17 @@ data class NostrEvent(
     @PrimaryKey
     val id: String,
     val pubKey: HexKey,
-    val createdAt: Instant,
-    val savedAt: Instant,
-    val broadcastedAt: Instant,
     val kind: Kind,
     val tags: TagArray,
     val content: String,
     val sig: HexKey,
-) {
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = Clock.System.now(),
+    override val savedAt: Instant = Clock.System.now(),
+    override val deletedAt: Instant? = null,
+    override val broadcastedAt: Instant? = null,
+): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity  {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
