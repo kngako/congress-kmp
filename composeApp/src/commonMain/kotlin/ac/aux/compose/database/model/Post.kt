@@ -3,6 +3,8 @@ package ac.aux.compose.database.model
 import ac.aux.compose.database.model.traits.BroadcastableEntity
 import ac.aux.compose.database.model.traits.LocalStoreEntity
 import ac.aux.compose.database.model.traits.NostrEventEntity
+import ac.aux.compose.database.model.traits.ProfilePublicKeyEntity
+import ac.aux.compose.database.model.traits.ReplyingToEntity
 import ac.aux.compose.database.model.traits.SoftDeletableEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import ac.aux.compose.database.model.traits.UserViewableEntity
@@ -56,12 +58,13 @@ import kotlin.time.Instant
 data class Post(
     @PrimaryKey
     val id: HexKey,
-    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
-    val replyToId: HexKey? = null,
     val repostId: HexKey? = null,
     val quote: HexKey? = null,
-    val profilePublicKey: HexKey,
     val content: String,
+
+    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
+    override val replyToId: HexKey? = null,
+    override val profilePublicKey: HexKey,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
@@ -69,4 +72,4 @@ data class Post(
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity
+): NostrEventEntity, ReplyingToEntity, ProfilePublicKeyEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity

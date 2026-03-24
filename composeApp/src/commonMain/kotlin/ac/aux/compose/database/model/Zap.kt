@@ -52,12 +52,15 @@ import kotlin.time.Instant
 data class Zap(
     @PrimaryKey
     val id: HexKey,
-    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
     val postId: HexKey,
     val senderPublicKey: HexKey,
     val receiverPublicKey: HexKey,
     val message: String?,
     val invoice: String?,
+    val amountInMillisatoshis: Long?,
+
+    override val nostrEventId: HexKey, // Might be a replaceable nostr event?
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
     override val savedAt: Instant = Clock.System.now(),

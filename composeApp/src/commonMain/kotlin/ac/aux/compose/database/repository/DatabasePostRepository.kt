@@ -12,7 +12,7 @@ class DatabasePostRepository(
     ) {
         val nostrDao = database.nostrDao()
 
-        nostrDao.insertPostAndNostrEvent(
+        nostrDao.insertNostrEvent(
             nostrEvent
         )
     }

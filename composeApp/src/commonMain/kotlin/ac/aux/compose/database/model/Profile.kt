@@ -29,7 +29,6 @@ import kotlin.time.Instant
 data class Profile(
     @PrimaryKey
     val publicKey: String,
-    override val nostrEventId: String,
     val userName: String? = null, // name in the nostr event...
     val displayName: String? = null,
     val picture: String? = null,
@@ -43,6 +42,8 @@ data class Profile(
     val lud06: String? = null,
     val lud16: String? = null,
     val twitter: String? = null,
+
+    override val nostrEventId: String,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
