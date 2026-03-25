@@ -1,5 +1,6 @@
 package ac.aux.compose.ui.composable
 
+import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.repository.NostrRepository
@@ -451,6 +452,17 @@ fun CreateAccountScreenPreview() {
                 onNavigateToSocialPreconditionRoute = {},
                 onEndThis = {},
                 nostrRepository = object : NostrRepository {
+                    override suspend fun createNewProfile(
+                        name: String,
+                        biography: String,
+                        onError: () -> Unit,
+                        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
+                        onUnbroadcastedProfile: (NostrEvent) -> Unit,
+                        onProfileReady: (Profile) -> Unit
+                    ) {
+                        TODO("Not yet implemented")
+                    }
+
                     override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? {
                         TODO("Not yet implemented")
                     }

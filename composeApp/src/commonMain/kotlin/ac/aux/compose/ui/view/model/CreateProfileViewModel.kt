@@ -74,58 +74,32 @@ class CreateProfileViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
 
-            val profileEventTemplate = MetadataEvent.createNew(
+            nostrRepository.createNewProfile(
                 name = createProfileFormState.nameField.text.value,
-                about = createProfileFormState.biographyField.text.value
-            )
-
-            val unsignedNostrEvent = nostrRepository.saveUnsignedNostrEvent(
-                UnsignedNostrEvent(
-                    kind = profileEventTemplate.kind,
-                    createdAt = Instant.fromEpochMilliseconds(profileEventTemplate.createdAt),
-                    tags = profileEventTemplate.tags,
-                    content = profileEventTemplate.content
-                )
-            )
-
-            isActionPending.value = false
-
-            if (unsignedNostrEvent != null) {
-                createProfileUIState.value = CreateProfileUIState.UnsignedProfile(
-                    unsignedNostrEvent = unsignedNostrEvent,
-                    name = createProfileFormState.nameField.text.value,
-                    bio = createProfileFormState.biographyField.text.value
-                )
-
-                delay(7_500) // Seeming busy is very important...
-
-                createProfileUIState.value = CreateProfileUIState.UnbroadcastedProfile(
-                    nostrEvent = NostrEvent(
-                        id = "",
-                        pubKey = "",
-                        kind = 0,
-                        content = "Something here",
-                        tags = emptyArray(),
-                        sig = ""
-                    ),
-                    name = createProfileFormState.nameField.text.value,
-                    bio = createProfileFormState.biographyField.text.value
-                )
-
-                delay(4_500) // Seeming busy is very important...
-
-                createProfileUIState.value = CreateProfileUIState.ProfileReady(
-                    profile = Profile(
-                        publicKey = "",
-                        nostrEventId = "",
-                        displayName = createProfileFormState.nameField.text.value,
-                        about = createProfileFormState.biographyField.text.value,
+                biography = createProfileFormState.biographyField.text.value,
+                onError = {
+                    createProfileUIState.value = CreateProfileUIState.Error
+                },
+                onUnsignProfile = { unsignedNostrEvent ->
+                    createProfileUIState.value = CreateProfileUIState.UnsignedProfile(
+                        unsignedNostrEvent = unsignedNostrEvent,
+                        name = createProfileFormState.nameField.text.value,
+                        bio = createProfileFormState.biographyField.text.value
                     )
-                )
-            } else {
-                createProfileUIState.value = CreateProfileUIState.Error
-            }
-
+                },
+                onUnbroadcastedProfile = { unbroadcastedNostrEvent ->
+                    createProfileUIState.value = CreateProfileUIState.UnbroadcastedProfile(
+                        nostrEvent = unbroadcastedNostrEvent,
+                        name = createProfileFormState.nameField.text.value,
+                        bio = createProfileFormState.biographyField.text.value
+                    )
+                },
+                onProfileReady = { profile ->
+                    createProfileUIState.value = CreateProfileUIState.ProfileReady(
+                        profile = profile
+                    )
+                }
+            )
         }
     }
 }
