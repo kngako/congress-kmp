@@ -77,7 +77,7 @@ fun SocialPreconditionScreen(
                 )
 
                 Text(
-                    "Tell friends to join you on Aux so your feed stays lively and fresh.",
+                    "Tell friends to join you so your feed stays lively and fresh.",
                     textAlign = TextAlign.Center
                 )
 

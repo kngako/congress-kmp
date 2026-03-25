@@ -2,6 +2,9 @@ package ac.aux.compose.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val BluePill = Color(0xFF5D8DD6)
+val RedPill = Color(230, 32, 32, 191)
+
 val primaryLight = Color(0xFF000000)
 val onPrimaryLight = Color(0xFFFFFFFF)
 val primaryContainerLight = Color(0xFF1B1B1B)

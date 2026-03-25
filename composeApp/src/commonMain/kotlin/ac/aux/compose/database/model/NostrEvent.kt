@@ -5,6 +5,7 @@ import ac.aux.compose.database.model.traits.LocalStoreEntity
 import ac.aux.compose.database.model.traits.SoftDeletableEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -36,7 +37,8 @@ data class NostrEvent(
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
 ): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity  {
-    val logger = Logger.withTag("NostrEvent")
+    @Ignore
+    private val logger = Logger.withTag("NostrEvent")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

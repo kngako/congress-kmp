@@ -20,5 +20,5 @@ interface UnsignedNostrEventDao {
     fun getUnsignedNostrEventById(id: Long): Flow<UnsignedNostrEvent?>
 
     @Upsert
-    suspend fun upsert(unsignedNostrEvent: UnsignedNostrEvent)
+    suspend fun upsert(unsignedNostrEvent: UnsignedNostrEvent): Long
 }
