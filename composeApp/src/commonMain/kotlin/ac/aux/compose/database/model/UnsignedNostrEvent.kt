@@ -39,6 +39,7 @@ data class UnsignedNostrEvent(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
+    val pubKey: HexKey,
     val kind: Kind,
     val tags: TagArray,
     val content: String,

@@ -1,5 +1,6 @@
 package ac.aux.compose.ui.view.model
 
+import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.NavigationUIState
 import androidx.lifecycle.ViewModel
@@ -41,9 +42,6 @@ class NavigationViewModel(
         }
     }
 
-    val tempDevelopmentKeyPair = KeyPair(
-        privKey = Random(21_000_000L).nextBytes(32)
-    )
     private val _navigationUIState = MutableStateFlow(
         initialNavigationUIState
     )
@@ -63,7 +61,9 @@ class NavigationViewModel(
             _navigationUIState.getAndUpdate {
                 NavigationUIState.Landing
             }
-            nostrRepository.observeProfile(tempDevelopmentKeyPair.pubKey.toHexKey()).map { localProfile ->
+            nostrRepository.observeProfile(
+                publicKey = SeedManager.activePublicKey().toHexKey()
+            ).map { localProfile ->
                 _navigationUIState.getAndUpdate {
                     if (localProfile == null) {
                         NavigationUIState.Landing

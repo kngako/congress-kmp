@@ -30,7 +30,7 @@ interface ProfileDao {
     @Upsert
     suspend fun upsert(profile: Profile)
 
-    @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
+    @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfile(publicKey: String): Flow<LocalProfile?>
 
 }

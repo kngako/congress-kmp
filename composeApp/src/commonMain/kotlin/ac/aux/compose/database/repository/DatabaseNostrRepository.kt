@@ -20,6 +20,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun createNewProfile(
+        publicKey: HexKey,
         name: String,
         biography: String,
         onError: () -> Unit,
@@ -34,6 +35,7 @@ class DatabaseNostrRepository(
 
         val unsignedNostrEvent = saveUnsignedNostrEvent(
             UnsignedNostrEvent(
+                pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochMilliseconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,

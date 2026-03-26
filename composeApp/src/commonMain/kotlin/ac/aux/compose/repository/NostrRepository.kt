@@ -1,11 +1,9 @@
 package ac.aux.compose.repository
 
-import ac.aux.compose.database.dao.ProfileDao
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
-import ac.aux.compose.ui.view.state.CreateProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +11,7 @@ interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?>
 
     suspend fun createNewProfile(
+        publicKey: HexKey,
         name: String,
         biography: String,
         onError: () -> Unit,
@@ -32,6 +31,7 @@ interface NostrRepository {
             }
 
             override suspend fun createNewProfile(
+                publicKey: HexKey,
                 name: String,
                 biography: String,
                 onError: () -> Unit,

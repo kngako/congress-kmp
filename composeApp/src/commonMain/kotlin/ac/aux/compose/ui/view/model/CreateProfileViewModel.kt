@@ -1,8 +1,6 @@
 package ac.aux.compose.ui.view.model
 
-import ac.aux.compose.database.model.NostrEvent
-import ac.aux.compose.database.model.Profile
-import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.CreateProfileUIState
 import androidx.compose.runtime.MutableState
@@ -14,12 +12,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import ac.aux.compose.ui.view.state.form.CreateProfileFormState
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.time.Instant
 
 class CreateProfileViewModel(
     val initialCreateProfileUIState: CreateProfileUIState,
@@ -75,6 +71,7 @@ class CreateProfileViewModel(
         viewModelScope.launch(Dispatchers.IO) {
 
             nostrRepository.createNewProfile(
+                SeedManager.activePublicKey().toHexKey(),
                 name = createProfileFormState.nameField.text.value,
                 biography = createProfileFormState.biographyField.text.value,
                 onError = {
@@ -91,13 +88,12 @@ class CreateProfileViewModel(
                     createProfileUIState.value = CreateProfileUIState.UnbroadcastedProfile(
                         nostrEvent = unbroadcastedNostrEvent,
                     )
-                },
-                onProfileReady = { profile ->
-                    createProfileUIState.value = CreateProfileUIState.ProfileReady(
-                        profile = profile
-                    )
                 }
-            )
+            ) { profile ->
+                createProfileUIState.value = CreateProfileUIState.ProfileReady(
+                    profile = profile
+                )
+            }
         }
     }
 
