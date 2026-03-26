@@ -53,7 +53,7 @@ fun AuxNavHost(
 
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
-            NavigationUIState.Landing,
+            NavigationUIState.Loading,
             nostrRepository
         )
     )

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,8 +59,11 @@ class NavigationViewModel(
 
     private fun observeProfile() {
         viewModelScope.launch {
+            delay(2_100) // Looking busy...
+            _navigationUIState.getAndUpdate {
+                NavigationUIState.Landing
+            }
             nostrRepository.observeProfile(tempDevelopmentKeyPair.pubKey.toHexKey()).map { localProfile ->
-
                 _navigationUIState.getAndUpdate {
                     if (localProfile == null) {
                         NavigationUIState.Landing
