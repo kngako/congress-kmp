@@ -1,6 +1,8 @@
 package ac.aux.compose.ui.view.model
 
+import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.NavigationUIState
 import androidx.lifecycle.ViewModel
@@ -9,16 +11,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.time.Instant
 
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
@@ -48,12 +49,46 @@ class NavigationViewModel(
     val navigationUIState = _navigationUIState.asStateFlow()
 
     init {
+        observeUnsignedNostrEvents()
         observeProfile()
     }
 
 
 
 
+    private fun observeUnsignedNostrEvents() {
+        val tempSigner = NostrSignerSync(
+            SeedManager.activeKeyPair()
+        )
+        logger.i { "observeUnsignedNostrEvents" }
+        viewModelScope.launch {
+            nostrRepository.observeUnsignedNostrEvents(
+                publicKey = SeedManager.activePublicKey().toHexKey()
+            ).collect { unsignedNostrEvent ->
+
+                val event = tempSigner.signNormal<Event>(
+                    createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
+                    kind = unsignedNostrEvent.kind,
+                    tags = unsignedNostrEvent.tags,
+                    content = unsignedNostrEvent.content
+                )
+
+                nostrRepository.publishNostrEvent(
+                    NostrEvent(
+                        id = event.id,
+                        pubKey = event.pubKey,
+                        kind = event.kind,
+                        tags = event.tags,
+                        content = event.content,
+                        createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                        sig = event.sig
+                    ),
+                    relayURLs = Relays.eventFinderRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                )
+
+            }
+        }
+    }
     private fun observeProfile() {
         logger.i("observeProfile")
         viewModelScope.launch {

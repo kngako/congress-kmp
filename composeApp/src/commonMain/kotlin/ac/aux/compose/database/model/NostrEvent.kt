@@ -38,7 +38,7 @@ data class NostrEvent(
     val sig: HexKey,
 
     override val createdAt: Instant = Clock.System.now(),
-    override val updatedAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,

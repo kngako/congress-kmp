@@ -7,13 +7,5 @@ import ac.aux.compose.repository.PostRepository
 class DatabasePostRepository(
     private val database: AuxDatabase
 ): PostRepository {
-    override suspend fun publishPost(
-        nostrEvent: NostrEvent
-    ) {
-        val nostrDao = database.nostrDao()
-
-        nostrDao.insertNostrEvent(
-            nostrEvent
-        )
-    }
+    
 }

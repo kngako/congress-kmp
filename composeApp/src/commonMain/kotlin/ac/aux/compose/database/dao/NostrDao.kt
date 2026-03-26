@@ -9,28 +9,82 @@ import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Relation
 import androidx.room.Transaction
+import co.touchlab.kermit.Logger
+import kotlinx.coroutines.delay
+import kotlin.time.Clock
 
 @Dao
 abstract class NostrDao(
     private val database: AuxDatabase
 ) {
+    val logger = Logger.withTag("NostrDao")
 
     @Transaction
-    open suspend fun insertNostrEvent(
+    open suspend fun publishNostrEvent(
         nostrEvent: NostrEvent,
-        relayURLs: List<String> = emptyList()
+        relayURLs: List<String>
     ) {
-        database.profileDao().insert(
-            Profile(
-                publicKey = nostrEvent.pubKey,
-                nostrEventId = nostrEvent.id // This is illegal... because the nostrEventId should be the one with all the profile information
-            )
-        )
+        logger.i("Publish Nostr Event: $nostrEvent ($relayURLs)")
+        // TODO: Find or create profile with the pubKey... if not found submit a sync request...
+        val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 
-        // TODO: Find note that is replyTo
-        database.nostrEventDao().insert(nostrEvent)
+        if (profile == null) {
+            val placeHolderProfile = Profile(
+                publicKey = nostrEvent.pubKey,
+                nostrEventId = nostrEvent.pubKey // This is illegal... because the nostrEventId should be the one with all the profile information
+            )
+            val placeHolderProfileNostrEvent = NostrEvent(
+                id = placeHolderProfile.publicKey,
+                kind = 30024,
+                pubKey = placeHolderProfile.publicKey,
+                content = placeHolderProfile.publicKey,
+                createdAt = Clock.System.now(),
+                sig = placeHolderProfile.publicKey,
+                tags = emptyArray(),
+            )
+            database.nostrEventDao().upsert(placeHolderProfileNostrEvent)
+            database.profileDao().upsert(placeHolderProfile)
+
+            // TODO: Sync to find and update profile
+        }
+
+
+        database.nostrEventDao().upsert(nostrEvent)
 
         nostrEvent.toPost()?.let { post ->
+            if (post.replyToId != null) {
+                // Find or create placeHolder note that is replyTo
+                val replyingToPost = database.postDao().getPostById(post.replyToId)
+
+                if (replyingToPost == null) {
+                    // PlaceHolder and sync
+                    database.postDao().insert(
+                        Post(
+                            id = post.replyToId,
+                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                            content = post.replyToId,
+                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                        )
+                    )
+                }
+            }
+
+            if (post.repostId != null) {
+                val repostPost = database.postDao().getPostById(post.repostId)
+
+                if (repostPost == null) {
+                    // Placeholder Post...
+                    database.postDao().insert(
+                        Post(
+                            id = post.repostId,
+                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                            content = post.repostId,
+                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                        )
+                    )
+                    // Sync repostId
+                }
+            }
             database.postDao().insert(post)
         }
 
@@ -50,6 +104,10 @@ abstract class NostrDao(
             database.zapDao().upsert(zap)
         }
         // Submit a broadcastRequest...
+        if (nostrEvent.kind == 0) {
+            // Look busy
+            delay(2_500)
+        }
         relayURLs.forEach { relayURL ->
             database.broadcastNostrEventRequestDao().upsert(
                 BroadcastNostrEventRequest(
@@ -59,13 +117,4 @@ abstract class NostrDao(
             )
         }
     }
-
-    data class NostrEventAndPost(
-        @Embedded val nostrEvent: NostrEvent,
-        @Relation(
-            parentColumn = "id",
-            entityColumn = "nostrEventId"
-        )
-        val post: Post
-    )
 }

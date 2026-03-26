@@ -1,5 +1,6 @@
 package ac.aux.compose.repository
 
+import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
@@ -8,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?>
+
+    suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -23,10 +26,19 @@ interface NostrRepository {
 
     suspend fun wipeDatabase()
 
+    suspend fun publishNostrEvent(
+        nostrEvent: NostrEvent,
+        relayURLs: List<String> = emptyList()
+    )
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
-                TODO("")
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent> {
+                TODO("Not yet implemented")
             }
 
             override suspend fun createNewProfile(
@@ -43,6 +55,10 @@ interface NostrRepository {
             }
 
             override suspend fun wipeDatabase() {
+            }
+
+            override suspend fun publishNostrEvent(nostrEvent: NostrEvent, relayURLs: List<String>) {
+
             }
         }
     }

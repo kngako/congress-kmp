@@ -9,8 +9,12 @@ object SeedManager {
         privKey = Random(21_012_256L).nextBytes(32)
     )
 
-    fun activePublicKey(): ByteArray {
+    fun activeKeyPair(): KeyPair {
         // TODO: Actually set and get a pair...
-        return tempDevelopmentKeyPair.pubKey
+        return tempDevelopmentKeyPair
+    }
+
+    fun activePublicKey(): ByteArray {
+        return activeKeyPair().pubKey
     }
 }

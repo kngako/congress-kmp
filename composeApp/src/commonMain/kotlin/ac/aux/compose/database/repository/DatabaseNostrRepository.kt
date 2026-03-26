@@ -1,6 +1,7 @@
 package ac.aux.compose.database.repository
 
 import ac.aux.compose.database.AuxDatabase
+import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
@@ -22,7 +23,11 @@ class DatabaseNostrRepository(
     val logger = Logger.withTag(TAG)
 
     override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
-        return database.profileDao().observeProfile(publicKey)
+        return database.unsignedNostrEventDao().observeProfile(publicKey)
+    }
+
+    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent> {
+        return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 
     override suspend fun createNewProfile(
@@ -64,6 +69,13 @@ class DatabaseNostrRepository(
 
     override suspend fun wipeDatabase() {
         database.wipeData()
+    }
+
+    override suspend fun publishNostrEvent(nostrEvent: NostrEvent, relayURLs: List<String>) {
+        database.nostrDao().publishNostrEvent(
+            nostrEvent,
+            relayURLs
+        )
     }
 
 }
