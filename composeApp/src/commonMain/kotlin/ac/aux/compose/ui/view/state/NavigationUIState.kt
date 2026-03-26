@@ -1,8 +1,11 @@
 package ac.aux.compose.ui.view.state
 
+import ac.aux.compose.database.model.BroadcastNostrEventReceipt
+import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalProfile
 
 abstract class NavigationUIState {
     data object Error: NavigationUIState()
@@ -15,11 +18,22 @@ abstract class NavigationUIState {
         val unsignedNostrEvent: UnsignedNostrEvent,
     ) : NavigationUIState()
 
-    data class UnannouncedProfile(
+    data class UnindexedProfile(
         val nostrEvent: NostrEvent,
     ) : NavigationUIState()
 
+    data class UnqueuedProfile(
+        val profile: Profile,
+    ) : NavigationUIState()
+
+
+    data class UnannouncedProfile(
+        val broadcastNostrEventRequest: BroadcastNostrEventRequest,
+    ) : NavigationUIState()
+
+
+
     data class ProfileLoaded(
-        val profile: Profile
+        val broadcastNostrEventReceipt: BroadcastNostrEventReceipt
     ) : NavigationUIState()
 }

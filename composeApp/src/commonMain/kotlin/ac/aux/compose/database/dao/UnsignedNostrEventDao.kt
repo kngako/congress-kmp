@@ -14,7 +14,7 @@ interface UnsignedNostrEventDao {
     @Query("SELECT * FROM UnsignedNostrEvent")
     fun  getAUnsignedNostrEvents(): List<UnsignedNostrEvent>
 
-    @Query("SELECT * FROM UnsignedNostrEvent WHERE signedNostrEventId IS NULL")
+    @Query("SELECT * FROM UnsignedNostrEvent") // TODO: where nostrEvent.unsignedNostrEventId is 0
     fun  getAllUnprocessedUnsignedNostrEvents(): List<UnsignedNostrEvent>
 
     @Query("SELECT * FROM UnsignedNostrEvent WHERE id = :id")
@@ -26,6 +26,6 @@ interface UnsignedNostrEventDao {
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfile(publicKey: String): Flow<LocalProfile?>
 
-    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedNostrEventId IS NULL")
-    fun observeUnsignedNostrEvents(publicKey: String): Flow<UnsignedNostrEvent>
+    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey") // TODO: where nostrEvent.unsignedNostrEventId is 0
+    fun observeUnsignedNostrEvents(publicKey: String): Flow<UnsignedNostrEvent?>
 }

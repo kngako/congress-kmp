@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?>
 
-    suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent>
+    suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -37,7 +37,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent> {
+            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
                 TODO("Not yet implemented")
             }
 

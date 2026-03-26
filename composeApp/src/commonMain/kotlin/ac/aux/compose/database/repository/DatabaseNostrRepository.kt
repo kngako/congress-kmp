@@ -26,7 +26,7 @@ class DatabaseNostrRepository(
         return database.unsignedNostrEventDao().observeProfile(publicKey)
     }
 
-    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent> {
+    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 

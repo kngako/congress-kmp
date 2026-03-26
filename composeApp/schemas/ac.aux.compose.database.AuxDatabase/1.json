@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "3d48904218bb18d9efb6dba14449f27c",
+    "identityHash": "5b27659e597a301316dcc8ed9eaf8a3e",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `isAccepted` INTEGER NOT NULL, `relayURL` TEXT NOT NULL, `messages` TEXT, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `unsignedNostrEventId` INTEGER, `isAccepted` INTEGER NOT NULL, `relayURL` TEXT NOT NULL, `messages` TEXT, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -19,6 +19,11 @@
             "columnName": "nostrEventId",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "unsignedNostrEventId",
+            "columnName": "unsignedNostrEventId",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "isAccepted",
@@ -75,12 +80,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "UnsignedNostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unsignedNostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "BroadcastNostrEventRequest",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `unsignedNostrEventId` INTEGER, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -93,6 +109,11 @@
             "columnName": "nostrEventId",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "unsignedNostrEventId",
+            "columnName": "unsignedNostrEventId",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "status",
@@ -144,12 +165,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "UnsignedNostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "unsignedNostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "NostrEvent",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `sig` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `sig` TEXT NOT NULL, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -186,6 +218,11 @@
             "columnName": "sig",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "unsignedNostrEventId",
+            "columnName": "unsignedNostrEventId",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "createdAt",
@@ -836,7 +873,7 @@
       },
       {
         "tableName": "UnsignedNostrEvent",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `signedNostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`signedNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -867,11 +904,6 @@
             "columnName": "content",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "signedNostrEventId",
-            "columnName": "signedNostrEventId",
-            "affinity": "TEXT"
           },
           {
             "fieldPath": "createdAt",
@@ -910,26 +942,22 @@
         },
         "indices": [
           {
-            "name": "index_UnsignedNostrEvent_signedNostrEventId",
+            "name": "index_UnsignedNostrEvent_pubKey",
             "unique": false,
             "columnNames": [
-              "signedNostrEventId"
+              "pubKey"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_UnsignedNostrEvent_signedNostrEventId` ON `${TABLE_NAME}` (`signedNostrEventId`)"
-          }
-        ],
-        "foreignKeys": [
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_UnsignedNostrEvent_pubKey` ON `${TABLE_NAME}` (`pubKey`)"
+          },
           {
-            "table": "NostrEvent",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "signedNostrEventId"
+            "name": "index_UnsignedNostrEvent_kind",
+            "unique": false,
+            "columnNames": [
+              "kind"
             ],
-            "referencedColumns": [
-              "id"
-            ]
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_UnsignedNostrEvent_kind` ON `${TABLE_NAME}` (`kind`)"
           }
         ]
       },
@@ -1101,7 +1129,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3d48904218bb18d9efb6dba14449f27c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5b27659e597a301316dcc8ed9eaf8a3e')"
     ]
   }
 }

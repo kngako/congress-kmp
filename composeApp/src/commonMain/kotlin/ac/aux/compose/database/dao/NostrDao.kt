@@ -112,6 +112,7 @@ abstract class NostrDao(
             database.broadcastNostrEventRequestDao().upsert(
                 BroadcastNostrEventRequest(
                     nostrEventId = nostrEvent.id,
+                    unsignedNostrEventId = nostrEvent.unsignedNostrEventId,
                     relayURL = relayURL
                 )
             )

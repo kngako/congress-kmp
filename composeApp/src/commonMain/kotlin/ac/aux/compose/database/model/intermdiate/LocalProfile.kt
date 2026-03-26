@@ -9,11 +9,11 @@ import androidx.room.Embedded
 import androidx.room.Relation
 
 data class LocalProfile(
-    @Embedded val unsignedNostrEvent: UnsignedNostrEvent,
+    @Embedded val unsignedNostrEvent: UnsignedNostrEvent?,
 
     @Relation(
-        parentColumn = "signedNostrEventId",
-        entityColumn = "id"
+        parentColumn = "id",
+        entityColumn = "unsignedNostrEventId"
     )
     val nostrEvent: NostrEvent?,
 
@@ -24,14 +24,14 @@ data class LocalProfile(
     val profile: Profile?,
 
     @Relation(
-        parentColumn = "signedNostrEventId",
-        entityColumn = "nostrEventId"
+        parentColumn = "id",
+        entityColumn = "unsignedNostrEventId"
     )
     val broadcastNostrEventRequest: BroadcastNostrEventRequest?,
 
     @Relation(
-        parentColumn = "signedNostrEventId",
-        entityColumn = "nostrEventId"
+        parentColumn = "id",
+        entityColumn = "unsignedNostrEventId"
     )
     val broadcastNostrEventReceipt: BroadcastNostrEventReceipt?
 )

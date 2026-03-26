@@ -64,27 +64,29 @@ class NavigationViewModel(
         viewModelScope.launch {
             nostrRepository.observeUnsignedNostrEvents(
                 publicKey = SeedManager.activePublicKey().toHexKey()
-            ).collect { unsignedNostrEvent ->
+            ).collect { unsignedNostrEventOrNull ->
+                unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
+                    val event = tempSigner.signNormal<Event>(
+                        createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
+                        kind = unsignedNostrEvent.kind,
+                        tags = unsignedNostrEvent.tags,
+                        content = unsignedNostrEvent.content
+                    )
 
-                val event = tempSigner.signNormal<Event>(
-                    createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
-                    kind = unsignedNostrEvent.kind,
-                    tags = unsignedNostrEvent.tags,
-                    content = unsignedNostrEvent.content
-                )
-
-                nostrRepository.publishNostrEvent(
-                    NostrEvent(
-                        id = event.id,
-                        pubKey = event.pubKey,
-                        kind = event.kind,
-                        tags = event.tags,
-                        content = event.content,
-                        createdAt = Instant.fromEpochMilliseconds(event.createdAt),
-                        sig = event.sig
-                    ),
-                    relayURLs = Relays.eventFinderRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                )
+                    nostrRepository.publishNostrEvent(
+                        NostrEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            kind = event.kind,
+                            tags = event.tags,
+                            content = event.content,
+                            createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                            sig = event.sig,
+                            unsignedNostrEventId = unsignedNostrEvent.id
+                        ),
+                        relayURLs = Relays.eventFinderRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                    )
+                }
 
             }
         }
@@ -105,14 +107,27 @@ class NavigationViewModel(
                     if (localProfile == null) {
                         logger.i("We need to be on the landing screen so user creates account")
                         NavigationUIState.Landing
-                    } else if (localProfile.profile != null) {
-                        logger.i("We have a profile: ${localProfile.profile}")
+                    } else if (localProfile.unsignedNostrEvent == null) {
+                        logger.i("We need to be on the landing screen so user creates account")
+                        NavigationUIState.Landing
+                    } else if (localProfile.broadcastNostrEventReceipt != null) {
+                        logger.i("We have a broadcast receipt: ${localProfile.profile}")
                         NavigationUIState.ProfileLoaded(
+                            broadcastNostrEventReceipt = localProfile.broadcastNostrEventReceipt
+                        )
+                    } else if (localProfile.broadcastNostrEventRequest != null) {
+                        logger.i("We have a profile: ${localProfile.profile}")
+                        NavigationUIState.UnannouncedProfile(
+                            broadcastNostrEventRequest = localProfile.broadcastNostrEventRequest
+                        )
+                    }  else if (localProfile.profile != null) {
+                        logger.i("We have a profile that needs to queued for broadcast: ${localProfile.profile}")
+                        NavigationUIState.UnqueuedProfile(
                             profile = localProfile.profile
                         )
                     } else if (localProfile.nostrEvent != null) {
-                        logger.i("Nostr event with the profile needs to be announced")
-                        NavigationUIState.UnannouncedProfile(
+                        logger.i("Nostr event with the profile needs to be indexed: ${localProfile.nostrEvent}")
+                        NavigationUIState.UnindexedProfile(
                             nostrEvent = localProfile.nostrEvent
                         )
                     } else {

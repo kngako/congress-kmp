@@ -23,16 +23,9 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
-    foreignKeys = [
-        ForeignKey(
-            entity = NostrEvent::class,
-            parentColumns = ["id"],
-            childColumns = ["signedNostrEventId"],
-            onDelete = ForeignKey.CASCADE,
-        )
-    ],
     indices = [
-        Index("signedNostrEventId"),
+        Index("pubKey"),
+        Index("kind"),
     ],
 )
 data class UnsignedNostrEvent(
@@ -43,8 +36,6 @@ data class UnsignedNostrEvent(
     val kind: Kind,
     val tags: TagArray,
     val content: String,
-
-    val signedNostrEventId: HexKey? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),

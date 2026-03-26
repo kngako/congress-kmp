@@ -4,7 +4,9 @@ import ac.aux.compose.database.model.traits.BroadcastableEntity
 import ac.aux.compose.database.model.traits.LocalStoreEntity
 import ac.aux.compose.database.model.traits.SoftDeletableEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
+import ac.aux.compose.database.model.traits.UnsignedNostrEventEntity
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -37,12 +39,14 @@ data class NostrEvent(
     val content: String,
     val sig: HexKey,
 
+    override val unsignedNostrEventId: Long? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity  {
+): UnsignedNostrEventEntity, TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity  {
     @Ignore
     private val logger = Logger.withTag("NostrEvent")
 

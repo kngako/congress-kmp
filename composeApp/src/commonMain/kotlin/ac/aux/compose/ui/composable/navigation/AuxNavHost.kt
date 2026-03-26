@@ -10,6 +10,8 @@ import ac.aux.compose.ui.composable.LandingScreen
 import ac.aux.compose.ui.composable.LoadingScreen
 import ac.aux.compose.ui.composable.SocialPreconditionScreen
 import ac.aux.compose.ui.composable.UnannouncedProfileScreen
+import ac.aux.compose.ui.composable.UnindexedProfileScreen
+import ac.aux.compose.ui.composable.UnqueuedProfileScreen
 import ac.aux.compose.ui.composable.UnsignedProfileScreen
 import ac.aux.compose.ui.composable.navigation.routes.BlankRoute
 import ac.aux.compose.ui.composable.navigation.routes.CreateProfileRoute
@@ -24,6 +26,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ac.aux.compose.ui.composable.navigation.routes.SocialPreconditionRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnindexedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
 import ac.aux.compose.ui.composable.widgets.feed.DUMMY_EVENTS
 import ac.aux.compose.ui.view.model.NavigationViewModel
@@ -91,10 +95,26 @@ fun AuxNavHost(
                         popUpTo(0)
                     }
                 }
+                is NavigationUIState.UnindexedProfile -> {
+                    navController.navigate(
+                        route = UnindexedProfileRoute(
+                            state.nostrEvent.id
+                        )
+                    ) {
+                        popUpTo(0)
+                    }
+                }
+                is NavigationUIState.UnqueuedProfile -> {
+                    navController.navigate(
+                        route = UnqueuedProfileRoute(
+                            state.profile.nostrEventId
+                        )
+                    )
+                }
                 is NavigationUIState.UnannouncedProfile -> {
                     navController.navigate(
                         route = UnannouncedProfileRoute(
-                            state.nostrEvent.id
+                            state.broadcastNostrEventRequest.nostrEventId
                         )
                     ) {
                         popUpTo(0)
@@ -169,6 +189,12 @@ fun AuxNavHost(
             UnsignedProfileScreen(
                 unsignedNostrEvent = route.toPlaceholderUnsignedNostrEvent()
             )
+        }
+        composable<UnindexedProfileRoute> {
+            UnindexedProfileScreen()
+        }
+        composable<UnqueuedProfileRoute> {
+            UnqueuedProfileScreen()
         }
         composable<UnannouncedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnannouncedProfileRoute>()
