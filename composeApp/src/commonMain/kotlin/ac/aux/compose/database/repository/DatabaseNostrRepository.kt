@@ -52,8 +52,13 @@ class DatabaseNostrRepository(
             )
         )
 
+
+
         if (unsignedNostrEvent == null) {
             onError.invoke()
+        } else if (unsignedNostrEvent.kind == 0 ) {
+            // Look busy for the onboarding screen
+            delay(3_500)
         }
     }
 

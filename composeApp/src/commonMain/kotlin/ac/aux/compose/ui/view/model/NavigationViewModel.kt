@@ -73,6 +73,7 @@ class NavigationViewModel(
                         content = unsignedNostrEvent.content
                     )
 
+
                     nostrRepository.publishNostrEvent(
                         NostrEvent(
                             id = event.id,
@@ -116,7 +117,7 @@ class NavigationViewModel(
                             broadcastNostrEventReceipt = localProfile.broadcastNostrEventReceipt
                         )
                     } else if (localProfile.broadcastNostrEventRequest != null) {
-                        logger.i("We have a profile: ${localProfile.profile}")
+                        logger.i("We have a broadcast request: ${localProfile.broadcastNostrEventRequest}")
                         NavigationUIState.UnannouncedProfile(
                             broadcastNostrEventRequest = localProfile.broadcastNostrEventRequest
                         )

@@ -78,6 +78,9 @@ data class NostrEvent(
         return result
     }
 
+    fun isProfileCreationEvent(): Boolean {
+        return kind == MetadataEvent.KIND && unsignedNostrEventId != null
+    }
     fun toPost(): Post? = try {
         if (kind == TextNoteEvent.KIND) {
             val textNote = EventFactory.create<TextNoteEvent>(

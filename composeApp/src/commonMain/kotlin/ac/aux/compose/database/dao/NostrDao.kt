@@ -10,6 +10,7 @@ import androidx.room.Embedded
 import androidx.room.Relation
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
 
@@ -25,7 +26,7 @@ abstract class NostrDao(
         relayURLs: List<String>
     ) {
         logger.i("Publish Nostr Event: $nostrEvent ($relayURLs)")
-        // TODO: Find or create profile with the pubKey... if not found submit a sync request...
+        // Find or create profile with the pubKey... if not found TODO: submit a sync request...
         val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 
         if (profile == null) {
@@ -47,7 +48,6 @@ abstract class NostrDao(
 
             // TODO: Sync to find and update profile
         }
-
 
         database.nostrEventDao().upsert(nostrEvent)
 
@@ -103,11 +103,7 @@ abstract class NostrDao(
         nostrEvent.toZap()?.let { zap ->
             database.zapDao().upsert(zap)
         }
-        // Submit a broadcastRequest...
-        if (nostrEvent.kind == 0) {
-            // Look busy
-            delay(2_500)
-        }
+
         relayURLs.forEach { relayURL ->
             database.broadcastNostrEventRequestDao().upsert(
                 BroadcastNostrEventRequest(
