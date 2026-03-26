@@ -46,7 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun CreateProfileScreen(
     initialCreateProfileUIState: CreateProfileUIState = CreateProfileUIState.Declaration,
     onNavigateToSocialPreconditionRoute: () -> Unit,
-    onEndThis: () -> Unit,
+    onNavigateToEndThis: () -> Unit,
     nostrRepository: NostrRepository
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
@@ -386,7 +386,9 @@ fun CreateProfileScreen(
                             ),
                             onClick = {
                                 // TODO: Delete everything and close the app
-                                onEndThis.invoke()
+                                createProfileViewModel.wipeDatabase {
+                                    onNavigateToEndThis.invoke()
+                                }
                             }
                         ) {
                             Text(
@@ -450,23 +452,8 @@ fun CreateAccountScreenPreview() {
                         )
                     ),
                 onNavigateToSocialPreconditionRoute = {},
-                onEndThis = {},
-                nostrRepository = object : NostrRepository {
-                    override suspend fun createNewProfile(
-                        name: String,
-                        biography: String,
-                        onError: () -> Unit,
-                        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
-                        onUnbroadcastedProfile: (NostrEvent) -> Unit,
-                        onProfileReady: (Profile) -> Unit
-                    ) {
-                        TODO("Not yet implemented")
-                    }
-
-                    override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? {
-                        TODO("Not yet implemented")
-                    }
-                })
+                onNavigateToEndThis = {},
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY)
         }
     }
 }

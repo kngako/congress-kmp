@@ -90,8 +90,6 @@ class CreateProfileViewModel(
                 onUnbroadcastedProfile = { unbroadcastedNostrEvent ->
                     createProfileUIState.value = CreateProfileUIState.UnbroadcastedProfile(
                         nostrEvent = unbroadcastedNostrEvent,
-                        name = createProfileFormState.nameField.text.value,
-                        bio = createProfileFormState.biographyField.text.value
                     )
                 },
                 onProfileReady = { profile ->
@@ -100,6 +98,15 @@ class CreateProfileViewModel(
                     )
                 }
             )
+        }
+    }
+
+    fun wipeDatabase(
+        onNavigateToEndThis: () -> Unit
+    ) {
+        viewModelScope.launch {
+            nostrRepository.wipeDatabase()
+            onNavigateToEndThis.invoke()
         }
     }
 }

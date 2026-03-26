@@ -4,15 +4,21 @@ import ac.aux.compose.database.AuxDatabase
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.repository.NostrRepository
-import ac.aux.compose.ui.view.state.CreateProfileUIState
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
     private val database: AuxDatabase
 ): NostrRepository {
+    override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
+        return database.profileDao().observeProfile(publicKey)
+    }
+
     override suspend fun createNewProfile(
         name: String,
         biography: String,
@@ -74,6 +80,10 @@ class DatabaseNostrRepository(
         )
     } catch (e: Throwable) {
         null
+    }
+
+    override suspend fun wipeDatabase() {
+        database.wipeData()
     }
 
 }

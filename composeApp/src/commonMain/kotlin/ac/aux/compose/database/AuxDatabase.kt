@@ -23,6 +23,8 @@ import ac.aux.compose.database.model.Zap
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.immediateTransaction
+import androidx.room.useWriterConnection
 
 @Database(
     entities = [
@@ -52,4 +54,12 @@ abstract class AuxDatabase: RoomDatabase() {
 
     abstract fun unsignedNostrEventDao(): UnsignedNostrEventDao
     abstract fun zapDao(): ZapDao
+
+    suspend fun wipeData() {
+        useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                // TODO: Actually delete the data...
+            }
+        }
+    }
 }

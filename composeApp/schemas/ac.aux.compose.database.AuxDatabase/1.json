@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "61eb893d34ad04f95f8b007f8448ad7f",
+    "identityHash": "80c7032502d17a1893ea8dc67debd365",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -221,7 +221,27 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_NostrEvent_kind",
+            "unique": false,
+            "columnNames": [
+              "kind"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_kind` ON `${TABLE_NAME}` (`kind`)"
+          },
+          {
+            "name": "index_NostrEvent_pubKey",
+            "unique": false,
+            "columnNames": [
+              "pubKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_pubKey` ON `${TABLE_NAME}` (`pubKey`)"
+          }
+        ]
       },
       {
         "tableName": "Post",
@@ -1075,7 +1095,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '61eb893d34ad04f95f8b007f8448ad7f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '80c7032502d17a1893ea8dc67debd365')"
     ]
   }
 }

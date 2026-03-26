@@ -10,6 +10,11 @@ fun main() = application {
         title = "Aux",
     ) {
         val navController = rememberNavController()
-        AuxApp(navController)
+        AuxApp(
+            navController = navController,
+            auxGlobal = AuxGlobal(
+                platformContext = PlatformContext()
+            )
+        )
     }
 }

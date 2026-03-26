@@ -14,6 +14,7 @@ import androidx.room.Transaction
 abstract class NostrDao(
     private val database: AuxDatabase
 ) {
+
     @Transaction
     open suspend fun insertNostrEvent(
         nostrEvent: NostrEvent,

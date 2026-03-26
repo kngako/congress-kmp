@@ -12,17 +12,16 @@ import androidx.navigation.NavHostController
 @Composable
 fun AuxApp(
     navController: NavHostController,
+    auxGlobal: AuxGlobal
 ) {
     AuxTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
             AuxNavHost(
-
-                navController = navController,
-                startDestination = LandingRoute
+                auxGlobal = auxGlobal,
+                navController = navController
             )
-
         }
     }
 }

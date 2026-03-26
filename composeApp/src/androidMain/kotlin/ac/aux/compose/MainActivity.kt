@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.vitorpamplona.quartz.utils.platform
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,7 +18,12 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
 
             AuxApp(
-                navController
+                navController = navController,
+                auxGlobal = AuxGlobal(
+                    platformContext = PlatformContext(
+                        applicationContext = applicationContext
+                    )
+                )
             )
         }
     }

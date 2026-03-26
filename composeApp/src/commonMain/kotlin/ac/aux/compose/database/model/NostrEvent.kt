@@ -6,6 +6,7 @@ import ac.aux.compose.database.model.traits.SoftDeletableEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import androidx.room.Entity
 import androidx.room.Ignore
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -21,7 +22,12 @@ import kotlin.String
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-@Entity
+@Entity(
+    indices = [
+        Index("kind"),
+        Index("pubKey"),
+    ]
+)
 data class NostrEvent(
     @PrimaryKey
     val id: String,

@@ -6,5 +6,10 @@ import androidx.navigation.compose.rememberNavController
 fun MainViewController() = ComposeUIViewController {
     val navController = rememberNavController()
 
-    AuxApp(navController)
+    AuxApp(
+        navController = navController,
+        auxGlobal = AuxGlobal(
+            platformContext = PlatformContext()
+        )
+    )
 }

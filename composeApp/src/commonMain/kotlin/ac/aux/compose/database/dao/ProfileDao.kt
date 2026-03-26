@@ -3,10 +3,14 @@ package ac.aux.compose.database.dao
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalProfile
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Relation
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -16,7 +20,7 @@ interface ProfileDao {
     fun  getAllPosts(): List<Profile>
 
     @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
-    fun getProfileByPublicKey(publicKey: String): Flow<Profile?>
+    fun getProfileByPublicKey(publicKey: String): Profile?
 
     @Insert(
         onConflict = OnConflictStrategy.IGNORE
@@ -25,4 +29,8 @@ interface ProfileDao {
 
     @Upsert
     suspend fun upsert(profile: Profile)
+
+    @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
+    fun observeProfile(publicKey: String): Flow<LocalProfile?>
+
 }

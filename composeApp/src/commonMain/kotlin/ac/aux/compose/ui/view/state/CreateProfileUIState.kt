@@ -24,8 +24,6 @@ abstract class CreateProfileUIState {
 
     data class UnbroadcastedProfile(
         val nostrEvent: NostrEvent,
-        val name: String,
-        val bio: String
     ) : CreateProfileUIState()
 
     data class ProfileReady(
