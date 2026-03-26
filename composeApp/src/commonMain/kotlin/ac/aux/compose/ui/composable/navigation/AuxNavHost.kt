@@ -1,7 +1,6 @@
 package ac.aux.compose.ui.composable.navigation
 
 import ac.aux.compose.AuxGlobal
-import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.repository.DatabaseNostrRepository
 import ac.aux.compose.managers.DatabaseManager
 import ac.aux.compose.ui.composable.CreateProfileScreen
@@ -10,6 +9,8 @@ import ac.aux.compose.ui.composable.ImplementationPendingScreen
 import ac.aux.compose.ui.composable.LandingScreen
 import ac.aux.compose.ui.composable.LoadingScreen
 import ac.aux.compose.ui.composable.SocialPreconditionScreen
+import ac.aux.compose.ui.composable.UnannouncedProfileScreen
+import ac.aux.compose.ui.composable.UnsignedProfileScreen
 import ac.aux.compose.ui.composable.navigation.routes.BlankRoute
 import ac.aux.compose.ui.composable.navigation.routes.CreateProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.FeedRoute
@@ -21,11 +22,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import ac.aux.compose.ui.composable.navigation.routes.Route
 import ac.aux.compose.ui.composable.navigation.routes.SocialPreconditionRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
 import ac.aux.compose.ui.composable.widgets.feed.DUMMY_EVENTS
 import ac.aux.compose.ui.view.model.NavigationViewModel
-import ac.aux.compose.ui.view.state.CreateProfileUIState
 import ac.aux.compose.ui.view.state.FeedListUIState
 import ac.aux.compose.ui.view.state.NavigationUIState
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,10 +83,17 @@ fun AuxNavHost(
                         popUpTo(0)
                     }
                 }
-                is NavigationUIState.UnbroadcastedProfile -> {
+                is NavigationUIState.UnsignedProfile -> {
                     navController.navigate(
-                        route = CreateProfileRoute(
-                            nostrEventId = state.nostrEvent.id
+                        route = UnsignedProfileRoute
+                    ) {
+                        popUpTo(0)
+                    }
+                }
+                is NavigationUIState.UnannouncedProfile -> {
+                    navController.navigate(
+                        route = UnannouncedProfileRoute(
+                            state.nostrEvent.id
                         )
                     ) {
                         popUpTo(0)
@@ -93,7 +101,7 @@ fun AuxNavHost(
                 }
                 is NavigationUIState.ProfileLoaded -> {
                     navController.navigate(
-                        route = FeedRoute
+                        route = SocialPreconditionRoute
                     ) {
                         popUpTo(0)
                     }
@@ -139,11 +147,6 @@ fun AuxNavHost(
             val route = backStackEntry.toRoute<CreateProfileRoute>()
 
             CreateProfileScreen(
-                initialCreateProfileUIState = route.toPlaceholderNostrEvent()?.let { placeholderNostrEvent ->
-                    CreateProfileUIState.UnbroadcastedProfile(
-                        placeholderNostrEvent
-                    )
-                } ?: CreateProfileUIState.Declaration,
                 onNavigateToSocialPreconditionRoute = {
                     navController.navigate(
                         route = SocialPreconditionRoute
@@ -157,6 +160,20 @@ fun AuxNavHost(
                     }
                 },
                 nostrRepository = nostrRepository
+            )
+        }
+        composable<UnsignedProfileRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UnsignedProfileRoute>()
+
+            UnsignedProfileScreen(
+                unsignedNostrEvent = route.toPlaceholderUnsignedNostrEvent()
+            )
+        }
+        composable<UnannouncedProfileRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UnannouncedProfileRoute>()
+
+            UnannouncedProfileScreen(
+                nostrEvent = route.toPlaceholderNostrEvent()
             )
         }
         composable<SocialPreconditionRoute> {

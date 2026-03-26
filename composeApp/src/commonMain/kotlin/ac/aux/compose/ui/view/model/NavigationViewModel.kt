@@ -10,7 +10,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
-import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
@@ -72,20 +70,20 @@ class NavigationViewModel(
                             profile = localProfile.profile
                         )
                     } else if (localProfile.nostrEvent != null) {
-                        NavigationUIState.UnbroadcastedProfile(
+                        NavigationUIState.UnannouncedProfile(
                             nostrEvent = localProfile.nostrEvent
                         )
-                        // TODO: Support unsignedNostrEvent with pubKey so we can have multi account support...
-//        }  else if (localProfile.nostrEvent != null) {
-//            NavigationUIState.UnbroadcastedProfile(
-//                nostrEvent = localProfile.nostrEvent
-//            )
                     } else {
-                        NavigationUIState.Error
+                        NavigationUIState.UnsignedProfile(
+                            unsignedNostrEvent = localProfile.unsignedNostrEvent
+                        )
                     }
                 }
-            }.catch {
-                NavigationUIState.Error
+            }.catch { e ->
+                logger.e("Error observing profile:", e)
+                _navigationUIState.getAndUpdate {
+                    NavigationUIState.Error
+                }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NavigationUIState.Landing)
         }
     }

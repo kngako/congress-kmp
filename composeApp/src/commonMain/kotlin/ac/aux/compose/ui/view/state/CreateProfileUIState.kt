@@ -16,16 +16,6 @@ abstract class CreateProfileUIState {
         val bio: String
     ) : CreateProfileUIState()
 
-    data class UnsignedProfile(
-        val unsignedNostrEvent: UnsignedNostrEvent,
-        val name: String,
-        val bio: String,
-    ) : CreateProfileUIState()
-
-    data class UnbroadcastedProfile(
-        val nostrEvent: NostrEvent,
-    ) : CreateProfileUIState()
-
     data class ProfileReady(
         val profile: Profile
     ) : CreateProfileUIState()

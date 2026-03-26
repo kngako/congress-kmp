@@ -64,7 +64,10 @@ class CreateProfileViewModel(
         return true
     }
 
-    public fun createAccount() {
+    public fun createAccount(
+//        onNavigateToUnsignedProfile: (UnsignedProfileRoute) -> Unit,
+//        onNavigateToUnannouncedProfile: (UnannouncedProfileRoute) -> Unit
+    ) {
         logger.d { "createAccount" }
         isActionPending.value = true
 
@@ -77,18 +80,20 @@ class CreateProfileViewModel(
                 onError = {
                     createProfileUIState.value = CreateProfileUIState.Error
                 },
-                onUnsignProfile = { unsignedNostrEvent ->
-                    createProfileUIState.value = CreateProfileUIState.UnsignedProfile(
-                        unsignedNostrEvent = unsignedNostrEvent,
-                        name = createProfileFormState.nameField.text.value,
-                        bio = createProfileFormState.biographyField.text.value
-                    )
-                },
-                onUnbroadcastedProfile = { unbroadcastedNostrEvent ->
-                    createProfileUIState.value = CreateProfileUIState.UnbroadcastedProfile(
-                        nostrEvent = unbroadcastedNostrEvent,
-                    )
-                }
+//                onUnsignProfile = { unsignedNostrEvent ->
+//                    onNavigateToUnsignedProfile.invoke(
+//                        UnsignedProfileRoute(
+//                            unsignedNostrEvent.id
+//                        )
+//                    )
+//                },
+//                onUnbroadcastedProfile = { unannouncedNostrEvent ->
+//                    onNavigateToUnannouncedProfile.invoke(
+//                        UnannouncedProfileRoute(
+//                            nostrEventId = unannouncedNostrEvent.id
+//                        )
+//                    )
+//                }
             ) { profile ->
                 createProfileUIState.value = CreateProfileUIState.ProfileReady(
                     profile = profile

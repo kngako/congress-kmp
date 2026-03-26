@@ -1,10 +1,9 @@
 package ac.aux.compose.ui.composable
 
-import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
-import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.repository.NostrRepository
-import ac.aux.compose.ui.composable.widgets.LoadingDataIndicator
+import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.theme.BluePill
 import ac.aux.compose.ui.theme.RedPill
@@ -297,54 +296,6 @@ fun CreateProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    is CreateProfileUIState.UnsignedProfile -> {
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Your profile is almost ready... just getting it's first cryptographic signature together.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Text(
-                            text = "As long as you control your keys there can be no dispute about who ${createAccountUIState.name} actually is.",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-
-                        LoadingDataIndicator(
-                            fillScreen = false
-                        )
-
-                        Spacer(
-                            modifier = Modifier.weight(2f)
-                        )
-                    }
-                    is CreateProfileUIState.UnbroadcastedProfile -> {
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Everything is cryptographical sound. Just announcing your profile to the world.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Text(
-                            text = "Aux will be broadcast to what you publish to relays so that it's distributed and decentralized.",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-
-                        LoadingDataIndicator(
-                            fillScreen = false
-                        )
-
-                        Spacer(
-                            modifier = Modifier.weight(2f)
-                        )
-                    }
                     is CreateProfileUIState.ProfileReady -> {
 
                         Spacer(
@@ -400,8 +351,6 @@ fun CreateProfileScreen(
                         )
                     }
                 }
-
-
             }
         }
     }

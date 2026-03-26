@@ -1,6 +1,5 @@
 package ac.aux.compose.repository
 
-import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
@@ -15,8 +14,8 @@ interface NostrRepository {
         name: String,
         biography: String,
         onError: () -> Unit,
-        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
-        onUnbroadcastedProfile: (NostrEvent) -> Unit,
+//        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
+//        onUnbroadcastedProfile: (NostrEvent) -> Unit,
         onProfileReady: (Profile) -> Unit
     )
 
@@ -35,8 +34,6 @@ interface NostrRepository {
                 name: String,
                 biography: String,
                 onError: () -> Unit,
-                onUnsignProfile: (UnsignedNostrEvent) -> Unit,
-                onUnbroadcastedProfile: (NostrEvent) -> Unit,
                 onProfileReady: (Profile) -> Unit
             ) {
             }

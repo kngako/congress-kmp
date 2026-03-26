@@ -15,7 +15,7 @@ abstract class NavigationUIState {
         val unsignedNostrEvent: UnsignedNostrEvent,
     ) : NavigationUIState()
 
-    data class UnbroadcastedProfile(
+    data class UnannouncedProfile(
         val nostrEvent: NostrEvent,
     ) : NavigationUIState()
 
