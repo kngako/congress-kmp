@@ -44,7 +44,6 @@ fun AuxNavHost(
     navController: NavHostController
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val scope = rememberCoroutineScope()
 
     val databaseManager = DatabaseManager(auxGlobal)
 
@@ -85,7 +84,9 @@ fun AuxNavHost(
                 }
                 is NavigationUIState.UnsignedProfile -> {
                     navController.navigate(
-                        route = UnsignedProfileRoute
+                        route = UnsignedProfileRoute(
+                            state.unsignedNostrEvent.id
+                        )
                     ) {
                         popUpTo(0)
                     }

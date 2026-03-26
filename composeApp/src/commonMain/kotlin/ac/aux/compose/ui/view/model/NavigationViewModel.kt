@@ -40,6 +40,8 @@ class NavigationViewModel(
         }
     }
 
+    private val logger = Logger.withTag(TAG)
+
     private val _navigationUIState = MutableStateFlow(
         initialNavigationUIState
     )
@@ -49,42 +51,46 @@ class NavigationViewModel(
         observeProfile()
     }
 
-    private val logger = Logger.withTag(TAG)
 
 
 
     private fun observeProfile() {
+        logger.i("observeProfile")
         viewModelScope.launch {
             delay(2_100) // Looking busy...
             _navigationUIState.getAndUpdate {
                 NavigationUIState.Landing
             }
+
+            logger.i("Navigation UI State is Landing")
+            val publicKey = SeedManager.activePublicKey().toHexKey()
+            logger.i("Observing: $publicKey")
             nostrRepository.observeProfile(
-                publicKey = SeedManager.activePublicKey().toHexKey()
-            ).map { localProfile ->
+                publicKey = publicKey
+            ).collect { localProfile ->
+                logger.i("Local Profile: $localProfile")
                 _navigationUIState.getAndUpdate {
                     if (localProfile == null) {
+                        logger.i("We need to be on the landing screen so user creates account")
                         NavigationUIState.Landing
                     } else if (localProfile.profile != null) {
+                        logger.i("We have a profile: ${localProfile.profile}")
                         NavigationUIState.ProfileLoaded(
                             profile = localProfile.profile
                         )
                     } else if (localProfile.nostrEvent != null) {
+                        logger.i("Nostr event with the profile needs to be announced")
                         NavigationUIState.UnannouncedProfile(
                             nostrEvent = localProfile.nostrEvent
                         )
                     } else {
+                        logger.i("We have an unsigned profile: ${localProfile.unsignedNostrEvent}")
                         NavigationUIState.UnsignedProfile(
                             unsignedNostrEvent = localProfile.unsignedNostrEvent
                         )
                     }
                 }
-            }.catch { e ->
-                logger.e("Error observing profile:", e)
-                _navigationUIState.getAndUpdate {
-                    NavigationUIState.Error
-                }
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NavigationUIState.Landing)
+            }
         }
     }
 
