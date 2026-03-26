@@ -58,9 +58,6 @@ class NavigationViewModel(
         logger.i("observeProfile")
         viewModelScope.launch {
             delay(2_100) // Looking busy...
-            _navigationUIState.getAndUpdate {
-                NavigationUIState.Landing
-            }
 
             logger.i("Navigation UI State is Landing")
             val publicKey = SeedManager.activePublicKey().toHexKey()
