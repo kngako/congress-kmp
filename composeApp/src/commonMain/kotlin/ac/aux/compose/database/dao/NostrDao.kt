@@ -5,6 +5,7 @@ import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.UnsignedNostrEvent
 import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Relation
@@ -22,10 +23,17 @@ abstract class NostrDao(
 
     @Transaction
     open suspend fun publishNostrEvent(
+        unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
         relayURLs: List<String>
     ) {
         logger.i("Publish Nostr Event: $nostrEvent ($relayURLs)")
+        // Update unsignedEvent with signedTime time...
+        database.unsignedNostrEventDao().upsert(
+            unsignedNostrEvent.copy(
+                signedAt = Clock.System.now()
+            )
+        )
         // Find or create profile with the pubKey... if not found TODO: submit a sync request...
         val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 

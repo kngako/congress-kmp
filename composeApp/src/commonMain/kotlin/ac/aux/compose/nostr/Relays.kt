@@ -32,4 +32,5 @@ object Relays {
 
     val bootstrapInboxRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr, yabu)
     val eventFinderRelaySet = setOf(wine, damus, primal, mom, nos, bitcoiner, oxtr)
+    val eventPublishRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr)
 }

@@ -26,6 +26,6 @@ interface UnsignedNostrEventDao {
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfile(publicKey: String): Flow<LocalProfile?>
 
-    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey") // TODO: where nostrEvent.unsignedNostrEventId is 0
+    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedAt IS NULL") // TODO: where nostrEvent.unsignedNostrEventId is 0
     fun observeUnsignedNostrEvents(publicKey: String): Flow<UnsignedNostrEvent?>
 }

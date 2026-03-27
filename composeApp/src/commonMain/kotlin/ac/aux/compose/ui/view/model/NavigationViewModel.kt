@@ -16,6 +16,7 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.relay.client.INostrClient
 import com.vitorpamplona.quartz.nip01Core.relay.client.NostrClient
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
+import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebsocketBuilder
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
@@ -63,10 +64,13 @@ class NavigationViewModel(
         }
     }
 
-    val websocketBuilder = KTorHttpWebSocket.Builder { url ->
-        // TODO: Figure out if we need a tor client
-        httpClient
-    }
+
+    val websocketBuilder: WebsocketBuilder = KTorHttpWebSocket.Builder(
+        httpClientBuilder = { url ->
+            // TODO: Figure out if we need a tor client
+            httpClient
+        }
+    )
     val nostrClient: INostrClient = NostrClient(
         websocketBuilder = websocketBuilder,
         scope = scope
@@ -95,6 +99,7 @@ class NavigationViewModel(
                 publicKey = SeedManager.activePublicKey().toHexKey()
             ).collect { unsignedNostrEventOrNull ->
                 unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
+                    logger.d("Unsigned")
                     val event = tempSigner.signNormal<Event>(
                         createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
                         kind = unsignedNostrEvent.kind,
@@ -104,6 +109,7 @@ class NavigationViewModel(
 
 
                     nostrRepository.publishNostrEvent(
+                        unsignedNostrEvent,
                         NostrEvent(
                             id = event.id,
                             pubKey = event.pubKey,
@@ -114,7 +120,7 @@ class NavigationViewModel(
                             sig = event.sig,
                             unsignedNostrEventId = unsignedNostrEvent.id
                         ),
-                        relayURLs = Relays.eventFinderRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                        relayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                     )
                 }
 
@@ -127,8 +133,8 @@ class NavigationViewModel(
 
         scope.launch(Dispatchers.IO) {
 
-            nostrRepository.observePendingBroadcastNostrEventRequests().collect {
-                it?.let { localBroadcastNostrEventRequest ->
+            nostrRepository.observePendingBroadcastNostrEventRequests().collect { localBroadcastNostrEventRequests ->
+                localBroadcastNostrEventRequests.forEach { localBroadcastNostrEventRequest ->
                     val event: Event = localBroadcastNostrEventRequest.nostrEvent.let { nostrEvent ->
                         Event(
                             id = nostrEvent.id,
@@ -140,18 +146,21 @@ class NavigationViewModel(
                             createdAt = nostrEvent.createdAt.toEpochMilliseconds()
                         )
                     }
-                    logger.d("Broadcasting: ${event.toJson()}")
-                    nostrClient.send(
-                        event = event,
-                        relayList = setOf(
-                            RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
-                        )
-                    )
-                    logger.d("Update with result")
+                    logger.d("Broadcasting (${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}): ${event.toJson()}")
 
-                    nostrRepository.broadcastProcessed(
-                        localBroadcastNostrEventRequest.broadcastNostrEventRequest
-                    )
+                    scope.launch {
+
+                        nostrClient.send(
+                            event = event,
+                            relayList = setOf(
+                                RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
+                            )
+                        )
+
+//                    nostrRepository.broadcastProcessed(
+//                        localBroadcastNostrEventRequest.broadcastNostrEventRequest
+//                    )
+                    }
                 }
 
             }

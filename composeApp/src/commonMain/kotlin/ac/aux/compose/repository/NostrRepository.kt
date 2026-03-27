@@ -14,7 +14,7 @@ interface NostrRepository {
 
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
-    suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?>
+    suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -31,6 +31,7 @@ interface NostrRepository {
     suspend fun wipeDatabase()
 
     suspend fun publishNostrEvent(
+        unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
         relayURLs: List<String> = emptyList()
     )
@@ -47,7 +48,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> {
+            override suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>> {
                 TODO("Not yet implemented")
             }
 
@@ -67,7 +68,11 @@ interface NostrRepository {
             override suspend fun wipeDatabase() {
             }
 
-            override suspend fun publishNostrEvent(nostrEvent: NostrEvent, relayURLs: List<String>) {
+            override suspend fun publishNostrEvent(
+                unsignedNostrEvent: UnsignedNostrEvent,
+                nostrEvent: NostrEvent,
+                relayURLs: List<String>
+            ) {
 
             }
 

@@ -37,6 +37,8 @@ data class UnsignedNostrEvent(
     val tags: TagArray,
     val content: String,
 
+    val signedAt: Instant? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
     override val savedAt: Instant = Clock.System.now(),

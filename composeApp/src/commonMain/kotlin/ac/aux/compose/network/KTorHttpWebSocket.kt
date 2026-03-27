@@ -10,11 +10,12 @@ import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
+import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
-import io.ktor.websocket.send
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -32,45 +33,101 @@ class KTorHttpWebSocket(
     private var webSocketSession: DefaultClientWebSocketSession? = null
 
     override fun needsReconnect(): Boolean {
-        TODO("Not yet implemented")
+        logger.d("needsReconnect ${url.url}")
+        if (webSocketSession == null) return true
+
+        val activeHttpClient = httpClient ?: return true
+
+        val currentHttpClient = httpClientBuilder(url)
+
+        // TODO: Proxy...
+
+        // TODO: timeout checks
+
+        return false
     }
 
     override fun connect() {
-        runBlocking {
+        logger.d("connect ${url.url}")
+        runBlocking(
+            scope.coroutineContext
+        ) {
             httpClient = httpClientBuilder(url)
             webSocketSession = httpClient?.webSocketSession(
                 urlString = url.url
             ) {
-
+                logger.d("webSocketSession")
             }
 
             webSocketSession?.let { socketSession ->
 
-                val job = scope.launch {
-                    for (frame in socketSession.incoming) {
-                        val frameText = frame as? Frame.Text
+                logger.d("isOpen : ${socketSession.isActive}")
+                out.onOpen(
+                    pingMillis = 1,
+                    compression = false
+                )
 
-                        frameText?.readText()?.let { out.onMessage(it) }
+                val incomingFrameJob = scope.launch {
+                    try {
+                        for (frame in socketSession.incoming) {
+                            when (frame) {
+                                is Frame.Text -> {
+                                    frame.readText().let {
+                                        logger.d("WebSocket Read Text: $it")
+                                        out.onMessage(it)
+                                    }
+                                }
+                                is Frame.Close -> {
+                                    logger.d("Close $frame")
+                                    val reason = frame.readReason()
+                                    out.onClosed(
+                                        code = reason?.code?.toInt() ?: 0,
+                                        reason = reason?.knownReason.toString()
+                                    )
+                                }
+                                is Frame.Ping -> {
+                                    logger.d("Ping: $frame")
+                                }
+                                is Frame.Pong -> {
+                                    logger.d("Pong: $frame")
+                                }
+                                is Frame.Binary -> {
+                                    logger.d("Binary Message: $frame")
+                                }
+                                else -> {
+                                    logger.d("Unsupported frame: $frame")
+                                }
+                            }
+                        }
+                    } catch (e: Throwable) {
+                        logger.e("Websocket error: ", e)
+                    } finally {
+                        logger.d("Closed for real... hopefully we know the reason")
                     }
                 }
 
-                job.join()
-
+                incomingFrameJob.join()
+                logger.d("webSocketSession closed")
             }
-
         }
 
     }
 
     override fun disconnect() {
-        runBlocking {
+        logger.d("disconnect ${url.url}")
+        runBlocking(
+            scope.coroutineContext
+        ) {
             webSocketSession?.close()
+
         }
     }
 
     override fun send(msg: String): Boolean = try {
-        runBlocking {
-
+        logger.d("Send ${url.url}: $msg")
+        runBlocking(
+            scope.coroutineContext
+        ) {
             webSocketSession?.send(
                 Frame.Text(msg)
             )
@@ -83,16 +140,22 @@ class KTorHttpWebSocket(
     }
 
     class Builder(
-        val httpClientBuilder: (NormalizedRelayUrl) -> HttpClient
+        ktorWebsocketListener: KtorWebsocketListener = KtorWebsocketListener(),
+        val httpClientBuilder: (NormalizedRelayUrl) -> HttpClient,
     ): WebsocketBuilder {
+        val logger = Logger.withTag("KtorWebsocketBuilder")
+
         override fun build(
             url: NormalizedRelayUrl,
             out: WebSocketListener
-        ): WebSocket = KTorHttpWebSocket(
-            url = url,
-            httpClientBuilder = httpClientBuilder,
-            out = out
-        )
-    }
+        ): WebSocket {
+            logger.d("Build KTorHttpWebSocket: ${url.url}")
 
+            return KTorHttpWebSocket(
+                url = url,
+                httpClientBuilder = httpClientBuilder,
+                out = out
+            )
+        }
+    }
 }

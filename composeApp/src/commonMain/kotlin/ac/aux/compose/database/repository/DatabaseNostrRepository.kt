@@ -32,8 +32,8 @@ class DatabaseNostrRepository(
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 
-    override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> {
-        return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestByStatus("pending")
+    override suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>> {
+        return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestsByStatus("pending")
     }
 
     override suspend fun createNewProfile(
@@ -82,8 +82,13 @@ class DatabaseNostrRepository(
         database.wipeData()
     }
 
-    override suspend fun publishNostrEvent(nostrEvent: NostrEvent, relayURLs: List<String>) {
+    override suspend fun publishNostrEvent(
+        unsignedNostrEvent: UnsignedNostrEvent,
+        nostrEvent: NostrEvent,
+        relayURLs: List<String>
+    ) {
         database.nostrDao().publishNostrEvent(
+            unsignedNostrEvent,
             nostrEvent,
             relayURLs
         )

@@ -13,7 +13,7 @@ interface BroadcastNostrEventRequestDao {
     fun  getAllBroadcastNostrEventRequests(): List<BroadcastNostrEventRequest>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE status = :status")
-    fun observeBroadcastNostrEventRequestByStatus(status: String): Flow<LocalBroadcastNostrEventRequest?>
+    fun observeBroadcastNostrEventRequestsByStatus(status: String): Flow<List<LocalBroadcastNostrEventRequest>>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId")
     fun observeBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): Flow<BroadcastNostrEventRequest?>
