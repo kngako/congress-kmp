@@ -1,6 +1,7 @@
 package ac.aux.compose.database.dao
 
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
+import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
@@ -11,11 +12,11 @@ interface BroadcastNostrEventRequestDao {
     @Query("SELECT * FROM BroadcastNostrEventRequest")
     fun  getAllBroadcastNostrEventRequests(): List<BroadcastNostrEventRequest>
 
-    @Query("SELECT * FROM BroadcastNostrEventRequest WHERE id = :id")
-    fun getBroadcastNostrEventRequestById(id: Long): Flow<BroadcastNostrEventRequest?>
+    @Query("SELECT * FROM BroadcastNostrEventRequest WHERE status = :status")
+    fun observeBroadcastNostrEventRequestByStatus(status: String): Flow<LocalBroadcastNostrEventRequest?>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId")
-    fun getBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): Flow<BroadcastNostrEventRequest?>
+    fun observeBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): Flow<BroadcastNostrEventRequest?>
 
     @Upsert
     suspend fun upsert(broadcastNostrEventRequest: BroadcastNostrEventRequest)

@@ -1,8 +1,10 @@
 package ac.aux.compose.repository
 
+import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +13,8 @@ interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?>
 
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
+
+    suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -31,6 +35,8 @@ interface NostrRepository {
         relayURLs: List<String> = emptyList()
     )
 
+    suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest)
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
@@ -38,6 +44,10 @@ interface NostrRepository {
             }
 
             override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> {
                 TODO("Not yet implemented")
             }
 
@@ -59,6 +69,10 @@ interface NostrRepository {
 
             override suspend fun publishNostrEvent(nostrEvent: NostrEvent, relayURLs: List<String>) {
 
+            }
+
+            override suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest) {
+                TODO("Not yet implemented")
             }
         }
     }

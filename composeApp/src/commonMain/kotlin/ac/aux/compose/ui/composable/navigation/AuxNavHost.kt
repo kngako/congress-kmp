@@ -41,12 +41,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import co.touchlab.kermit.Logger
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 
 @Composable
 fun AuxNavHost(
     auxGlobal: AuxGlobal,
     navController: NavHostController
 ) {
+    val logger = Logger.withTag("AuxNavHost")
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val databaseManager = DatabaseManager(auxGlobal)
@@ -55,10 +62,19 @@ fun AuxNavHost(
         database = databaseManager.auxDatabase
     )
 
+    val exceptionHandler =
+        CoroutineExceptionHandler { _, throwable ->
+            logger.e("Caught exception: ${throwable.message}", throwable)
+        }
+
+    val applicationIOScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
+
+
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
-            NavigationUIState.Loading,
-            nostrRepository
+            initialNavigationUIState = NavigationUIState.Loading,
+            nostrRepository = nostrRepository,
+            scope = applicationIOScope
         )
     )
 
@@ -164,9 +180,7 @@ fun AuxNavHost(
                 }
             )
         }
-        composable<CreateProfileRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<CreateProfileRoute>()
-
+        composable<CreateProfileRoute> {
             CreateProfileScreen(
                 onNavigateToSocialPreconditionRoute = {
                     navController.navigate(

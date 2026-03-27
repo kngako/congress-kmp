@@ -1,9 +1,11 @@
 package ac.aux.compose.database.repository
 
 import ac.aux.compose.database.AuxDatabase
+import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
@@ -28,6 +30,10 @@ class DatabaseNostrRepository(
 
     override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
+    }
+
+    override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> {
+        return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestByStatus("pending")
     }
 
     override suspend fun createNewProfile(
@@ -81,6 +87,16 @@ class DatabaseNostrRepository(
             nostrEvent,
             relayURLs
         )
+    }
+
+    override suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest) {
+        logger.d("Update local reference: $broadcastNostrEventRequest")
+        database.broadcastNostrEventRequestDao().upsert(
+            broadcastNostrEventRequest.copy(
+                status = "sent"
+            )
+        )
+        logger.d("Processed: $broadcastNostrEventRequest")
     }
 
 }

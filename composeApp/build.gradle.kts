@@ -41,6 +41,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.okhttp.coroutines)
             implementation(libs.androidx.room.sqlite.wrapper)
+
+            implementation(libs.ktor.client.okhttp)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -65,13 +67,20 @@ kotlin {
             implementation(libs.kermit)
 
             implementation("com.vitorpamplona.quartz:quartz:1.05.1")
+
+            implementation(libs.ktor.client.core)
+            implementation("io.ktor:ktor-client-websockets:3.4.1")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

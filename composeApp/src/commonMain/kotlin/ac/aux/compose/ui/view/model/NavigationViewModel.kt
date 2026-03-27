@@ -2,6 +2,7 @@ package ac.aux.compose.ui.view.model
 
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.network.KTorHttpWebSocket
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.NavigationUIState
@@ -9,11 +10,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.relay.client.INostrClient
+import com.vitorpamplona.quartz.nip01Core.relay.client.NostrClient
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.websocket.WebSockets
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,25 +31,47 @@ import kotlin.time.Instant
 
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
-    val nostrRepository: NostrRepository
+    val nostrRepository: NostrRepository,
+    val scope: CoroutineScope,
 ): ViewModel() {
+
     companion object {
         private const val TAG = "NavigationViewModel"
 
         fun factory(
             initialNavigationUIState: NavigationUIState,
-            nostrRepository: NostrRepository
+            nostrRepository: NostrRepository,
+            scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NavigationViewModel(
                     initialNavigationUIState = initialNavigationUIState,
-                    nostrRepository = nostrRepository
+                    nostrRepository = nostrRepository,
+                    scope = scope
                 )
             }
         }
     }
 
     private val logger = Logger.withTag(TAG)
+
+
+
+    val httpClient = HttpClient() {
+        install(WebSockets) {
+            pingIntervalMillis = 20_000
+        }
+    }
+
+    val websocketBuilder = KTorHttpWebSocket.Builder { url ->
+        // TODO: Figure out if we need a tor client
+        httpClient
+    }
+    val nostrClient: INostrClient = NostrClient(
+        websocketBuilder = websocketBuilder,
+        scope = scope
+    )
+
 
     private val _navigationUIState = MutableStateFlow(
         initialNavigationUIState
@@ -50,10 +80,9 @@ class NavigationViewModel(
 
     init {
         observeUnsignedNostrEvents()
+        observePendingBroadcastNostrEventRequests()
         observeProfile()
     }
-
-
 
 
     private fun observeUnsignedNostrEvents() {
@@ -61,7 +90,7 @@ class NavigationViewModel(
             SeedManager.activeKeyPair()
         )
         logger.i { "observeUnsignedNostrEvents" }
-        viewModelScope.launch {
+        scope.launch(Dispatchers.IO) {
             nostrRepository.observeUnsignedNostrEvents(
                 publicKey = SeedManager.activePublicKey().toHexKey()
             ).collect { unsignedNostrEventOrNull ->
@@ -92,9 +121,45 @@ class NavigationViewModel(
             }
         }
     }
+
+    private fun observePendingBroadcastNostrEventRequests() {
+        logger.i { "observePendingBroadcastNostrEventRequests" }
+
+        scope.launch(Dispatchers.IO) {
+
+            nostrRepository.observePendingBroadcastNostrEventRequests().collect {
+                it?.let { localBroadcastNostrEventRequest ->
+                    val event: Event = localBroadcastNostrEventRequest.nostrEvent.let { nostrEvent ->
+                        Event(
+                            id = nostrEvent.id,
+                            kind = nostrEvent.kind,
+                            pubKey = nostrEvent.pubKey,
+                            content = nostrEvent.content,
+                            tags = nostrEvent.tags,
+                            sig = nostrEvent.sig,
+                            createdAt = nostrEvent.createdAt.toEpochMilliseconds()
+                        )
+                    }
+                    logger.d("Broadcasting: ${event.toJson()}")
+                    nostrClient.send(
+                        event = event,
+                        relayList = setOf(
+                            RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
+                        )
+                    )
+                    logger.d("Update with result")
+
+                    nostrRepository.broadcastProcessed(
+                        localBroadcastNostrEventRequest.broadcastNostrEventRequest
+                    )
+                }
+
+            }
+        }
+    }
     private fun observeProfile() {
         logger.i("observeProfile")
-        viewModelScope.launch {
+        scope.launch(Dispatchers.IO) {
             delay(2_100) // Looking busy...
 
             logger.i("Navigation UI State is Landing")
