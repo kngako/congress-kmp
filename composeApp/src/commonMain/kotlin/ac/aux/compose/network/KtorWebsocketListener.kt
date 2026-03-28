@@ -6,7 +6,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebSocketListener
 class KtorWebsocketListener: WebSocketListener {
     val logger = Logger.withTag("KtorWebsocketListener")
 
-    val out: WebSocketListener? = null
+    var out: WebSocketListener? = null
 
     override fun onOpen(pingMillis: Int, compression: Boolean) {
         logger.d("onOpen: $pingMillis, $compression")

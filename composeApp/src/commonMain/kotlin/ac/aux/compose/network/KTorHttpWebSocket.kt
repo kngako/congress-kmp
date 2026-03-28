@@ -7,6 +7,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebSocketListener
 import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebsocketBuilder
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
@@ -15,6 +16,8 @@ import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -22,7 +25,7 @@ import kotlinx.coroutines.runBlocking
 class KTorHttpWebSocket(
     val url: NormalizedRelayUrl,
     val httpClientBuilder: (url: NormalizedRelayUrl) -> HttpClient,
-    val out: WebSocketListener
+    val ktorWebsocketListener: KtorWebsocketListener
 ) : WebSocket {
     val scope = CoroutineScope(Dispatchers.IO)
 
@@ -31,6 +34,7 @@ class KTorHttpWebSocket(
     private var httpClient: HttpClient? = null
 
     private var webSocketSession: DefaultClientWebSocketSession? = null
+    private var outgoingChannel: SendChannel<Frame>? = null
 
     override fun needsReconnect(): Boolean {
         logger.d("needsReconnect ${url.url}")
@@ -53,62 +57,100 @@ class KTorHttpWebSocket(
             scope.coroutineContext
         ) {
             httpClient = httpClientBuilder(url)
+
             webSocketSession = httpClient?.webSocketSession(
                 urlString = url.url
-            ) {
-                logger.d("webSocketSession")
-            }
+            )
 
-            webSocketSession?.let { socketSession ->
-
-                logger.d("isOpen : ${socketSession.isActive}")
-                out.onOpen(
-                    pingMillis = 1,
-                    compression = false
-                )
-
-                val incomingFrameJob = scope.launch {
-                    try {
-                        for (frame in socketSession.incoming) {
-                            when (frame) {
-                                is Frame.Text -> {
-                                    frame.readText().let {
-                                        logger.d("WebSocket Read Text: $it")
-                                        out.onMessage(it)
-                                    }
-                                }
-                                is Frame.Close -> {
-                                    logger.d("Close $frame")
-                                    val reason = frame.readReason()
-                                    out.onClosed(
-                                        code = reason?.code?.toInt() ?: 0,
-                                        reason = reason?.knownReason.toString()
-                                    )
-                                }
-                                is Frame.Ping -> {
-                                    logger.d("Ping: $frame")
-                                }
-                                is Frame.Pong -> {
-                                    logger.d("Pong: $frame")
-                                }
-                                is Frame.Binary -> {
-                                    logger.d("Binary Message: $frame")
-                                }
-                                else -> {
-                                    logger.d("Unsupported frame: $frame")
-                                }
+            val job = scope.launch {
+                webSocketSession?.incoming?.consumeAsFlow()?.collect { frame ->
+                    when(frame) {
+                        is Frame.Text -> {
+                            frame.readText().let {
+                                logger.d("WebSocket Read Text: $it")
                             }
+                            webSocketSession?.close()
                         }
-                    } catch (e: Throwable) {
-                        logger.e("Websocket error: ", e)
-                    } finally {
-                        logger.d("Closed for real... hopefully we know the reason")
+                        is Frame.Close -> {
+                            logger.d("Close $frame")
+                        }
+                        is Frame.Ping -> {
+                            logger.d("Ping: $frame")
+                        }
+                        is Frame.Pong -> {
+                            logger.d("Pong: $frame")
+                        }
+                        is Frame.Binary -> {
+                            logger.d("Binary Message: $frame")
+                        }
+                        else -> {
+                            logger.d("Unsupported frame: $frame")
+                        }
                     }
                 }
 
-                incomingFrameJob.join()
-                logger.d("webSocketSession closed")
+
+                logger.i("Websocket exit")
             }
+
+            job.join()
+            ktorWebsocketListener.onClosed(0, "Done")
+//            webSocketSession = httpClient?.webSocketSession(
+//                urlString = url.url
+//            ) {
+//                logger.d("webSocketSession")
+//            }
+//
+//            webSocketSession?.let { socketSession ->
+//
+//                logger.d("isOpen : ${socketSession.isActive}")
+//                out.onOpen(
+//                    pingMillis = 1,
+//                    compression = false
+//                )
+//
+//                val incomingFrameJob = scope.launch {
+//                    try {
+//                        for (frame in socketSession.incoming) {
+//                            when (frame) {
+//                                is Frame.Text -> {
+//                                    frame.readText().let {
+//                                        logger.d("WebSocket Read Text: $it")
+//                                        out.onMessage(it)
+//                                    }
+//                                }
+//                                is Frame.Close -> {
+//                                    logger.d("Close $frame")
+//                                    val reason = frame.readReason()
+//                                    out.onClosed(
+//                                        code = reason?.code?.toInt() ?: 0,
+//                                        reason = reason?.knownReason.toString()
+//                                    )
+//                                }
+//                                is Frame.Ping -> {
+//                                    logger.d("Ping: $frame")
+//                                }
+//                                is Frame.Pong -> {
+//                                    logger.d("Pong: $frame")
+//                                }
+//                                is Frame.Binary -> {
+//                                    logger.d("Binary Message: $frame")
+//                                }
+//                                else -> {
+//                                    logger.d("Unsupported frame: $frame")
+//                                }
+//                            }
+//                        }
+//                    } catch (e: Throwable) {
+//                        logger.e("Websocket error: ", e)
+//                    } finally {
+//                        logger.d("Closed for real... hopefully we know the reason")
+//                    }
+//                }
+//
+//                incomingFrameJob.join()
+//                logger.d("webSocketSession closed")
+//            }
         }
 
     }
@@ -140,7 +182,7 @@ class KTorHttpWebSocket(
     }
 
     class Builder(
-        ktorWebsocketListener: KtorWebsocketListener = KtorWebsocketListener(),
+        val ktorWebsocketListener: KtorWebsocketListener = KtorWebsocketListener(),
         val httpClientBuilder: (NormalizedRelayUrl) -> HttpClient,
     ): WebsocketBuilder {
         val logger = Logger.withTag("KtorWebsocketBuilder")
@@ -149,12 +191,13 @@ class KTorHttpWebSocket(
             url: NormalizedRelayUrl,
             out: WebSocketListener
         ): WebSocket {
+            ktorWebsocketListener.out = out
             logger.d("Build KTorHttpWebSocket: ${url.url}")
 
             return KTorHttpWebSocket(
                 url = url,
                 httpClientBuilder = httpClientBuilder,
-                out = out
+                ktorWebsocketListener = ktorWebsocketListener
             )
         }
     }

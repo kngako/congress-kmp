@@ -1,6 +1,7 @@
 package ac.aux.compose.database.repository
 
 import ac.aux.compose.database.AuxDatabase
+import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
@@ -102,6 +103,12 @@ class DatabaseNostrRepository(
             )
         )
         logger.d("Processed: $broadcastNostrEventRequest")
+    }
+
+    override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
+        database.broadcastNostrEventReceiptDao().upsert(
+            broadcastNostrEventReceipt
+        )
     }
 
 }

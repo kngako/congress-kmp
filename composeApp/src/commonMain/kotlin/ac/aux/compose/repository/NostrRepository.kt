@@ -1,5 +1,6 @@
 package ac.aux.compose.repository
 
+import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
@@ -37,6 +38,8 @@ interface NostrRepository {
     )
 
     suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest)
+
+    suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt)
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
@@ -77,6 +80,10 @@ interface NostrRepository {
             }
 
             override suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
                 TODO("Not yet implemented")
             }
         }

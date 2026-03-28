@@ -70,6 +70,7 @@ kotlin {
 
             implementation(libs.ktor.client.core)
             implementation("io.ktor:ktor-client-websockets:3.4.1")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.1")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

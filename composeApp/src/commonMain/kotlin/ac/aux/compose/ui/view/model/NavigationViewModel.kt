@@ -1,5 +1,6 @@
 package ac.aux.compose.ui.view.model
 
+import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.network.KTorHttpWebSocket
@@ -18,16 +19,30 @@ import com.vitorpamplona.quartz.nip01Core.relay.client.NostrClient
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
 import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebsocketBuilder
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.sendSerialized
+import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import io.ktor.websocket.readReason
+import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlin.math.log
 import kotlin.time.Instant
 
 class NavigationViewModel(
@@ -57,9 +72,12 @@ class NavigationViewModel(
     private val logger = Logger.withTag(TAG)
 
 
-
     val httpClient = HttpClient() {
         install(WebSockets) {
+            contentConverter = KotlinxWebsocketSerializationConverter(Json {
+                isLenient = true
+                ignoreUnknownKeys = true
+            })
             pingIntervalMillis = 20_000
         }
     }
@@ -146,20 +164,84 @@ class NavigationViewModel(
                             createdAt = nostrEvent.createdAt.toEpochMilliseconds()
                         )
                     }
-                    logger.d("Broadcasting (${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}): ${event.toJson()}")
+                    val eventJson = event.toJson()
+                    logger.d("Broadcasting (${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}): $eventJson")
 
                     scope.launch {
 
-                        nostrClient.send(
-                            event = event,
-                            relayList = setOf(
-                                RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
-                            )
+                        val webSocketSession = httpClient.webSocketSession(
+                            urlString = localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL
                         )
 
-//                    nostrRepository.broadcastProcessed(
-//                        localBroadcastNostrEventRequest.broadcastNostrEventRequest
-//                    )
+                        val job = scope.launch {
+                            webSocketSession.send(
+                                frame = Frame.Text("[\"EVENT\",${eventJson}]")
+                            )
+
+                            nostrRepository.broadcastProcessed(
+                                localBroadcastNostrEventRequest.broadcastNostrEventRequest
+                            )
+
+                            webSocketSession.incoming.consumeAsFlow().collect { frame ->
+                                when(frame) {
+                                    is Frame.Text -> {
+                                        frame.readText().let { text ->
+                                            try {
+                                                logger.d("WebSocket Read Text: $text")
+                                                val result = Json.decodeFromString<JsonArray>(text)
+
+                                                if (result.firstOrNull()?.text == "OK") {
+                                                    result.getOrNull(1)?.text?.let { eventId ->
+                                                        // TODO: receipt
+                                                        if (eventId == localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId) {
+                                                            nostrRepository.saveBroadcastReceipt(
+                                                                BroadcastNostrEventReceipt(
+                                                                    nostrEventId = localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId,
+                                                                    unsignedNostrEventId = localBroadcastNostrEventRequest.broadcastNostrEventRequest.unsignedNostrEventId,
+                                                                    messages = result.getOrNull(3)?.text,
+                                                                    isAccepted = result.getOrNull(2)?.text == "true",
+                                                                    relayURL = localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            } catch (e: Throwable) {
+                                                logger.e("Error processing receipt: $text", e)
+                                            }
+                                        }
+                                        webSocketSession.close()
+                                    }
+                                    is Frame.Close -> {
+                                        logger.d("Close $frame")
+                                    }
+                                    is Frame.Ping -> {
+                                        logger.d("Ping: $frame")
+                                    }
+                                    is Frame.Pong -> {
+                                        logger.d("Pong: $frame")
+                                    }
+                                    is Frame.Binary -> {
+                                        logger.d("Binary Message: $frame")
+                                    }
+                                    else -> {
+                                        logger.d("Unsupported frame: $frame")
+                                    }
+                                }
+                            }
+
+                            logger.i("Websocket exit")
+                        }
+
+                        job.join()
+//                        nostrClient.send(
+//                            event = event,
+//                            relayList = setOf(
+//                                RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
+//                            )
+//                        )
+
+
                     }
                 }
 
