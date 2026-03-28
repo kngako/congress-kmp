@@ -3,7 +3,6 @@ package ac.aux.compose.ui.view.model
 import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
-import ac.aux.compose.network.KTorHttpWebSocket
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.NavigationUIState
@@ -14,25 +13,19 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
-import com.vitorpamplona.quartz.nip01Core.relay.client.INostrClient
-import com.vitorpamplona.quartz.nip01Core.relay.client.NostrClient
-import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
-import com.vitorpamplona.quartz.nip01Core.relay.sockets.WebsocketBuilder
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.sendSerialized
-import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
-import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +34,6 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlin.math.log
 import kotlin.time.Instant
 
 class NavigationViewModel(
@@ -70,7 +61,7 @@ class NavigationViewModel(
     }
 
     private val logger = Logger.withTag(TAG)
-
+    private val broadcastingJobs = mutableMapOf<String, Job>()
 
     val httpClient = HttpClient() {
         install(WebSockets) {
@@ -81,18 +72,6 @@ class NavigationViewModel(
             pingIntervalMillis = 20_000
         }
     }
-
-
-    val websocketBuilder: WebsocketBuilder = KTorHttpWebSocket.Builder(
-        httpClientBuilder = { url ->
-            // TODO: Figure out if we need a tor client
-            httpClient
-        }
-    )
-    val nostrClient: INostrClient = NostrClient(
-        websocketBuilder = websocketBuilder,
-        scope = scope
-    )
 
 
     private val _navigationUIState = MutableStateFlow(
@@ -173,7 +152,7 @@ class NavigationViewModel(
                             urlString = localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL
                         )
 
-                        val job = scope.launch {
+                        broadcastingJobs[localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL] = scope.launch {
                             webSocketSession.send(
                                 frame = Frame.Text("[\"EVENT\",${eventJson}]")
                             )
@@ -192,7 +171,6 @@ class NavigationViewModel(
 
                                                 if (result.firstOrNull()?.text == "OK") {
                                                     result.getOrNull(1)?.text?.let { eventId ->
-                                                        // TODO: receipt
                                                         if (eventId == localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId) {
                                                             nostrRepository.saveBroadcastReceipt(
                                                                 BroadcastNostrEventReceipt(
@@ -211,6 +189,9 @@ class NavigationViewModel(
                                             }
                                         }
                                         webSocketSession.close()
+                                        broadcastingJobs.remove(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)?.let { job ->
+                                            job.cancel()
+                                        }
                                     }
                                     is Frame.Close -> {
                                         logger.d("Close $frame")
@@ -233,15 +214,13 @@ class NavigationViewModel(
                             logger.i("Websocket exit")
                         }
 
-                        job.join()
+                        broadcastingJobs[localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL]?.join()
 //                        nostrClient.send(
 //                            event = event,
 //                            relayList = setOf(
 //                                RelayUrlNormalizer.normalize(localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL)
 //                            )
 //                        )
-
-
                     }
                 }
 
