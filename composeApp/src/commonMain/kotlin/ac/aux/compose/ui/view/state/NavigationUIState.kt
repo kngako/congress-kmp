@@ -18,6 +18,10 @@ abstract class NavigationUIState {
         val unsignedNostrEvent: UnsignedNostrEvent,
     ) : NavigationUIState()
 
+    data class UnsyncedProfile(
+        val unsignedNostrEvent: UnsignedNostrEvent,
+    ) : NavigationUIState()
+
     data class UnindexedProfile(
         val nostrEvent: NostrEvent,
     ) : NavigationUIState()

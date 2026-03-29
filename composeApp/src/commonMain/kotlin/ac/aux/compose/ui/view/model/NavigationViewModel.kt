@@ -266,6 +266,11 @@ class NavigationViewModel(
                         NavigationUIState.UnindexedProfile(
                             nostrEvent = localProfile.nostrEvent
                         )
+                    } else if (localProfile.unsignedNostrEvent != null && localProfile.unsignedNostrEvent.signedAt != null) {
+                        logger.i("We should be syncing the profile: ${localProfile.unsignedNostrEvent}")
+                        NavigationUIState.UnsyncedProfile(
+                            unsignedNostrEvent = localProfile.unsignedNostrEvent
+                        )
                     } else {
                         logger.i("We have an unsigned profile: ${localProfile.unsignedNostrEvent}")
                         NavigationUIState.UnsignedProfile(

@@ -14,6 +14,7 @@ import ac.aux.compose.ui.composable.UnannouncedProfileScreen
 import ac.aux.compose.ui.composable.UnindexedProfileScreen
 import ac.aux.compose.ui.composable.UnqueuedProfileScreen
 import ac.aux.compose.ui.composable.UnsignedProfileScreen
+import ac.aux.compose.ui.composable.UnsyncedProfileScreen
 import ac.aux.compose.ui.composable.WriteNewNoteScreen
 import ac.aux.compose.ui.composable.navigation.routes.BlankRoute
 import ac.aux.compose.ui.composable.navigation.routes.CreateProfileRoute
@@ -32,6 +33,7 @@ import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnindexedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnsyncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.aux.compose.ui.composable.widgets.feed.DUMMY_EVENTS
 import ac.aux.compose.ui.view.model.NavigationViewModel
@@ -113,6 +115,15 @@ fun AuxNavHost(
                     navController.navigate(
                         route = UnsignedProfileRoute(
                             state.unsignedNostrEvent.id
+                        )
+                    ) {
+                        popUpTo(0)
+                    }
+                }
+                is NavigationUIState.UnsyncedProfile -> {
+                    navController.navigate(
+                        route = UnsyncedProfileRoute(
+                            state.unsignedNostrEvent.pubKey
                         )
                     ) {
                         popUpTo(0)
@@ -224,6 +235,12 @@ fun AuxNavHost(
 
             UnsignedProfileScreen(
                 unsignedNostrEvent = route.toPlaceholderUnsignedNostrEvent()
+            )
+        }
+        composable<UnsyncedProfileRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
+            UnsyncedProfileScreen(
+                unsyncedProfilePublicKey = route.publicKey
             )
         }
         composable<UnindexedProfileRoute> {
