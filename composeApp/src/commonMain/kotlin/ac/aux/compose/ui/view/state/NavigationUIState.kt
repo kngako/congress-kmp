@@ -41,6 +41,6 @@ abstract class NavigationUIState {
 
 
     data class ProfileLoaded(
-        val broadcastNostrEventReceipt: BroadcastNostrEventReceipt
+        val publicKey: String
     ) : NavigationUIState()
 }

@@ -307,7 +307,12 @@ class NavigationViewModel(
                     } else if (localProfile.broadcastNostrEventReceipt != null) {
                         logger.i("We have a broadcast receipt: ${localProfile.profile}")
                         NavigationUIState.ProfileLoaded(
-                            broadcastNostrEventReceipt = localProfile.broadcastNostrEventReceipt
+                            publicKey = localProfile.unsignedNostrEvent.pubKey
+                        )
+                    } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.profile!= null) {
+                        logger.i("We have successfully synced a profile: ${localProfile.profile}")
+                        NavigationUIState.ProfileLoaded(
+                            publicKey = localProfile.unsignedNostrEvent.pubKey
                         )
                     } else if (localProfile.broadcastNostrEventRequest != null) {
                         logger.i("We have a broadcast request: ${localProfile.broadcastNostrEventRequest}")
