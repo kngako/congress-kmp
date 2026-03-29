@@ -27,7 +27,8 @@ interface NostrRepository {
         onError: () -> Unit,
 //        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
 //        onUnbroadcastedProfile: (NostrEvent) -> Unit,
-        onProfileReady: (Profile) -> Unit
+        onProfileReady: (Profile) -> Unit,
+        synchronizationRelayURLs: List<String>
     )
 
     suspend fun createNewTextNote(
@@ -59,6 +60,10 @@ interface NostrRepository {
         synchronizationRelayURLs: List<String>
     )
 
+    suspend fun queueSynchronizeNostrEvent(
+        synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
+    )
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
@@ -82,7 +87,8 @@ interface NostrRepository {
                 name: String?,
                 biography: String?,
                 onError: () -> Unit,
-                onProfileReady: (Profile) -> Unit
+                onProfileReady: (Profile) -> Unit,
+                synchronizationRelayURLs: List<String>
             ) {
             }
 

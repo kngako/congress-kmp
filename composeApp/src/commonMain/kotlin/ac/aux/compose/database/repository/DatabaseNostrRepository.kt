@@ -49,7 +49,8 @@ class DatabaseNostrRepository(
         name: String?,
         biography: String?,
         onError: () -> Unit,
-        onProfileReady: (Profile) -> Unit
+        onProfileReady: (Profile) -> Unit,
+        synchronizationRelayURLs: List<String>
     ) {
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
@@ -82,6 +83,15 @@ class DatabaseNostrRepository(
 
             if (unsignedNostrEvent.signedAt != null) {
                 // Submit a SyncNostrEventRequest
+                synchronizationRelayURLs.forEach { relayUrl ->
+                    database.synchronizeNostrEventRequestDao().upsert(
+                        SynchronizeNostrEventRequest(
+                            authorPublicKeys = unsignedNostrEvent.pubKey,
+                            status = "pending",
+                            relayURL = relayUrl
+                        )
+                    )
+                }
             }
         }
     }
@@ -171,10 +181,26 @@ class DatabaseNostrRepository(
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>
     ) {
+
         database.nostrDao().storeNostrEvent(
             nostrEvent,
             synchronizeNostrEventRequest,
             synchronizationRelayURLs = synchronizationRelayURLs
+        )
+
+        database.synchronizeNostrEventRequestDao().upsert(
+            synchronizeNostrEventRequest.copy(
+                nostrEventId = nostrEvent.id
+            )
+        )
+    }
+
+    override suspend fun queueSynchronizeNostrEvent(
+        synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
+    ) {
+        // Save synchronizationResult
+        database.synchronizeNostrEventRequestDao().insert(
+            synchronizeNostrEventRequests
         )
     }
 

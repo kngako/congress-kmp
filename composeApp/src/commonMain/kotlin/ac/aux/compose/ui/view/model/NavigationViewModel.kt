@@ -193,16 +193,18 @@ class NavigationViewModel(
                                                                     jsonText
                                                                 )
 
+                                                                val nostrEvent = NostrEvent(
+                                                                    id = event.id,
+                                                                    pubKey = event.pubKey,
+                                                                    kind = event.kind,
+                                                                    content = event.content,
+                                                                    tags = event.tags,
+                                                                    createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                                                                    sig = event.sig
+                                                                )
+
                                                                 nostrRepository.saveNostrEvent(
-                                                                    nostrEvent = NostrEvent(
-                                                                        id = event.id,
-                                                                        pubKey = event.pubKey,
-                                                                        kind = event.kind,
-                                                                        content = event.content,
-                                                                        tags = event.tags,
-                                                                        createdAt = Instant.fromEpochMilliseconds(event.createdAt),
-                                                                        sig = event.sig
-                                                                    ),
+                                                                    nostrEvent = nostrEvent,
                                                                     synchronizeNostrEventRequest,
                                                                     synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                                 )
@@ -315,7 +317,12 @@ class NavigationViewModel(
                         NavigationUIState.UnindexedProfile(
                             nostrEvent = localProfile.nostrEvent
                         )
-                    } else if (localProfile.unsignedNostrEvent != null && localProfile.unsignedNostrEvent.signedAt != null) {
+                    } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
+                        logger.i("We should request to sync profile: ${localProfile.unsignedNostrEvent}")
+                        NavigationUIState.UnqueuedProfileSynchronization(
+                            unsignedNostrEvent = localProfile.unsignedNostrEvent
+                        )
+                    }  else if (localProfile.unsignedNostrEvent.signedAt != null) {
                         logger.i("We should be syncing the profile: ${localProfile.unsignedNostrEvent}")
                         NavigationUIState.UnsyncedProfile(
                             unsignedNostrEvent = localProfile.unsignedNostrEvent

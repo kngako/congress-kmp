@@ -1,6 +1,7 @@
 package ac.aux.compose.ui.view.model
 
 import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.CreateProfileUIState
 import androidx.compose.runtime.MutableState
@@ -80,25 +81,13 @@ class CreateProfileViewModel(
                 onError = {
                     createProfileUIState.value = CreateProfileUIState.Error
                 },
-//                onUnsignProfile = { unsignedNostrEvent ->
-//                    onNavigateToUnsignedProfile.invoke(
-//                        UnsignedProfileRoute(
-//                            unsignedNostrEvent.id
-//                        )
-//                    )
-//                },
-//                onUnbroadcastedProfile = { unannouncedNostrEvent ->
-//                    onNavigateToUnannouncedProfile.invoke(
-//                        UnannouncedProfileRoute(
-//                            nostrEventId = unannouncedNostrEvent.id
-//                        )
-//                    )
-//                }
-            ) { profile ->
-                createProfileUIState.value = CreateProfileUIState.ProfileReady(
-                    profile = profile
-                )
-            }
+                { profile ->
+                    createProfileUIState.value = CreateProfileUIState.ProfileReady(
+                        profile = profile
+                    )
+                },
+                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+            )
         }
     }
 

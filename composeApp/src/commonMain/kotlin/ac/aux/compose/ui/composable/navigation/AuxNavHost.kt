@@ -32,6 +32,7 @@ import ac.aux.compose.ui.composable.navigation.routes.SocialPreconditionRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnindexedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsyncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.WriteNewNoteRoute
@@ -42,7 +43,6 @@ import ac.aux.compose.ui.view.state.NavigationUIState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -53,7 +53,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -123,6 +122,15 @@ fun AuxNavHost(
                 is NavigationUIState.UnsyncedProfile -> {
                     navController.navigate(
                         route = UnsyncedProfileRoute(
+                            state.unsignedNostrEvent.pubKey
+                        )
+                    ) {
+                        popUpTo(0)
+                    }
+                }
+                is NavigationUIState.UnqueuedProfileSynchronization -> {
+                    navController.navigate(
+                        route = UnqueuedProfileSynchronizationRoute(
                             state.unsignedNostrEvent.pubKey
                         )
                     ) {
@@ -241,6 +249,12 @@ fun AuxNavHost(
             val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
             UnsyncedProfileScreen(
                 unsyncedProfilePublicKey = route.publicKey
+            )
+        }
+        composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<UnqueuedProfileSynchronizationRoute>()
+            UnqueuedProfileSynchronizationRoute(
+                publicKey = route.publicKey
             )
         }
         composable<UnindexedProfileRoute> {

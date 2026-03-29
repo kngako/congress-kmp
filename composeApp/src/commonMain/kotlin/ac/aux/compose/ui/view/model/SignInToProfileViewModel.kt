@@ -1,6 +1,6 @@
 package ac.aux.compose.ui.view.model
 
-import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.SignInToProfileUIState
 import ac.aux.compose.ui.view.state.form.SignInToProfileFormState
@@ -12,7 +12,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip19Bech32.Nip19Parser
 import com.vitorpamplona.quartz.nip19Bech32.entities.Entity
 import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
@@ -78,7 +77,8 @@ class SignInToProfileViewModel(
                             name = null,
                             biography = null,
                             onError = onError,
-                            onProfileReady = {}
+                            onProfileReady = {},
+                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                         )
                     }
                     is NSec -> {
@@ -87,7 +87,8 @@ class SignInToProfileViewModel(
                             name = null,
                             biography = null,
                             onError = onError,
-                            onProfileReady = {}
+                            onProfileReady = {},
+                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                         )
                     }
                     else -> {

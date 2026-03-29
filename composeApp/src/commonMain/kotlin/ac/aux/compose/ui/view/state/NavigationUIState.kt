@@ -5,7 +5,6 @@ import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.UnsignedNostrEvent
-import ac.aux.compose.database.model.intermdiate.LocalProfile
 
 abstract class NavigationUIState {
     data object Error: NavigationUIState()
@@ -19,6 +18,10 @@ abstract class NavigationUIState {
     ) : NavigationUIState()
 
     data class UnsyncedProfile(
+        val unsignedNostrEvent: UnsignedNostrEvent,
+    ) : NavigationUIState()
+
+    data class UnqueuedProfileSynchronization(
         val unsignedNostrEvent: UnsignedNostrEvent,
     ) : NavigationUIState()
 

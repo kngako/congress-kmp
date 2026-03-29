@@ -13,4 +13,7 @@ interface SynchronizeNostrEventRequestDao {
 
     @Upsert
     fun upsert(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
+
+    @Upsert
+    fun insert(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>)
 }

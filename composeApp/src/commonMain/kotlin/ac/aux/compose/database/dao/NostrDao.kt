@@ -80,7 +80,6 @@ abstract class NostrDao(
     @Transaction
     open suspend fun storeNostrEvent(
         nostrEvent: NostrEvent,
-        synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>
     ) {
         logger.i("Store Nostr Event: $nostrEvent")
@@ -120,14 +119,6 @@ abstract class NostrDao(
         indexNostrEvent(
             nostrEvent = nostrEvent,
             synchronizationRelayURLs = synchronizationRelayURLs
-        )
-
-        // Save synchronizationResult
-        database.synchronizeNostrEventResultDao().upsert(
-            SynchronizeNostrEventResult(
-                nostrEventId = nostrEvent.id,
-                relayURL = synchronizeNostrEventRequest.relayURL
-            )
         )
     }
 
