@@ -135,6 +135,10 @@ interface NostrRepository {
             ) {
                 TODO("Not yet implemented")
             }
+
+            override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) {
+                TODO("Not yet implemented")
+            }
         }
     }
 }

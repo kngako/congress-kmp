@@ -184,7 +184,6 @@ class DatabaseNostrRepository(
 
         database.nostrDao().storeNostrEvent(
             nostrEvent,
-            synchronizeNostrEventRequest,
             synchronizationRelayURLs = synchronizationRelayURLs
         )
 

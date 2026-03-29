@@ -13,6 +13,7 @@ import ac.aux.compose.ui.composable.SocialPreconditionScreen
 import ac.aux.compose.ui.composable.UnannouncedProfileScreen
 import ac.aux.compose.ui.composable.UnindexedProfileScreen
 import ac.aux.compose.ui.composable.UnqueuedProfileScreen
+import ac.aux.compose.ui.composable.UnqueuedProfileSynchronizationScreen
 import ac.aux.compose.ui.composable.UnsignedProfileScreen
 import ac.aux.compose.ui.composable.UnsyncedProfileScreen
 import ac.aux.compose.ui.composable.WriteNewNoteScreen
@@ -253,8 +254,9 @@ fun AuxNavHost(
         }
         composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnqueuedProfileSynchronizationRoute>()
-            UnqueuedProfileSynchronizationRoute(
-                publicKey = route.publicKey
+            UnqueuedProfileSynchronizationScreen(
+                profilePublicKey = route.publicKey,
+                nostrRepository = nostrRepository
             )
         }
         composable<UnindexedProfileRoute> {

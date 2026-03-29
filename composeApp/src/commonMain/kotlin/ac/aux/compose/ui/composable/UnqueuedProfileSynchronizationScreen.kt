@@ -90,7 +90,8 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             UnqueuedProfileSynchronizationScreen(
-                profilePublicKey = "npub is for living."
+                profilePublicKey = "npub is for living.",
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }
