@@ -161,6 +161,7 @@ class NavigationViewModel(
                                 urlString = synchronizeNostrEventRequest.relayURL
                             )
 
+                            // TODO: don't make a new sync job if there's an active job?
                             syncingJobs[synchronizeNostrEventRequest.relayURL] = scope.launch {
                                 val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
                                 logger.d("Syncing: $filterRequest")
