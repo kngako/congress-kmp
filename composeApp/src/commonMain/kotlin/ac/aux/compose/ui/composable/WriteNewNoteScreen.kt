@@ -104,7 +104,7 @@ fun WriteNewNoteScreen(
                             },
                             placeholder = {
                                 Text(
-                                    text = "Enter the name you want to use for your profile",
+                                    text = "Type out what you would like to publish",
                                     maxLines = 1,
                                 )
                             },
