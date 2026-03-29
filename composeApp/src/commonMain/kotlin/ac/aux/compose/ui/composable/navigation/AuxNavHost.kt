@@ -8,6 +8,7 @@ import ac.aux.compose.ui.composable.FeedScreen
 import ac.aux.compose.ui.composable.ImplementationPendingScreen
 import ac.aux.compose.ui.composable.LandingScreen
 import ac.aux.compose.ui.composable.LoadingScreen
+import ac.aux.compose.ui.composable.SignInToProfileScreen
 import ac.aux.compose.ui.composable.SocialPreconditionScreen
 import ac.aux.compose.ui.composable.UnannouncedProfileScreen
 import ac.aux.compose.ui.composable.UnindexedProfileScreen
@@ -20,6 +21,7 @@ import ac.aux.compose.ui.composable.navigation.routes.FeedRoute
 import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LandingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LoadingRoute
+import ac.aux.compose.ui.composable.navigation.routes.SignInRoute
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -175,7 +177,7 @@ fun AuxNavHost(
                 },
                 onNavigateToSignIn = {
                     navController.navigate(
-                        route = ImplementationPendingRoute("Sign in")
+                        route = SignInRoute
                     )
                 },
                 onNavigateToCreateProfile = {
@@ -209,6 +211,11 @@ fun AuxNavHost(
                         navController.popBackStack()
                     }
                 },
+                nostrRepository = nostrRepository
+            )
+        }
+        composable<SignInRoute> {
+            SignInToProfileScreen(
                 nostrRepository = nostrRepository
             )
         }

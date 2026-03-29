@@ -19,8 +19,8 @@ interface NostrRepository {
 
     suspend fun createNewProfile(
         publicKey: HexKey,
-        name: String,
-        biography: String,
+        name: String?,
+        biography: String?,
         onError: () -> Unit,
 //        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
 //        onUnbroadcastedProfile: (NostrEvent) -> Unit,
@@ -64,8 +64,8 @@ interface NostrRepository {
 
             override suspend fun createNewProfile(
                 publicKey: HexKey,
-                name: String,
-                biography: String,
+                name: String?,
+                biography: String?,
                 onError: () -> Unit,
                 onProfileReady: (Profile) -> Unit
             ) {

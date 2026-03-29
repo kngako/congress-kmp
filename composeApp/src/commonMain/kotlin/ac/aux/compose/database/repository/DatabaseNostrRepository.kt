@@ -15,6 +15,7 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
@@ -40,8 +41,8 @@ class DatabaseNostrRepository(
 
     override suspend fun createNewProfile(
         publicKey: HexKey,
-        name: String,
-        biography: String,
+        name: String?,
+        biography: String?,
         onError: () -> Unit,
         onProfileReady: (Profile) -> Unit
     ) {
@@ -50,13 +51,21 @@ class DatabaseNostrRepository(
             about = biography,
         )
 
+        val signedAt = if (name == null && biography == null) {
+            // We are most likely try to sign in to an already existing block...
+            Instant.fromEpochMilliseconds(1231006505000L)
+        } else {
+            null
+        }
+
         val unsignedNostrEvent = saveUnsignedNostrEvent(
             UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochMilliseconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,
-                content = profileEventTemplate.content
+                content = profileEventTemplate.content,
+                signedAt = signedAt // This will keep us from trying to sign this event... but we should automatically sync the npub profile
             )
         )
 
