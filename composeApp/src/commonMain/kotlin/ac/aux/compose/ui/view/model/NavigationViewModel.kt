@@ -12,7 +12,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
+import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
@@ -34,9 +37,7 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlin.collections.set
 import kotlin.time.Instant
 
@@ -91,7 +92,7 @@ class NavigationViewModel(
         observeUnsignedNostrEvents()
         observePendingBroadcastNostrEventRequests()
         observeProfile()
-        observeSyncNostrEventRequests()
+        observePendingSyncNostrEventRequests()
     }
 
 
@@ -133,118 +134,123 @@ class NavigationViewModel(
         }
     }
 
-    private fun observeSyncNostrEventRequests() {
-        logger.i { "observeSyncNostrEventRequests" }
+    private fun observePendingSyncNostrEventRequests() {
+        logger.i { "observePendingSyncNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {
             nostrRepository.observePendingSynchronizeNostrEventRequests().collect { synchronizeNostrEventRequestOrNull ->
                 synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
-                    val filterContent = mutableMapOf<String, JsonElement>()
-
-                    synchronizeNostrEventRequest.eventIds?.let { eventIds ->
-                        filterContent.put("ids", JsonPrimitive(eventIds))
-                    }
-                    synchronizeNostrEventRequest.authorPublicKeys?.let { authorPublicKeys ->
-                        filterContent.put("authors", JsonPrimitive(authorPublicKeys))
-                    }
-                    synchronizeNostrEventRequest.kinds?.let { kinds ->
-                        filterContent.put("kinds", JsonPrimitive(kinds))
-                    }
-                    synchronizeNostrEventRequest.since?.let { since ->
-                        filterContent.put("since", JsonPrimitive(since.toEpochMilliseconds()))
-                    }
-                    synchronizeNostrEventRequest.until?.let { until ->
-                        filterContent.put("until", JsonPrimitive(until.toEpochMilliseconds()))
-                    }
-                    synchronizeNostrEventRequest.limit?.let { limit ->
-                        filterContent.put("limit", JsonPrimitive(limit))
-                    }
-
-                    val filter = JsonObject(
-                        filterContent
-                    )
-                    logger.d("Syncing: $filter")
-                    scope.launch {
-                        val webSocketSession = httpClient.webSocketSession(
-                            urlString = synchronizeNostrEventRequest.relayURL
+                    try {
+                        val reqCommand = ReqCmd(
+                            subId = synchronizeNostrEventRequest.id,
+                            filters = listOf(
+                                Filter(
+                                    ids = synchronizeNostrEventRequest.eventIds?.map { eventId -> eventId },
+                                    authors = synchronizeNostrEventRequest.authorPublicKeys?.map { authorPublicKey -> authorPublicKey },
+                                    kinds = synchronizeNostrEventRequest.kinds?.map { kind -> kind },
+                                    since = synchronizeNostrEventRequest.since?.toEpochMilliseconds(),
+                                    until = synchronizeNostrEventRequest.until?.toEpochMilliseconds(),
+                                    limit = synchronizeNostrEventRequest.limit,
+                                    search = synchronizeNostrEventRequest.search
+                                )
+                            )
                         )
 
-                        syncingJobs[synchronizeNostrEventRequest.relayURL] = scope.launch {
-                            webSocketSession.send(
-                                frame = Frame.Text("[\"REQ\",${synchronizeNostrEventRequest.id},${filter}]")
+                        scope.launch {
+                            val webSocketSession = httpClient.webSocketSession(
+                                urlString = synchronizeNostrEventRequest.relayURL
                             )
 
-                            nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
+                            syncingJobs[synchronizeNostrEventRequest.relayURL] = scope.launch {
+                                val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
+                                logger.d("Syncing: $filterRequest")
+                                webSocketSession.send(
+                                    frame = Frame.Text(filterRequest)
+                                )
 
-                            webSocketSession.incoming.consumeAsFlow().collect { frame ->
-                                when(frame) {
-                                    is Frame.Text -> {
-                                        frame.readText().let { text ->
-                                            try {
-                                                logger.d("WebSocket Read Text: $text")
-                                                val result = Json.decodeFromString<JsonArray>(text)
+                                nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
 
-                                                if (result.firstOrNull()?.text == "EVENT") {
-                                                    result.getOrNull(1)?.text?.let { subscriptionId ->
-                                                        if (subscriptionId == synchronizeNostrEventRequest.id) {
+                                webSocketSession.incoming.consumeAsFlow().collect { frame ->
+                                    when(frame) {
+                                        is Frame.Text -> {
+                                            frame.readText().let { text ->
+                                                try {
+                                                    logger.d("WebSocket Read Text: $text")
+                                                    val result = Json.decodeFromString<JsonArray>(text)
 
-                                                            result.getOrNull(2)?.text?.let { jsonText ->
-                                                                val event = Event.fromJson(
-                                                                    jsonText
-                                                                )
+                                                    if (result.firstOrNull()?.text == "EVENT") {
+                                                        result.getOrNull(1)?.text?.let { subscriptionId ->
+                                                            if (subscriptionId == synchronizeNostrEventRequest.id) {
 
-                                                                val nostrEvent = NostrEvent(
-                                                                    id = event.id,
-                                                                    pubKey = event.pubKey,
-                                                                    kind = event.kind,
-                                                                    content = event.content,
-                                                                    tags = event.tags,
-                                                                    createdAt = Instant.fromEpochMilliseconds(event.createdAt),
-                                                                    sig = event.sig
-                                                                )
+                                                                result.getOrNull(2)?.jsonObject?.toString()?.let { jsonText ->
+                                                                    logger.i("Processing: $jsonText")
+                                                                    val event = Event.fromJson(
+                                                                        jsonText
+                                                                    )
 
-                                                                nostrRepository.saveNostrEvent(
-                                                                    nostrEvent = nostrEvent,
-                                                                    synchronizeNostrEventRequest,
-                                                                    synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                                                                )
+                                                                    val nostrEvent = NostrEvent(
+                                                                        id = event.id,
+                                                                        pubKey = event.pubKey,
+                                                                        kind = event.kind,
+                                                                        content = event.content,
+                                                                        tags = event.tags,
+                                                                        createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                                                                        unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
+                                                                        sig = event.sig
+                                                                    )
 
+                                                                    nostrRepository.saveNostrEvent(
+                                                                        nostrEvent = nostrEvent,
+                                                                        synchronizeNostrEventRequest,
+                                                                        synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                                    )
+
+                                                                }
                                                             }
                                                         }
+                                                    } else if(result.firstOrNull()?.text == "EOSE") {
+                                                        result.getOrNull(1)?.text?.let { subscriptionId ->
+                                                            if (subscriptionId == synchronizeNostrEventRequest.id) {
+                                                                // Close the job
+                                                                logger.d("We need to close the job")
+                                                            }
+                                                        }
+                                                    } else {
+                                                        logger.d("Unsupported: $text")
                                                     }
-                                                } else {
-                                                    logger.d("Unsupported: $text")
+                                                } catch (e: Throwable) {
+                                                    logger.e("Error processing receipt: $text", e)
                                                 }
-                                            } catch (e: Throwable) {
-                                                logger.e("Error processing receipt: $text", e)
                                             }
+                                            // Syncing doesn't necessary have to close after result..
+                                            webSocketSession.close()
+                                            syncingJobs.remove(synchronizeNostrEventRequest.relayURL)?.cancel()
                                         }
-                                        // Syncing doesn't necessary have to close after result..
-                                        webSocketSession.close()
-                                        syncingJobs.remove(synchronizeNostrEventRequest.relayURL)?.cancel()
-                                    }
-                                    is Frame.Close -> {
-                                        logger.d("Close $frame")
-                                    }
-                                    is Frame.Ping -> {
-                                        logger.d("Ping: $frame")
-                                    }
-                                    is Frame.Pong -> {
-                                        logger.d("Pong: $frame")
-                                    }
-                                    is Frame.Binary -> {
-                                        logger.d("Binary Message: $frame")
-                                    }
-                                    else -> {
-                                        logger.d("Unsupported frame: $frame")
+                                        is Frame.Close -> {
+                                            logger.d("Close $frame")
+                                        }
+                                        is Frame.Ping -> {
+                                            logger.d("Ping: $frame")
+                                        }
+                                        is Frame.Pong -> {
+                                            logger.d("Pong: $frame")
+                                        }
+                                        is Frame.Binary -> {
+                                            logger.d("Binary Message: $frame")
+                                        }
+                                        else -> {
+                                            logger.d("Unsupported frame: $frame")
+                                        }
                                     }
                                 }
+
+                                logger.i("Websocket exit")
                             }
 
-                            logger.i("Websocket exit")
+                            syncingJobs[synchronizeNostrEventRequest.relayURL]?.join()
                         }
-
-                        syncingJobs[synchronizeNostrEventRequest.relayURL]?.join()
+                    } catch (e: Throwable) {
+                        logger.e("Relay Error", e)
                     }
                 }
             }

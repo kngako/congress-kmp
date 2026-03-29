@@ -81,18 +81,19 @@ class DatabaseNostrRepository(
             // Look busy for the onboarding screen
             delay(3_500)
 
-            if (unsignedNostrEvent.signedAt != null) {
-                // Submit a SyncNostrEventRequest
-                synchronizationRelayURLs.forEach { relayUrl ->
-                    database.synchronizeNostrEventRequestDao().upsert(
-                        SynchronizeNostrEventRequest(
-                            authorPublicKeys = unsignedNostrEvent.pubKey,
-                            status = "pending",
-                            relayURL = relayUrl
-                        )
-                    )
-                }
-            }
+//            if (unsignedNostrEvent.signedAt != null) {
+//                // Submit a SyncNostrEventRequest
+//                synchronizationRelayURLs.forEach { relayUrl ->
+//                    database.synchronizeNostrEventRequestDao().upsert(
+//                        SynchronizeNostrEventRequest(
+//                            authorPublicKeys = arrayOf(unsignedNostrEvent.pubKey),
+//                            kinds = arrayOf(0),
+//                            status = "pending",
+//                            relayURL = relayUrl
+//                        )
+//                    )
+//                }
+//            }
         }
     }
 
@@ -189,7 +190,8 @@ class DatabaseNostrRepository(
 
         database.synchronizeNostrEventRequestDao().upsert(
             synchronizeNostrEventRequest.copy(
-                nostrEventId = nostrEvent.id
+                nostrEventId = nostrEvent.id,
+                status = "processed"
             )
         )
     }

@@ -132,7 +132,8 @@ fun AuxNavHost(
                 is NavigationUIState.UnqueuedProfileSynchronization -> {
                     navController.navigate(
                         route = UnqueuedProfileSynchronizationRoute(
-                            state.unsignedNostrEvent.pubKey
+                            unsignedNostrEventId = state.unsignedNostrEvent.id,
+                            publicKey =  state.unsignedNostrEvent.pubKey
                         )
                     ) {
                         popUpTo(0)
@@ -255,6 +256,7 @@ fun AuxNavHost(
         composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnqueuedProfileSynchronizationRoute>()
             UnqueuedProfileSynchronizationScreen(
+                unsignedNostrEventId = route.unsignedNostrEventId,
                 profilePublicKey = route.publicKey,
                 nostrRepository = nostrRepository
             )

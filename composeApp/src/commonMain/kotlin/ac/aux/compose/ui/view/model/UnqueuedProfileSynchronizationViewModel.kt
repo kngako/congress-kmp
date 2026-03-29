@@ -19,9 +19,11 @@ import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
 import com.vitorpamplona.quartz.nip19Bech32.entities.NSec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class UnqueuedProfileSynchronizationViewModel(
+    val unsignedNostrEventId: Long,
     val profilePublicKey: String,
     val nostrRepository: NostrRepository
 ): ViewModel() {
@@ -29,11 +31,13 @@ class UnqueuedProfileSynchronizationViewModel(
         private const val TAG = "UnqueuedProfileSynchronizationViewModel"
 
         fun factory(
+            unsignedNostrEventId: Long,
             profilePublicKey: String,
             nostrRepository: NostrRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 UnqueuedProfileSynchronizationViewModel(
+                    unsignedNostrEventId = unsignedNostrEventId,
                     profilePublicKey = profilePublicKey,
                     nostrRepository = nostrRepository
                 )
@@ -49,11 +53,14 @@ class UnqueuedProfileSynchronizationViewModel(
         logger.d { "queueSynchronization" }
         viewModelScope.launch(Dispatchers.IO) {
 
+            delay(2_000)
+
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     SynchronizeNostrEventRequest(
-                        authorPublicKeys = profilePublicKey,
-                        kinds = "0",
+                        authorPublicKeys = arrayOf(profilePublicKey),
+                        unsignedNostrEventId = unsignedNostrEventId,
+                        kinds = arrayOf(0),
                         relayURL = normalizedRelayUrl.url
                     )
                 }

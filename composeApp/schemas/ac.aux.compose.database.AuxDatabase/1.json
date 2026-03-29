@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "75e5c80b2c3183c8a4fa300627ffb5db",
+    "identityHash": "9a3031f0a4cb56c9b5d6c26be0f48a3c",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -873,7 +873,7 @@
       },
       {
         "tableName": "SynchronizeNostrEventRequest",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `eventIds` TEXT, `authorPublicKeys` TEXT, `kinds` TEXT, `tagName` TEXT, `since` INTEGER, `until` INTEGER, `limit` INTEGER, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `eventIds` TEXT, `authorPublicKeys` TEXT, `kinds` TEXT, `tagName` TEXT, `since` INTEGER, `until` INTEGER, `limit` INTEGER, `search` TEXT, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -927,6 +927,11 @@
             "fieldPath": "limit",
             "columnName": "limit",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "search",
+            "columnName": "search",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "nostrEventId",
@@ -1330,7 +1335,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '75e5c80b2c3183c8a4fa300627ffb5db')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9a3031f0a4cb56c9b5d6c26be0f48a3c')"
     ]
   }
 }

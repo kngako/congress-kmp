@@ -28,11 +28,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnqueuedProfileSynchronizationScreen(
+    unsignedNostrEventId: Long,
     profilePublicKey: String,
     nostrRepository: NostrRepository
 ) {
     val unqueuedProfileSynchronizationViewModel: UnqueuedProfileSynchronizationViewModel = viewModel(
         factory = UnqueuedProfileSynchronizationViewModel.factory(
+            unsignedNostrEventId = unsignedNostrEventId,
             profilePublicKey = profilePublicKey,
             nostrRepository = nostrRepository
         )
@@ -90,6 +92,7 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             UnqueuedProfileSynchronizationScreen(
+                unsignedNostrEventId = 2,
                 profilePublicKey = "npub is for living.",
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
