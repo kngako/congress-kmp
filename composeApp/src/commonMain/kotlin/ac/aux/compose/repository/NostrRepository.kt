@@ -27,6 +27,13 @@ interface NostrRepository {
         onProfileReady: (Profile) -> Unit
     )
 
+    suspend fun createNewTextNote(
+        publicKey: HexKey,
+        text: String,
+        onError: () -> Unit,
+        onSuccess: () -> Unit
+    )
+
     suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent?
 
     suspend fun wipeDatabase()
@@ -62,6 +69,15 @@ interface NostrRepository {
                 onError: () -> Unit,
                 onProfileReady: (Profile) -> Unit
             ) {
+            }
+
+            override suspend fun createNewTextNote(
+                publicKey: HexKey,
+                text: String,
+                onError: () -> Unit,
+                onSuccess: () -> Unit
+            ) {
+                TODO("Not yet implemented")
             }
 
             override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? {

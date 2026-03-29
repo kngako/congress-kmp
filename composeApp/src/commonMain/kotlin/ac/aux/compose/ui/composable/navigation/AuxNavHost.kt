@@ -13,6 +13,7 @@ import ac.aux.compose.ui.composable.UnannouncedProfileScreen
 import ac.aux.compose.ui.composable.UnindexedProfileScreen
 import ac.aux.compose.ui.composable.UnqueuedProfileScreen
 import ac.aux.compose.ui.composable.UnsignedProfileScreen
+import ac.aux.compose.ui.composable.WriteNewNoteScreen
 import ac.aux.compose.ui.composable.navigation.routes.BlankRoute
 import ac.aux.compose.ui.composable.navigation.routes.CreateProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.FeedRoute
@@ -29,6 +30,7 @@ import ac.aux.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnindexedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
+import ac.aux.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.aux.compose.ui.composable.widgets.feed.DUMMY_EVENTS
 import ac.aux.compose.ui.view.model.NavigationViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
@@ -47,6 +49,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun AuxNavHost(
@@ -68,6 +72,7 @@ fun AuxNavHost(
         }
 
     val applicationIOScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
+    val applicationMainScope = CoroutineScope(Dispatchers.Main)
 
 
     val navigationViewModel: NavigationViewModel =  viewModel (
@@ -197,6 +202,16 @@ fun AuxNavHost(
                 nostrRepository = nostrRepository
             )
         }
+        composable< WriteNewNoteRoute> {
+            WriteNewNoteScreen(
+                onNostrEventPublished = {
+                    applicationMainScope.launch {
+                        navController.popBackStack()
+                    }
+                },
+                nostrRepository = nostrRepository
+            )
+        }
         composable<UnsignedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnsignedProfileRoute>()
 
@@ -246,6 +261,11 @@ fun AuxNavHost(
                         route = ImplementationPendingRoute(
                             event.content
                         )
+                    )
+                },
+                onNavigateToWriteNewNote = {
+                    navController.navigate(
+                        route = WriteNewNoteRoute()
                     )
                 }
             )

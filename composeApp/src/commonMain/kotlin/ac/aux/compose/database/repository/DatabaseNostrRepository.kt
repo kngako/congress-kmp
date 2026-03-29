@@ -12,6 +12,7 @@ import ac.aux.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
@@ -59,13 +60,38 @@ class DatabaseNostrRepository(
             )
         )
 
-
-
         if (unsignedNostrEvent == null) {
             onError.invoke()
         } else if (unsignedNostrEvent.kind == 0 ) {
             // Look busy for the onboarding screen
             delay(3_500)
+        }
+    }
+
+    override suspend fun createNewTextNote(
+        publicKey: HexKey,
+        text: String,
+        onError: () -> Unit,
+        onSuccess: () -> Unit
+    ) {
+        val textNote = TextNoteEvent.build(
+            note = text,
+        )
+
+        val unsignedNostrEvent = saveUnsignedNostrEvent(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = textNote.kind,
+                createdAt = Instant.fromEpochMilliseconds(textNote.createdAt),
+                tags = textNote.tags,
+                content = textNote.content
+            )
+        )
+
+        if (unsignedNostrEvent == null) {
+           onError.invoke()
+        } else {
+            onSuccess.invoke()
         }
     }
 
