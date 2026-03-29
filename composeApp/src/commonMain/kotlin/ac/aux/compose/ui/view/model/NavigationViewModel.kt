@@ -137,10 +137,13 @@ class NavigationViewModel(
     private fun observePendingSyncNostrEventRequests() {
         logger.i { "observePendingSyncNostrEventRequests" }
 
+        val syncEventCache = mutableMapOf<String, NostrEvent>()
+
         scope.launch(Dispatchers.IO) {
             nostrRepository.observePendingSynchronizeNostrEventRequests().collect { synchronizeNostrEventRequestOrNull ->
                 synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
                     try {
+                        logger.i("synchronizeNostrEventRequest: $synchronizeNostrEventRequest")
                         val reqCommand = ReqCmd(
                             subId = synchronizeNostrEventRequest.id,
                             filters = listOf(
@@ -189,22 +192,27 @@ class NavigationViewModel(
                                                                         jsonText
                                                                     )
 
-                                                                    val nostrEvent = NostrEvent(
-                                                                        id = event.id,
-                                                                        pubKey = event.pubKey,
-                                                                        kind = event.kind,
-                                                                        content = event.content,
-                                                                        tags = event.tags,
-                                                                        createdAt = Instant.fromEpochMilliseconds(event.createdAt),
-                                                                        unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
-                                                                        sig = event.sig
-                                                                    )
+                                                                    // TODO: Do profile specific cache (to avoid wiping an updated profile)
+                                                                    syncEventCache.getOrPut(event.id, {
+                                                                        val nostrEvent = NostrEvent(
+                                                                            id = event.id,
+                                                                            pubKey = event.pubKey,
+                                                                            kind = event.kind,
+                                                                            content = event.content,
+                                                                            tags = event.tags,
+                                                                            createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                                                                            unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
+                                                                            sig = event.sig
+                                                                        )
 
-                                                                    nostrRepository.saveNostrEvent(
-                                                                        nostrEvent = nostrEvent,
-                                                                        synchronizeNostrEventRequest,
-                                                                        synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                                                                    )
+                                                                        nostrRepository.saveNostrEvent(
+                                                                            nostrEvent = nostrEvent,
+                                                                            synchronizeNostrEventRequest,
+                                                                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                                        )
+
+                                                                        nostrEvent
+                                                                    })
 
                                                                 }
                                                             }
@@ -309,7 +317,7 @@ class NavigationViewModel(
                         NavigationUIState.ProfileLoaded(
                             publicKey = localProfile.unsignedNostrEvent.pubKey
                         )
-                    } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.profile!= null) {
+                    } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.profile != null) {
                         logger.i("We have successfully synced a profile: ${localProfile.profile}")
                         NavigationUIState.ProfileLoaded(
                             publicKey = localProfile.unsignedNostrEvent.pubKey
@@ -334,7 +342,7 @@ class NavigationViewModel(
                         NavigationUIState.UnqueuedProfileSynchronization(
                             unsignedNostrEvent = localProfile.unsignedNostrEvent
                         )
-                    }  else if (localProfile.unsignedNostrEvent.signedAt != null) {
+                    }  else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
                         logger.i("We should be syncing the profile: ${localProfile.unsignedNostrEvent}")
                         NavigationUIState.UnsyncedProfile(
                             unsignedNostrEvent = localProfile.unsignedNostrEvent

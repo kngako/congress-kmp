@@ -168,7 +168,6 @@ class DatabaseNostrRepository(
                 updatedAt = Clock.System.now()
             )
         )
-        logger.i("Processed: $synchronizeNostrEventRequest")
     }
 
     override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {

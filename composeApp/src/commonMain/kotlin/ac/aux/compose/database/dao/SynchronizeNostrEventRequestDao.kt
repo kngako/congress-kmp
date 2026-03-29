@@ -2,6 +2,7 @@ package ac.aux.compose.database.dao
 
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,6 @@ interface SynchronizeNostrEventRequestDao {
     @Upsert
     fun upsert(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 
-    @Upsert
+    @Insert
     fun insert(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>)
 }

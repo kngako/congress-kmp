@@ -84,6 +84,7 @@ abstract class NostrDao(
     ) {
         logger.i("Store Nostr Event: $nostrEvent")
         if (nostrEvent.unsignedNostrEventId == null) {
+            logger.i("Store Nostr Event: $nostrEvent")
             // Find or create profile with the pubKey... if not found submit a sync request...
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 
@@ -105,6 +106,7 @@ abstract class NostrDao(
                 database.profileDao().upsert(placeHolderProfile)
 
                 synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                    logger.i("Sync Profile with PubKey: ${nostrEvent.pubKey}")
                     database.synchronizeNostrEventRequestDao().upsert(
                         SynchronizeNostrEventRequest(
                             authorPublicKeys = arrayOf(nostrEvent.pubKey),
