@@ -4,6 +4,7 @@ import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalProfile
@@ -16,6 +17,8 @@ interface NostrRepository {
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
     suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>>
+
+    suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -46,7 +49,15 @@ interface NostrRepository {
 
     suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest)
 
+    suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
+
     suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt)
+
+    suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+        synchronizationRelayURLs: List<String>
+    )
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
@@ -59,6 +70,10 @@ interface NostrRepository {
             }
 
             override suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?> {
                 TODO("Not yet implemented")
             }
 
@@ -99,7 +114,19 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
+            override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
+                TODO("Not yet implemented")
+            }
+
             override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun saveNostrEvent(
+                nostrEvent: NostrEvent,
+                synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+                synchronizationRelayURLs: List<String>
+            ) {
                 TODO("Not yet implemented")
             }
         }

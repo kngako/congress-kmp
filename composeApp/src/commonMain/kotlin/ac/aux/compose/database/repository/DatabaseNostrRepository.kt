@@ -5,6 +5,7 @@ import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalProfile
@@ -37,6 +38,10 @@ class DatabaseNostrRepository(
 
     override suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>> {
         return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestsByStatus("pending")
+    }
+
+    override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?> {
+        return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestsByStatus("pending")
     }
 
     override suspend fun createNewProfile(
@@ -144,9 +149,32 @@ class DatabaseNostrRepository(
         logger.d("Processed: $broadcastNostrEventRequest")
     }
 
+    override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
+        logger.i("Update local reference: $synchronizeNostrEventRequest")
+        database.synchronizeNostrEventRequestDao().upsert(
+            synchronizeNostrEventRequest.copy(
+                status = "sent",
+                updatedAt = Clock.System.now()
+            )
+        )
+        logger.i("Processed: $synchronizeNostrEventRequest")
+    }
+
     override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
         database.broadcastNostrEventReceiptDao().upsert(
             broadcastNostrEventReceipt
+        )
+    }
+
+    override suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+        synchronizationRelayURLs: List<String>
+    ) {
+        database.nostrDao().storeNostrEvent(
+            nostrEvent,
+            synchronizeNostrEventRequest,
+            synchronizationRelayURLs = synchronizationRelayURLs
         )
     }
 

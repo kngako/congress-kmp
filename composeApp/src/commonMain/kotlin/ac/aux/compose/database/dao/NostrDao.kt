@@ -5,6 +5,8 @@ import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.SynchronizeNostrEventRequest
+import ac.aux.compose.database.model.SynchronizeNostrEventResult
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import androidx.room.Dao
 import androidx.room.Embedded
@@ -59,13 +61,87 @@ abstract class NostrDao(
 
         database.nostrEventDao().upsert(nostrEvent)
 
+        indexNostrEvent(
+            nostrEvent = nostrEvent,
+            synchronizationRelayURLs = relayURLs
+        )
+
+        relayURLs.forEach { relayURL ->
+            database.broadcastNostrEventRequestDao().upsert(
+                BroadcastNostrEventRequest(
+                    nostrEventId = nostrEvent.id,
+                    unsignedNostrEventId = nostrEvent.unsignedNostrEventId,
+                    relayURL = relayURL
+                )
+            )
+        }
+    }
+
+    @Transaction
+    open suspend fun storeNostrEvent(
+        nostrEvent: NostrEvent,
+        synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+        synchronizationRelayURLs: List<String>
+    ) {
+        logger.i("Store Nostr Event: $nostrEvent")
+        // Find or create profile with the pubKey... if not found submit a sync request...
+        val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
+
+        if (profile == null) {
+            val placeHolderProfile = Profile(
+                publicKey = nostrEvent.pubKey,
+                nostrEventId = nostrEvent.pubKey // This is illegal... because the nostrEventId should be the one with all the profile information
+            )
+            val placeHolderProfileNostrEvent = NostrEvent(
+                id = placeHolderProfile.publicKey,
+                kind = 30024,
+                pubKey = placeHolderProfile.publicKey,
+                content = placeHolderProfile.publicKey,
+                createdAt = Clock.System.now(),
+                sig = placeHolderProfile.publicKey,
+                tags = emptyArray(),
+            )
+            database.nostrEventDao().upsert(placeHolderProfileNostrEvent)
+            database.profileDao().upsert(placeHolderProfile)
+
+            synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                database.synchronizeNostrEventRequestDao().upsert(
+                    SynchronizeNostrEventRequest(
+                        authorPublicKeys = listOf<String>(nostrEvent.pubKey).joinToString(","),
+                        relayURL = synchronizationRelayURL
+                    )
+                )
+            }
+        }
+
+        database.nostrEventDao().upsert(nostrEvent)
+
+        // Index nostrEvent
+        indexNostrEvent(
+            nostrEvent = nostrEvent,
+            synchronizationRelayURLs = synchronizationRelayURLs
+        )
+
+        // Save synchronizationResult
+        database.synchronizeNostrEventResultDao().upsert(
+            SynchronizeNostrEventResult(
+                nostrEventId = nostrEvent.id,
+                relayURL = synchronizeNostrEventRequest.relayURL
+            )
+        )
+    }
+
+    private suspend fun indexNostrEvent(
+        nostrEvent: NostrEvent,
+        synchronizationRelayURLs: List<String>
+    ) {
         nostrEvent.toPost()?.let { post ->
             if (post.replyToId != null) {
                 // Find or create placeHolder note that is replyTo
                 val replyingToPost = database.postDao().getPostById(post.replyToId)
 
                 if (replyingToPost == null) {
-                    // PlaceHolder and sync
+                    // Persist PlaceHolder and sync
                     database.postDao().insert(
                         Post(
                             id = post.replyToId,
@@ -74,6 +150,16 @@ abstract class NostrDao(
                             profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
                         )
                     )
+
+                    // Request a sync for the post being replied to
+                    synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                        database.synchronizeNostrEventRequestDao().upsert(
+                            SynchronizeNostrEventRequest(
+                                eventIds = listOf(post.replyToId).joinToString(","),
+                                relayURL = synchronizationRelayURL
+                            )
+                        )
+                    }
                 }
             }
 
@@ -90,7 +176,15 @@ abstract class NostrDao(
                             profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
                         )
                     )
-                    // Sync repostId
+                    // Request a sync for the post being reposted
+                    synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                        database.synchronizeNostrEventRequestDao().upsert(
+                            SynchronizeNostrEventRequest(
+                                eventIds = listOf(post.repostId).joinToString(","),
+                                relayURL = synchronizationRelayURL
+                            )
+                        )
+                    }
                 }
             }
             database.postDao().insert(post)
@@ -110,16 +204,6 @@ abstract class NostrDao(
 
         nostrEvent.toZap()?.let { zap ->
             database.zapDao().upsert(zap)
-        }
-
-        relayURLs.forEach { relayURL ->
-            database.broadcastNostrEventRequestDao().upsert(
-                BroadcastNostrEventRequest(
-                    nostrEventId = nostrEvent.id,
-                    unsignedNostrEventId = nostrEvent.unsignedNostrEventId,
-                    relayURL = relayURL
-                )
-            )
         }
     }
 }
