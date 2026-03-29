@@ -74,6 +74,10 @@ class DatabaseNostrRepository(
         } else if (unsignedNostrEvent.kind == 0 ) {
             // Look busy for the onboarding screen
             delay(3_500)
+
+            if (unsignedNostrEvent.signedAt != null) {
+                // Submit a SyncNostrEventRequest
+            }
         }
     }
 
