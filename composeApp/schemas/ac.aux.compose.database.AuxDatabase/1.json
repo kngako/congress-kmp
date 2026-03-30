@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "9a3031f0a4cb56c9b5d6c26be0f48a3c",
+    "identityHash": "40dc44925e9b6000404e2cc5e781e4c2",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1074,7 +1074,7 @@
       },
       {
         "tableName": "UnsignedNostrEvent",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `signedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `privateTags` TEXT, `content` TEXT NOT NULL, `signedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1099,6 +1099,11 @@
             "columnName": "tags",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "privateTags",
+            "columnName": "privateTags",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "content",
@@ -1335,7 +1340,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9a3031f0a4cb56c9b5d6c26be0f48a3c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40dc44925e9b6000404e2cc5e781e4c2')"
     ]
   }
 }

@@ -9,13 +9,29 @@ import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalProfile
+import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent.Companion.ALT
+import com.vitorpamplona.quartz.nip02FollowList.RelaySet
+import com.vitorpamplona.quartz.nip02FollowList.tags.ContactTag
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
+import com.vitorpamplona.quartz.nip31Alts.AltTag
+import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
+import com.vitorpamplona.quartz.nip51Lists.relayLists.IndexerRelayListEvent
+import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
+import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
+import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlin.collections.emptyMap
+import kotlin.collections.plus
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -77,23 +93,99 @@ class DatabaseNostrRepository(
 
         if (unsignedNostrEvent == null) {
             onError.invoke()
-        } else if (unsignedNostrEvent.kind == 0 ) {
+        } else if (unsignedNostrEvent.kind == 0) {
             // Look busy for the onboarding screen
             delay(3_500)
 
-//            if (unsignedNostrEvent.signedAt != null) {
-//                // Submit a SyncNostrEventRequest
-//                synchronizationRelayURLs.forEach { relayUrl ->
-//                    database.synchronizeNostrEventRequestDao().upsert(
-//                        SynchronizeNostrEventRequest(
-//                            authorPublicKeys = arrayOf(unsignedNostrEvent.pubKey),
-//                            kinds = arrayOf(0),
-//                            status = "pending",
-//                            relayURL = relayUrl
-//                        )
-//                    )
-//                }
-//            }
+
+            if (unsignedNostrEvent.signedAt == null) {
+                // Save ContactListNostrEvent
+                val followUsers = listOf(ContactTag(publicKey, null, null))
+                val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
+                        followUsers.map { it.toTagArray() }
+
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = ContactListEvent.KIND,
+                        tags = contactListTagList.toTypedArray(),
+                        content = RelaySet.assemble(
+                            emptyMap()
+                        )
+                    )
+                )
+
+                // Save AdvertisedRelayListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = AdvertisedRelayListEvent.KIND,
+                        tags = Relays.DefaultNIP65List.map{ it.toTagArray() }.toTypedArray(),
+                        content = ""
+                    )
+                )
+                // Save ChatMessageRelayListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = ChatMessageRelayListEvent.KIND,
+                        tags = Relays.DefaultDMRelayList.map{ RelayTag.assemble(it) }
+                            .plusElement(
+                                AltTag.assemble("Relay list to receive private messages")
+                            ).toTypedArray(),
+                        content = ""
+                    )
+                )
+                // Save SearchRelayListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = SearchRelayListEvent.KIND,
+                        tags = Relays.DefaultSearchRelayList.map{ RelayTag.assemble(it) }
+                            .plus(
+                                SearchRelayListEvent.ALT_TAG
+                            ).toTypedArray(),
+                        privateTags = emptyArray(),
+                        content = ""
+                    )
+                )
+                // Save IndexerRelayListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = IndexerRelayListEvent.KIND,
+                        tags = arrayOf(AltTag.assemble(IndexerRelayListEvent.ALT)),
+                        privateTags = Relays.DefaultIndexerRelayList.map { RelayTag.assemble(it) }.toTypedArray() ,
+                        content = ""
+                    )
+                )
+                // Save ChannelListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = ChannelListEvent.KIND,
+                        tags = arrayOf(
+                            AltTag.assemble(
+                                ChannelListEvent.ALT
+                            )
+                        ),
+                        privateTags = Relays.DefaultChannels.map { it.toTagArray() }.toTypedArray(),
+                        content = ""
+                    )
+                )
+                // Save RelayFeedsListEvent
+                saveUnsignedNostrEvent(
+                    UnsignedNostrEvent(
+                        pubKey = publicKey,
+                        kind = RelayFeedsListEvent.KIND,
+                        tags = arrayOf(
+                            AltTag.assemble(RelayFeedsListEvent.ALT)
+                        ),
+                        privateTags = Relays.DefaultGlobalRelays.map { RelayTag.assemble(it)}.toTypedArray(),
+                        content = ""
+                    )
+                )
+            }
         }
     }
 

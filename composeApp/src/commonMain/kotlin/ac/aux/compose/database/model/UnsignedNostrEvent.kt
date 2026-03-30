@@ -35,6 +35,7 @@ data class UnsignedNostrEvent(
     val pubKey: HexKey,
     val kind: Kind,
     val tags: TagArray,
+    val privateTags: TagArray? = null,
     val content: String,
 
     val signedAt: Instant? = null,

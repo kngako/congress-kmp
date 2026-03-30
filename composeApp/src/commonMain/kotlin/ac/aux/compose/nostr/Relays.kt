@@ -1,6 +1,9 @@
 package ac.aux.compose.nostr
 
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
+import com.vitorpamplona.quartz.nip28PublicChat.list.tags.ChannelTag
+import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayInfo
+import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayType
 
 object Relays {
     val nos = RelayUrlNormalizer.normalize("wss://nos.lol")
@@ -33,4 +36,30 @@ object Relays {
     val bootstrapInboxRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr, yabu)
     val eventFinderRelaySet = setOf(wine, damus, primal, mom, nos, bitcoiner, oxtr)
     val eventPublishRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr)
+
+
+    val DefaultNIP65RelaySet = setOf(mom, nos, bitcoiner)
+
+    val DefaultNIP65List =
+        listOf(
+            AdvertisedRelayInfo(mom, AdvertisedRelayType.BOTH),
+            AdvertisedRelayInfo(nos, AdvertisedRelayType.BOTH),
+            AdvertisedRelayInfo(bitcoiner, AdvertisedRelayType.BOTH),
+        )
+
+    val DefaultGlobalRelays = listOf(wine, news)
+
+    val DefaultDMRelayList = listOf(auth, oxchat, nos)
+
+    val DefaultSearchRelayList = setOf(wine, where, nostoday, antiprimal, ditto)
+
+    val DefaultIndexerRelayList = setOf(purplepages, coracle, userkinds, yabu, nostr1)
+
+    val DefaultChannels =
+        listOf(
+            // Anigma's Nostr
+            ChannelTag("25e5c82273a271cb1a840d0060391a0bf4965cafeb029d5ab55350b418953fbb", nos),
+            // Amethyst's Group
+            ChannelTag("42224859763652914db53052103f0b744df79dfc4efef7e950fc0802fc3df3c5", nos),
+        )
 }

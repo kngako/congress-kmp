@@ -17,6 +17,7 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
 import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
@@ -111,7 +112,7 @@ class NavigationViewModel(
                         createdAt = unsignedNostrEvent.createdAt.epochSeconds,
                         kind = unsignedNostrEvent.kind,
                         tags = unsignedNostrEvent.tags,
-                        content = unsignedNostrEvent.content
+                        content = unsignedNostrEvent.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: unsignedNostrEvent.content
                     )
 
                     nostrRepository.publishNostrEvent(
