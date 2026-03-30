@@ -13,12 +13,12 @@ class AuxConverters {
 
     @TypeConverter
     fun fromTimestamp(value: Long?): Instant? {
-        return value?.let { Instant.fromEpochMilliseconds(it) }
+        return value?.let { Instant.fromEpochSeconds(it) }
     }
 
     @TypeConverter
     fun instantToTimestamp(instant: Instant?): Long? {
-        return instant?.toEpochMilliseconds()
+        return instant?.epochSeconds
     }
 
     @TypeConverter

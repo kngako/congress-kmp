@@ -53,7 +53,7 @@ class NostrEventBroadcaster(
                 content = nostrEvent.content,
                 tags = nostrEvent.tags,
                 sig = nostrEvent.sig,
-                createdAt = nostrEvent.createdAt.toEpochMilliseconds()
+                createdAt = nostrEvent.createdAt.epochSeconds
             )
         }
 

@@ -86,7 +86,7 @@ data class NostrEvent(
             val textNote = EventFactory.create<TextNoteEvent>(
                 id = id,
                 pubKey = pubKey,
-                createdAt = createdAt.toEpochMilliseconds(),
+                createdAt = createdAt.epochSeconds,
                 kind = kind,
                 tags = tags,
                 content = content,
@@ -101,8 +101,8 @@ data class NostrEvent(
                 nostrEventId = id,
                 replyToId = textNote.replyingTo(),
                 profilePublicKey = textNote.pubKey,
-                createdAt = Instant.fromEpochMilliseconds(textNote.createdAt),
-                updatedAt = Instant.fromEpochMilliseconds(textNote.createdAt),
+                createdAt = Instant.fromEpochSeconds(textNote.createdAt),
+                updatedAt = Instant.fromEpochSeconds(textNote.createdAt),
             )
         }
         return null
@@ -116,7 +116,7 @@ data class NostrEvent(
             val metadataEvent = EventFactory.create<MetadataEvent>(
                 id = id,
                 pubKey = pubKey,
-                createdAt = createdAt.toEpochMilliseconds(),
+                createdAt = createdAt.epochSeconds,
                 kind = kind,
                 tags = tags,
                 content = content,
@@ -128,8 +128,8 @@ data class NostrEvent(
                     publicKey = pubKey,
                     nostrEventId = id,
 
-                    createdAt = Instant.fromEpochMilliseconds(metadataEvent.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(metadataEvent.createdAt),
+                    createdAt = Instant.fromEpochSeconds(metadataEvent.createdAt),
+                    updatedAt = Instant.fromEpochSeconds(metadataEvent.createdAt),
 
                     userName = userMetadata.name,
                     displayName = userMetadata.displayName,
@@ -158,7 +158,7 @@ data class NostrEvent(
             val reactionEvent = EventFactory.create<ReactionEvent>(
                 id = id,
                 pubKey = pubKey,
-                createdAt = createdAt.toEpochMilliseconds(),
+                createdAt = createdAt.epochSeconds,
                 kind = kind,
                 tags = tags,
                 content = content,
@@ -174,8 +174,8 @@ data class NostrEvent(
                     replyToId = reactedTo,
                     profilePublicKey = reactionEvent.pubKey,
 
-                    createdAt = Instant.fromEpochMilliseconds(reactionEvent.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(reactionEvent.createdAt),
+                    createdAt = Instant.fromEpochSeconds(reactionEvent.createdAt),
+                    updatedAt = Instant.fromEpochSeconds(reactionEvent.createdAt),
                 )
             }
         }
@@ -190,7 +190,7 @@ data class NostrEvent(
             val repostEvent = EventFactory.create<RepostEvent>(
                 id = id,
                 pubKey = pubKey,
-                createdAt = createdAt.toEpochMilliseconds(),
+                createdAt = createdAt.epochSeconds,
                 kind = kind,
                 tags = tags,
                 content = content,
@@ -206,8 +206,8 @@ data class NostrEvent(
                     nostrEventId = id,
                     profilePublicKey = repostEvent.pubKey,
 
-                    createdAt = Instant.fromEpochMilliseconds(repostEvent.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(repostEvent.createdAt),
+                    createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
+                    updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
                 )
             }
         }
@@ -223,7 +223,7 @@ data class NostrEvent(
             val zapEvent = EventFactory.create<LnZapEvent>(
                 id = id,
                 pubKey = pubKey,
-                createdAt = createdAt.toEpochMilliseconds(),
+                createdAt = createdAt.epochSeconds,
                 kind = kind,
                 tags = tags,
                 content = content,

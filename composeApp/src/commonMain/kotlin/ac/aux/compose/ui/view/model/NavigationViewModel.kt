@@ -108,7 +108,7 @@ class NavigationViewModel(
                 unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
                     logger.d("Unsigned")
                     val event = tempSigner.signNormal<Event>(
-                        createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
+                        createdAt = unsignedNostrEvent.createdAt.epochSeconds,
                         kind = unsignedNostrEvent.kind,
                         tags = unsignedNostrEvent.tags,
                         content = unsignedNostrEvent.content
@@ -122,7 +122,7 @@ class NavigationViewModel(
                             kind = event.kind,
                             tags = event.tags,
                             content = event.content,
-                            createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                            createdAt = Instant.fromEpochSeconds(event.createdAt),
                             sig = event.sig,
                             unsignedNostrEventId = unsignedNostrEvent.id
                         ),
@@ -151,8 +151,8 @@ class NavigationViewModel(
                                     ids = synchronizeNostrEventRequest.eventIds?.map { eventId -> eventId },
                                     authors = synchronizeNostrEventRequest.authorPublicKeys?.map { authorPublicKey -> authorPublicKey },
                                     kinds = synchronizeNostrEventRequest.kinds?.map { kind -> kind },
-                                    since = synchronizeNostrEventRequest.since?.toEpochMilliseconds(),
-                                    until = synchronizeNostrEventRequest.until?.toEpochMilliseconds(),
+                                    since = synchronizeNostrEventRequest.since?.epochSeconds,
+                                    until = synchronizeNostrEventRequest.until?.epochSeconds,
                                     limit = synchronizeNostrEventRequest.limit,
                                     search = synchronizeNostrEventRequest.search
                                 )
@@ -200,7 +200,7 @@ class NavigationViewModel(
                                                                             kind = event.kind,
                                                                             content = event.content,
                                                                             tags = event.tags,
-                                                                            createdAt = Instant.fromEpochMilliseconds(event.createdAt),
+                                                                            createdAt = Instant.fromEpochSeconds(event.createdAt),
                                                                             unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
                                                                             sig = event.sig
                                                                         )

@@ -51,7 +51,7 @@ fun UnsignedProfileScreen(
     val metadataEvent = MetadataEvent(
         id = unsignedNostrEvent.id.toString(),
         pubKey = unsignedNostrEvent.pubKey,
-        createdAt = unsignedNostrEvent.createdAt.toEpochMilliseconds(),
+        createdAt = unsignedNostrEvent.createdAt.epochSeconds,
         tags = unsignedNostrEvent.tags,
         content = unsignedNostrEvent.content,
         sig = ""

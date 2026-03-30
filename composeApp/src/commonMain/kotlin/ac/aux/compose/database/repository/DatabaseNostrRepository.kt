@@ -68,7 +68,7 @@ class DatabaseNostrRepository(
             UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
-                createdAt = Instant.fromEpochMilliseconds(profileEventTemplate.createdAt),
+                createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,
                 content = profileEventTemplate.content,
                 signedAt = signedAt // This will keep us from trying to sign this event... but we should automatically sync the npub profile
@@ -111,7 +111,7 @@ class DatabaseNostrRepository(
             UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = textNote.kind,
-                createdAt = Instant.fromEpochMilliseconds(textNote.createdAt),
+                createdAt = Instant.fromEpochSeconds(textNote.createdAt),
                 tags = textNote.tags,
                 content = textNote.content
             )
