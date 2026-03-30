@@ -7,18 +7,23 @@ import ac.aux.compose.ui.composable.widgets.feed.FeedListItem
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.FeedListViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +31,7 @@ import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -117,10 +123,69 @@ fun FeedScreen(
                 }
                 is FeedListUIState.Loaded -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth().fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        stickyHeader {
+
+                            Surface() {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(10.dp)
+                                        .horizontalScroll(
+                                            rememberScrollState()
+                                        ),
+
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ){
+
+                                    FilterChip(
+                                        selected = true,
+                                        onClick = {},
+                                        label = {
+                                            Text("All")
+                                        }
+                                    )
+
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = {},
+                                        label = {
+                                            Text("Kind")
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "Author Filter"
+                                            )
+                                        }
+                                    )
+
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = {},
+                                        label = {
+                                            Text("Author")
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "Author Filter"
+                                            )
+                                        }
+                                    )
+
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = {},
+                                        label = {
+                                            Text("Unread")
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "Author Filter"
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                        }
                         items(
                             items = feedListUIState.nostrEvents,
                             key = { e -> e.id }
@@ -147,7 +212,7 @@ private fun FeedScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             FeedScreen(
-                initialFeedListUIState = FeedListUIState.Loading,
+                initialFeedListUIState = FeedListUIState.Loaded(emptyList()),
                 onNavigateToEvent = {},
                 onNavigateToWriteNewNote = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
