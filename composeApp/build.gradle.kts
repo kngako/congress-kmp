@@ -41,8 +41,6 @@ kotlin {
             implementation(libs.androidx.room.sqlite.wrapper)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.okhttp.coroutines)
-
-            implementation(libs.ktor.client.okhttp)
         }
         commonMain.dependencies {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
@@ -71,6 +69,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
 
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.kotlinx.json)
 
@@ -80,12 +79,10 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
         iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
         }
     }
 }
