@@ -37,14 +37,23 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.okhttp.coroutines)
             implementation(libs.androidx.room.sqlite.wrapper)
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.okhttp.coroutines)
 
             implementation(libs.ktor.client.okhttp)
         }
         commonMain.dependencies {
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+
+            implementation(libs.androidx.paging.common)
+            implementation(libs.androidx.paging.compose)
+
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
@@ -53,27 +62,19 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
 
-            implementation("androidx.paging:paging-common:3.5.0-alpha01")
-            implementation("androidx.paging:paging-compose:3.5.0-alpha01")
-            implementation(libs.androidx.room.runtime)
-            implementation(libs.androidx.sqlite.bundled)
-
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
             implementation(libs.navigation.compose)
 
             implementation(libs.kermit)
 
-            implementation("com.vitorpamplona.quartz:quartz:1.05.1")
-
-
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
 
             implementation(libs.ktor.client.core)
-            implementation("io.ktor:ktor-client-websockets:3.4.1")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.1")
+            implementation(libs.ktor.client.websockets)
+            implementation(libs.ktor.serialization.kotlinx.json)
+
+            implementation(libs.vitorpamplona.quartz)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
