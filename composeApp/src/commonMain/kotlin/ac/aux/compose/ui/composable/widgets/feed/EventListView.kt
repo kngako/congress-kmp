@@ -1,6 +1,7 @@
 package ac.aux.compose.ui.composable.widgets.feed
 
 import ac.aux.compose.database.model.NostrEvent
+import ac.aux.compose.extensions.toFormattedTimeAndDateString
 import ac.aux.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -88,7 +89,7 @@ fun NostrEvent.ListView() {
                 }
 
                 Text(
-                    text = createdAt.toString()
+                    text = createdAt.toFormattedTimeAndDateString()
                 )
             }
         }

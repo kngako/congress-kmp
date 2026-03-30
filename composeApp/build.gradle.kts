@@ -68,6 +68,9 @@ kotlin {
 
             implementation("com.vitorpamplona.quartz:quartz:1.05.1")
 
+
+            implementation(libs.kotlinx.datetime)
+
             implementation(libs.ktor.client.core)
             implementation("io.ktor:ktor-client-websockets:3.4.1")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.1")
