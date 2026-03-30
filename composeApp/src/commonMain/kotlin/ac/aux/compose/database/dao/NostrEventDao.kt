@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NostrEventDao {
-    @Query("SELECT * FROM NostrEvent")
+    @Query("SELECT * FROM NostrEvent ORDER BY createdAt DESC")
     fun  getAllNostrEvents(): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")

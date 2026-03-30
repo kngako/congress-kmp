@@ -204,4 +204,8 @@ class DatabaseNostrRepository(
         )
     }
 
+    override suspend fun loadNostrFeed(): List<NostrEvent> {
+        return database.nostrEventDao().getAllNostrEvents()
+    }
+
 }

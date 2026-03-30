@@ -1,12 +1,10 @@
 package ac.aux.compose.ui.view.state
 
-import com.vitorpamplona.quartz.nip01Core.core.Event
-import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import kotlin.time.Clock
+import ac.aux.compose.database.model.NostrEvent
 
 sealed interface FeedListUIState {
     data class Loaded(
-        val events: List<Event>
+        val nostrEvents: List<NostrEvent>
     ): FeedListUIState
 
     data object Error: FeedListUIState

@@ -37,7 +37,6 @@ import ac.aux.compose.ui.composable.navigation.routes.UnqueuedProfileSynchroniza
 import ac.aux.compose.ui.composable.navigation.routes.UnsignedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.UnsyncedProfileRoute
 import ac.aux.compose.ui.composable.navigation.routes.WriteNewNoteRoute
-import ac.aux.compose.ui.composable.widgets.feed.DUMMY_EVENTS
 import ac.aux.compose.ui.view.model.NavigationViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
 import ac.aux.compose.ui.view.state.NavigationUIState
@@ -295,9 +294,7 @@ fun AuxNavHost(
         }
         composable<FeedRoute> {
             FeedScreen(
-                initialFeedListUIState = FeedListUIState.Loaded(
-                    events = DUMMY_EVENTS,
-                ),
+                initialFeedListUIState = FeedListUIState.Loading,
                 onNavigateToEvent = { event ->
                     navController.navigate(
                         route = ImplementationPendingRoute(
@@ -309,7 +306,8 @@ fun AuxNavHost(
                     navController.navigate(
                         route = WriteNewNoteRoute()
                     )
-                }
+                },
+                nostrRepository = nostrRepository
             )
         }
         composable<BlankRoute> {

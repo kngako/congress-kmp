@@ -64,6 +64,8 @@ interface NostrRepository {
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     )
 
+    suspend fun loadNostrFeed(): List<NostrEvent>
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
@@ -137,6 +139,10 @@ interface NostrRepository {
             }
 
             override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun loadNostrFeed(): List<NostrEvent> {
                 TODO("Not yet implemented")
             }
         }

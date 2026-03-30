@@ -1,8 +1,9 @@
 package ac.aux.compose.ui.composable
 
+import ac.aux.compose.database.model.NostrEvent
+import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.aux.compose.ui.composable.widgets.feed.FeedListItem
-import ac.aux.compose.ui.composable.widgets.feed.ListView
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.FeedListViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
@@ -14,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Adb
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -37,19 +37,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.Event
-import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     initialFeedListUIState: FeedListUIState,
-    onNavigateToEvent: (Event) -> Unit,
+    onNavigateToEvent: (NostrEvent) -> Unit,
     onNavigateToWriteNewNote: () -> Unit,
+    nostrRepository: NostrRepository,
 ) {
     val feedListViewModel: FeedListViewModel = viewModel(
         factory = FeedListViewModel.factory(
             initialFeedListUIState = initialFeedListUIState,
+            nostrRepository = nostrRepository
         ),
     )
 
@@ -107,6 +107,10 @@ fun FeedScreen(
             when(val feedListUIState = feedListViewModel.feedListUIState) {
                 is FeedListUIState.Loading -> {
                     LoadingDataIndicator()
+
+                    LaunchedEffect(true) {
+                        feedListViewModel.loadNostrFeed()
+                    }
                 }
                 FeedListUIState.Error -> {
                     Text("Something went wrong")
@@ -118,13 +122,13 @@ fun FeedScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         items(
-                            items = feedListUIState.events,
+                            items = feedListUIState.nostrEvents,
                             key = { e -> e.id }
-                        ) { event ->
+                        ) { nostrEvent ->
                             FeedListItem(
-                                event = event,
+                                nostrEvent = nostrEvent,
                                 onNavigateToEvent = {
-                                    onNavigateToEvent.invoke(event)
+                                    onNavigateToEvent.invoke(nostrEvent)
                                 }
                             )
                         }
@@ -145,7 +149,8 @@ private fun FeedScreenPreview() {
             FeedScreen(
                 initialFeedListUIState = FeedListUIState.Loading,
                 onNavigateToEvent = {},
-                onNavigateToWriteNewNote = {}
+                onNavigateToWriteNewNote = {},
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }
