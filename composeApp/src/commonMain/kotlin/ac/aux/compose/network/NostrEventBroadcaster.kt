@@ -5,6 +5,8 @@ import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.EventCmd
 import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
@@ -54,8 +56,6 @@ class NostrEventBroadcaster(
                 createdAt = nostrEvent.createdAt.toEpochMilliseconds()
             )
         }
-        val eventJson = event.toJson()
-        logger.d("Broadcasting (${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}): $eventJson")
 
         scope.launch {
             val webSocketSession = httpClient.webSocketSession(
@@ -63,8 +63,14 @@ class NostrEventBroadcaster(
             )
 
             broadcastingJobs[localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL] = scope.launch {
+                val message = OptimizedJsonMapper.toJson(
+                    EventCmd(
+                        event
+                    )
+                )
+                logger.d("Broadcasting (${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}): $message")
                 webSocketSession.send(
-                    frame = Frame.Text("[\"EVENT\",${eventJson}]")
+                    frame = Frame.Text(message)
                 )
 
                 onBroadcastRequestProcessed.invoke(localBroadcastNostrEventRequest.broadcastNostrEventRequest)
