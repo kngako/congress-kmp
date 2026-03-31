@@ -1,11 +1,15 @@
 package ac.aux.compose.database.converters
 
+import ac.aux.compose.database.model.typealiases.FilterArray
 import ac.aux.compose.database.model.typealiases.HexArray
 import ac.aux.compose.database.model.typealiases.KindArray
 import androidx.room.TypeConverter
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlin.time.Instant
 
 class AuxConverters {
@@ -71,6 +75,30 @@ class AuxConverters {
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to KindArray $value", e)
+        return null
+    }
+
+    @TypeConverter
+    fun fromFilterArray(value: FilterArray?): String? = try {
+        return value?.let { filterArray ->
+            Json.encodeToString(
+                filterArray.map { filter ->
+                    OptimizedJsonMapper.toJson(filter)
+                }
+            )
+        }
+    } catch (e: Throwable) {
+        logger.e("Failed to convert from FilterArray $value", e)
+        return null
+    }
+
+    @TypeConverter
+    fun toFilterArray(value: String?): FilterArray? = try {
+        return value?.let {
+            Json.decodeFromString<FilterArray>(it)
+        }
+    } catch (e: Throwable) {
+        logger.e("Failed to convert to FilterArray $value", e)
         return null
     }
 }

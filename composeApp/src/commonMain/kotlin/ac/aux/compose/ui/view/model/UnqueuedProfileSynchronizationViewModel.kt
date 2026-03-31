@@ -13,6 +13,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip19Bech32.Nip19Parser
 import com.vitorpamplona.quartz.nip19Bech32.entities.Entity
 import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
@@ -58,9 +60,13 @@ class UnqueuedProfileSynchronizationViewModel(
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     SynchronizeNostrEventRequest(
-                        authorPublicKeys = arrayOf(profilePublicKey),
+                        filters = arrayOf(
+                            Filter(
+                                authors = listOf(profilePublicKey),
+                                kinds = listOf(MetadataEvent.KIND)
+                            )
+                        ),
                         unsignedNostrEventId = unsignedNostrEventId,
-                        kinds = arrayOf(0),
                         relayURL = normalizedRelayUrl.url
                     )
                 }

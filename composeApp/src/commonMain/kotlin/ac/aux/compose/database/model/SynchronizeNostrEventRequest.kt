@@ -3,6 +3,7 @@ package ac.aux.compose.database.model
 import ac.aux.compose.database.model.traits.OptionalNostrEventEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import ac.aux.compose.database.model.traits.UnsignedNostrEventEntity
+import ac.aux.compose.database.model.typealiases.FilterArray
 import ac.aux.compose.database.model.typealiases.HexArray
 import ac.aux.compose.database.model.typealiases.KindArray
 import androidx.room.Entity
@@ -10,6 +11,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
@@ -41,14 +43,8 @@ data class SynchronizeNostrEventRequest(
     val id: String = Uuid.generateV4().toHexDashString(),
     val status: String = "pending",
     val relayURL: String,
-    val eventIds: HexArray? = null,
-    val authorPublicKeys: HexArray? = null, // TODO: PublicKeyArray
-    val kinds: KindArray? = null, // TODO: KindArray
-    val tagName: String? = null,
-    val since: Instant? = null,
-    val until: Instant? = null,
-    val limit: Int? = null,
-    val search: String? = null,
+
+    val filters: FilterArray,
 
     override val nostrEventId: HexKey? = null,
     override val unsignedNostrEventId: Long? = null,
@@ -61,17 +57,11 @@ data class SynchronizeNostrEventRequest(
 
         other as SynchronizeNostrEventRequest
 
-        if (limit != other.limit) return false
         if (unsignedNostrEventId != other.unsignedNostrEventId) return false
         if (id != other.id) return false
         if (status != other.status) return false
         if (relayURL != other.relayURL) return false
-        if (!eventIds.contentEquals(other.eventIds)) return false
-        if (!authorPublicKeys.contentEquals(other.authorPublicKeys)) return false
-        if (!kinds.contentEquals(other.kinds)) return false
-        if (tagName != other.tagName) return false
-        if (since != other.since) return false
-        if (until != other.until) return false
+        if (!filters.contentEquals(other.filters)) return false
         if (nostrEventId != other.nostrEventId) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
@@ -80,20 +70,15 @@ data class SynchronizeNostrEventRequest(
     }
 
     override fun hashCode(): Int {
-        var result = limit?.hashCode() ?: 0
-        result = 31 * result + (unsignedNostrEventId?.hashCode() ?: 0)
+        var result = unsignedNostrEventId?.hashCode() ?: 0
         result = 31 * result + id.hashCode()
         result = 31 * result + status.hashCode()
         result = 31 * result + relayURL.hashCode()
-        result = 31 * result + (eventIds?.contentHashCode() ?: 0)
-        result = 31 * result + (authorPublicKeys?.contentHashCode() ?: 0)
-        result = 31 * result + (kinds?.contentHashCode() ?: 0)
-        result = 31 * result + (tagName?.hashCode() ?: 0)
-        result = 31 * result + (since?.hashCode() ?: 0)
-        result = 31 * result + (until?.hashCode() ?: 0)
+        result = 31 * result + filters.contentHashCode()
         result = 31 * result + (nostrEventId?.hashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
     }
+
 }

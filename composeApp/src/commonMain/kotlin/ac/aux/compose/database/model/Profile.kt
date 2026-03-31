@@ -26,6 +26,7 @@ import kotlin.time.Instant
         Index("nostrEventId"),
     ],
 )
+
 data class Profile(
     @PrimaryKey
     val publicKey: String,

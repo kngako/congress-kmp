@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "40dc44925e9b6000404e2cc5e781e4c2",
+    "identityHash": "ba8dabe94c38a3823b4803dc0a6051ca",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -873,7 +873,7 @@
       },
       {
         "tableName": "SynchronizeNostrEventRequest",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `eventIds` TEXT, `authorPublicKeys` TEXT, `kinds` TEXT, `tagName` TEXT, `since` INTEGER, `until` INTEGER, `limit` INTEGER, `search` TEXT, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `filters` TEXT NOT NULL, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -894,44 +894,10 @@
             "notNull": true
           },
           {
-            "fieldPath": "eventIds",
-            "columnName": "eventIds",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "authorPublicKeys",
-            "columnName": "authorPublicKeys",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "kinds",
-            "columnName": "kinds",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "tagName",
-            "columnName": "tagName",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "since",
-            "columnName": "since",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "until",
-            "columnName": "until",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "limit",
-            "columnName": "limit",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "search",
-            "columnName": "search",
-            "affinity": "TEXT"
+            "fieldPath": "filters",
+            "columnName": "filters",
+            "affinity": "TEXT",
+            "notNull": true
           },
           {
             "fieldPath": "nostrEventId",
@@ -1340,7 +1306,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40dc44925e9b6000404e2cc5e781e4c2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ba8dabe94c38a3823b4803dc0a6051ca')"
     ]
   }
 }

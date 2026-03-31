@@ -14,6 +14,7 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
 
@@ -109,8 +110,12 @@ abstract class NostrDao(
                     logger.i("Sync Profile with PubKey: ${nostrEvent.pubKey}")
                     database.synchronizeNostrEventRequestDao().upsert(
                         SynchronizeNostrEventRequest(
-                            authorPublicKeys = arrayOf(nostrEvent.pubKey),
-                            kinds = arrayOf(0),
+                            filters = arrayOf(
+                                Filter(
+                                    authors = listOf(nostrEvent.pubKey),
+                                    kinds = listOf(MetadataEvent.KIND)
+                                )
+                            ),
                             relayURL = synchronizationRelayURL
                         )
                     )
@@ -150,7 +155,11 @@ abstract class NostrDao(
                     synchronizationRelayURLs.forEach { synchronizationRelayURL ->
                         database.synchronizeNostrEventRequestDao().upsert(
                             SynchronizeNostrEventRequest(
-                                eventIds = arrayOf(post.replyToId),
+                                filters = arrayOf(
+                                    Filter(
+                                        ids = listOf(post.replyToId)
+                                    )
+                                ),
                                 relayURL = synchronizationRelayURL
                             )
                         )
@@ -175,7 +184,11 @@ abstract class NostrDao(
                     synchronizationRelayURLs.forEach { synchronizationRelayURL ->
                         database.synchronizeNostrEventRequestDao().upsert(
                             SynchronizeNostrEventRequest(
-                                eventIds = arrayOf(post.repostId),
+                                filters = arrayOf(
+                                    Filter(
+                                        ids = listOf(post.repostId)
+                                    )
+                                ),
                                 relayURL = synchronizationRelayURL
                             )
                         )

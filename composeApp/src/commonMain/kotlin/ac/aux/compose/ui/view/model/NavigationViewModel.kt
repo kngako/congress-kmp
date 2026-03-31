@@ -147,17 +147,7 @@ class NavigationViewModel(
                         logger.i("synchronizeNostrEventRequest: $synchronizeNostrEventRequest")
                         val reqCommand = ReqCmd(
                             subId = synchronizeNostrEventRequest.id,
-                            filters = listOf(
-                                Filter(
-                                    ids = synchronizeNostrEventRequest.eventIds?.map { eventId -> eventId },
-                                    authors = synchronizeNostrEventRequest.authorPublicKeys?.map { authorPublicKey -> authorPublicKey },
-                                    kinds = synchronizeNostrEventRequest.kinds?.map { kind -> kind },
-                                    since = synchronizeNostrEventRequest.since?.epochSeconds,
-                                    until = synchronizeNostrEventRequest.until?.epochSeconds,
-                                    limit = synchronizeNostrEventRequest.limit,
-                                    search = synchronizeNostrEventRequest.search
-                                )
-                            )
+                            filters = synchronizeNostrEventRequest.filters.toList()
                         )
 
                         scope.launch {
