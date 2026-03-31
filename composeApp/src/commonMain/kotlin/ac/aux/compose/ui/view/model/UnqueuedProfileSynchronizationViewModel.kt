@@ -1,10 +1,9 @@
 package ac.aux.compose.ui.view.model
 
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
+import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
-import ac.aux.compose.ui.view.state.SignInToProfileUIState
-import ac.aux.compose.ui.view.state.form.SignInToProfileFormState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -15,10 +14,6 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
-import com.vitorpamplona.quartz.nip19Bech32.Nip19Parser
-import com.vitorpamplona.quartz.nip19Bech32.entities.Entity
-import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
-import com.vitorpamplona.quartz.nip19Bech32.entities.NSec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
@@ -60,10 +55,10 @@ class UnqueuedProfileSynchronizationViewModel(
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     SynchronizeNostrEventRequest(
-                        filters = arrayOf(
-                            Filter(
-                                authors = listOf(profilePublicKey),
-                                kinds = listOf(MetadataEvent.KIND)
+                        synchronizationFilters = arrayOf(
+                            SynchronizationFilter(
+                                authors = arrayOf(profilePublicKey),
+                                kinds = arrayOf(MetadataEvent.KIND)
                             )
                         ),
                         unsignedNostrEventId = unsignedNostrEventId,

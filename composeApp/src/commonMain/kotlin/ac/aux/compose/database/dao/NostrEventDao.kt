@@ -3,6 +3,7 @@ package ac.aux.compose.database.dao
 import ac.aux.compose.database.model.NostrEvent
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy.Companion.IGNORE
 import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -17,4 +18,9 @@ interface NostrEventDao {
 
     @Upsert
     suspend fun upsert(nostrEvent: NostrEvent)
+
+    @Insert(
+        onConflict = IGNORE
+    )
+    suspend fun insert(nostrEvent: NostrEvent)
 }

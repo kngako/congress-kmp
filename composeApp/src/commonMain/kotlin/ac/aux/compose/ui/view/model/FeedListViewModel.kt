@@ -1,6 +1,9 @@
 package ac.aux.compose.ui.view.model
 
+import ac.aux.compose.database.model.SynchronizeNostrEventRequest
+import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.FeedListUIState
 import androidx.compose.runtime.getValue
@@ -12,7 +15,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
-import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
@@ -36,17 +38,30 @@ class FeedListViewModel(
 
     fun loadNostrFeed() {
         viewModelScope.launch(Dispatchers.IO) {
-            Filter(
-                kinds = listOf(
-                    TextNoteEvent.KIND,
-                    RepostEvent.KIND,
-                    ReactionEvent.KIND,
-                    LnZapEvent.KIND,
-                ),
-                tags = mapOf(
-                    Pair("#p", listOf(SeedManager.activePublicKey().toHexKey()))
-                )
+            nostrRepository.queueSynchronizeNostrEvent(
+                Relays.eventPublishRelaySet.map { normalizedRelay ->
+                    SynchronizeNostrEventRequest(
+                        synchronizationFilters = arrayOf(
+                            SynchronizationFilter(
+                                kinds = arrayOf(
+                                    TextNoteEvent.KIND,
+                                    RepostEvent.KIND,
+                                    ReactionEvent.KIND,
+                                    LnZapEvent.KIND,
+                                ),
+                                tags = mapOf(
+                                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
+                                ),
+                                limit = 50
+                            )
+                        ),
+                        relayURL = normalizedRelay.url
+                    )
+                }
             )
+
+
+
             val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
 
             if (localProfile?.profile == null) {

@@ -6,16 +6,13 @@ import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
-import ac.aux.compose.database.model.SynchronizeNostrEventResult
 import ac.aux.compose.database.model.UnsignedNostrEvent
+import ac.aux.compose.database.model.types.SynchronizationFilter
 import androidx.room.Dao
-import androidx.room.Embedded
-import androidx.room.Relation
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
-import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
-import kotlinx.coroutines.delay
+import com.vitorpamplona.quartz.nip37Drafts.DraftWrapEvent
 import kotlin.time.Clock
 
 @Dao
@@ -96,7 +93,7 @@ abstract class NostrDao(
                 )
                 val placeHolderProfileNostrEvent = NostrEvent(
                     id = placeHolderProfile.publicKey,
-                    kind = 30024,
+                    kind = DraftWrapEvent.KIND,
                     pubKey = placeHolderProfile.publicKey,
                     content = placeHolderProfile.publicKey,
                     createdAt = Clock.System.now(),
@@ -110,10 +107,10 @@ abstract class NostrDao(
                     logger.i("Sync Profile with PubKey: ${nostrEvent.pubKey}")
                     database.synchronizeNostrEventRequestDao().upsert(
                         SynchronizeNostrEventRequest(
-                            filters = arrayOf(
-                                Filter(
-                                    authors = listOf(nostrEvent.pubKey),
-                                    kinds = listOf(MetadataEvent.KIND)
+                            synchronizationFilters = arrayOf(
+                                SynchronizationFilter(
+                                    authors = arrayOf(nostrEvent.pubKey),
+                                    kinds = arrayOf(MetadataEvent.KIND)
                                 )
                             ),
                             relayURL = synchronizationRelayURL
@@ -155,9 +152,9 @@ abstract class NostrDao(
                     synchronizationRelayURLs.forEach { synchronizationRelayURL ->
                         database.synchronizeNostrEventRequestDao().upsert(
                             SynchronizeNostrEventRequest(
-                                filters = arrayOf(
-                                    Filter(
-                                        ids = listOf(post.replyToId)
+                                synchronizationFilters = arrayOf(
+                                    SynchronizationFilter(
+                                        ids = arrayOf(post.replyToId)
                                     )
                                 ),
                                 relayURL = synchronizationRelayURL
@@ -184,9 +181,9 @@ abstract class NostrDao(
                     synchronizationRelayURLs.forEach { synchronizationRelayURL ->
                         database.synchronizeNostrEventRequestDao().upsert(
                             SynchronizeNostrEventRequest(
-                                filters = arrayOf(
-                                    Filter(
-                                        ids = listOf(post.repostId)
+                                synchronizationFilters = arrayOf(
+                                    SynchronizationFilter(
+                                        ids = arrayOf(post.repostId)
                                     )
                                 ),
                                 relayURL = synchronizationRelayURL
@@ -207,10 +204,67 @@ abstract class NostrDao(
         }
 
         nostrEvent.toRepost()?.let { repost ->
-            database.repostDao().upsert(repost)
+            // Find or create placeHolder note that is being reposted
+            val repostedPost = database.postDao().getPostById(repost.repostedPostId)
+
+            if (repostedPost == null) {
+                // Persist PlaceHolder and sync
+                database.postDao().insert(
+                    Post(
+                        id = repost.repostedPostId,
+                        nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                        content = repost.repostedPostId,
+                        profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                    )
+                )
+
+                // Request a sync for the post being replied to
+                synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                    database.synchronizeNostrEventRequestDao().upsert(
+                        SynchronizeNostrEventRequest(
+                            synchronizationFilters = arrayOf(
+                                SynchronizationFilter(
+                                    ids = arrayOf(repost.repostedPostId)
+                                )
+                            ),
+                            relayURL = synchronizationRelayURL
+                        )
+                    )
+                }
+            }
         }
 
         nostrEvent.toZap()?.let { zap ->
+            // Find or create placeHolder note that is being reposted
+            val zappedPost = database.postDao().getPostById(zap.postId)
+
+            if (zappedPost == null) {
+                // Persist PlaceHolder and sync
+                database.postDao().insert(
+                    Post(
+                        id = zap.postId,
+                        nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                        content = zap.postId,
+                        profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                    )
+                )
+
+                // Request a sync for the post being replied to
+                synchronizationRelayURLs.forEach { synchronizationRelayURL ->
+                    database.synchronizeNostrEventRequestDao().upsert(
+                        SynchronizeNostrEventRequest(
+                            synchronizationFilters = arrayOf(
+                                SynchronizationFilter(
+                                    ids = arrayOf(zap.postId)
+                                )
+                            ),
+                            relayURL = synchronizationRelayURL
+                        )
+                    )
+                }
+            }
+
+            // TODO: Placeholder for all the other things...
             database.zapDao().upsert(zap)
         }
     }

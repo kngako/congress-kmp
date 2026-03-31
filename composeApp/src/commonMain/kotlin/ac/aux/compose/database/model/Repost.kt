@@ -47,7 +47,7 @@ import kotlin.time.Instant
 data class Repost(
     @PrimaryKey
     val id: HexKey,
-    val repostedPostId: HexKey? = null,
+    val repostedPostId: HexKey,
     val content: String,
 
     override val nostrEventId: HexKey, // Might be a replaceable nostr event?

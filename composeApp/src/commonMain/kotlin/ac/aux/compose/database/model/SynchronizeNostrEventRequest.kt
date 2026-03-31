@@ -3,15 +3,12 @@ package ac.aux.compose.database.model
 import ac.aux.compose.database.model.traits.OptionalNostrEventEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import ac.aux.compose.database.model.traits.UnsignedNostrEventEntity
-import ac.aux.compose.database.model.typealiases.FilterArray
-import ac.aux.compose.database.model.typealiases.HexArray
-import ac.aux.compose.database.model.typealiases.KindArray
+import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
@@ -44,7 +41,7 @@ data class SynchronizeNostrEventRequest(
     val status: String = "pending",
     val relayURL: String,
 
-    val filters: FilterArray,
+    val synchronizationFilters: SynchronizationFilterArray,
 
     override val nostrEventId: HexKey? = null,
     override val unsignedNostrEventId: Long? = null,
@@ -61,7 +58,7 @@ data class SynchronizeNostrEventRequest(
         if (id != other.id) return false
         if (status != other.status) return false
         if (relayURL != other.relayURL) return false
-        if (!filters.contentEquals(other.filters)) return false
+        if (!synchronizationFilters.contentEquals(other.synchronizationFilters)) return false
         if (nostrEventId != other.nostrEventId) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
@@ -74,7 +71,7 @@ data class SynchronizeNostrEventRequest(
         result = 31 * result + id.hashCode()
         result = 31 * result + status.hashCode()
         result = 31 * result + relayURL.hashCode()
-        result = 31 * result + filters.contentHashCode()
+        result = 31 * result + synchronizationFilters.contentHashCode()
         result = 31 * result + (nostrEventId?.hashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()

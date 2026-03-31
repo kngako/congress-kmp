@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "ba8dabe94c38a3823b4803dc0a6051ca",
+    "identityHash": "0e3d4940d3b045a7e68c2f0b98642ab0",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -735,7 +735,7 @@
       },
       {
         "tableName": "Repost",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `repostedPostId` TEXT, `content` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `profilePublicKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`profilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`repostedPostId`) REFERENCES `Post`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `repostedPostId` TEXT NOT NULL, `content` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `profilePublicKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`profilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`repostedPostId`) REFERENCES `Post`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -746,7 +746,8 @@
           {
             "fieldPath": "repostedPostId",
             "columnName": "repostedPostId",
-            "affinity": "TEXT"
+            "affinity": "TEXT",
+            "notNull": true
           },
           {
             "fieldPath": "content",
@@ -873,7 +874,7 @@
       },
       {
         "tableName": "SynchronizeNostrEventRequest",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `filters` TEXT NOT NULL, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `status` TEXT NOT NULL, `relayURL` TEXT NOT NULL, `synchronizationFilters` TEXT NOT NULL, `nostrEventId` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -894,8 +895,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "filters",
-            "columnName": "filters",
+            "fieldPath": "synchronizationFilters",
+            "columnName": "synchronizationFilters",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1306,7 +1307,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ba8dabe94c38a3823b4803dc0a6051ca')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0e3d4940d3b045a7e68c2f0b98642ab0')"
     ]
   }
 }
