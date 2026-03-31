@@ -31,7 +31,6 @@ import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -42,7 +41,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vitorpamplona.quartz.nip01Core.core.Event
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,14 +185,12 @@ fun FeedScreen(
 
                         }
                         items(
-                            items = feedListUIState.nostrEvents,
-                            key = { e -> e.id }
-                        ) { nostrEvent ->
+                            items = feedListUIState.localNostrEvents,
+                            key = { localNostrEvent -> localNostrEvent.nostrEvent.id }
+                        ) { localNostrEvent ->
                             FeedListItem(
-                                nostrEvent = nostrEvent,
-                                onNavigateToEvent = {
-                                    onNavigateToEvent.invoke(nostrEvent)
-                                }
+                                localNostrEvent = localNostrEvent,
+                                onNavigateToEvent = onNavigateToEvent
                             )
                         }
                     }

@@ -44,7 +44,7 @@ abstract class NostrDao(
             )
             val placeHolderProfileNostrEvent = NostrEvent(
                 id = placeHolderProfile.publicKey,
-                kind = 30024,
+                kind = DraftWrapEvent.KIND,
                 pubKey = placeHolderProfile.publicKey,
                 content = placeHolderProfile.publicKey,
                 createdAt = Clock.System.now(),
@@ -81,44 +81,6 @@ abstract class NostrDao(
         synchronizationRelayURLs: List<String>
     ) {
         logger.i("Store Nostr Event: $nostrEvent")
-        if (nostrEvent.unsignedNostrEventId == null) {
-            logger.i("Store Nostr Event: $nostrEvent")
-            // Find or create profile with the pubKey... if not found submit a sync request...
-            val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
-
-            if (profile == null) {
-                val placeHolderProfile = Profile(
-                    publicKey = nostrEvent.pubKey,
-                    nostrEventId = nostrEvent.pubKey // This is illegal... because the nostrEventId should be the one with all the profile information
-                )
-                val placeHolderProfileNostrEvent = NostrEvent(
-                    id = placeHolderProfile.publicKey,
-                    kind = DraftWrapEvent.KIND,
-                    pubKey = placeHolderProfile.publicKey,
-                    content = placeHolderProfile.publicKey,
-                    createdAt = Clock.System.now(),
-                    sig = placeHolderProfile.publicKey,
-                    tags = emptyArray(),
-                )
-                database.nostrEventDao().upsert(placeHolderProfileNostrEvent)
-                database.profileDao().upsert(placeHolderProfile)
-
-                synchronizationRelayURLs.forEach { synchronizationRelayURL ->
-                    logger.i("Sync Profile with PubKey: ${nostrEvent.pubKey}")
-                    database.synchronizeNostrEventRequestDao().upsert(
-                        SynchronizeNostrEventRequest(
-                            synchronizationFilters = arrayOf(
-                                SynchronizationFilter(
-                                    authors = arrayOf(nostrEvent.pubKey),
-                                    kinds = arrayOf(MetadataEvent.KIND)
-                                )
-                            ),
-                            relayURL = synchronizationRelayURL
-                        )
-                    )
-                }
-            }
-        }
         database.nostrEventDao().upsert(nostrEvent)
 
         // Index nostrEvent
@@ -132,6 +94,34 @@ abstract class NostrDao(
         nostrEvent: NostrEvent,
         synchronizationRelayURLs: List<String>
     ) {
+        if (nostrEvent.unsignedNostrEventId == null) {
+            logger.i("Store Nostr Event: $nostrEvent")
+            // Find or create profile with the pubKey... if not found submit a sync request...
+            val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
+
+            if (profile == null) {
+                val placeHolderProfile = Profile(
+                    publicKey = nostrEvent.pubKey,
+                    nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                )
+                database.profileDao().insertPlaceholderProfile(placeHolderProfile)
+
+                database.synchronizeNostrEventRequestDao().insert(
+                    synchronizationRelayURLs.map { synchronizationRelayURL ->
+                        SynchronizeNostrEventRequest(
+                            synchronizationFilters = arrayOf(
+                                SynchronizationFilter(
+                                    authors = arrayOf(nostrEvent.pubKey),
+                                    kinds = arrayOf(MetadataEvent.KIND)
+                                )
+                            ),
+                            relayURL = synchronizationRelayURL
+                        )
+                    }
+                )
+            }
+        }
+
         nostrEvent.toPost()?.let { post ->
             if (post.replyToId != null) {
                 // Find or create placeHolder note that is replyTo
@@ -149,8 +139,8 @@ abstract class NostrDao(
                     )
 
                     // Request a sync for the post being replied to
-                    synchronizationRelayURLs.forEach { synchronizationRelayURL ->
-                        database.synchronizeNostrEventRequestDao().upsert(
+                    database.synchronizeNostrEventRequestDao().insert(
+                        synchronizationRelayURLs.map { synchronizationRelayURL ->
                             SynchronizeNostrEventRequest(
                                 synchronizationFilters = arrayOf(
                                     SynchronizationFilter(
@@ -159,8 +149,8 @@ abstract class NostrDao(
                                 ),
                                 relayURL = synchronizationRelayURL
                             )
-                        )
-                    }
+                        }
+                    )
                 }
             }
 
@@ -178,8 +168,8 @@ abstract class NostrDao(
                         )
                     )
                     // Request a sync for the post being reposted
-                    synchronizationRelayURLs.forEach { synchronizationRelayURL ->
-                        database.synchronizeNostrEventRequestDao().upsert(
+                    database.synchronizeNostrEventRequestDao().insert(
+                        synchronizationRelayURLs.map { synchronizationRelayURL ->
                             SynchronizeNostrEventRequest(
                                 synchronizationFilters = arrayOf(
                                     SynchronizationFilter(
@@ -188,11 +178,11 @@ abstract class NostrDao(
                                 ),
                                 relayURL = synchronizationRelayURL
                             )
-                        )
-                    }
+                        }
+                    )
                 }
             }
-            database.postDao().insert(post)
+            database.postDao().upsert(post)
         }
 
         nostrEvent.toProfile()?.let { profile ->
@@ -219,8 +209,8 @@ abstract class NostrDao(
                 )
 
                 // Request a sync for the post being replied to
-                synchronizationRelayURLs.forEach { synchronizationRelayURL ->
-                    database.synchronizeNostrEventRequestDao().upsert(
+                database.synchronizeNostrEventRequestDao().insert(
+                    synchronizationRelayURLs.map { synchronizationRelayURL ->
                         SynchronizeNostrEventRequest(
                             synchronizationFilters = arrayOf(
                                 SynchronizationFilter(
@@ -229,8 +219,35 @@ abstract class NostrDao(
                             ),
                             relayURL = synchronizationRelayURL
                         )
+                    }
+                )
+            }
+
+            val repostedPostProfile = database.profileDao().getProfileByPublicKey(repost.repostedPostAuthorPublicKey)
+
+            if (repostedPostProfile == null) {
+                // Persist PlaceHolder and sync
+                database.profileDao().insertPlaceholderProfile(
+                    Profile(
+                        publicKey = nostrEvent.pubKey,
+                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
-                }
+                )
+
+                // Request a sync for the post being replied to
+                database.synchronizeNostrEventRequestDao().insert(
+                    synchronizationRelayURLs.map { synchronizationRelayURL ->
+                        SynchronizeNostrEventRequest(
+                            synchronizationFilters = arrayOf(
+                                SynchronizationFilter(
+                                    authors = arrayOf(nostrEvent.pubKey),
+                                    kinds = arrayOf(MetadataEvent.KIND)
+                                )
+                            ),
+                            relayURL = synchronizationRelayURL
+                        )
+                    }
+                )
             }
         }
 
@@ -250,8 +267,8 @@ abstract class NostrDao(
                 )
 
                 // Request a sync for the post being replied to
-                synchronizationRelayURLs.forEach { synchronizationRelayURL ->
-                    database.synchronizeNostrEventRequestDao().upsert(
+                database.synchronizeNostrEventRequestDao().insert(
+                    synchronizationRelayURLs.map { synchronizationRelayURL ->
                         SynchronizeNostrEventRequest(
                             synchronizationFilters = arrayOf(
                                 SynchronizationFilter(
@@ -260,8 +277,8 @@ abstract class NostrDao(
                             ),
                             relayURL = synchronizationRelayURL
                         )
-                    )
-                }
+                    }
+                )
             }
 
             // TODO: Placeholder for all the other things...

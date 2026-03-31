@@ -8,6 +8,7 @@ import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Relation
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -20,4 +21,7 @@ interface PostDao {
 
     @Insert
     suspend fun insert(post: Post)
+
+    @Upsert
+    suspend fun upsert(post: Post)
 }

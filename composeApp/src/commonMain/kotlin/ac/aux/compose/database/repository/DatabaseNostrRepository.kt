@@ -8,25 +8,26 @@ import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
+import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
-import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent.Companion.ALT
 import com.vitorpamplona.quartz.nip02FollowList.RelaySet
 import com.vitorpamplona.quartz.nip02FollowList.tags.ContactTag
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.IndexerRelayListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
+import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -296,8 +297,14 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun loadNostrFeed(): List<NostrEvent> {
-        return database.nostrEventDao().getAllNostrEvents()
+    override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
+        return database.nostrEventDao().observeNostrEvents(
+            kinds = arrayOf(
+                TextNoteEvent.KIND,
+                RepostEvent.KIND,
+                LnZapEvent.KIND
+            )
+        )
     }
 
 }

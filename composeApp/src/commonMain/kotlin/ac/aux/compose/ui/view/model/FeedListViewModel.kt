@@ -38,6 +38,30 @@ class FeedListViewModel(
 
     fun loadNostrFeed() {
         viewModelScope.launch(Dispatchers.IO) {
+            // Sync Feed
+//            nostrRepository.queueSynchronizeNostrEvent(
+//                Relays.eventPublishRelaySet.map { normalizedRelay ->
+//                    SynchronizeNostrEventRequest(
+//                        synchronizationFilters = arrayOf(
+//                            SynchronizationFilter(
+//                                kinds = arrayOf(
+//                                    TextNoteEvent.KIND,
+//                                    RepostEvent.KIND,
+//                                    ReactionEvent.KIND,
+//                                    LnZapEvent.KIND,
+//                                ),
+//                                tags = mapOf(
+//                                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
+//                                ),
+//                                limit = 50
+//                            )
+//                        ),
+//                        relayURL = normalizedRelay.url
+//                    )
+//                }
+//            )
+
+            // Sync Notifications
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelay ->
                     SynchronizeNostrEventRequest(
@@ -67,11 +91,11 @@ class FeedListViewModel(
             if (localProfile?.profile == null) {
                 feedListUIState = FeedListUIState.Error
             } else {
-                val nostrFeed = nostrRepository.loadNostrFeed()
-
-                feedListUIState = FeedListUIState.Loaded(
-                    nostrEvents = nostrFeed
-                )
+                nostrRepository.observeNostrFeed().collect { localNostrEvents ->
+                    feedListUIState = FeedListUIState.Loaded(
+                        localNostrEvents = localNostrEvents
+                    )
+                }
             }
         }
     }

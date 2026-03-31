@@ -6,7 +6,6 @@ import ac.aux.compose.database.model.traits.SoftDeletableEntity
 import ac.aux.compose.database.model.traits.TimestampedEntity
 import ac.aux.compose.database.model.traits.UnsignedNostrEventEntity
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -197,18 +196,23 @@ data class NostrEvent(
                 sig = sig
             )
 
-            return repostEvent.boostedEventId()?.let { repostedPostId ->
+            return repostEvent.containedPost()?.let { containedPost ->
                 Repost(
                     id = repostEvent.id,
-                    repostedPostId = repostedPostId,
+                    repostedPostId = containedPost.id,
+                    repostedPostTags = containedPost.tags,
+                    repostedPostContent = containedPost.content,
+                    repostedPostCreatedAt = Instant.fromEpochSeconds(containedPost.createdAt),
                     content = repostEvent.content,
 
                     nostrEventId = id,
                     profilePublicKey = repostEvent.pubKey,
+                    repostedPostAuthorPublicKey = containedPost.pubKey,
 
                     createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
                     updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
                 )
+
             }
         }
 

@@ -7,6 +7,7 @@ import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
+import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
@@ -64,7 +65,7 @@ interface NostrRepository {
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     )
 
-    suspend fun loadNostrFeed(): List<NostrEvent>
+    suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
@@ -142,7 +143,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun loadNostrFeed(): List<NostrEvent> {
+            override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
                 TODO("Not yet implemented")
             }
         }
