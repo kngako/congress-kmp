@@ -9,6 +9,8 @@ import kotlinx.coroutines.IO
 
 expect object PlatformDatabaseBuilder {
     fun getDatabaseBuilder(platformContext: PlatformContext): RoomDatabase.Builder<AuxDatabase>
+
+    fun getInMemoryDatabaseBuilder(platform: PlatformContext): RoomDatabase.Builder<AuxDatabase>
 }
 
 fun getRoomDatabase(

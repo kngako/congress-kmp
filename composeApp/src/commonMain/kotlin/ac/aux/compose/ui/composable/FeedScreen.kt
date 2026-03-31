@@ -127,7 +127,6 @@ fun FeedScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         stickyHeader {
-
                             Surface() {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(10.dp)

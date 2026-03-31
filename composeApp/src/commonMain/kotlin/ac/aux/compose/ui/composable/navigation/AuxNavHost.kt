@@ -68,6 +68,9 @@ fun AuxNavHost(
     val nostrRepository = DatabaseNostrRepository(
         database = databaseManager.auxDatabase
     )
+    val inMemoryNostrRepository = DatabaseNostrRepository(
+        database = databaseManager.inMemoryAuxDatabase
+    )
 
     val exceptionHandler =
         CoroutineExceptionHandler { _, throwable ->

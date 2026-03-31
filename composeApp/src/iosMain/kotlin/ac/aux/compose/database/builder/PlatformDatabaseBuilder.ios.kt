@@ -29,4 +29,8 @@ actual object PlatformDatabaseBuilder {
         return requireNotNull(documentDirectory?.path)
     }
 
+    actual fun getInMemoryDatabaseBuilder(platform: PlatformContext): RoomDatabase.Builder<AuxDatabase> {
+        return Room.inMemoryDatabaseBuilder()
+    }
+
 }

@@ -13,4 +13,8 @@ actual object PlatformDatabaseBuilder {
             name = dbFile.absolutePath,
         )
     }
+
+    actual fun getInMemoryDatabaseBuilder(platform: PlatformContext): RoomDatabase.Builder<AuxDatabase> {
+        return Room.inMemoryDatabaseBuilder()
+    }
 }
