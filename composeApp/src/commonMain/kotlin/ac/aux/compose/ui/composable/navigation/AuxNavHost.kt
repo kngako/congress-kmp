@@ -339,6 +339,16 @@ fun AuxNavHost(
                 initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
                 nostrEventId = route.nostrEventId,
                 nostrRepository = nostrRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToWriteAReply = { nostrEventId ->
+                    navController.navigate(
+                        route = WriteNewNoteRoute(
+                            inReplyToEventId = nostrEventId
+                        )
+                    )
+                }
             )
         }
         composable<ImplementationPendingRoute> { backStackEntry ->
