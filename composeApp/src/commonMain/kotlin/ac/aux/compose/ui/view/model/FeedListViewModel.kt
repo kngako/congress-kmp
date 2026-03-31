@@ -38,30 +38,7 @@ class FeedListViewModel(
 
     fun loadNostrFeed() {
         viewModelScope.launch(Dispatchers.IO) {
-            // Sync Feed
-//            nostrRepository.queueSynchronizeNostrEvent(
-//                Relays.eventPublishRelaySet.map { normalizedRelay ->
-//                    SynchronizeNostrEventRequest(
-//                        synchronizationFilters = arrayOf(
-//                            SynchronizationFilter(
-//                                kinds = arrayOf(
-//                                    TextNoteEvent.KIND,
-//                                    RepostEvent.KIND,
-//                                    ReactionEvent.KIND,
-//                                    LnZapEvent.KIND,
-//                                ),
-//                                tags = mapOf(
-//                                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
-//                                ),
-//                                limit = 50
-//                            )
-//                        ),
-//                        relayURL = normalizedRelay.url
-//                    )
-//                }
-//            )
-
-            // Sync Notifications
+            // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelay ->
                     SynchronizeNostrEventRequest(
@@ -84,7 +61,7 @@ class FeedListViewModel(
                 }
             )
 
-
+            // Get contact list and sync feed...
 
             val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
 

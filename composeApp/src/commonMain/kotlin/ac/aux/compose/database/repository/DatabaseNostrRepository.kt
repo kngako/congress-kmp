@@ -1,6 +1,7 @@
 package ac.aux.compose.database.repository
 
 import ac.aux.compose.database.AuxDatabase
+import ac.aux.compose.database.GENESIS_AT
 import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
@@ -77,7 +78,7 @@ class DatabaseNostrRepository(
 
         val signedAt = if (name == null && biography == null) {
             // We are most likely try to sign in to an already existing block...
-            Instant.fromEpochMilliseconds(1231006505000L)
+            GENESIS_AT
         } else {
             null
         }
@@ -275,7 +276,6 @@ class DatabaseNostrRepository(
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>
     ) {
-
         database.nostrDao().storeNostrEvent(
             nostrEvent,
             synchronizationRelayURLs = synchronizationRelayURLs
@@ -303,7 +303,6 @@ class DatabaseNostrRepository(
 
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(
-                MetadataEvent.KIND,
                 TextNoteEvent.KIND,
                 RepostEvent.KIND,
                 LnZapEvent.KIND

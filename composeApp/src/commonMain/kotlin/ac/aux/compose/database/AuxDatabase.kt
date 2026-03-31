@@ -29,6 +29,9 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
+import kotlin.time.Instant
+
+val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
 
 @Database(
     entities = [
