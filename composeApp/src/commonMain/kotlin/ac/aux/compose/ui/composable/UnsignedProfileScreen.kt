@@ -45,18 +45,7 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun UnsignedProfileScreen(
-    unsignedNostrEvent: UnsignedNostrEvent
-) {
-    val metadataEvent = MetadataEvent(
-        id = unsignedNostrEvent.id.toString(),
-        pubKey = unsignedNostrEvent.pubKey,
-        createdAt = unsignedNostrEvent.createdAt.epochSeconds,
-        tags = unsignedNostrEvent.tags,
-        content = unsignedNostrEvent.content,
-        sig = ""
-    )
-
+fun UnsignedProfileScreen() {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
@@ -80,7 +69,7 @@ fun UnsignedProfileScreen(
                 )
 
                 Text(
-                    text = "As long as you control your keys there can be no dispute about who ${metadataEvent.contactMetaData()?.displayName ?: "YOU"} actually is.",
+                    text = "As long as you control your keys there can be no dispute about who YOU actually is.",
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -104,14 +93,7 @@ private fun UnsignedProfileScreenPreview() {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            UnsignedProfileScreen(
-                unsignedNostrEvent = UnsignedNostrEvent(
-                    pubKey = "",
-                    kind = 0,
-                    content = "Something here",
-                    tags = emptyArray(),
-                )
-            )
+            UnsignedProfileScreen()
         }
     }
 }

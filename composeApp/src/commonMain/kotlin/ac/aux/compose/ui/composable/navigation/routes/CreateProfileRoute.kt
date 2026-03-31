@@ -9,16 +9,4 @@ import kotlin.time.Clock
 data class CreateProfileRoute(
     val nostrEventId: String? = null,
 ): Route() {
-
-    fun toPlaceholderNostrEvent(): NostrEvent? = nostrEventId?.let {
-        NostrEvent(
-            id = nostrEventId,
-            pubKey = "",
-            createdAt = Clock.System.now(),
-            tags = emptyArray(),
-            kind = 0,
-            sig = "",
-            content = ""
-        )
-    }
 }

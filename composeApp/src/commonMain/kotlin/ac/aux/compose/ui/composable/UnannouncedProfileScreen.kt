@@ -43,9 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun UnannouncedProfileScreen(
-    nostrEvent: NostrEvent,
-) {
+fun UnannouncedProfileScreen() {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
@@ -99,16 +97,7 @@ private fun UnannouncedProfileScreenPreview() {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            UnannouncedProfileScreen(
-                nostrEvent = NostrEvent(
-                            id = "",
-                            pubKey = "",
-                            kind = 0,
-                            content = "Something here",
-                            tags = emptyArray(),
-                            sig = ""
-                        ),
-            )
+            UnannouncedProfileScreen()
         }
     }
 }

@@ -8,6 +8,8 @@ import ac.aux.compose.ui.composable.FeedScreen
 import ac.aux.compose.ui.composable.ImplementationPendingScreen
 import ac.aux.compose.ui.composable.LandingScreen
 import ac.aux.compose.ui.composable.LoadingScreen
+import ac.aux.compose.ui.composable.NostrEventDetailScreen
+import ac.aux.compose.ui.composable.SearchScreen
 import ac.aux.compose.ui.composable.SignInToProfileScreen
 import ac.aux.compose.ui.composable.SocialPreconditionScreen
 import ac.aux.compose.ui.composable.UnannouncedProfileScreen
@@ -23,6 +25,8 @@ import ac.aux.compose.ui.composable.navigation.routes.FeedRoute
 import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LandingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LoadingRoute
+import ac.aux.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import ac.aux.compose.ui.composable.navigation.routes.SearchRoute
 import ac.aux.compose.ui.composable.navigation.routes.SignInRoute
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -245,9 +249,7 @@ fun AuxNavHost(
         composable<UnsignedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnsignedProfileRoute>()
 
-            UnsignedProfileScreen(
-                unsignedNostrEvent = route.toPlaceholderUnsignedNostrEvent()
-            )
+            UnsignedProfileScreen()
         }
         composable<UnsyncedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
@@ -272,9 +274,7 @@ fun AuxNavHost(
         composable<UnannouncedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<UnannouncedProfileRoute>()
 
-            UnannouncedProfileScreen(
-                nostrEvent = route.toPlaceholderNostrEvent()
-            )
+            UnannouncedProfileScreen()
         }
         composable<SocialPreconditionRoute> {
             SocialPreconditionScreen(
@@ -319,8 +319,17 @@ fun AuxNavHost(
                 color = Color.Black
             ) {
 
-
             }
+        }
+        composable<SearchRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SearchRoute>()
+
+            SearchScreen()
+        }
+        composable<NostrEventDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<NostrEventDetailRoute>()
+
+            NostrEventDetailScreen()
         }
         composable<ImplementationPendingRoute> { backStackEntry ->
             val route: ImplementationPendingRoute = backStackEntry.toRoute()
