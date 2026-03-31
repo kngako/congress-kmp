@@ -9,10 +9,11 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 @Dao
 interface NostrEventDao {
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY createdAt DESC")
     fun  observeNostrEvents(kinds: Array<Kind>): Flow<List<LocalNostrEvent>>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")

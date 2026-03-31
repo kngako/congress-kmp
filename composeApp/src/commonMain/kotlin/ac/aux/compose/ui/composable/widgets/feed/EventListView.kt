@@ -18,7 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -100,12 +102,15 @@ fun LocalNostrEvent.ListView(
             TextNoteFeedItem(
                 nostrEvent = nostrEvent,
                 profile = profile,
+                taggedAuthor = taggedAuthor,
+                taggedNostrEvent = taggedNostrEvent,
                 onNavigateToEvent = onNavigateToEvent
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TextNoteFeedItem(
     nostrEvent: NostrEvent,
@@ -115,9 +120,16 @@ private fun TextNoteFeedItem(
     onNavigateToEvent: (HexKey) -> Unit
 ) {
     if (nostrEvent.kind == 1 && taggedNostrEvent != null) {
-        Row {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(
+                horizontal = 20.dp
+            ),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                "In reply to"
+                "In reply to ",
+                style = MaterialTheme.typography.labelSmall
             )
 
             Text(
@@ -126,6 +138,7 @@ private fun TextNoteFeedItem(
                         onNavigateToEvent.invoke(taggedNostrEvent.id)
                     }
                 ),
+                style = MaterialTheme.typography.labelLargeEmphasized,
                 text = taggedAuthor?.displayName ?: taggedAuthor?.userName ?: "loading information..."
             )
         }

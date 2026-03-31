@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
@@ -298,8 +299,11 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
+        val thirtySecondsAgo = Clock.System.now().minus(30.seconds)
+
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(
+                MetadataEvent.KIND,
                 TextNoteEvent.KIND,
                 RepostEvent.KIND,
                 LnZapEvent.KIND
