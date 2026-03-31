@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import kotlin.time.Instant
 
 @Composable
 fun LocalNostrEvent.ListView(
@@ -57,21 +58,43 @@ fun LocalNostrEvent.ListView(
                         style = MaterialTheme.typography.labelSmall)
                 }
 
-                if (repost != null) {
-                    RepostFeedItem(
-                        repost,
-                        this@ListView,
+                if (taggedNostrEvent != null) {
+                    TextNoteFeedItem(
+                        nostrEvent = taggedNostrEvent,
+                        profile = taggedAuthor,
                         onNavigateToEvent = onNavigateToEvent
                     )
                 } else {
-                    Text("Missing note")
+
+                    val containedPost = RepostEvent(
+                        id = nostrEvent.id,
+                        pubKey = nostrEvent.pubKey,
+                        createdAt = nostrEvent.createdAt.epochSeconds,
+                        content = nostrEvent.content,
+                        sig = nostrEvent.sig,
+                        tags = nostrEvent.tags
+                    ).containedPost()
+
+                    if (containedPost != null) {
+                        Text("Loading author information...")
+                        Text(
+                            containedPost.content
+                        )
+                        Text(
+                            text = Instant.fromEpochSeconds(containedPost.createdAt).toFormattedTimeAndDateString()
+                        )
+                    } else {
+                        Text("Malformed Note")
+                    }
+
                 }
             }
         }
         // TODO: Support other kinds...
         else -> {
             TextNoteFeedItem(
-                this,
+                nostrEvent = nostrEvent,
+                profile = profile,
                 onNavigateToEvent = onNavigateToEvent
             )
         }
@@ -80,7 +103,8 @@ fun LocalNostrEvent.ListView(
 
 @Composable
 private fun TextNoteFeedItem(
-    localNostrEvent: LocalNostrEvent,
+    nostrEvent: NostrEvent,
+    profile: Profile?,
     onNavigateToEvent: (NostrEvent) -> Unit
 ) {
     ElevatedCard(
@@ -88,7 +112,7 @@ private fun TextNoteFeedItem(
             horizontal = 10.dp
         ),
         onClick = {
-            onNavigateToEvent.invoke(localNostrEvent.nostrEvent)
+            onNavigateToEvent.invoke(nostrEvent)
         }
     ) {
         Column(
@@ -107,12 +131,12 @@ private fun TextNoteFeedItem(
                 )
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = localNostrEvent.profile.displayName ?: localNostrEvent.profile.userName ?: localNostrEvent.profile.publicKey,
+                    text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
             Text(
-                text = localNostrEvent.nostrEvent.content,
+                text = nostrEvent.content,
             )
 
             LazyRow(
@@ -126,7 +150,7 @@ private fun TextNoteFeedItem(
                     AssistChip(
                         label = {
                             Text(
-                                text = localNostrEvent.nostrEvent.kind.toString() // TODO: Kind by name...
+                                text = nostrEvent.kind.toString() // TODO: Kind by name...
                             )
                         },
                         onClick = {
@@ -136,7 +160,7 @@ private fun TextNoteFeedItem(
 
                 }
                 items(
-                    items = localNostrEvent.nostrEvent.tags,
+                    items = nostrEvent.tags,
                 ) { tag ->
                     SuggestionChip(
                         label = {
@@ -152,7 +176,7 @@ private fun TextNoteFeedItem(
             }
 
             Text(
-                text = localNostrEvent.nostrEvent.createdAt.toFormattedTimeAndDateString()
+                text = nostrEvent.createdAt.toFormattedTimeAndDateString()
             )
         }
     }

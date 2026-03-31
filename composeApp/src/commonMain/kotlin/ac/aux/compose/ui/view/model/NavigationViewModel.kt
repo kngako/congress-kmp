@@ -17,6 +17,8 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
+import com.vitorpamplona.quartz.nip01Core.tags.people.firstTaggedUser
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
 import com.vitorpamplona.quartz.utils.text
 import io.ktor.client.HttpClient
@@ -197,6 +199,9 @@ class NavigationViewModel(
 
                                                                     // TODO: Do profile specific cache (to avoid wiping an updated profile)
                                                                     syncEventCache.getOrPut(event.id, {
+                                                                        val taggedEvent = event.firstTaggedEvent()
+                                                                        val taggedUser = event.firstTaggedUser()
+
                                                                         val nostrEvent = NostrEvent(
                                                                             id = event.id,
                                                                             pubKey = event.pubKey,
@@ -205,7 +210,13 @@ class NavigationViewModel(
                                                                             tags = event.tags,
                                                                             createdAt = Instant.fromEpochSeconds(event.createdAt),
                                                                             unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
-                                                                            sig = event.sig
+                                                                            sig = event.sig,
+
+                                                                            taggedNostrEventId = taggedEvent?.eventId,
+                                                                            taggedNostrEventRelayUrl = taggedEvent?.relay?.url,
+
+                                                                            taggedPublicKey = taggedUser?.pubKey,
+                                                                            taggedPublicKeyRelayUrl = taggedUser?.relayHint?.url
                                                                         )
 
                                                                         nostrRepository.saveNostrEvent(

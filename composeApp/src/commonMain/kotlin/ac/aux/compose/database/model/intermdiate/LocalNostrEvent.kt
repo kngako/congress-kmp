@@ -21,4 +21,16 @@ data class LocalNostrEvent(
         entityColumn = "nostrEventId"
     )
     val repost: Repost? = null,
+
+    @Relation(
+        parentColumn = "taggedNostrEventId",
+        entityColumn = "id"
+    )
+    val taggedNostrEvent: NostrEvent? = null,
+
+    @Relation(
+        parentColumn = "taggedPublicKey",
+        entityColumn = "publicKey"
+    )
+    val taggedAuthor: Profile? = null,
 )

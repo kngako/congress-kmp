@@ -38,6 +38,12 @@ data class NostrEvent(
     val content: String,
     val sig: HexKey,
 
+    val taggedNostrEventId: HexKey? = null,
+    val taggedNostrEventRelayUrl: String? = null,
+
+    val taggedPublicKey: HexKey? = null,
+    val taggedPublicKeyRelayUrl: String? = null,
+
     override val unsignedNostrEventId: Long? = null,
 
     override val createdAt: Instant = Clock.System.now(),
