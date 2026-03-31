@@ -7,6 +7,6 @@ import kotlin.time.Clock
 
 @Serializable
 data class NostrEventDetailRoute(
-    val nostrEventId: String? = null,
+    val nostrEventId: String,
 ): Route() {
 }

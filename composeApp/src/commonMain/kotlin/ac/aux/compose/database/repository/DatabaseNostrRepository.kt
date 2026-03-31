@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
@@ -306,6 +305,10 @@ class DatabaseNostrRepository(
                 LnZapEvent.KIND
             )
         )
+    }
+
+    override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?> {
+        return database.nostrEventDao().observeNostrEventById(nostrEventId)
     }
 
 }

@@ -20,7 +20,7 @@ interface NostrEventDao {
     fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
-    fun observeNostrEventById(id: String): Flow<NostrEvent?>
+    fun observeNostrEventById(id: String): Flow<LocalNostrEvent?>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
     fun getNostrEventById(id: String): NostrEvent?

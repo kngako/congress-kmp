@@ -44,6 +44,7 @@ import ac.aux.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.aux.compose.ui.view.model.NavigationViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
 import ac.aux.compose.ui.view.state.NavigationUIState
+import ac.aux.compose.ui.view.state.NostrEventDetailUIState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
@@ -334,7 +335,11 @@ fun AuxNavHost(
         composable<NostrEventDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<NostrEventDetailRoute>()
 
-            NostrEventDetailScreen()
+            NostrEventDetailScreen(
+                initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
+                nostrEventId = route.nostrEventId,
+                nostrRepository = nostrRepository,
+            )
         }
         composable<ImplementationPendingRoute> { backStackEntry ->
             val route: ImplementationPendingRoute = backStackEntry.toRoute()
