@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -31,6 +32,7 @@ import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -49,6 +51,7 @@ fun FeedScreen(
     initialFeedListUIState: FeedListUIState,
     onNavigateToEvent: (HexKey) -> Unit,
     onNavigateToWriteNewNote: () -> Unit,
+    onNavigateToSearch: () -> Unit,
     nostrRepository: NostrRepository,
 ) {
     val feedListViewModel: FeedListViewModel = viewModel(
@@ -58,14 +61,10 @@ fun FeedScreen(
         ),
     )
 
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
-
     Scaffold(
-        modifier = Modifier.nestedScroll(
-            scrollBehavior.nestedScrollConnection
-        ),
+        modifier = Modifier,
         topBar = {
-            MediumTopAppBar(
+            TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.primary
@@ -87,7 +86,18 @@ fun FeedScreen(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior
+                actions = {
+                    IconButton(
+                        onClick = {
+                            onNavigateToSearch.invoke()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    }
+                }
             )
 
         },
@@ -211,6 +221,7 @@ private fun FeedScreenPreview() {
                 initialFeedListUIState = FeedListUIState.Loaded(emptyList()),
                 onNavigateToEvent = {},
                 onNavigateToWriteNewNote = {},
+                onNavigateToSearch = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

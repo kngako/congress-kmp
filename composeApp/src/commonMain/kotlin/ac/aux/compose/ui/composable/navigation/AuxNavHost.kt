@@ -300,14 +300,19 @@ fun AuxNavHost(
                 initialFeedListUIState = FeedListUIState.Loading,
                 onNavigateToEvent = { nostrEventId ->
                     navController.navigate(
-                        route = ImplementationPendingRoute(
-                            nostrEventId
+                        route = NostrEventDetailRoute(
+                            nostrEventId = nostrEventId
                         )
                     )
                 },
                 onNavigateToWriteNewNote = {
                     navController.navigate(
                         route = WriteNewNoteRoute()
+                    )
+                },
+                onNavigateToSearch = {
+                    navController.navigate(
+                        route = SearchRoute
                     )
                 },
                 nostrRepository = nostrRepository
