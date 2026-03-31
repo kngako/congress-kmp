@@ -7,11 +7,12 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @Composable
 fun FeedListItem(
     localNostrEvent: LocalNostrEvent,
-    onNavigateToEvent: (NostrEvent) -> Unit
+    onNavigateToEvent: (HexKey) -> Unit
 ) {
     localNostrEvent.ListView(
         onNavigateToEvent = onNavigateToEvent

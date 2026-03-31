@@ -40,6 +40,7 @@ data class SynchronizeNostrEventRequest(
     val id: String = Uuid.generateV4().toHexDashString(),
     val status: String = "pending",
     val relayURL: String,
+    val isRecommendedRelay: Boolean = false,
 
     val synchronizationFilters: SynchronizationFilterArray,
 

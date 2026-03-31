@@ -6,6 +6,7 @@ import ac.aux.compose.database.model.Repost
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.extensions.toFormattedTimeAndDateString
 import ac.aux.compose.ui.theme.AuxTheme
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,24 +30,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import kotlin.time.Instant
 
 @Composable
 fun LocalNostrEvent.ListView(
-    onNavigateToEvent: (NostrEvent) -> Unit
+    onNavigateToEvent: (HexKey) -> Unit
 ) {
     when (nostrEvent.kind) {
         RepostEvent.KIND -> {
-            // TODO: Make use of the indexed Repost field to render...
-
             Column(
                 modifier = Modifier.fillMaxWidth().padding(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().clickable(
+                        enabled = true,
+                        onClick = {
+                            onNavigateToEvent.invoke(profile.nostrEventId)
+                        }
+                    )
                 ) {
                     Text(
                         modifier = Modifier.weight(1f),
@@ -105,14 +110,32 @@ fun LocalNostrEvent.ListView(
 private fun TextNoteFeedItem(
     nostrEvent: NostrEvent,
     profile: Profile?,
-    onNavigateToEvent: (NostrEvent) -> Unit
+    taggedNostrEvent: NostrEvent? = null,
+    taggedAuthor: Profile? = null,
+    onNavigateToEvent: (HexKey) -> Unit
 ) {
+    if (nostrEvent.kind == 1 && taggedNostrEvent != null) {
+        Row {
+            Text(
+                "In reply to"
+            )
+
+            Text(
+                modifier = Modifier.clickable(
+                    onClick = {
+                        onNavigateToEvent.invoke(taggedNostrEvent.id)
+                    }
+                ),
+                text = taggedAuthor?.displayName ?: taggedAuthor?.userName ?: "loading information..."
+            )
+        }
+    }
     ElevatedCard(
         modifier = Modifier.padding(
             horizontal = 10.dp
         ),
         onClick = {
-            onNavigateToEvent.invoke(nostrEvent)
+            onNavigateToEvent.invoke(nostrEvent.id)
         }
     ) {
         Column(
@@ -120,21 +143,32 @@ private fun TextNoteFeedItem(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profile picture",
-                )
+            if (profile != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(
+                        onClick = {
+                            onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
+                        }
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Profile picture",
+                    )
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
                 Text(
-                    modifier = Modifier.weight(1f),
-                    text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Loading author information"
                 )
             }
+
             Text(
                 text = nostrEvent.content,
             )
@@ -177,87 +211,6 @@ private fun TextNoteFeedItem(
 
             Text(
                 text = nostrEvent.createdAt.toFormattedTimeAndDateString()
-            )
-        }
-    }
-}
-
-@Composable
-private fun RepostFeedItem(
-    repost: Repost,
-    localNostrEvent: LocalNostrEvent,
-    onNavigateToEvent: (NostrEvent) -> Unit
-) {
-    ElevatedCard(
-        modifier = Modifier.padding(
-            horizontal = 10.dp
-        ),
-        onClick = {
-            onNavigateToEvent.invoke(localNostrEvent.nostrEvent)
-        }
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profile picture",
-                )
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = repost.repostedPostAuthorPublicKey,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            Text(
-                text = repost.content,
-            )
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    10.dp,
-                    alignment = Alignment.Start
-                )
-            ) {
-                item {
-                    AssistChip(
-                        label = {
-                            Text(
-                                text = localNostrEvent.nostrEvent.kind.toString() // TODO: Kind by name...
-                            )
-                        },
-                        onClick = {
-
-                        }
-                    )
-
-                }
-                items(
-                    items = localNostrEvent.nostrEvent.tags,
-                ) { tag ->
-                    SuggestionChip(
-                        label = {
-                            Text(
-                                text = tag.joinToString(":")
-                            )
-                        },
-                        onClick = {
-
-                        }
-                    )
-                }
-            }
-
-            Text(
-                text = localNostrEvent.nostrEvent.createdAt.toFormattedTimeAndDateString()
             )
         }
     }

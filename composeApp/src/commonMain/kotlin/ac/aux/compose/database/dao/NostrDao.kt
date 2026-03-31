@@ -12,6 +12,8 @@ import androidx.room.Dao
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip37Drafts.DraftWrapEvent
 import kotlin.time.Clock
 
@@ -122,6 +124,77 @@ abstract class NostrDao(
             }
         }
 
+        // Sync tagged events and authors...
+        nostrEvent.tags.taggedEvents().forEach { taggedEvent ->
+            val taggedNostrEvent = database.nostrEventDao().getNostrEventById(taggedEvent.eventId)
+            if (taggedNostrEvent == null) {
+                val recommendRelayUrl = taggedEvent.relay?.url
+
+                val synchronizeNostrEventRequests = if (recommendRelayUrl != null) {
+                        listOf(
+                            SynchronizeNostrEventRequest(
+                                synchronizationFilters = arrayOf(
+                                    SynchronizationFilter(
+                                        ids = arrayOf(taggedEvent.eventId)
+                                    )
+                                ),
+                                relayURL = recommendRelayUrl,
+                                isRecommendedRelay = true,
+                            )
+                        )
+                    } else {
+                        synchronizationRelayURLs.map { synchronizationRelayURL ->
+                            SynchronizeNostrEventRequest(
+                                synchronizationFilters = arrayOf(
+                                    SynchronizationFilter(
+                                        ids = arrayOf(taggedEvent.eventId)
+                                    )
+                                ),
+                                relayURL = synchronizationRelayURL
+                            )
+                        }
+                    }
+
+                database.synchronizeNostrEventRequestDao().insert(
+                    synchronizeNostrEventRequests
+                )
+            }
+
+        }
+        nostrEvent.tags.taggedUsers().forEach { taggedUser ->
+            val recommendedRelay = taggedUser.relayHint?.url
+
+            val synchronizeNostrEventRequests = if (recommendedRelay != null) {
+                listOf(
+                    SynchronizeNostrEventRequest(
+                        synchronizationFilters = arrayOf(
+                            SynchronizationFilter(
+                                authors = arrayOf(taggedUser.pubKey),
+                                kinds = arrayOf(MetadataEvent.KIND)
+                            )
+                        ),
+                        relayURL = recommendedRelay,
+                        isRecommendedRelay = true,
+                    )
+                )
+            } else {
+                synchronizationRelayURLs.map { synchronizationRelayURL ->
+                    SynchronizeNostrEventRequest(
+                        synchronizationFilters = arrayOf(
+                            SynchronizationFilter(
+                                authors = arrayOf(taggedUser.pubKey),
+                                kinds = arrayOf(MetadataEvent.KIND)
+                            )
+                        ),
+                        relayURL = synchronizationRelayURL
+                    )
+                }
+            }
+
+            database.synchronizeNostrEventRequestDao().insert(
+                synchronizeNostrEventRequests
+            )
+        }
         nostrEvent.toPost()?.let { post ->
             if (post.replyToId != null) {
                 // Find or create placeHolder note that is replyTo
@@ -132,81 +205,13 @@ abstract class NostrDao(
                     database.postDao().insert(
                         Post(
                             id = post.replyToId,
-                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                            nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                             content = post.replyToId,
-                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
                         )
-                    )
-
-                    // Request a sync for the post being replied to
-                    database.synchronizeNostrEventRequestDao().insert(
-                        synchronizationRelayURLs.map { synchronizationRelayURL ->
-                            SynchronizeNostrEventRequest(
-                                synchronizationFilters = arrayOf(
-                                    SynchronizationFilter(
-                                        ids = arrayOf(post.replyToId)
-                                    )
-                                ),
-                                relayURL = synchronizationRelayURL
-                            )
-                        }
                     )
                 }
             }
-
-//            if (post.repostId != null) {
-//                val repostPost = database.postDao().getPostById(post.repostId)
-//
-//                if (repostPost == null) {
-//                    // Placeholder Post...
-//                    database.postDao().insert(
-//                        Post(
-//                            id = post.repostId,
-//                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
-//                            content = post.repostId,
-//                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
-//                        )
-//                    )
-//                    // Request a sync for the post being reposted
-//                    database.synchronizeNostrEventRequestDao().insert(
-//                        synchronizationRelayURLs.map { synchronizationRelayURL ->
-//                            SynchronizeNostrEventRequest(
-//                                synchronizationFilters = arrayOf(
-//                                    SynchronizationFilter(
-//                                        ids = arrayOf(post.repostId)
-//                                    )
-//                                ),
-//                                relayURL = synchronizationRelayURL
-//                            )
-//                        }
-//                    )
-//                }
-//
-//                // repostProfile??
-//                val profile = database.profileDao().getProfileByPublicKey(post.profilePublicKey)
-//
-//                if (profile == null) {
-//                    val placeHolderProfile = Profile(
-//                        publicKey = nostrEvent.pubKey,
-//                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
-//                    )
-//                    database.profileDao().insertPlaceholderProfile(placeHolderProfile)
-//
-//                    database.synchronizeNostrEventRequestDao().insert(
-//                        synchronizationRelayURLs.map { synchronizationRelayURL ->
-//                            SynchronizeNostrEventRequest(
-//                                synchronizationFilters = arrayOf(
-//                                    SynchronizationFilter(
-//                                        authors = arrayOf(nostrEvent.pubKey),
-//                                        kinds = arrayOf(MetadataEvent.KIND)
-//                                    )
-//                                ),
-//                                relayURL = synchronizationRelayURL
-//                            )
-//                        }
-//                    )
-//                }
-//            }
 
             database.postDao().upsert(post)
         }
@@ -228,24 +233,10 @@ abstract class NostrDao(
                 database.postDao().insert(
                     Post(
                         id = repost.repostedPostId,
-                        nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+                        nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                         content = repost.repostedPostId,
-                        profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+                        profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
                     )
-                )
-
-                // Request a sync for the post being replied to
-                database.synchronizeNostrEventRequestDao().insert(
-                    synchronizationRelayURLs.map { synchronizationRelayURL ->
-                        SynchronizeNostrEventRequest(
-                            synchronizationFilters = arrayOf(
-                                SynchronizationFilter(
-                                    ids = arrayOf(repost.repostedPostId)
-                                )
-                            ),
-                            relayURL = synchronizationRelayURL
-                        )
-                    }
                 )
             }
 
@@ -256,7 +247,7 @@ abstract class NostrDao(
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
                         publicKey = nostrEvent.pubKey,
-                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync handled by tagged events...
                     )
                 )
 

@@ -41,12 +41,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     initialFeedListUIState: FeedListUIState,
-    onNavigateToEvent: (NostrEvent) -> Unit,
+    onNavigateToEvent: (HexKey) -> Unit,
     onNavigateToWriteNewNote: () -> Unit,
     nostrRepository: NostrRepository,
 ) {

@@ -295,10 +295,10 @@ fun AuxNavHost(
         composable<FeedRoute> {
             FeedScreen(
                 initialFeedListUIState = FeedListUIState.Loading,
-                onNavigateToEvent = { event ->
+                onNavigateToEvent = { nostrEventId ->
                     navController.navigate(
                         route = ImplementationPendingRoute(
-                            event.content
+                            nostrEventId
                         )
                     )
                 },
