@@ -299,8 +299,6 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
-        val thirtySecondsAgo = Clock.System.now().minus(30.seconds)
-
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(
                 TextNoteEvent.KIND,
