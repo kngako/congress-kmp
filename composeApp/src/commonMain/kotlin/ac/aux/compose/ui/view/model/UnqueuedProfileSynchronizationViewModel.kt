@@ -55,6 +55,7 @@ class UnqueuedProfileSynchronizationViewModel(
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     SynchronizeNostrEventRequest(
+                        purpose = "sign-in",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 authors = arrayOf(profilePublicKey),

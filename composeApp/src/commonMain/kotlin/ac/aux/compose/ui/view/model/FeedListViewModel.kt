@@ -6,6 +6,7 @@ import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.FeedListUIState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
@@ -28,8 +30,11 @@ class FeedListViewModel(
     initialFeedListUIState: FeedListUIState,
     val nostrRepository: NostrRepository
 ): ViewModel() {
+    val logger = Logger.withTag(TAG)
     var feedListUIState: FeedListUIState by mutableStateOf(initialFeedListUIState)
         private set
+
+    val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
     fun retryLoad() {
         feedListUIState = FeedListUIState.Loading
@@ -42,6 +47,7 @@ class FeedListViewModel(
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelay ->
                     SynchronizeNostrEventRequest(
+                        purpose = "feed",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 kinds = arrayOf(
@@ -61,6 +67,7 @@ class FeedListViewModel(
                 }
             )
 
+
             // Get contact list and sync feed...
 
             val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
@@ -72,6 +79,11 @@ class FeedListViewModel(
                     feedListUIState = FeedListUIState.Loaded(
                         localNostrEvents = localNostrEvents
                     )
+                }
+
+                nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
+                    logger.d("Pending/Processing Synchronization Request: $count")
+                    isSynchronizationPending.value = count > 0
                 }
             }
         }

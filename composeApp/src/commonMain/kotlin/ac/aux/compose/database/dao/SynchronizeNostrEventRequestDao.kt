@@ -12,6 +12,9 @@ interface SynchronizeNostrEventRequestDao {
     @Query("SELECT * FROM SynchronizeNostrEventRequest WHERE status = :status")
     fun observeSynchronizeNostrEventRequestsByStatus(status: String): Flow<SynchronizeNostrEventRequest?>
 
+    @Query("SELECT COUNT(*) FROM SynchronizeNostrEventRequest WHERE purpose = :purpose AND status IN (:status)")
+    fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String, status: List<String>): Flow<Int>
+
     @Upsert
     fun upsert(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 

@@ -38,6 +38,7 @@ import kotlin.uuid.Uuid
 data class SynchronizeNostrEventRequest(
     @PrimaryKey
     val id: String = Uuid.generateV4().toHexDashString(),
+    val purpose: String,
     val status: String = "pending",
     val relayURL: String,
     val isRecommendedRelay: Boolean = false,

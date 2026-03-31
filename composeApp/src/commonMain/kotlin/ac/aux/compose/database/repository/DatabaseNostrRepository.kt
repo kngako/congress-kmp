@@ -297,6 +297,13 @@ class DatabaseNostrRepository(
         )
     }
 
+    override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> {
+        return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestByPurposeAndStatusCount(
+            "feed",
+            listOf("pending", "processing")
+        )
+    }
+
     override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(

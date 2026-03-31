@@ -65,6 +65,8 @@ interface NostrRepository {
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     )
 
+    suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int>
+
     suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
@@ -142,6 +144,10 @@ interface NostrRepository {
             }
 
             override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> {
                 TODO("Not yet implemented")
             }
 

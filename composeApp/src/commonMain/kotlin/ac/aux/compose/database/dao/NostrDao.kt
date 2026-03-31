@@ -122,6 +122,7 @@ abstract class NostrDao(
                 database.synchronizeNostrEventRequestDao().insert(
                     synchronizationRelayURLs.map { synchronizationRelayURL ->
                         SynchronizeNostrEventRequest(
+                            purpose = "synchronization",
                             synchronizationFilters = arrayOf(
                                 SynchronizationFilter(
                                     authors = arrayOf(nostrEvent.pubKey),
@@ -144,6 +145,7 @@ abstract class NostrDao(
                 val synchronizeNostrEventRequests = if (recommendRelayUrl != null) {
                         listOf(
                             SynchronizeNostrEventRequest(
+                                purpose = "synchronization",
                                 synchronizationFilters = arrayOf(
                                     SynchronizationFilter(
                                         ids = arrayOf(taggedEvent.eventId)
@@ -156,6 +158,7 @@ abstract class NostrDao(
                     } else {
                         synchronizationRelayURLs.map { synchronizationRelayURL ->
                             SynchronizeNostrEventRequest(
+                                purpose = "synchronization",
                                 synchronizationFilters = arrayOf(
                                     SynchronizationFilter(
                                         ids = arrayOf(taggedEvent.eventId)
@@ -178,6 +181,7 @@ abstract class NostrDao(
             val synchronizeNostrEventRequests = if (recommendedRelay != null) {
                 listOf(
                     SynchronizeNostrEventRequest(
+                        purpose = "synchronization",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 authors = arrayOf(taggedUser.pubKey),
@@ -191,6 +195,7 @@ abstract class NostrDao(
             } else {
                 synchronizationRelayURLs.map { synchronizationRelayURL ->
                     SynchronizeNostrEventRequest(
+                        purpose = "synchronization",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 authors = arrayOf(taggedUser.pubKey),
@@ -266,6 +271,7 @@ abstract class NostrDao(
                 database.synchronizeNostrEventRequestDao().insert(
                     synchronizationRelayURLs.map { synchronizationRelayURL ->
                         SynchronizeNostrEventRequest(
+                            purpose = "synchronization",
                             synchronizationFilters = arrayOf(
                                 SynchronizationFilter(
                                     authors = arrayOf(nostrEvent.pubKey),
@@ -298,6 +304,7 @@ abstract class NostrDao(
                 database.synchronizeNostrEventRequestDao().insert(
                     synchronizationRelayURLs.map { synchronizationRelayURL ->
                         SynchronizeNostrEventRequest(
+                            purpose = "synchronization",
                             synchronizationFilters = arrayOf(
                                 SynchronizationFilter(
                                     ids = arrayOf(zap.postId)

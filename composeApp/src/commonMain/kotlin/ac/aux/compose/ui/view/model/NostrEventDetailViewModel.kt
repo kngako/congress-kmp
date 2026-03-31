@@ -43,6 +43,7 @@ class NostrEventDetailViewModel(
             nostrRepository.queueSynchronizeNostrEvent(
                 Relays.eventPublishRelaySet.map { normalizedRelay ->
                     SynchronizeNostrEventRequest(
+                        purpose = "detail",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 kinds = arrayOf(
