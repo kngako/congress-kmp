@@ -103,8 +103,9 @@ data class NostrEvent(
                 createdAt = Instant.fromEpochSeconds(textNote.createdAt),
                 updatedAt = Instant.fromEpochSeconds(textNote.createdAt),
             )
+        } else {
+            return null
         }
-        return null
     } catch (e: Throwable) {
         logger.e("Failed to return Post: ", e)
         return null
@@ -203,7 +204,7 @@ data class NostrEvent(
                     repostedPostTags = containedPost.tags,
                     repostedPostContent = containedPost.content,
                     repostedPostCreatedAt = Instant.fromEpochSeconds(containedPost.createdAt),
-                    content = repostEvent.content,
+                    content = containedPost.content,
 
                     nostrEventId = id,
                     profilePublicKey = repostEvent.pubKey,

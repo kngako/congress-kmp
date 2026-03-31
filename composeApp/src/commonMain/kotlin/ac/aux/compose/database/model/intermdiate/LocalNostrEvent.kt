@@ -3,6 +3,7 @@ package ac.aux.compose.database.model.intermdiate
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.Repost
 import androidx.room.Embedded
 import androidx.room.Relation
 
@@ -13,5 +14,11 @@ data class LocalNostrEvent(
         parentColumn = "pubKey",
         entityColumn = "publicKey"
     )
-    val profile: Profile
+    val profile: Profile,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "nostrEventId"
+    )
+    val repost: Repost? = null,
 )

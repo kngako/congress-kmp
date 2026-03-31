@@ -2,6 +2,7 @@ package ac.aux.compose.ui.composable.widgets.feed
 
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.Repost
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.extensions.toFormattedTimeAndDateString
 import ac.aux.compose.ui.theme.AuxTheme
@@ -36,7 +37,6 @@ fun LocalNostrEvent.ListView(
 ) {
     when (nostrEvent.kind) {
         RepostEvent.KIND -> {
-            val repost = nostrEvent.toRepost()
             // TODO: Make use of the indexed Repost field to render...
 
             Column(
@@ -57,10 +57,15 @@ fun LocalNostrEvent.ListView(
                         style = MaterialTheme.typography.labelSmall)
                 }
 
-                TextNoteFeedItem(
-                    this@ListView,
-                    onNavigateToEvent = onNavigateToEvent
-                )
+                if (repost != null) {
+                    RepostFeedItem(
+                        repost,
+                        this@ListView,
+                        onNavigateToEvent = onNavigateToEvent
+                    )
+                } else {
+                    Text("Missing note")
+                }
             }
         }
         // TODO: Support other kinds...
@@ -152,6 +157,88 @@ private fun TextNoteFeedItem(
         }
     }
 }
+
+@Composable
+private fun RepostFeedItem(
+    repost: Repost,
+    localNostrEvent: LocalNostrEvent,
+    onNavigateToEvent: (NostrEvent) -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.padding(
+            horizontal = 10.dp
+        ),
+        onClick = {
+            onNavigateToEvent.invoke(localNostrEvent.nostrEvent)
+        }
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = "Profile picture",
+                )
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = repost.repostedPostAuthorPublicKey,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Text(
+                text = repost.content,
+            )
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    10.dp,
+                    alignment = Alignment.Start
+                )
+            ) {
+                item {
+                    AssistChip(
+                        label = {
+                            Text(
+                                text = localNostrEvent.nostrEvent.kind.toString() // TODO: Kind by name...
+                            )
+                        },
+                        onClick = {
+
+                        }
+                    )
+
+                }
+                items(
+                    items = localNostrEvent.nostrEvent.tags,
+                ) { tag ->
+                    SuggestionChip(
+                        label = {
+                            Text(
+                                text = tag.joinToString(":")
+                            )
+                        },
+                        onClick = {
+
+                        }
+                    )
+                }
+            }
+
+            Text(
+                text = localNostrEvent.nostrEvent.createdAt.toFormattedTimeAndDateString()
+            )
+        }
+    }
+}
+
 @Preview
 @Composable
 private fun EventListViewPreview() {
@@ -172,7 +259,7 @@ private fun EventListViewPreview() {
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk"
-                )
+                ),
             ).ListView(
                 onNavigateToEvent = {}
             )

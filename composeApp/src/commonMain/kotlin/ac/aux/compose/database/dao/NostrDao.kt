@@ -154,34 +154,60 @@ abstract class NostrDao(
                 }
             }
 
-            if (post.repostId != null) {
-                val repostPost = database.postDao().getPostById(post.repostId)
+//            if (post.repostId != null) {
+//                val repostPost = database.postDao().getPostById(post.repostId)
+//
+//                if (repostPost == null) {
+//                    // Placeholder Post...
+//                    database.postDao().insert(
+//                        Post(
+//                            id = post.repostId,
+//                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
+//                            content = post.repostId,
+//                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
+//                        )
+//                    )
+//                    // Request a sync for the post being reposted
+//                    database.synchronizeNostrEventRequestDao().insert(
+//                        synchronizationRelayURLs.map { synchronizationRelayURL ->
+//                            SynchronizeNostrEventRequest(
+//                                synchronizationFilters = arrayOf(
+//                                    SynchronizationFilter(
+//                                        ids = arrayOf(post.repostId)
+//                                    )
+//                                ),
+//                                relayURL = synchronizationRelayURL
+//                            )
+//                        }
+//                    )
+//                }
+//
+//                // repostProfile??
+//                val profile = database.profileDao().getProfileByPublicKey(post.profilePublicKey)
+//
+//                if (profile == null) {
+//                    val placeHolderProfile = Profile(
+//                        publicKey = nostrEvent.pubKey,
+//                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+//                    )
+//                    database.profileDao().insertPlaceholderProfile(placeHolderProfile)
+//
+//                    database.synchronizeNostrEventRequestDao().insert(
+//                        synchronizationRelayURLs.map { synchronizationRelayURL ->
+//                            SynchronizeNostrEventRequest(
+//                                synchronizationFilters = arrayOf(
+//                                    SynchronizationFilter(
+//                                        authors = arrayOf(nostrEvent.pubKey),
+//                                        kinds = arrayOf(MetadataEvent.KIND)
+//                                    )
+//                                ),
+//                                relayURL = synchronizationRelayURL
+//                            )
+//                        }
+//                    )
+//                }
+//            }
 
-                if (repostPost == null) {
-                    // Placeholder Post...
-                    database.postDao().insert(
-                        Post(
-                            id = post.repostId,
-                            nostrEventId = nostrEvent.id, // Will get overwriting by sync,
-                            content = post.repostId,
-                            profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
-                        )
-                    )
-                    // Request a sync for the post being reposted
-                    database.synchronizeNostrEventRequestDao().insert(
-                        synchronizationRelayURLs.map { synchronizationRelayURL ->
-                            SynchronizeNostrEventRequest(
-                                synchronizationFilters = arrayOf(
-                                    SynchronizationFilter(
-                                        ids = arrayOf(post.repostId)
-                                    )
-                                ),
-                                relayURL = synchronizationRelayURL
-                            )
-                        }
-                    )
-                }
-            }
             database.postDao().upsert(post)
         }
 
