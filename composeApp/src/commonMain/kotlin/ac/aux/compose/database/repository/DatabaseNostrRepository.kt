@@ -22,6 +22,7 @@ import com.vitorpamplona.quartz.nip02FollowList.tags.ContactTag
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
@@ -309,6 +310,7 @@ class DatabaseNostrRepository(
             kinds = arrayOf(
                 TextNoteEvent.KIND,
                 RepostEvent.KIND,
+                ReactionEvent.KIND,
                 LnZapEvent.KIND
             )
         )
