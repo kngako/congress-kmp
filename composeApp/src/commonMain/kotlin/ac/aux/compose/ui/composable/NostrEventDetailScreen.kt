@@ -3,50 +3,25 @@ package ac.aux.compose.ui.composable
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
-import ac.aux.compose.extensions.toFormattedTimeAndDateString
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.composable.widgets.LoadingDataIndicator
-import ac.aux.compose.ui.composable.widgets.detail.TextNoteDetail
+import ac.aux.compose.ui.composable.widgets.detail.MetadataEventDetail
+import ac.aux.compose.ui.composable.widgets.detail.TextNoteEventDetail
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.NostrEventDetailViewModel
 import ac.aux.compose.ui.view.state.NostrEventDetailUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddReaction
-import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.CurrencyBitcoin
-import androidx.compose.material.icons.filled.Cyclone
-import androidx.compose.material.icons.filled.Loop
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Money
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -86,18 +61,13 @@ fun NostrEventDetailScreen(
 
             when(feedListUIState.localNostrEvent.nostrEvent.kind) {
                 MetadataEvent.KIND -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(feedListUIState.localNostrEvent.nostrEvent.content)
-
-                        Text("profile functionality coming soon.")
-                    }
+                    MetadataEventDetail(
+                        localNostrEvent = feedListUIState.localNostrEvent,
+                        onNavigateBack = onNavigateBack,
+                    )
                 }
                 TextNoteEvent.KIND -> {
-                    TextNoteDetail(
+                    TextNoteEventDetail(
                         feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToWriteAReply = onNavigateToWriteAReply
