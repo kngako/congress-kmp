@@ -5,6 +5,7 @@ import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
+import ac.aux.compose.ui.view.state.SearchResultListUIState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -36,11 +37,17 @@ class SearchResultViewModel(
     var searchResultType: SearchResultType by mutableStateOf(initialSearchResultType)
         private set
 
+    var searchResultListUIState: SearchResultListUIState by mutableStateOf(SearchResultListUIState.Loading)
+        private set
 
     fun updateSearchResultType (searchResultType: SearchResultType) {
         this.searchResultType = searchResultType
 
         // TODO: Reload search results...
+    }
+
+    fun reloadSearchResult() {
+        searchResultListUIState = SearchResultListUIState.Loading
     }
 
     fun performSearch(searchQuery: String) {

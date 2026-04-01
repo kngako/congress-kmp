@@ -357,7 +357,8 @@ fun AuxNavHost(
                 searchRepository = searchRepository,
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                onNavigateToEvent = {}
             )
         }
         composable<NostrEventDetailRoute> { backStackEntry ->

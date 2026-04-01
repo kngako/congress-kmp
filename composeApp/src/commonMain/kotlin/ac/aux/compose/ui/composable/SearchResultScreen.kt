@@ -2,9 +2,13 @@ package ac.aux.compose.ui.composable
 
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
+import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import ac.aux.compose.ui.composable.navigation.routes.Route
+import ac.aux.compose.ui.composable.widgets.feed.ListView
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.SearchResultType
 import ac.aux.compose.ui.view.model.SearchResultViewModel
+import ac.aux.compose.ui.view.state.SearchResultListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -45,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,6 +63,7 @@ fun SearchResultScreen(
     nostrRepository: NostrRepository,
     searchRepository: SearchRepository,
     onNavigateBack: () -> Unit,
+    onNavigateToEvent: (Route) -> Unit
 ) {
     val searchViewModel: SearchResultViewModel = viewModel(
         factory = SearchResultViewModel.factory(
@@ -203,12 +210,60 @@ fun SearchResultScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        item {
-                            Spacer(
-                                modifier = Modifier.height(50.dp)
-                            )
 
-                            LoadingIndicator()
+                        when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
+                            SearchResultListUIState.Error -> {
+                                item {
+                                    Spacer(
+                                        modifier = Modifier.height(50.dp)
+                                    )
+                                    Text(
+                                        text = "Something went wrong",
+                                    )
+                                }
+                            }
+                            is SearchResultListUIState.Loaded -> {
+                                if (searchResultListUIState.localNostrEvents.isEmpty()) {
+                                    item {
+                                        Spacer(
+                                            modifier = Modifier.height(50.dp)
+                                        )
+                                        Text(
+                                            text = "No events were found",
+                                        )
+                                    }
+                                } else {
+                                    items(
+                                        items = searchResultListUIState.localNostrEvents,
+                                        key = {localNostrEvent -> localNostrEvent.nostrEvent.id}
+                                    ) { localNostrEvent ->
+                                        localNostrEvent.ListView(
+                                            onNavigateToEvent = {
+                                                onNavigateToEvent.invoke(
+                                                    ImplementationPendingRoute("Navigating to detail")
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+
+                            }
+                            SearchResultListUIState.Loading -> {
+                                item {
+                                    Spacer(
+                                        modifier = Modifier.height(50.dp)
+                                    )
+                                    Text(
+                                        text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.height(50.dp)
+                                    )
+
+                                    LoadingIndicator()
+                                }
+                            }
                         }
                     }
                 }
@@ -228,7 +283,8 @@ private fun SearchResultScreenPreview() {
                 searchQuery = "What happened...",
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY,
-                onNavigateBack = {}
+                onNavigateBack = {},
+                onNavigateToEvent = {}
             )
         }
     }
