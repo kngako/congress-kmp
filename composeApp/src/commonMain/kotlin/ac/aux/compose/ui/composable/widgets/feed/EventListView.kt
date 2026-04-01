@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAbsoluteAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.Event
@@ -135,7 +136,7 @@ private fun TextNoteFeedItem(
             Text(
                 modifier = Modifier.clickable(
                     onClick = {
-                        onNavigateToEvent.invoke(taggedNostrEvent.id)
+                        onNavigateToEvent.invoke(taggedAuthor?.nostrEventId ?: taggedNostrEvent.id)
                     }
                 ),
                 style = MaterialTheme.typography.labelLargeEmphasized,
@@ -172,7 +173,7 @@ private fun TextNoteFeedItem(
                     )
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
+                        text = profile.displayName ?: profile.userName ?: nostrEvent.pubKey,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -183,7 +184,9 @@ private fun TextNoteFeedItem(
             }
 
             Text(
+                modifier = Modifier.fillMaxWidth(),
                 text = nostrEvent.content,
+                style = MaterialTheme.typography.bodyLarge
             )
 
             LazyRow(
@@ -223,6 +226,9 @@ private fun TextNoteFeedItem(
             }
 
             Text(
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.End,
                 text = nostrEvent.createdAt.toFormattedTimeAndDateString()
             )
         }
