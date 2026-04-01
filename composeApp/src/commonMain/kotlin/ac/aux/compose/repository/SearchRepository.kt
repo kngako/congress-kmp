@@ -1,6 +1,8 @@
 package ac.aux.compose.repository
 
+import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
+import ac.aux.compose.database.model.intermdiate.LocalProfile
 
 interface SearchRepository {
 

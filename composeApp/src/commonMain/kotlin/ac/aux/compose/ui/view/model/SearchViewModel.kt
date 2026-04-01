@@ -1,6 +1,8 @@
 package ac.aux.compose.ui.view.model
 
+import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
+import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.nostr.Relays
@@ -9,6 +11,7 @@ import ac.aux.compose.repository.SearchRepository
 import ac.aux.compose.ui.view.state.SearchUIState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -36,7 +39,12 @@ class SearchViewModel(
     var searchUIState: SearchUIState by mutableStateOf(initialSearchUIState)
         private set
 
+    var searchableProfiles = mutableStateListOf<Profile>()
+        private set
 
+    init {
+        loadSearchableProfiles()
+    }
     fun performSearch(searchQuery: String) {
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
@@ -63,6 +71,13 @@ class SearchViewModel(
         }
     }
 
+    fun loadSearchableProfiles() {
+        viewModelScope.launch(Dispatchers.IO) {
+            searchableProfiles.addAll(
+                nostrRepository.searchableProfiles()
+            )
+        }
+    }
 
     companion object {
         const val TAG = "SearchViewModel"

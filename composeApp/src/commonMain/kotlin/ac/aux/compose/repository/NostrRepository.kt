@@ -71,6 +71,11 @@ interface NostrRepository {
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
+    suspend fun searchableProfiles(): List<Profile>
+
+    suspend fun recentSearches(): List<String>
+
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
@@ -156,6 +161,14 @@ interface NostrRepository {
             }
 
             override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun searchableProfiles(): List<Profile> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun recentSearches(): List<String> {
                 TODO("Not yet implemented")
             }
         }

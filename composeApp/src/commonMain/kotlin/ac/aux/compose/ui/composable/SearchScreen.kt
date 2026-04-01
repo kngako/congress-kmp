@@ -3,6 +3,7 @@ package ac.aux.compose.ui.composable
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
 import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import ac.aux.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.aux.compose.ui.composable.navigation.routes.Route
 import ac.aux.compose.ui.composable.navigation.routes.SearchResultRoute
 import ac.aux.compose.ui.theme.AuxTheme
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -43,8 +45,10 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -72,11 +76,12 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchScreen(
     initialSearchUIState: SearchUIState,
@@ -182,7 +187,7 @@ fun SearchScreen(
     )
     val textFieldState = rememberTextFieldState()
     // Controls expansion state of the search bar
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold { innerPadding ->
         Column(
@@ -359,50 +364,69 @@ fun SearchScreen(
                         }
                     } else {
 
-                        // Display search results in a scrollable column
+
+
+
                         LazyColumn {
+                            // Display search results in a scrollable column
                             item {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-
-                                ) {
-                                    Text(
-                                        text = "Profiles",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-
-                            }
-                            item {
-                                LazyRow {
-                                    items(profileSearches) { profile ->
+                                searchViewModel.searchableProfiles.let { searchableProfiles ->
+                                    if (searchableProfiles.isNotEmpty()) {
                                         Column(
-                                            modifier = Modifier.padding(10.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                                            horizontalAlignment = Alignment.Start
                                         ) {
-                                            IconButton(
-                                                onClick = {
-                                                    // TODO: Open profile...
-                                                    onNavigateToProfile.invoke(
-                                                        ImplementationPendingRoute("Profile search result")
-                                                    )
-                                                }
+                                            Column(
+                                                modifier = Modifier.padding(10.dp),
                                             ) {
-                                                Icon(
-                                                    Icons.Default.Person,
-                                                    contentDescription = profile
+                                                Text(
+                                                    text = "Profiles",
+                                                    style = MaterialTheme.typography.titleMedium
                                                 )
                                             }
 
-                                            Text(
-                                                text = profile,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
+                                            LazyRow {
+                                                items(searchViewModel.searchableProfiles) { profile ->
+                                                    val profileName = profile.displayName ?: profile.userName ?: profile.nip05 ?: profile.nostrEventId
+                                                    Column(
+                                                        modifier = Modifier.padding(10.dp).width(70.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center
+                                                    ) {
+                                                        IconButton(
+                                                            modifier = Modifier
+                                                                .size(IconButtonDefaults.mediumContainerSize()),
+                                                            onClick = {
+                                                                onNavigateToProfile.invoke(
+                                                                    NostrEventDetailRoute(
+                                                                        profile.nostrEventId
+                                                                    )
+                                                                )
+                                                            }
+                                                        ) {
+                                                            Icon(
+                                                                modifier = Modifier.size(70.dp),
+                                                                imageVector = Icons.Default.Person,
+                                                                contentDescription = profileName
+                                                            )
+                                                        }
+
+                                                        Text(
+                                                            text = profileName,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            maxLines = 1,
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                    }
+
+                                                }
+
+                                            }
+
                                         }
 
                                     }
-
                                 }
                             }
                             item {

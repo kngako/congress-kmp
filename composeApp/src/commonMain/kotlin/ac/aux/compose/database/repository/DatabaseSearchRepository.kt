@@ -1,6 +1,7 @@
 package ac.aux.compose.database.repository
 
 import ac.aux.compose.database.AuxDatabase
+import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.repository.SearchRepository
 

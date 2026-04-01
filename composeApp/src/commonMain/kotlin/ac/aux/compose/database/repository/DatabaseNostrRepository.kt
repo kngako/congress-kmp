@@ -320,4 +320,12 @@ class DatabaseNostrRepository(
         return database.nostrEventDao().observeNostrEventById(nostrEventId)
     }
 
+    override suspend fun searchableProfiles(): List<Profile> {
+        return database.profileDao().getAllProfiles()
+    }
+
+    override suspend fun recentSearches(): List<String> {
+        TODO("Not yet implemented")
+    }
+
 }
