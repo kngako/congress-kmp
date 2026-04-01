@@ -52,4 +52,8 @@ data class Profile(
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity
+): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity {
+    fun humanReadableNameOrPubkey(): String {
+        return displayName ?: userName ?: nip05 ?: twitter ?: publicKey
+    }
+}

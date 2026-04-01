@@ -9,13 +9,14 @@ import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalAccount
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
-    suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?>
+    suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?>
 
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
@@ -75,6 +76,8 @@ interface NostrRepository {
 
     suspend fun searchableProfiles(): List<Profile>
 
+    suspend fun filterProfiles(searchTerm: String): List<LocalProfile>
+
     suspend fun getRecentSearches(): List<RecentSearch>
 
     suspend fun removeRecentSearch(recentSearch: RecentSearch)
@@ -83,7 +86,7 @@ interface NostrRepository {
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
-            override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
+            override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
                 TODO("Not yet implemented")
             }
 
@@ -170,6 +173,10 @@ interface NostrRepository {
             }
 
             override suspend fun searchableProfiles(): List<Profile> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun filterProfiles(searchTerm: String): List<LocalProfile> {
                 TODO("Not yet implemented")
             }
 

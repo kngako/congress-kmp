@@ -126,7 +126,6 @@ fun FeedScreen(
             when(val feedListUIState = feedListViewModel.feedListUIState) {
                 is FeedListUIState.Loading -> {
                     LoadingDataIndicator()
-
                 }
                 FeedListUIState.Error -> {
                     Text("Something went wrong")
@@ -198,7 +197,7 @@ fun FeedScreen(
                         if (feedListViewModel.isSynchronizationPending.value) {
                             item {
                                 Spacer(
-                                    modifier = Modifier.height(50.dp)
+                                    modifier = Modifier.height(30.dp)
                                 )
                                 LoadingIndicator()
                             }

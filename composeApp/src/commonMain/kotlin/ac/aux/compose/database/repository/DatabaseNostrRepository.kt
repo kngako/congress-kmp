@@ -11,6 +11,7 @@ import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
+import ac.aux.compose.database.model.intermdiate.LocalAccount
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.aux.compose.nostr.Relays
@@ -49,7 +50,7 @@ class DatabaseNostrRepository(
 
     val logger = Logger.withTag(TAG)
 
-    override suspend fun observeProfile(publicKey: HexKey): Flow<LocalProfile?> {
+    override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)
     }
 
@@ -324,6 +325,10 @@ class DatabaseNostrRepository(
 
     override suspend fun searchableProfiles(): List<Profile> {
         return database.profileDao().getAllProfiles()
+    }
+
+    override suspend fun filterProfiles(searchTerm: String): List<LocalProfile> {
+        return database.profileDao().filterProfiles(searchTerm = searchTerm)
     }
 
     override suspend fun getRecentSearches(): List<RecentSearch> {

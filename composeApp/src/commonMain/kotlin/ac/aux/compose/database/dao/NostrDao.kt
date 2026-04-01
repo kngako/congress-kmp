@@ -211,6 +211,11 @@ abstract class NostrDao(
                 synchronizeNostrEventRequests
             )
         }
+
+        nostrEvent.toProfile()?.let { profile ->
+            database.profileDao().upsert(profile)
+        }
+
         nostrEvent.toPost()?.let { post ->
             if (post.replyToId != null) {
                 // Find or create placeHolder note that is replyTo
@@ -232,11 +237,20 @@ abstract class NostrDao(
             database.postDao().upsert(post)
         }
 
-        nostrEvent.toProfile()?.let { profile ->
-            database.profileDao().upsert(profile)
-        }
-
         nostrEvent.toReaction()?.let { reaction ->
+            val replyingToPost = database.postDao().getPostById(reaction.replyToId)
+
+            if (replyingToPost == null) {
+                // Persist PlaceHolder and sync
+                database.postDao().insert(
+                    Post(
+                        id = reaction.replyToId,
+                        nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
+                        content = reaction.replyToId,
+                        profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
+                    )
+                )
+            }
             database.reactionDao().upsert(reaction)
         }
 

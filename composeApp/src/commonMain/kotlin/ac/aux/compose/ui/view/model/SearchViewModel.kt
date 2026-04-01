@@ -2,9 +2,6 @@ package ac.aux.compose.ui.view.model
 
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.RecentSearch
-import ac.aux.compose.database.model.SynchronizeNostrEventRequest
-import ac.aux.compose.database.model.types.SynchronizationFilter
-import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
 import ac.aux.compose.ui.view.state.SearchUIState
@@ -18,10 +15,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
-import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
-import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
-import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -39,12 +32,26 @@ class SearchViewModel(
     var searchableProfiles = mutableStateListOf<Profile>()
         private set
 
+    var filteredProfiles = mutableStateListOf<Profile>()
+        private set
+
     var recentSearches = mutableStateListOf<RecentSearch>()
         private set
 
     init {
         loadSearchableProfiles()
         loadRecentSearches()
+    }
+
+    fun filterLocalProfiles(searchTerm: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val filteredLocalProfiles = nostrRepository.filterProfiles(searchTerm = searchTerm)
+
+            filteredProfiles.clear()
+            filteredProfiles.addAll(
+                filteredLocalProfiles.map { it.profile }
+            )
+        }
     }
 
     fun loadSearchableProfiles() {

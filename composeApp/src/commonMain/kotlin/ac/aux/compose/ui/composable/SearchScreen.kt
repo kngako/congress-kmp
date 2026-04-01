@@ -97,34 +97,6 @@ fun SearchScreen(
             searchRepository = searchRepository
         ),
     )
-
-    val searchResults = listOf(
-        "Apple",
-        "Banna",
-        "Carrot",
-        "Durian",
-        "Eggplant",
-        "Fig",
-        "Grape",
-        "Honeydew",
-        "Jackfruit",
-        "Kiwi",
-        "Lemon",
-        "Mango",
-        "Nectarine",
-        "Orange",
-        "Papaya",
-        "Quince",
-        "Raspberry",
-        "Tangerine",
-        "Ugli Fruit",
-        "Vanilla Bean",
-        "Watermelon",
-        "Xigua",
-        "Yellow Passion Fruit",
-        "Zinfandel",
-    )
-
     val textFieldState = rememberTextFieldState()
     // Controls expansion state of the search bar
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -149,7 +121,10 @@ fun SearchScreen(
                     inputField = {
                         SearchBarDefaults.InputField(
                             query = textFieldState.text.toString(),
-                            onQueryChange = { textFieldState.edit { replace(0, length, it) } },
+                            onQueryChange = {
+                                textFieldState.edit { replace(0, length, it) }
+                                searchViewModel.filterLocalProfiles(it)
+                            },
                             onSearch = {
                                 if (textFieldState.text.isBlank()) {
                                     expanded = false
@@ -265,9 +240,9 @@ fun SearchScreen(
 
                                     )
                             }
-                            itemsIndexed(searchResults) { index, item ->
+                            itemsIndexed(searchViewModel.filteredProfiles) { index, profile ->
                                 ListItem(
-                                    headlineContent = { Text(item) },
+                                    headlineContent = { Text(profile.humanReadableNameOrPubkey()) },
                                     supportingContent = {
                                         Text("Profile")
                                     },
@@ -275,7 +250,7 @@ fun SearchScreen(
                                         IconButton(
                                             onClick = {
                                                 onNavigateToProfile.invoke(
-                                                    ImplementationPendingRoute("Profile result")
+                                                    NostrEventDetailRoute(profile.nostrEventId)
                                                 )
                                             }
                                         ) {
@@ -287,10 +262,8 @@ fun SearchScreen(
                                     },
                                     modifier = Modifier
                                         .clickable {
-                                            onNavigateToSearchResult.invoke(
-                                                SearchResultRoute(
-                                                    item
-                                                )
+                                            onNavigateToProfile.invoke(
+                                                NostrEventDetailRoute(profile.nostrEventId)
                                             )
                                         }
                                         .fillMaxWidth(),
