@@ -2,6 +2,7 @@ package ac.aux.compose.ui.composable.navigation
 
 import ac.aux.compose.AuxGlobal
 import ac.aux.compose.database.repository.DatabaseNostrRepository
+import ac.aux.compose.database.repository.DatabaseSearchRepository
 import ac.aux.compose.managers.DatabaseManager
 import ac.aux.compose.ui.composable.CreateProfileScreen
 import ac.aux.compose.ui.composable.FeedScreen
@@ -45,6 +46,7 @@ import ac.aux.compose.ui.view.model.NavigationViewModel
 import ac.aux.compose.ui.view.state.FeedListUIState
 import ac.aux.compose.ui.view.state.NavigationUIState
 import ac.aux.compose.ui.view.state.NostrEventDetailUIState
+import ac.aux.compose.ui.view.state.SearchUIState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
@@ -73,7 +75,7 @@ fun AuxNavHost(
     val nostrRepository = DatabaseNostrRepository(
         database = databaseManager.auxDatabase
     )
-    val inMemoryNostrRepository = DatabaseNostrRepository(
+    val searchRepository = DatabaseSearchRepository(
         database = databaseManager.inMemoryAuxDatabase
     )
 
@@ -327,10 +329,12 @@ fun AuxNavHost(
 
             }
         }
-        composable<SearchRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SearchRoute>()
-
-            SearchScreen()
+        composable<SearchRoute> {
+            SearchScreen(
+                initialSearchUIState = SearchUIState.Prompt,
+                nostrRepository = nostrRepository,
+                searchRepository = searchRepository
+            )
         }
         composable<NostrEventDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<NostrEventDetailRoute>()
