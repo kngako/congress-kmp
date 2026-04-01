@@ -358,7 +358,11 @@ fun AuxNavHost(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToEvent = {}
+                onNavigateToEvent = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
             )
         }
         composable<NostrEventDetailRoute> { backStackEntry ->

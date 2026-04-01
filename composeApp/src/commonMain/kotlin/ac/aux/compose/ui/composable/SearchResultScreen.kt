@@ -3,6 +3,7 @@ package ac.aux.compose.ui.composable
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
 import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import ac.aux.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.aux.compose.ui.composable.navigation.routes.Route
 import ac.aux.compose.ui.composable.widgets.feed.ListView
 import ac.aux.compose.ui.theme.AuxTheme
@@ -40,6 +41,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -205,67 +207,83 @@ fun SearchResultScreen(
                         }
                     }
 
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-
-                        when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
-                            SearchResultListUIState.Error -> {
-                                item {
+                    when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
+                        SearchResultListUIState.Error -> {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Spacer(
+                                    modifier = Modifier.height(50.dp)
+                                )
+                                Text(
+                                    text = "Something went wrong",
+                                )
+                            }
+                        }
+                        is SearchResultListUIState.Loaded -> {
+                            if (searchResultListUIState.localNostrEvents.isEmpty()) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                )  {
                                     Spacer(
                                         modifier = Modifier.height(50.dp)
                                     )
                                     Text(
-                                        text = "Something went wrong",
+                                        text = "No events were found",
                                     )
                                 }
-                            }
-                            is SearchResultListUIState.Loaded -> {
-                                if (searchResultListUIState.localNostrEvents.isEmpty()) {
-                                    item {
-                                        Spacer(
-                                            modifier = Modifier.height(50.dp)
-                                        )
-                                        Text(
-                                            text = "No events were found",
-                                        )
-                                    }
-                                } else {
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
                                     items(
                                         items = searchResultListUIState.localNostrEvents,
-                                        key = {localNostrEvent -> localNostrEvent.nostrEvent.id}
+                                        key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
                                     ) { localNostrEvent ->
                                         localNostrEvent.ListView(
-                                            onNavigateToEvent = {
+                                            onNavigateToEvent = { nostrEventId ->
                                                 onNavigateToEvent.invoke(
-                                                    ImplementationPendingRoute("Navigating to detail")
+                                                    NostrEventDetailRoute(
+                                                        nostrEventId = nostrEventId
+                                                    )
                                                 )
                                             }
                                         )
                                     }
                                 }
-
                             }
-                            SearchResultListUIState.Loading -> {
-                                item {
-                                    Spacer(
-                                        modifier = Modifier.height(50.dp)
-                                    )
-                                    Text(
-                                        text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Spacer(
-                                        modifier = Modifier.height(50.dp)
-                                    )
 
-                                    LoadingIndicator()
-                                }
+                        }
+                        SearchResultListUIState.Loading -> {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            )  {
+                                Spacer(
+                                    modifier = Modifier.height(50.dp)
+                                )
+                                Text(
+                                    text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(
+                                    modifier = Modifier.height(50.dp)
+                                )
+
+                                LoadingIndicator()
+                            }
+
+                            LaunchedEffect(true) {
+                                searchViewModel.loadSearchResult()
                             }
                         }
                     }
+
+
                 }
             }
         }
