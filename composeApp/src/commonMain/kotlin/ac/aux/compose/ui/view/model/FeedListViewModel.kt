@@ -36,12 +36,40 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
+    init {
+        observeSynchronizeNostrEventRequestByPurposeAndStatusCount()
+        observeLocalNostrFeed()
+    }
+
     fun retryLoad() {
         feedListUIState = FeedListUIState.Loading
         loadNostrFeed()
     }
 
     fun loadNostrFeed() {
+        scheduleSynchronization()
+    }
+
+    fun observeLocalNostrFeed() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get contact list and sync feed...
+
+            val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
+
+            if (localProfile?.profile == null) {
+                feedListUIState = FeedListUIState.Error
+            } else {
+                nostrRepository.observeNostrFeed().collect { localNostrEvents ->
+                    feedListUIState = FeedListUIState.Loaded(
+                        localNostrEvents = localNostrEvents
+                    )
+                }
+
+            }
+        }
+    }
+
+    fun scheduleSynchronization() {
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
@@ -66,25 +94,14 @@ class FeedListViewModel(
                     )
                 }
             )
+        }
+    }
 
-
-            // Get contact list and sync feed...
-
-            val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
-
-            if (localProfile?.profile == null) {
-                feedListUIState = FeedListUIState.Error
-            } else {
-                nostrRepository.observeNostrFeed().collect { localNostrEvents ->
-                    feedListUIState = FeedListUIState.Loaded(
-                        localNostrEvents = localNostrEvents
-                    )
-                }
-
-                nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
-                    logger.d("Pending/Processing Synchronization Request: $count")
-                    isSynchronizationPending.value = count > 0
-                }
+    fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount() {
+        viewModelScope.launch(Dispatchers.IO) {
+            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
+                logger.d("Pending/Processing Synchronization Request: $count")
+                isSynchronizationPending.value = count > 0
             }
         }
     }
