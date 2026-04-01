@@ -10,6 +10,7 @@ import ac.aux.compose.ui.composable.ImplementationPendingScreen
 import ac.aux.compose.ui.composable.LandingScreen
 import ac.aux.compose.ui.composable.LoadingScreen
 import ac.aux.compose.ui.composable.NostrEventDetailScreen
+import ac.aux.compose.ui.composable.SearchResultScreen
 import ac.aux.compose.ui.composable.SearchScreen
 import ac.aux.compose.ui.composable.SignInToProfileScreen
 import ac.aux.compose.ui.composable.SocialPreconditionScreen
@@ -27,6 +28,7 @@ import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LandingRoute
 import ac.aux.compose.ui.composable.navigation.routes.LoadingRoute
 import ac.aux.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import ac.aux.compose.ui.composable.navigation.routes.SearchResultRoute
 import ac.aux.compose.ui.composable.navigation.routes.SearchRoute
 import ac.aux.compose.ui.composable.navigation.routes.SignInRoute
 import androidx.compose.runtime.Composable
@@ -333,7 +335,29 @@ fun AuxNavHost(
             SearchScreen(
                 initialSearchUIState = SearchUIState.Prompt,
                 nostrRepository = nostrRepository,
-                searchRepository = searchRepository
+                searchRepository = searchRepository,
+                onNavigateToProfile = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                },
+                onNavigateToSearchResult = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
+            )
+        }
+        composable<SearchResultRoute> {  backStackEntry ->
+            val route = backStackEntry.toRoute<SearchResultRoute>()
+
+            SearchResultScreen(
+                searchQuery = route.query,
+                nostrRepository = nostrRepository,
+                searchRepository = searchRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
             )
         }
         composable<NostrEventDetailRoute> { backStackEntry ->

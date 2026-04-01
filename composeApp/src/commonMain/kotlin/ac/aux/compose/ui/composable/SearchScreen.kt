@@ -2,6 +2,9 @@ package ac.aux.compose.ui.composable
 
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
+import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import ac.aux.compose.ui.composable.navigation.routes.Route
+import ac.aux.compose.ui.composable.navigation.routes.SearchResultRoute
 import ac.aux.compose.ui.theme.AuxTheme
 import ac.aux.compose.ui.view.model.FeedListViewModel
 import ac.aux.compose.ui.view.model.SearchViewModel
@@ -31,6 +34,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.YoutubeSearchedFor
 import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.Button
@@ -75,7 +79,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun SearchScreen(
     initialSearchUIState: SearchUIState,
     nostrRepository: NostrRepository,
-    searchRepository: SearchRepository
+    searchRepository: SearchRepository,
+    onNavigateToSearchResult: (Route) -> Unit,
+    onNavigateToProfile: (Route) -> Unit
 ) {
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.factory(
@@ -173,7 +179,6 @@ fun SearchScreen(
     // Controls expansion state of the search bar
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -199,7 +204,11 @@ fun SearchScreen(
                                 searchViewModel.performSearch(
                                     textFieldState.text.toString()
                                 )
-                                expanded = false
+
+                                if (textFieldState.text.isBlank()) {
+                                    expanded = false
+                                }
+
                             },
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
@@ -221,6 +230,18 @@ fun SearchScreen(
                                     Icon(
                                         Icons.Default.Search,
                                         contentDescription = "Search"
+                                    )
+                                }
+                            },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        // TODO: Adjust search
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Tune,
+                                        contentDescription = "Adjust Search"
                                     )
                                 }
                             }
@@ -251,26 +272,59 @@ fun SearchScreen(
                                     },
                                     leadingContent = {
                                         if (index == 0) {
-                                            Icon(
-                                                Icons.Default.TravelExplore,
-                                                contentDescription = "Search globally"
-                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    onNavigateToSearchResult.invoke(
+                                                        SearchResultRoute(
+                                                            textFieldState.text.toString()
+                                                        )
+                                                    )
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.TravelExplore,
+                                                    contentDescription = "Search globally"
+                                                )
+                                            }
+
                                         } else if (index == 1) {
-                                            Icon(
-                                                Icons.Default.Tag,
-                                                contentDescription = "Search hashtags"
-                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    onNavigateToSearchResult.invoke(
+                                                        SearchResultRoute(
+                                                            query = "#${textFieldState.text.toString().replace("#","")}"
+                                                        )
+                                                    )
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Tag,
+                                                    contentDescription = "Search hashtags"
+                                                )
+                                            }
+
                                         } else {
-                                            Icon(
-                                                Icons.Default.Person,
-                                                contentDescription = "Person"
-                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    onNavigateToProfile.invoke(
+                                                        ImplementationPendingRoute("Profile result")
+                                                    )
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Person,
+                                                    contentDescription = "Person"
+                                                )
+                                            }
                                         }
                                     },
                                     modifier = Modifier
                                         .clickable {
-                                            textFieldState.edit { replace(0, length, item) }
-                                            expanded = false
+                                            onNavigateToSearchResult.invoke(
+                                                SearchResultRoute(
+                                                    item
+                                                )
+                                            )
                                         }
                                         .fillMaxWidth(),
 
@@ -304,6 +358,9 @@ fun SearchScreen(
                                             IconButton(
                                                 onClick = {
                                                     // TODO: Open profile...
+                                                    onNavigateToProfile.invoke(
+                                                        ImplementationPendingRoute("Profile search result")
+                                                    )
                                                 }
                                             ) {
                                                 Icon(
@@ -325,8 +382,7 @@ fun SearchScreen(
                             item {
                                 Column(
                                     modifier = Modifier.padding(10.dp),
-
-                                    ) {
+                                ) {
                                     Text(
                                         text = "Recents",
                                         style = MaterialTheme.typography.titleMedium
@@ -342,13 +398,16 @@ fun SearchScreen(
                                     leadingContent = {
                                         Icon(
                                             Icons.Default.YoutubeSearchedFor,
-                                            contentDescription = "Person"
+                                            contentDescription = "Recent search"
                                         )
                                     },
                                     modifier = Modifier
                                         .clickable {
-                                            textFieldState.edit { replace(0, length, item) }
-                                            expanded = false
+                                            onNavigateToSearchResult.invoke(
+                                                SearchResultRoute(
+                                                    query = item
+                                                )
+                                            )
                                         }
                                         .fillMaxWidth(),
                                 )
@@ -387,7 +446,9 @@ private fun SearchScreenPreview() {
             SearchScreen(
                 initialSearchUIState = SearchUIState.Prompt,
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY
+                searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY,
+                onNavigateToSearchResult = {},
+                onNavigateToProfile = {}
             )
         }
     }
