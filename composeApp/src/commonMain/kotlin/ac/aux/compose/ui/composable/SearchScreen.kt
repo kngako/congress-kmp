@@ -232,18 +232,6 @@ fun SearchScreen(
                                         contentDescription = "Search"
                                     )
                                 }
-                            },
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        // TODO: Adjust search
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Tune,
-                                        contentDescription = "Adjust Search"
-                                    )
-                                }
                             }
                         )
                     },
