@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Person
@@ -82,10 +83,34 @@ fun MetadataEventDetail(
                     }
                 },
                 title = {
-                    Text(
-                        text = profile.displayName ?: profile.userName ?: profile.publicKey,
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Column(
+                        modifier = Modifier,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = profile.displayName ?: profile.userName ?: profile.publicKey,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+
+                        profile.nip05?.let {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Bolt,
+                                    contentDescription = "Lightning Bolt",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+
+                        }
+
+                    }
                 },
 
                 scrollBehavior = scrollBehavior
