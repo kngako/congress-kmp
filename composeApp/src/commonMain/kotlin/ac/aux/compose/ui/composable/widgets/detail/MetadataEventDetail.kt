@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -46,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -169,22 +171,23 @@ fun MetadataEventDetail(
                 }
 
                 item {
-                    val destinations = arrayOf("Notes", "Follows", "Following")
-                    val navController = rememberNavController()
+                    val destinations = arrayOf("Notes", "Replies", "Articles", "Follows", "Following", "Photos", "Videos")
+
                     val startDestination = 0
-                    val selectedDestination by rememberSaveable {
+                    var selectedDestination by rememberSaveable {
                         mutableIntStateOf(startDestination)
                     }
 
-                    PrimaryTabRow(
+                    PrimaryScrollableTabRow(
                         modifier = Modifier.padding(10.dp),
+                        edgePadding = 10.dp,
                         selectedTabIndex = selectedDestination,
                     ) {
                         destinations.forEachIndexed { index, destination ->
                             Tab(
                                 selected = selectedDestination == index,
                                 onClick = {
-
+                                    selectedDestination = index
                                 },
                                 text = {
                                     Text(

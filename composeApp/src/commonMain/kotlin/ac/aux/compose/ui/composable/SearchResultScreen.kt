@@ -3,77 +3,54 @@ package ac.aux.compose.ui.composable
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
 import ac.aux.compose.ui.theme.AuxTheme
-import ac.aux.compose.ui.view.model.FeedListViewModel
-import ac.aux.compose.ui.view.model.SearchViewModel
-import ac.aux.compose.ui.view.state.SearchUIState
-import androidx.compose.foundation.clickable
+import ac.aux.compose.ui.view.model.SearchResultType
+import ac.aux.compose.ui.view.model.SearchResultViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.ManageSearch
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SettingsInputComponent
-import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.YoutubeSearchedFor
-import androidx.compose.material3.AppBarWithSearch
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopSearchBar
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchResultScreen(
     searchQuery: String,
@@ -81,9 +58,9 @@ fun SearchResultScreen(
     searchRepository: SearchRepository,
     onNavigateBack: () -> Unit,
 ) {
-    val searchViewModel: SearchViewModel = viewModel(
-        factory = SearchViewModel.factory(
-            initialSearchUIState = SearchUIState.Prompt,
+    val searchViewModel: SearchResultViewModel = viewModel(
+        factory = SearchResultViewModel.factory(
+            initialSearchResultType = SearchResultType.Posts,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
         ),
@@ -146,7 +123,6 @@ fun SearchResultScreen(
                                 searchViewModel.performSearch(
                                     textFieldState.text.toString()
                                 )
-                                expanded = false
                             },
                             enabled = false,
                             expanded = expanded,
@@ -155,6 +131,10 @@ fun SearchResultScreen(
                             leadingIcon = {
                                 if (expanded) {
                                     IconButton(
+                                        enabled = true,
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.primary
+                                        ),
                                         onClick = {
                                             // TODO: onNavigateBack
                                             onNavigateBack.invoke()
@@ -175,6 +155,9 @@ fun SearchResultScreen(
                             },
                             trailingIcon = {
                                 IconButton(
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    ),
                                     onClick = {
                                         // TODO: Adjust search
                                     }
@@ -193,49 +176,39 @@ fun SearchResultScreen(
                     },
                     windowInsets = TopAppBarDefaults.windowInsets
                 ) {
-                    // TODO: Tabs
-                    LazyColumn {
-                        itemsIndexed(searchResults) { index, item ->
-                            ListItem(
-                                headlineContent = { Text(item) },
-                                supportingContent = {
-                                    if (index == 0) {
-                                        Text(
-                                            text = "Search"
-                                        )
-                                    } else if (index == 1) {
-                                        Text(
-                                            text = "Search hashtags"
-                                        )
-                                    } else {
-                                        Text("Profile")
-                                    }
+                    PrimaryScrollableTabRow(
+                        modifier = Modifier,
+                        edgePadding = 10.dp,
+                        selectedTabIndex = searchViewModel.searchResultType.ordinal,
+                    ) {
+                        SearchResultType.entries.forEach { searchResultType ->
+                            Tab(
+                                selected = searchViewModel.searchResultType == searchResultType,
+                                onClick = {
+                                    searchViewModel.updateSearchResultType(searchResultType)
                                 },
-                                leadingContent = {
-                                    if (index == 0) {
-                                        Icon(
-                                            Icons.Default.TravelExplore,
-                                            contentDescription = "Search globally"
-                                        )
-                                    } else if (index == 1) {
-                                        Icon(
-                                            Icons.Default.Tag,
-                                            contentDescription = "Search hashtags"
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.Person,
-                                            contentDescription = "Person"
-                                        )
-                                    }
-                                },
-                                modifier = Modifier
-                                    .clickable {
+                                text = {
+                                    Text(
+                                        text = searchResultType.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
+                        }
+                    }
 
-                                    }
-                                    .fillMaxWidth(),
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        item {
+                            Spacer(
+                                modifier = Modifier.height(50.dp)
+                            )
 
-                                )
+                            LoadingIndicator()
                         }
                     }
                 }

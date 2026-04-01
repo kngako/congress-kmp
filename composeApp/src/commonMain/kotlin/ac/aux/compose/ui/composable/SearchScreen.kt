@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -59,6 +60,7 @@ import androidx.compose.material3.TopSearchBar
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -118,35 +120,38 @@ fun SearchScreen(
         "Zinfandel",
     )
 
-    val recentSearches = listOf(
-        "Alligator",
-        "Baboon",
-        "Camel",
-        "Deer",
-        "Earthworm",
-        "Falcon",
-        "Gazelle",
-        "Hamster",
-        "Iguana",
-        "Jellyfish",
-        "Koala",
-        "Leopard",
-        "Meerkat",
-        "Nilgai",
-        "Octopus",
-        "Panda",
-        "Quokka",
-        "Panda",
-        "Rabbit",
-        "Scorpion",
-        "Tarantula",
-        "Uakari",
-        "Viper",
-        "Walrus",
-        "Xenops",
-        "Yak",
-        "Zebra",
-    )
+    val recentSearches = remember {
+        mutableStateListOf(
+            "Alligator",
+            "Baboon",
+            "Camel",
+            "Deer",
+            "Earthworm",
+            "Falcon",
+            "Gazelle",
+            "Hamster",
+            "Iguana",
+            "Jellyfish",
+            "Koala",
+            "Leopard",
+            "Meerkat",
+            "Nilgai",
+            "Octopus",
+            "Panda",
+            "Quokka",
+            "Panda",
+            "Rabbit",
+            "Scorpion",
+            "Tarantula",
+            "Uakari",
+            "Viper",
+            "Walrus",
+            "Xenops",
+            "Yak",
+            "Zebra",
+        )
+    }
+
 
     val profileSearches = listOf(
         "Afghanistan",
@@ -177,7 +182,7 @@ fun SearchScreen(
     )
     val textFieldState = rememberTextFieldState()
     // Controls expansion state of the search bar
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(true) }
 
     Scaffold { innerPadding ->
         Column(
@@ -242,68 +247,101 @@ fun SearchScreen(
                     if (textFieldState.text.isNotBlank()) {
                         // Display search results in a scrollable column
                         LazyColumn {
+                            item {
+                                ListItem(
+                                    headlineContent = {
+                                        Text(
+                                            textFieldState.text.toString()
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            text = "Search"
+                                        )
+                                    },
+                                    leadingContent = {
+                                        IconButton(
+                                            onClick = {
+                                                onNavigateToSearchResult.invoke(
+                                                    SearchResultRoute(
+                                                        textFieldState.text.toString()
+                                                    )
+                                                )
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.TravelExplore,
+                                                contentDescription = "Search globally"
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .clickable {
+                                            onNavigateToSearchResult.invoke(
+                                                SearchResultRoute(
+                                                    textFieldState.text.toString()
+                                                )
+                                            )
+                                        }
+                                        .fillMaxWidth(),
+
+                                )
+                            }
+
+                            item {
+                                ListItem(
+                                    headlineContent = { Text(textFieldState.text.toString()) },
+                                    supportingContent = {
+                                        Text(
+                                            text = "Search hashtags"
+                                        )
+                                    },
+                                    leadingContent = {
+                                        IconButton(
+                                            onClick = {
+                                                onNavigateToSearchResult.invoke(
+                                                    SearchResultRoute(
+                                                        query = "#${textFieldState.text.toString().replace("#","")}"
+                                                    )
+                                                )
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Tag,
+                                                contentDescription = "Search hashtags"
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .clickable {
+                                            onNavigateToSearchResult.invoke(
+                                                SearchResultRoute(
+                                                    "#${textFieldState.text.toString().replaceFirst("#","")}"
+                                                )
+                                            )
+                                        }
+                                        .fillMaxWidth(),
+
+                                    )
+                            }
                             itemsIndexed(searchResults) { index, item ->
                                 ListItem(
                                     headlineContent = { Text(item) },
                                     supportingContent = {
-                                        if (index == 0) {
-                                            Text(
-                                                text = "Search"
-                                            )
-                                        } else if (index == 1) {
-                                            Text(
-                                                text = "Search hashtags"
-                                            )
-                                        } else {
-                                            Text("Profile")
-                                        }
+                                        Text("Profile")
                                     },
                                     leadingContent = {
-                                        if (index == 0) {
-                                            IconButton(
-                                                onClick = {
-                                                    onNavigateToSearchResult.invoke(
-                                                        SearchResultRoute(
-                                                            textFieldState.text.toString()
-                                                        )
-                                                    )
-                                                }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.TravelExplore,
-                                                    contentDescription = "Search globally"
+                                        IconButton(
+                                            onClick = {
+                                                onNavigateToProfile.invoke(
+                                                    ImplementationPendingRoute("Profile result")
                                                 )
                                             }
-
-                                        } else if (index == 1) {
-                                            IconButton(
-                                                onClick = {
-                                                    onNavigateToSearchResult.invoke(
-                                                        SearchResultRoute(
-                                                            query = "#${textFieldState.text.toString().replace("#","")}"
-                                                        )
-                                                    )
-                                                }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Tag,
-                                                    contentDescription = "Search hashtags"
-                                                )
-                                            }
-
-                                        } else {
-                                            IconButton(
-                                                onClick = {
-                                                    onNavigateToProfile.invoke(
-                                                        ImplementationPendingRoute("Profile result")
-                                                    )
-                                                }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Person,
-                                                    contentDescription = "Person"
-                                                )
-                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = "Person"
+                                            )
                                         }
                                     },
                                     modifier = Modifier
@@ -316,7 +354,7 @@ fun SearchScreen(
                                         }
                                         .fillMaxWidth(),
 
-                                    )
+                                )
                             }
                         }
                     } else {
@@ -398,6 +436,18 @@ fun SearchScreen(
                                             )
                                         }
                                         .fillMaxWidth(),
+                                    trailingContent = {
+                                        IconButton(
+                                            onClick = {
+                                                recentSearches.removeAt(index)
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Remove search term"
+                                            )
+                                        }
+                                    }
                                 )
                             }
                         }
