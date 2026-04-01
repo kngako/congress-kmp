@@ -4,11 +4,13 @@ import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.RecentSearch
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
+import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 
@@ -73,8 +75,11 @@ interface NostrRepository {
 
     suspend fun searchableProfiles(): List<Profile>
 
-    suspend fun recentSearches(): List<String>
+    suspend fun getRecentSearches(): List<RecentSearch>
 
+    suspend fun removeRecentSearch(recentSearch: RecentSearch)
+
+    suspend fun saveSearchQuery(query: String, synchronizationFilterArray: SynchronizationFilterArray? = null)
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
@@ -168,7 +173,18 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun recentSearches(): List<String> {
+            override suspend fun getRecentSearches(): List<RecentSearch> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun removeRecentSearch(recentSearch: RecentSearch) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun saveSearchQuery(
+                query: String,
+                synchronizationFilterArray: SynchronizationFilterArray?
+            ) {
                 TODO("Not yet implemented")
             }
         }

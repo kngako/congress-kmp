@@ -127,9 +127,6 @@ fun FeedScreen(
                 is FeedListUIState.Loading -> {
                     LoadingDataIndicator()
 
-                    LaunchedEffect(true) {
-                        feedListViewModel.loadNostrFeed()
-                    }
                 }
                 FeedListUIState.Error -> {
                     Text("Something went wrong")

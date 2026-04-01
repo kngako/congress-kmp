@@ -37,20 +37,14 @@ class FeedListViewModel(
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
     init {
-        observeSynchronizeNostrEventRequestByPurposeAndStatusCount()
-        observeLocalNostrFeed()
-    }
-
-    fun retryLoad() {
-        feedListUIState = FeedListUIState.Loading
-        loadNostrFeed()
-    }
-
-    fun loadNostrFeed() {
+        logger.d("init")
         scheduleSynchronization()
+        observeLocalNostrFeed()
+        observeSynchronizeNostrEventRequestByPurposeAndStatusCount()
     }
 
     fun observeLocalNostrFeed() {
+        logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
             // Get contact list and sync feed...
 
@@ -70,6 +64,7 @@ class FeedListViewModel(
     }
 
     fun scheduleSynchronization() {
+        logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
@@ -98,6 +93,7 @@ class FeedListViewModel(
     }
 
     fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount() {
+        logger.d("observeSynchronizeNostrEventRequestByPurposeAndStatusCount")
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
                 logger.d("Pending/Processing Synchronization Request: $count")

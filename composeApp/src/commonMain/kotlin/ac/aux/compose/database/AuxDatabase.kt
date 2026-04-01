@@ -8,6 +8,7 @@ import ac.aux.compose.database.dao.NostrEventDao
 import ac.aux.compose.database.dao.PostDao
 import ac.aux.compose.database.dao.ProfileDao
 import ac.aux.compose.database.dao.ReactionDao
+import ac.aux.compose.database.dao.RecentSearchDao
 import ac.aux.compose.database.dao.RepostDao
 import ac.aux.compose.database.dao.SynchronizeNostrEventRequestDao
 import ac.aux.compose.database.dao.SynchronizeNostrEventResultDao
@@ -19,6 +20,7 @@ import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.Reaction
+import ac.aux.compose.database.model.RecentSearch
 import ac.aux.compose.database.model.Repost
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.SynchronizeNostrEventResult
@@ -41,6 +43,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         Post::class,
         Profile::class,
         Reaction::class,
+        RecentSearch::class,
         Repost::class,
         SynchronizeNostrEventRequest::class,
         SynchronizeNostrEventResult::class,
@@ -59,6 +62,8 @@ abstract class AuxDatabase: RoomDatabase() {
     abstract fun postDao(): PostDao
     abstract fun profileDao(): ProfileDao
     abstract fun reactionDao(): ReactionDao
+
+    abstract fun recentSearchDao(): RecentSearchDao
     abstract fun repostDao(): RepostDao
 
     abstract fun synchronizeNostrEventRequestDao(): SynchronizeNostrEventRequestDao

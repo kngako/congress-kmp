@@ -6,11 +6,13 @@ import ac.aux.compose.database.model.BroadcastNostrEventReceipt
 import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.database.model.RecentSearch
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalProfile
+import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
@@ -324,8 +326,23 @@ class DatabaseNostrRepository(
         return database.profileDao().getAllProfiles()
     }
 
-    override suspend fun recentSearches(): List<String> {
-        TODO("Not yet implemented")
+    override suspend fun getRecentSearches(): List<RecentSearch> {
+        return database.recentSearchDao().getAllRecentSearches()
     }
 
+    override suspend fun removeRecentSearch(recentSearch: RecentSearch) {
+        database.recentSearchDao().deleteRecentSearch(recentSearch)
+    }
+
+    override suspend fun saveSearchQuery(
+        query: String,
+        synchronizationFilterArray: SynchronizationFilterArray?
+    ) {
+        database.recentSearchDao().upsert(
+            RecentSearch(
+                query = query,
+                synchronizationFilters = synchronizationFilterArray
+            )
+        )
+    }
 }

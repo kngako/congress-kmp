@@ -125,66 +125,6 @@ fun SearchScreen(
         "Zinfandel",
     )
 
-    val recentSearches = remember {
-        mutableStateListOf(
-            "Alligator",
-            "Baboon",
-            "Camel",
-            "Deer",
-            "Earthworm",
-            "Falcon",
-            "Gazelle",
-            "Hamster",
-            "Iguana",
-            "Jellyfish",
-            "Koala",
-            "Leopard",
-            "Meerkat",
-            "Nilgai",
-            "Octopus",
-            "Panda",
-            "Quokka",
-            "Panda",
-            "Rabbit",
-            "Scorpion",
-            "Tarantula",
-            "Uakari",
-            "Viper",
-            "Walrus",
-            "Xenops",
-            "Yak",
-            "Zebra",
-        )
-    }
-
-
-    val profileSearches = listOf(
-        "Afghanistan",
-        "Bahamas",
-        "Cambodia",
-        "Denmark",
-        "Egypt",
-        "Finland",
-        "Gabon",
-        "Haiti",
-        "Iran",
-        "Jamaica",
-        "Kazakhstan",
-        "Lesotho",
-        "Malawi",
-        "Namibia",
-        "Oman",
-        "Pakistan",
-        "Qatar",
-        "Russia",
-        "Samoa",
-        "Senegal",
-        "Tanzania",
-        "Uganda",
-        "Venezuela",
-        "Yemen",
-        "Zambia"
-    )
     val textFieldState = rememberTextFieldState()
     // Controls expansion state of the search bar
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -363,10 +303,6 @@ fun SearchScreen(
                             }
                         }
                     } else {
-
-
-
-
                         LazyColumn {
                             // Display search results in a scrollable column
                             item {
@@ -430,21 +366,26 @@ fun SearchScreen(
                                 }
                             }
                             item {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                ) {
-                                    Text(
-                                        text = "Recents",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                if (searchViewModel.recentSearches.isNotEmpty()) {
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                    ) {
+                                        Text(
+                                            text = "Recents",
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                    }
                                 }
                             }
-                            itemsIndexed(recentSearches) { index, item ->
+                            items(
+                                items = searchViewModel.recentSearches,
+                                key = { recentSearch -> recentSearch.query }
+                            ) { recentSearch ->
                                 ListItem(
                                     colors = ListItemDefaults.colors(
                                         containerColor = Color.Transparent
                                     ),
-                                    headlineContent = { Text(item) },
+                                    headlineContent = { Text(recentSearch.query) },
                                     leadingContent = {
                                         Icon(
                                             Icons.Default.YoutubeSearchedFor,
@@ -455,7 +396,7 @@ fun SearchScreen(
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
-                                                    query = item
+                                                    query = recentSearch.query
                                                 )
                                             )
                                         }
@@ -463,7 +404,7 @@ fun SearchScreen(
                                     trailingContent = {
                                         IconButton(
                                             onClick = {
-                                                recentSearches.removeAt(index)
+                                                searchViewModel.removeRecentSearch(recentSearch)
                                             }
                                         ) {
                                             Icon(
