@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.BottomAppBar
@@ -84,8 +85,8 @@ fun TextNoteEventDetail(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val profile = localNostrEvent.profile
@@ -104,10 +105,12 @@ fun TextNoteEventDetail(
                                     style = MaterialTheme.typography.bodyLarge
                                 )
 
-                                Text(
-                                    text = profile.nip05 ?: "",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
+                                profile.nip05?.let {
+                                    Text(
+                                        text = profile.nip05 ?: "",
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
                             }
 
 
@@ -118,6 +121,17 @@ fun TextNoteEventDetail(
                             ) {
                                 Text(
                                     "Follow"
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    // TODO: Show dropdown of more actions...
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "More options"
                                 )
                             }
                         }
