@@ -47,16 +47,6 @@ class SearchViewModel(
         loadRecentSearches()
     }
 
-    fun performSearch(searchQuery: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.saveSearchQuery(
-                searchQuery,
-                // TODO: synchronizationFilterArray
-            )
-            // TODO: Run search on local db for suggestions...
-        }
-    }
-
     fun loadSearchableProfiles() {
         viewModelScope.launch(Dispatchers.IO) {
             searchableProfiles.addAll(

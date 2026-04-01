@@ -30,6 +30,7 @@ enum class SearchResultType {
 
 class SearchResultViewModel(
     initialSearchResultType: SearchResultType,
+    val searchQuery: String,
     val nostrRepository: NostrRepository,
     val searchRepository: SearchRepository,
 ): ViewModel() {
@@ -53,17 +54,18 @@ class SearchResultViewModel(
 
     fun loadSearchResult() {
         viewModelScope.launch(Dispatchers.IO) {
+            nostrRepository.saveSearchQuery(
+                searchQuery,
+                // TODO: synchronizationFilterArray
+            )
+
             // This is something not taking into consideration the results we are actually looking for...
             nostrRepository.observeNostrFeed().collect { localNostrEvents ->
                 searchResultListUIState = SearchResultListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }
-        }
-    }
 
-    fun performSearch(searchQuery: String) {
-        viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
                 Relays.eventPublishRelaySet.map { normalizedRelay ->
@@ -77,7 +79,7 @@ class SearchResultViewModel(
                                     ReactionEvent.KIND,
                                     LnZapEvent.KIND,
                                 ),
-                                search = "shoes",
+                                search = searchQuery,
                                 limit = 50
                             )
                         ),
@@ -88,18 +90,19 @@ class SearchResultViewModel(
         }
     }
 
-
     companion object {
         const val TAG = "SearchViewModel"
 
         fun factory(
             initialSearchResultType: SearchResultType = SearchResultType.Posts,
+            searchQuery: String,
             nostrRepository: NostrRepository,
             searchRepository: SearchRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SearchResultViewModel(
                     initialSearchResultType = initialSearchResultType,
+                    searchQuery = searchQuery,
                     nostrRepository = nostrRepository,
                     searchRepository = searchRepository
                 )

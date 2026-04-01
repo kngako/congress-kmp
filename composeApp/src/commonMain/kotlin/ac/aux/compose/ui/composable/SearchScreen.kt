@@ -151,10 +151,6 @@ fun SearchScreen(
                             query = textFieldState.text.toString(),
                             onQueryChange = { textFieldState.edit { replace(0, length, it) } },
                             onSearch = {
-                                searchViewModel.performSearch(
-                                    textFieldState.text.toString()
-                                )
-
                                 if (textFieldState.text.isBlank()) {
                                     expanded = false
                                 }

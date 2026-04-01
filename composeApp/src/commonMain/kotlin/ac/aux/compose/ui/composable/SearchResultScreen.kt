@@ -70,6 +70,7 @@ fun SearchResultScreen(
     val searchViewModel: SearchResultViewModel = viewModel(
         factory = SearchResultViewModel.factory(
             initialSearchResultType = SearchResultType.Posts,
+            searchQuery = searchQuery,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
         ),
@@ -129,9 +130,7 @@ fun SearchResultScreen(
                             query = textFieldState.text.toString(),
                             onQueryChange = { textFieldState.edit { replace(0, length, it) } },
                             onSearch = {
-                                searchViewModel.performSearch(
-                                    textFieldState.text.toString()
-                                )
+                                // Since search bar is disabled we don't need to do anything...
                             },
                             enabled = false,
                             expanded = expanded,
