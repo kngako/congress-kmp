@@ -10,15 +10,26 @@ import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.EventCmd
+import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
+import com.vitorpamplona.quartz.nip01Core.tags.people.firstTaggedUser
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.utils.EventFactory
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlin.String
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -86,6 +97,7 @@ data class NostrEvent(
     fun isProfileCreationEvent(): Boolean {
         return kind == MetadataEvent.KIND && unsignedNostrEventId != null
     }
+
     fun toPost(): Post? = try {
         if (kind == TextNoteEvent.KIND) {
             val textNote = EventFactory.create<TextNoteEvent>(
@@ -249,5 +261,53 @@ data class NostrEvent(
     } catch (e: Throwable) {
         logger.e("Failed to return Zap: ", e)
         return null
+    }
+
+    fun toNostrJsonObject(): JsonObject {
+        val nostrEvent = this
+
+        return buildJsonObject {
+            put("id", nostrEvent.id)
+            put("pubkey", nostrEvent.pubKey)
+            put("created_at", nostrEvent.createdAt.epochSeconds)
+            put("kind", nostrEvent.kind)
+            putJsonArray("tags") {
+                nostrEvent.tags.forEach { tag ->
+                    add(
+                        JsonArray(tag.map { JsonPrimitive(it) })
+                    )
+                }
+            }
+            put("content", nostrEvent.content)
+            put("sig", nostrEvent.sig)
+        }
+    }
+
+    companion object {
+
+        fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {
+            // TODO: Check for unsupported kind
+            val taggedEvent = event.firstTaggedEvent()
+            val taggedUser = event.firstTaggedUser()
+
+            return NostrEvent(
+                id = event.id,
+                pubKey = event.pubKey,
+                kind = event.kind,
+                content = event.content,
+                tags = event.tags,
+                createdAt = Instant.fromEpochSeconds(event.createdAt),
+                unsignedNostrEventId = synchronizeNostrEventRequest?.unsignedNostrEventId,
+                sig = event.sig,
+
+                taggedNostrEventId = taggedEvent?.eventId,
+                taggedNostrEventRelayUrl = taggedEvent?.relay?.url,
+
+                taggedPublicKey = taggedUser?.pubKey,
+                taggedPublicKeyRelayUrl = taggedUser?.relayHint?.url
+            )
+        } catch (e: Throwable) {
+            return null
+        }
     }
 }

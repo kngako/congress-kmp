@@ -24,6 +24,7 @@ materialIconsCore = "1.7.3"
 materialIconsExtended = "1.7.3"
 navigationCompose = "2.9.2"
 okhttp = "5.3.2"
+okio = "3.16.4"
 pagingCommon = "3.5.0-alpha01"
 quartz = "1.06.3"
 room = "2.8.4"
@@ -65,6 +66,7 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.re
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 okhttp-coroutines = { group = "com.squareup.okhttp3", name = "okhttp-coroutines", version.ref = "okhttp" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 vitorpamplona-quartz = { module = "com.vitorpamplona.quartz:quartz", version.ref = "quartz" }
 
 [plugins]

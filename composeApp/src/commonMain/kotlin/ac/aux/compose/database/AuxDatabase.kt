@@ -21,6 +21,7 @@ import ac.aux.compose.database.model.Post
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.Reaction
 import ac.aux.compose.database.model.RecentSearch
+import ac.aux.compose.database.model.Relay
 import ac.aux.compose.database.model.Repost
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.SynchronizeNostrEventResult
@@ -44,6 +45,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         Profile::class,
         Reaction::class,
         RecentSearch::class,
+        Relay::class,
         Repost::class,
         SynchronizeNostrEventRequest::class,
         SynchronizeNostrEventResult::class,

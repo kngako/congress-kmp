@@ -330,7 +330,6 @@ abstract class NostrDao(
                 )
             }
 
-            // TODO: Placeholder for all the other things...
             database.zapDao().upsert(zap)
         }
     }

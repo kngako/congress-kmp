@@ -73,6 +73,8 @@ kotlin {
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.kotlinx.json)
 
+            implementation(libs.okio)
+
             implementation(libs.vitorpamplona.quartz)
         }
         commonTest.dependencies {

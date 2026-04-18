@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "5f7afc4947b08cff2f59cfb44bfbf281",
+    "identityHash": "37219e58733785a0530005387bc4e1f4",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -789,6 +789,50 @@
         }
       },
       {
+        "tableName": "Relay",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`publicKey` TEXT NOT NULL, `type` TEXT NOT NULL, `url` TEXT NOT NULL, `read` INTEGER NOT NULL, `write` INTEGER NOT NULL, PRIMARY KEY(`publicKey`, `type`, `url`))",
+        "fields": [
+          {
+            "fieldPath": "publicKey",
+            "columnName": "publicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "read",
+            "columnName": "read",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "write",
+            "columnName": "write",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "publicKey",
+            "type",
+            "url"
+          ]
+        }
+      },
+      {
         "tableName": "Repost",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `repostedPostId` TEXT NOT NULL, `repostedPostTags` TEXT NOT NULL, `repostedPostCreatedAt` INTEGER NOT NULL, `repostedPostContent` TEXT NOT NULL, `repostedPostAuthorPublicKey` TEXT NOT NULL, `content` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `profilePublicKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`profilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`repostedPostAuthorPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`repostedPostId`) REFERENCES `Post`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
@@ -1409,7 +1453,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5f7afc4947b08cff2f59cfb44bfbf281')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '37219e58733785a0530005387bc4e1f4')"
     ]
   }
 }

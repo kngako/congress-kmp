@@ -17,10 +17,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip04Dm.messages.PrivateDmEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
+import com.vitorpamplona.quartz.nip96FileStorage.config.FileServersEvent
+import com.vitorpamplona.quartz.nipB7Blossom.BlossomServersEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.firstOrNull
@@ -78,6 +83,11 @@ class FeedListViewModel(
                                     RepostEvent.KIND,
                                     ReactionEvent.KIND,
                                     LnZapEvent.KIND,
+                                    ContactListEvent.KIND,
+                                    AdvertisedRelayListEvent.KIND,
+                                    PrivateDmEvent.KIND,
+                                    BlossomServersEvent.KIND,
+                                    FileServersEvent.KIND
                                 ),
                                 tags = mapOf(
                                     Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
