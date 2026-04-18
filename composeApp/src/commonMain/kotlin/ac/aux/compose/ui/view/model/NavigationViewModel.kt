@@ -3,10 +3,13 @@ package ac.aux.compose.ui.view.model
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.network.NostrEventBroadcaster
+import ac.aux.compose.network.dto.RelayDTO
 import ac.aux.compose.network.relays.RelaysSocketManager
 import ac.aux.compose.network.sockets.NostrSocketClientFactory
 import ac.aux.compose.nostr.Relays
+import ac.aux.compose.repository.CachingImportRepository
 import ac.aux.compose.repository.NostrRepository
+import ac.aux.compose.repository.RelayRepository
 import ac.aux.compose.ui.view.state.NavigationUIState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -49,8 +52,17 @@ import kotlin.time.Instant
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
     val nostrRepository: NostrRepository,
+    val relayRepository: RelayRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
+
+    val relaysSocketManager = RelaysSocketManager(
+        nostrSocketClientFactory = NostrSocketClientFactory,
+        cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
+        relayRepository = relayRepository
+    )
+
+
 
     companion object {
         private const val TAG = "NavigationViewModel"
@@ -58,12 +70,14 @@ class NavigationViewModel(
         fun factory(
             initialNavigationUIState: NavigationUIState,
             nostrRepository: NostrRepository,
+            relayRepository: RelayRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NavigationViewModel(
                     initialNavigationUIState = initialNavigationUIState,
                     nostrRepository = nostrRepository,
+                    relayRepository = relayRepository,
                     scope = scope
                 )
             }
@@ -290,23 +304,45 @@ class NavigationViewModel(
         scope.launch(Dispatchers.IO) {
             nostrRepository.observePendingBroadcastNostrEventRequests().collect { localBroadcastNostrEventRequests ->
                 localBroadcastNostrEventRequests.forEach { localBroadcastNostrEventRequest ->
-                    nostrEventBroadcaster.broadcastEvent(
-                        localBroadcastNostrEventRequest = localBroadcastNostrEventRequest,
-                        onBroadcastRequestProcessed = { broadcastNostrEventRequest ->
-                            scope.launch(Dispatchers.IO) {
-                                nostrRepository.broadcastProcessed(
-                                    broadcastNostrEventRequest
-                                )
-                            }
-                        },
-                        onBroadcastReceipt = { broadcastNostrEventReceipt ->
-                            scope.launch(Dispatchers.IO) {
-                                nostrRepository.saveBroadcastReceipt(
-                                    broadcastNostrEventReceipt
-                                )
-                            }
-                        }
+
+                    if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
+                        relaysSocketManager.publishEvent(localBroadcastNostrEventRequest.nostrEvent)
+                    }
+
+                    scope.launch(Dispatchers.IO) {
+                        nostrRepository.broadcastProcessed(
+                            localBroadcastNostrEventRequest.broadcastNostrEventRequest
+                        )
+                    }
+                    // Broadcast to the intended relay...
+                    relaysSocketManager.publishEvent(
+                        localBroadcastNostrEventRequest.nostrEvent,
+                        setOf(
+                            RelayDTO(
+                                localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL,
+                                write = true,
+                                read = true
+                            )
+                        )
                     )
+
+//                    nostrEventBroadcaster.broadcastEvent(
+//                        localBroadcastNostrEventRequest = localBroadcastNostrEventRequest,
+//                        onBroadcastRequestProcessed = { broadcastNostrEventRequest ->
+//                            scope.launch(Dispatchers.IO) {
+//                                nostrRepository.broadcastProcessed(
+//                                    broadcastNostrEventRequest
+//                                )
+//                            }
+//                        },
+//                        onBroadcastReceipt = { broadcastNostrEventReceipt ->
+//                            scope.launch(Dispatchers.IO) {
+//                                nostrRepository.saveBroadcastReceipt(
+//                                    broadcastNostrEventReceipt
+//                                )
+//                            }
+//                        }
+//                    )
                 }
             }
         }

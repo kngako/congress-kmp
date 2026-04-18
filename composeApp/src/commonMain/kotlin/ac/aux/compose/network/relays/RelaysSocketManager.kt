@@ -36,24 +36,26 @@ class RelaysSocketManager constructor(
 
     private var relaysObserverJob: Job? = null
 
-    private fun buildRelayPool() =
-        RelayPool(
-            nostrSocketClientFactory = nostrSocketClientFactory,
-            cachingImportRepository = cachingImportRepository,
-        )
 
-    private val userRelaysPool: RelayPool = buildRelayPool()
-    private val nwcRelaysPool: RelayPool = buildRelayPool()
-    private val fallbackRelaysPool: RelayPool = buildRelayPool()
+    /**
+     * Concrete relay pool
+     */
+    private val relayPool =  RelayPool(
+        nostrSocketClientFactory = nostrSocketClientFactory,
+        cachingImportRepository = cachingImportRepository,
+    )
 
-    val userRelayPoolStatus = userRelaysPool.relayPoolStatus
+    /**
+     * Logical relayPool
+     */
+    private val userRelays = mutableSetOf<RelayDTO>()
+
+    val userRelayPoolStatus = relayPool.relayPoolStatus
 
     init {
-        initFallbackRelaysPool()
         observeActiveUserId()
     }
 
-    private fun initFallbackRelaysPool() = fallbackRelaysPool.changeRelays(FALLBACK_RELAYS)
 
     private fun observeActiveUserId() =
         scope.launch {
@@ -79,68 +81,61 @@ class RelaysSocketManager constructor(
         scope.launch {
             try {
                 relayRepository.observePublicKeyRelays(publicKey = publicKey).collect { relays ->
-                    val userRelays = relays.filter { it.type != "nwc" }.map { it.mapToRelayDTO() }
-                    val nwcRelays = relays.filter { it.type == "nwc" }.map { it.mapToRelayDTO() }
-                    updateRelayPools(regularRelays = userRelays, walletRelays = nwcRelays)
+                    val userRelays = relays.filter { it.type == "user" }.map { it.mapToRelayDTO() }
+                    updateRelayPools(regularRelays = userRelays)
                 }
             } catch (error: CancellationException) {
                 logger.w(throwable = error) { "Relay observation cancelled" }
             }
         }
 
-    private suspend fun updateRelayPools(regularRelays: List<RelayDTO>?, walletRelays: List<RelayDTO>?) {
+    private suspend fun updateRelayPools(regularRelays: List<RelayDTO>?) {
         relayPoolsMutex.withLock {
-            val userRelaysChanged = userRelaysPool.relays != regularRelays
+            val userRelaysChanged = relayPool.relays != regularRelays
             if (userRelaysChanged && !regularRelays.isNullOrEmpty()) {
-                userRelaysPool.changeRelays(relays = regularRelays)
-            }
-
-            val nwcRelaysChanged = nwcRelaysPool.relays != walletRelays
-            if (nwcRelaysChanged && !walletRelays.isNullOrEmpty()) {
-                nwcRelaysPool.changeRelays(relays = walletRelays)
+                relayPool.changeRelays(relays = regularRelays)
             }
         }
     }
 
     private suspend fun clearRelayPools() =
         relayPoolsMutex.withLock {
-            userRelaysPool.closePool()
-            nwcRelaysPool.closePool()
+            relayPool.closePool()
         }
 
     @Throws(NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: NostrEvent) {
-        if (userRelaysPool.hasRelays()) {
-            userRelaysPool.publishEvent(nostrEvent = nostrEvent, cachingProxyEnabled = isCachingProxyEnabled())
+        if (userRelays.isNotEmpty()) {
+            relayPool.publishEvent(
+                nostrEvent = nostrEvent,
+                relays = userRelays
+            )
         } else {
-            fallbackRelaysPool.publishEvent(nostrEvent = nostrEvent, cachingProxyEnabled = isCachingProxyEnabled())
+            relayPool.publishEvent(
+                nostrEvent = nostrEvent,
+                relays = FALLBACK_RELAYS
+            )
         }
     }
 
     @Throws(NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: NostrEvent, relays: List<RelayDTO>) {
-        val customPool = buildRelayPool()
-        customPool.changeRelays(relays = relays)
-        customPool.publishEvent(nostrEvent = nostrEvent, cachingProxyEnabled = isCachingProxyEnabled())
-        customPool.closePool()
-    }
+    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO>) {
+        relayPool.publishEvent(
+            nostrEvent = nostrEvent,
+            relays = relays
+        )
 
-    @Throws(NostrPublishException::class)
-    suspend fun publishNwcEvent(nostrEvent: NostrEvent) {
-        if (!nwcRelaysPool.hasRelays()) {
-            throw NostrPublishException(cause = IllegalStateException("nwc relay not found"))
-        }
-
-        nwcRelaysPool.publishEvent(nostrEvent = nostrEvent, cachingProxyEnabled = isCachingProxyEnabled())
+        // TODO: Close relays and remove them from relayPool
+//        customPool.closePool()
     }
 
     fun tryConnectingToAllUserRelays() {
-        userRelaysPool.relays.forEach {
+        relayPool.relays.forEach {
             scope.launch {
-                userRelaysPool.tryConnectingToRelay(it.url)
+                relayPool.tryConnectingToRelay(it.url)
             }
         }
     }
 
-    suspend fun tryConnectingToUserRelay(url: String) = userRelaysPool.tryConnectingToRelay(url)
+    suspend fun tryConnectingToUserRelay(url: String) = relayPool.tryConnectingToRelay(url)
 }

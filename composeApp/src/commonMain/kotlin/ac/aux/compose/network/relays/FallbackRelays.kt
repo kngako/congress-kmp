@@ -11,6 +11,6 @@ val FALLBACK_RELAYS = listOf(
     "wss://nos.lol",
     "wss://offchain.pub",
     "wss://nostr.bitcoiner.social",
-).map { it.toRelayDTO() }
+).map { it.toRelayDTO() }.toSet()
 
 

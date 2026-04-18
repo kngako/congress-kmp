@@ -74,7 +74,7 @@ fun AuxNavHost(
 
     val databaseManager = DatabaseManager(auxGlobal)
 
-    val nostrRepository = DatabaseNostrRepository(
+    val databaseNostrRepository = DatabaseNostrRepository(
         database = databaseManager.auxDatabase
     )
     val searchRepository = DatabaseSearchRepository(
@@ -93,7 +93,8 @@ fun AuxNavHost(
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
             initialNavigationUIState = NavigationUIState.Loading,
-            nostrRepository = nostrRepository,
+            nostrRepository = databaseNostrRepository,
+            relayRepository = databaseNostrRepository,
             scope = applicationIOScope
         )
     )
@@ -233,7 +234,7 @@ fun AuxNavHost(
                         popUpTo(0)
                     }
                 },
-                nostrRepository = nostrRepository
+                nostrRepository = databaseNostrRepository
             )
         }
         composable< WriteNewNoteRoute> {
@@ -243,12 +244,12 @@ fun AuxNavHost(
                         navController.popBackStack()
                     }
                 },
-                nostrRepository = nostrRepository
+                nostrRepository = databaseNostrRepository
             )
         }
         composable<SignInRoute> {
             SignInToProfileScreen(
-                nostrRepository = nostrRepository
+                nostrRepository = databaseNostrRepository
             )
         }
         composable<UnsignedProfileRoute> { backStackEntry ->
@@ -267,7 +268,7 @@ fun AuxNavHost(
             UnqueuedProfileSynchronizationScreen(
                 unsignedNostrEventId = route.unsignedNostrEventId,
                 profilePublicKey = route.publicKey,
-                nostrRepository = nostrRepository
+                nostrRepository = databaseNostrRepository
             )
         }
         composable<UnindexedProfileRoute> {
@@ -320,7 +321,7 @@ fun AuxNavHost(
                         route = SearchRoute
                     )
                 },
-                nostrRepository = nostrRepository
+                nostrRepository = databaseNostrRepository
             )
         }
         composable<BlankRoute> {
@@ -334,7 +335,7 @@ fun AuxNavHost(
         composable<SearchRoute> {
             SearchScreen(
                 initialSearchUIState = SearchUIState.Prompt,
-                nostrRepository = nostrRepository,
+                nostrRepository = databaseNostrRepository,
                 searchRepository = searchRepository,
                 onNavigateToProfile = { route ->
                     navController.navigate(
@@ -353,7 +354,7 @@ fun AuxNavHost(
 
             SearchResultScreen(
                 searchQuery = route.query,
-                nostrRepository = nostrRepository,
+                nostrRepository = databaseNostrRepository,
                 searchRepository = searchRepository,
                 onNavigateBack = {
                     navController.popBackStack()
@@ -371,7 +372,7 @@ fun AuxNavHost(
             NostrEventDetailScreen(
                 initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
                 nostrEventId = route.nostrEventId,
-                nostrRepository = nostrRepository,
+                nostrRepository = databaseNostrRepository,
                 onNavigateBack = {
                     navController.popBackStack()
                 },

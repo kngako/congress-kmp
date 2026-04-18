@@ -44,7 +44,7 @@ class NostrPublisherRepository(
             runCatching {
                 relaysSocketManager.publishEvent(
                     nostrEvent = signedNostrEvent,
-                    relays = outboxRelays.map { RelayDTO(url = it, read = false, write = true) },
+                    relays = outboxRelays.map { RelayDTO(url = it, read = false, write = true) }.toSet(),
                 )
             }.onFailure { error ->
                 logger.w(throwable = error) { "Failed to publish to outbox relays." }
@@ -66,7 +66,7 @@ class NostrPublisherRepository(
     @Throws(NostrPublishException::class, SignatureException::class)
     suspend fun publishRelayList(userId: String, relays: List<RelayDTO>): NostrEvent {
         val signedNostrEvent = nostrNotary.signRelayListMetadata(userId = userId, relays = relays).unwrapOrThrow()
-        relaysSocketManager.publishEvent(nostrEvent = signedNostrEvent, relays = relays)
+        relaysSocketManager.publishEvent(nostrEvent = signedNostrEvent, relays = relays.toSet())
         importEvent(signedNostrEvent)
         return signedNostrEvent
     }

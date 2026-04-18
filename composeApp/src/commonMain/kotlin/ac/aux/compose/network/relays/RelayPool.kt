@@ -47,8 +47,7 @@ class RelayPool(
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    var relays: List<RelayDTO> = emptyList()
-        private set
+    val relays: MutableSet<RelayDTO> = mutableSetOf()
 
     @VisibleForTesting
     var socketClients = listOf<NostrSocketClient>()
@@ -88,7 +87,41 @@ class RelayPool(
             updateRelayStatus(url = client.socketUrl, connected = false)
             scope.launch { client.close() }
         }
-        this.relays = relays
+        this.relays.clear()
+        this.relays.addAll(relays)
+    }
+
+    fun removeRelays(relays: Set<RelayDTO>) {
+        val relayUrls = relays.map { it.url }
+
+        val toRemoveSocketClients = socketClients.filter { it.socketUrl in relayUrls }
+
+        val newSocketClients = socketClients.toMutableList().apply {
+            removeAll(toRemoveSocketClients)
+        }
+
+        socketClients = newSocketClients
+        toRemoveSocketClients.forEach { client ->
+            updateRelayStatus(url = client.socketUrl, connected = false)
+            scope.launch { client.close() }
+        }
+        this.relays.removeAll(relays)
+    }
+
+    fun addRelays(relays: Set<RelayDTO>) {
+        val existingRelayUrls = socketClients.map { it.socketUrl }
+        val newRelayUrls = relays.map { it.url }
+
+        val toAddRelayUrls = newRelayUrls.filter { it !in existingRelayUrls }
+        val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
+
+        val newSocketClients = socketClients.toMutableList().apply {
+            addAll(toAddSocketClients)
+        }
+
+        socketClients = newSocketClients
+
+        this.relays.addAll(relays)
     }
 
     fun closePool() {
@@ -97,7 +130,7 @@ class RelayPool(
             scope.launch { client.close() }
         }
         socketClients = emptyList()
-        relays = emptyList()
+        relays.clear()
     }
 
     fun hasRelays() = relays.isNotEmpty()
@@ -118,11 +151,17 @@ class RelayPool(
         }
 
     @Throws(NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: NostrEvent, cachingProxyEnabled: Boolean = false) {
-        if (cachingProxyEnabled) {
-            handleBroadcastEventThroughCachingProxy(relays.map { it.url }, nostrEvent)
-        } else {
+    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO> = emptySet()) {
+        val relayUrls = relays.map { it.url }
+
+        if (relayUrls.isEmpty()) {
             handlePublishEventToRelays(socketClients, nostrEvent)
+        } else {
+            addRelays(relays)
+
+            val filteredSocketClients = socketClients.filter { relayUrls.contains(it.socketUrl) }
+
+            handlePublishEventToRelays(filteredSocketClients, nostrEvent)
         }
     }
 
