@@ -3,6 +3,8 @@ package ac.aux.compose.ui.view.model
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.network.NostrEventBroadcaster
+import ac.aux.compose.network.relays.RelaysSocketManager
+import ac.aux.compose.network.sockets.NostrSocketClientFactory
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.ui.view.state.NavigationUIState

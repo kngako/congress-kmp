@@ -7,6 +7,7 @@ import ac.aux.compose.database.model.BroadcastNostrEventRequest
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.RecentSearch
+import ac.aux.compose.database.model.Relay
 import ac.aux.compose.database.model.SynchronizeNostrEventRequest
 import ac.aux.compose.database.model.UnsignedNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
@@ -16,6 +17,7 @@ import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
+import ac.aux.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -43,7 +45,7 @@ import kotlin.time.Instant
 
 class DatabaseNostrRepository(
     private val database: AuxDatabase
-): NostrRepository {
+): NostrRepository, RelayRepository {
     companion object {
         const val TAG = "DatabaseNostrRepository"
     }
@@ -349,5 +351,9 @@ class DatabaseNostrRepository(
                 synchronizationFilters = synchronizationFilterArray
             )
         )
+    }
+
+    override suspend fun observePublicKeyRelays(publicKey: String): Flow<List<Relay>> {
+        return database.relayDao().observePublicKeyRelays(publicKey)
     }
 }

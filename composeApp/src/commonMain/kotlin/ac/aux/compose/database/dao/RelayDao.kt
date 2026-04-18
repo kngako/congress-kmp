@@ -13,7 +13,7 @@ interface RelayDao {
     fun  getAllPosts(): List<Relay>
 
     @Query("SELECT * FROM Relay WHERE publicKey = :publicKey")
-    fun observePublicKeyRelays(publicKey: String): Flow<Relay?>
+    fun observePublicKeyRelays(publicKey: String): Flow<List<Relay>>
 
     @Upsert
     suspend fun upsert(relay: Relay)

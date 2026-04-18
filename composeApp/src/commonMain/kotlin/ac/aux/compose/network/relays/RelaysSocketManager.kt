@@ -15,9 +15,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.primal.android.networking.relays.errors.NostrPublishException
+import ac.aux.compose.exceptions.NostrPublishException
 
 
+/**
+ * As Seen in Primal
+ *
+ * https://github.com/PrimalHQ/primal-android-app/blob/6db2e6862239335dede4162338d7c4f10ad35031/app/src/main/kotlin/net/primal/android/networking/relays/RelaysSocketManager.kt
+ */
 class RelaysSocketManager constructor(
     private val nostrSocketClientFactory: NostrSocketClientFactory,
     private val cachingImportRepository: CachingImportRepository,

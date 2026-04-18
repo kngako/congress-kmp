@@ -43,6 +43,10 @@ kotlin {
             implementation(libs.okhttp.coroutines)
         }
         commonMain.dependencies {
+            api("fr.acinq.lightning:lightning-kmp-core:1.11.5")
+
+            implementation(libs.androidx.datastore.preferences)
+
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
 
@@ -60,6 +64,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
+
 
             implementation(libs.navigation.compose)
 

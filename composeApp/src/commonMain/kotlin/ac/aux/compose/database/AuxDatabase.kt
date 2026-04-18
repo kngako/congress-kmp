@@ -9,6 +9,7 @@ import ac.aux.compose.database.dao.PostDao
 import ac.aux.compose.database.dao.ProfileDao
 import ac.aux.compose.database.dao.ReactionDao
 import ac.aux.compose.database.dao.RecentSearchDao
+import ac.aux.compose.database.dao.RelayDao
 import ac.aux.compose.database.dao.RepostDao
 import ac.aux.compose.database.dao.SynchronizeNostrEventRequestDao
 import ac.aux.compose.database.dao.SynchronizeNostrEventResultDao
@@ -66,6 +67,9 @@ abstract class AuxDatabase: RoomDatabase() {
     abstract fun reactionDao(): ReactionDao
 
     abstract fun recentSearchDao(): RecentSearchDao
+
+    abstract fun relayDao(): RelayDao
+
     abstract fun repostDao(): RepostDao
 
     abstract fun synchronizeNostrEventRequestDao(): SynchronizeNostrEventRequestDao

@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
-import net.primal.android.networking.relays.errors.NostrPublishException
+import ac.aux.compose.exceptions.NostrPublishException
 import ac.aux.compose.network.sockets.NostrIncomingMessage
 import ac.aux.compose.network.sockets.NostrSocketClient
 import ac.aux.compose.network.sockets.NostrSocketClientFactory
@@ -30,6 +30,11 @@ import ac.aux.compose.network.sockets.parseIncomingMessage
 import ac.aux.compose.repository.CachingImportRepository
 import co.touchlab.kermit.Logger
 
+/**
+ * As seen in Primal
+ *
+ * https://github.com/PrimalHQ/primal-android-app/blob/8a912053131764c39711cd0dc5012645498c9a4f/app/src/main/kotlin/net/primal/android/networking/relays/RelayPool.kt
+ */
 class RelayPool(
     private val nostrSocketClientFactory: NostrSocketClientFactory,
     private val cachingImportRepository: CachingImportRepository,
