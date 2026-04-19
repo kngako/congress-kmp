@@ -14,7 +14,7 @@ data class LocalNostrEvent(
         parentColumn = "pubKey",
         entityColumn = "publicKey"
     )
-    val profile: Profile,
+    val profile: Profile?,
 
     @Relation(
         parentColumn = "id",

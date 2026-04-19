@@ -115,6 +115,7 @@ abstract class NostrDao(
             if (profile == null) {
                 val placeHolderProfile = Profile(
                     publicKey = nostrEvent.pubKey,
+                    createdAt = GENESIS_AT,
                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                 )
                 database.profileDao().insertPlaceholderProfile(placeHolderProfile)
@@ -134,6 +135,8 @@ abstract class NostrDao(
                     }
                 )
             }
+        } else {
+            logger.w("We somehow have an unsignedNostrEvent: $nostrEvent")
         }
 
         // Sync tagged events and authors...
@@ -223,9 +226,11 @@ abstract class NostrDao(
 
                 if (replyingToPost == null) {
                     // Persist PlaceHolder and sync
+                    // TODO: Get replyingToAuthorPublicKey
                     database.postDao().insert(
                         Post(
                             id = post.replyToId,
+                            createdAt = GENESIS_AT,
                             nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                             content = post.replyToId,
                             profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
@@ -245,6 +250,7 @@ abstract class NostrDao(
                 database.postDao().insert(
                     Post(
                         id = reaction.replyToId,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                         content = reaction.replyToId,
                         profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
@@ -263,6 +269,7 @@ abstract class NostrDao(
                 database.postDao().insert(
                     Post(
                         id = repost.repostedPostId,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                         content = repost.repostedPostId,
                         profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
@@ -277,6 +284,7 @@ abstract class NostrDao(
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
                         publicKey = nostrEvent.pubKey,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync handled by tagged events...
                     )
                 )
@@ -308,6 +316,7 @@ abstract class NostrDao(
                 database.postDao().insert(
                     Post(
                         id = zap.postId,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id, // Will get overwriting by sync,
                         content = zap.postId,
                         profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,

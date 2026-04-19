@@ -52,13 +52,14 @@ fun LocalNostrEvent.ListView(
                     modifier = Modifier.fillMaxWidth().clickable(
                         enabled = true,
                         onClick = {
-                            onNavigateToEvent.invoke(profile.nostrEventId)
+                            onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
+                            // TODO: Show error
                         }
                     )
                 ) {
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = profile.displayName ?: profile.userName ?: profile.publicKey,
+                        text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
                         style = MaterialTheme.typography.labelSmall
                     )
                     Text(

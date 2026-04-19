@@ -90,11 +90,11 @@ fun MetadataEventDetail(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = profile.displayName ?: profile.userName ?: profile.publicKey,
+                            text = profile?.displayName ?: profile?.userName ?: localNostrEvent.nostrEvent.pubKey,
                             style = MaterialTheme.typography.titleLarge
                         )
 
-                        profile.nip05?.let {
+                        profile?.nip05?.let {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -141,7 +141,7 @@ fun MetadataEventDetail(
                             Icon(
                                 Icons.Default.Person,
                                 modifier = Modifier.size(50.dp),
-                                contentDescription = profile.displayName ?: profile.userName ?: "Profile picture"
+                                contentDescription = profile?.displayName ?: profile?.userName ?: "Profile picture"
                             )
 
 
@@ -164,8 +164,10 @@ fun MetadataEventDetail(
                             modifier = Modifier.fillMaxWidth().padding(
                                 horizontal = 20.dp
                             ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             textAlign = TextAlign.Start,
-                            text = profile.about ?: ""
+                            text = profile?.about ?: ""
                         )
                     }
                 }

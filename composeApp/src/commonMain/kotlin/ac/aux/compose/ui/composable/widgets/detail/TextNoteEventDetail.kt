@@ -94,18 +94,18 @@ fun TextNoteEventDetail(
                             Icon(
                                 Icons.Default.Person,
                                 modifier = Modifier.size(50.dp),
-                                contentDescription = profile.displayName ?: profile.userName ?: "Profile picture"
+                                contentDescription = profile?.displayName ?: profile?.userName ?: "Profile picture"
                             )
 
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = profile.displayName ?: profile.userName ?: profile.publicKey,
+                                    text = profile?.displayName ?: profile?.userName ?: localNostrEvent.nostrEvent.pubKey,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
 
-                                profile.nip05?.let {
+                                profile?.nip05?.let {
                                     Text(
                                         text = profile.nip05 ?: "",
                                         style = MaterialTheme.typography.labelMedium

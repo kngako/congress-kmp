@@ -192,7 +192,7 @@ class NavigationViewModel(
                                         )
                                     }
                                     else -> {
-                                        logger.d("Unhandled message: $nostrIncomingMessage")
+                                        logger.d("Unhandled message ${synchronizeNostrEventRequest.relayURL}: $nostrIncomingMessage")
                                     }
                                 }
                             }
