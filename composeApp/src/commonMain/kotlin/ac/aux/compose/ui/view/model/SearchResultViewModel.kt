@@ -5,7 +5,6 @@ import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
-import ac.aux.compose.ui.view.state.FeedListUIState
 import ac.aux.compose.ui.view.state.SearchResultListUIState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,8 +15,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip23LongContent.LongTextNoteEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.Dispatchers
@@ -43,50 +44,116 @@ class SearchResultViewModel(
         private set
 
     fun updateSearchResultType (searchResultType: SearchResultType) {
+        searchResultListUIState = SearchResultListUIState.Loading
+
         this.searchResultType = searchResultType
 
-        reloadSearchResult()
+        initiateSearchResults(searchResultType)
     }
 
-    fun reloadSearchResult() {
-        searchResultListUIState = SearchResultListUIState.Loading
+    init {
+        initiateSearchResults(searchResultType)
     }
 
-    fun loadSearchResult() {
+    fun initiateSearchResults(searchResultType: SearchResultType) {
+        val synchronizationFilter = when (searchResultType) {
+            SearchResultType.Posts -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        TextNoteEvent.KIND,
+                        RepostEvent.KIND,
+                        ReactionEvent.KIND,
+                        LnZapEvent.KIND,
+                    ),
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+            SearchResultType.Profiles -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        MetadataEvent.KIND,
+                    ),
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+            SearchResultType.Articles -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        LongTextNoteEvent.KIND,
+                    ),
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+            SearchResultType.Photos -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        TextNoteEvent.KIND,
+                    ),
+                    // TODO: filter for tags of pictures...
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+            SearchResultType.Videos -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        TextNoteEvent.KIND,
+                    ),
+                    // TODO: filter for tags of videos...
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+        }
+
+        saveSearchQuery(synchronizationFilter)
+        scheduleSearch(synchronizationFilter)
+        loadSearchResultFeed(synchronizationFilter)
+    }
+
+    private fun saveSearchQuery(synchronizationFilter: SynchronizationFilter) {
+        logger.d("saveSearchQuery: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.saveSearchQuery(
                 searchQuery,
-                // TODO: synchronizationFilterArray
-            )
-
-            // This is something not taking into consideration the results we are actually looking for...
-            nostrRepository.observeNostrFeed().collect { localNostrEvents ->
-                searchResultListUIState = SearchResultListUIState.Loaded(
-                    localNostrEvents = localNostrEvents
+                arrayOf(
+                    synchronizationFilter
                 )
-            }
+            )
+        }
+    }
 
+    private fun scheduleSearch(synchronizationFilter: SynchronizationFilter) {
+        logger.d("scheduleSearch: $searchQuery")
+        viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
-                Relays.eventPublishRelaySet.map { normalizedRelay ->
+                Relays.eventFinderRelaySet.map { normalizedRelay ->
                     SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
-                            SynchronizationFilter(
-                                kinds = arrayOf(
-                                    TextNoteEvent.KIND,
-                                    RepostEvent.KIND,
-                                    ReactionEvent.KIND,
-                                    LnZapEvent.KIND,
-                                ),
-                                search = searchQuery,
-                                limit = 50
-                            )
+                            synchronizationFilter
                         ),
                         relayURL = normalizedRelay.url
                     )
                 }
             )
+        }
+    }
+
+    private fun loadSearchResultFeed(synchronizationFilter: SynchronizationFilter) {
+        logger.d("loadSearchResultFeed: $searchQuery")
+        viewModelScope.launch(Dispatchers.IO) {
+            // This is something not taking into consideration the results we are actually looking for...
+            // TODO: Search local notes using the [synchronizationFilter]
+            nostrRepository.observeNostrFeed().collect { localNostrEvents ->
+                searchResultListUIState = SearchResultListUIState.Loaded(
+                    localNostrEvents = localNostrEvents
+                )
+            }
         }
     }
 

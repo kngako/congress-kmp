@@ -2,7 +2,6 @@ package ac.aux.compose.ui.composable
 
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.SearchRepository
-import ac.aux.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.aux.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.aux.compose.ui.composable.navigation.routes.Route
 import ac.aux.compose.ui.composable.widgets.feed.ListView
@@ -20,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -43,8 +44,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -67,6 +69,8 @@ fun SearchResultScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     val searchViewModel: SearchResultViewModel = viewModel(
         factory = SearchResultViewModel.factory(
             initialSearchResultType = SearchResultType.Posts,
@@ -74,33 +78,6 @@ fun SearchResultScreen(
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
         ),
-    )
-
-    val searchResults = listOf(
-        "Apple",
-        "Banna",
-        "Carrot",
-        "Durian",
-        "Eggplant",
-        "Fig",
-        "Grape",
-        "Honeydew",
-        "Jackfruit",
-        "Kiwi",
-        "Lemon",
-        "Mango",
-        "Nectarine",
-        "Orange",
-        "Papaya",
-        "Quince",
-        "Raspberry",
-        "Tangerine",
-        "Ugli Fruit",
-        "Vanilla Bean",
-        "Watermelon",
-        "Xigua",
-        "Yellow Passion Fruit",
-        "Zinfandel",
     )
 
     val textFieldState = rememberTextFieldState(searchQuery)
@@ -184,6 +161,8 @@ fun SearchResultScreen(
                     },
                     windowInsets = TopAppBarDefaults.windowInsets
                 ) {
+                    val pagerState = rememberPagerState { SearchResultType.entries.size }
+
                     PrimaryScrollableTabRow(
                         modifier = Modifier,
                         edgePadding = 10.dp,
@@ -194,6 +173,11 @@ fun SearchResultScreen(
                                 selected = searchViewModel.searchResultType == searchResultType,
                                 onClick = {
                                     searchViewModel.updateSearchResultType(searchResultType)
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(
+                                            searchResultType.ordinal
+                                        )
+                                    }
                                 },
                                 text = {
                                     Text(
@@ -206,22 +190,90 @@ fun SearchResultScreen(
                         }
                     }
 
-                    when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
-                        SearchResultListUIState.Error -> {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Spacer(
-                                    modifier = Modifier.height(50.dp)
-                                )
-                                Text(
-                                    text = "Something went wrong",
-                                )
+
+
+
+                    HorizontalPager(
+                        state = pagerState
+                    ) { pageIndex ->
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            when(SearchResultType.entries[pageIndex]) {
+                                SearchResultType.Posts -> {
+                                    Text("Posts")
+                                }
+                                SearchResultType.Articles -> {
+                                    Text("Posts")
+                                }
+                                SearchResultType.Profiles -> {
+                                    Text("Posts")
+                                }
+                                SearchResultType.Photos -> {
+
+                                    Text("Posts")
+                                }
+                                SearchResultType.Videos -> {
+
+                                    Text("Posts")
+                                }
                             }
-                        }
-                        is SearchResultListUIState.Loaded -> {
-                            if (searchResultListUIState.localNostrEvents.isEmpty()) {
+
+                            when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
+                            SearchResultListUIState.Error -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Spacer(
+                                        modifier = Modifier.height(50.dp)
+                                    )
+                                    Text(
+                                        text = "Something went wrong",
+                                    )
+                                }
+                            }
+                            is SearchResultListUIState.Loaded -> {
+                                if (searchResultListUIState.localNostrEvents.isEmpty()) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    )  {
+                                        Spacer(
+                                            modifier = Modifier.height(50.dp)
+                                        )
+                                        Text(
+                                            text = "No events were found",
+                                        )
+                                    }
+                                } else {
+
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        items(
+                                            items = searchResultListUIState.localNostrEvents,
+                                            key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
+                                        ) { localNostrEvent ->
+                                            localNostrEvent.ListView(
+                                                onNavigateToEvent = { nostrEventId ->
+                                                    onNavigateToEvent.invoke(
+                                                        NostrEventDetailRoute(
+                                                            nostrEventId = nostrEventId
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                            }
+                            SearchResultListUIState.Loading -> {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally
@@ -230,57 +282,27 @@ fun SearchResultScreen(
                                         modifier = Modifier.height(50.dp)
                                     )
                                     Text(
-                                        text = "No events were found",
+                                        text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                        textAlign = TextAlign.Center
                                     )
-                                }
-                            } else {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    items(
-                                        items = searchResultListUIState.localNostrEvents,
-                                        key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
-                                    ) { localNostrEvent ->
-                                        localNostrEvent.ListView(
-                                            onNavigateToEvent = { nostrEventId ->
-                                                onNavigateToEvent.invoke(
-                                                    NostrEventDetailRoute(
-                                                        nostrEventId = nostrEventId
-                                                    )
-                                                )
-                                            }
-                                        )
-                                    }
+                                    Spacer(
+                                        modifier = Modifier.height(50.dp)
+                                    )
+
+                                    LoadingIndicator()
                                 }
                             }
-
                         }
-                        SearchResultListUIState.Loading -> {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            )  {
-                                Spacer(
-                                    modifier = Modifier.height(50.dp)
-                                )
-                                Text(
-                                    text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(
-                                    modifier = Modifier.height(50.dp)
-                                )
-
-                                LoadingIndicator()
-                            }
-
-                            LaunchedEffect(true) {
-                                searchViewModel.loadSearchResult()
-                            }
                         }
+
+
+
+
+
                     }
+
+
+
 
 
                 }

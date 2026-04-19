@@ -78,7 +78,7 @@ fun AuxNavHost(
         database = databaseManager.auxDatabase
     )
     val searchRepository = DatabaseSearchRepository(
-        database = databaseManager.inMemoryAuxDatabase
+        database = databaseManager.auxDatabase
     )
 
     val exceptionHandler =
