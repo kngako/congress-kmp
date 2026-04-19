@@ -309,6 +309,10 @@ fun SearchResultScreen(
             }
         }
     }
+
+    LaunchedEffect(true) {
+        searchViewModel.initiateSearchResults()
+    }
 }
 
 @Preview

@@ -51,11 +51,8 @@ class SearchResultViewModel(
         initiateSearchResults(searchResultType)
     }
 
-    init {
-        initiateSearchResults(searchResultType)
-    }
-
-    fun initiateSearchResults(searchResultType: SearchResultType) {
+    fun initiateSearchResults(searchResultType: SearchResultType = this.searchResultType) {
+        logger.d("initiateSearchResults")
         val synchronizationFilter = when (searchResultType) {
             SearchResultType.Posts -> {
                 SynchronizationFilter(
