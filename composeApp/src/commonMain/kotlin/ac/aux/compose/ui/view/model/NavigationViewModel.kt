@@ -3,7 +3,6 @@ package ac.aux.compose.ui.view.model
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.network.dto.RelayDTO
-import ac.aux.compose.network.relays.RelayPool
 import ac.aux.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
 import ac.aux.compose.network.relays.RelaysSocketManager
 import ac.aux.compose.network.sockets.NostrIncomingMessage
@@ -37,7 +36,6 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class NavigationViewModel(
