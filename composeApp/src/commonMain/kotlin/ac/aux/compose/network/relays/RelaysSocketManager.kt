@@ -16,6 +16,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ac.aux.compose.exceptions.NostrPublishException
+import ac.aux.compose.managers.CredentialsManager
+import ac.aux.compose.managers.SeedManager
+import ac.aux.compose.managers.bech32ToHexOrNull
+import ac.aux.compose.managers.toHex
+import ac.aux.compose.network.sockets.NostrIncomingMessage
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 
 
 /**
@@ -26,16 +32,11 @@ import ac.aux.compose.exceptions.NostrPublishException
 class RelaysSocketManager constructor(
     private val nostrSocketClientFactory: NostrSocketClientFactory,
     private val cachingImportRepository: CachingImportRepository,
-//    private val activeAccountStore: ActiveAccountStore,
-//    private val usersDatabase: UsersDatabase,
     private val relayRepository: RelayRepository
 ) {
     val logger = Logger.withTag("RelaysSocketManager")
     private val scope = CoroutineScope(Dispatchers.IO)
     private val relayPoolsMutex = Mutex()
-
-    private var relaysObserverJob: Job? = null
-
 
     /**
      * Concrete relay pool
@@ -56,26 +57,25 @@ class RelaysSocketManager constructor(
         observeActiveUserId()
     }
 
+    private val observeRelayJobs =  mutableMapOf<String, Job>()
 
     private fun observeActiveUserId() =
         scope.launch {
-//          TODO activeAccountStore.activeUserId.collect { userId ->
-//                when {
-//                    userId.isEmpty() -> {
-//                        relaysObserverJob?.cancel()
-//                        relaysObserverJob = null
-//                        clearRelayPools()
-//                    }
+            SeedManager.activePublicKey().toHex()?.let { publicKey ->
+                observeRelayJobs[publicKey]?.cancel()
+
+                observeRelayJobs[publicKey] = observeRelays(publicKey)
+            }
+//            credentialsManager.credentials.collect { credentials ->
+//                credentials.forEach { credential ->
+//                    credential.npub.bech32ToHexOrNull()?.let { publicKey ->
+//                        observeRelayJobs[publicKey]?.cancel()
 //
-//                    else -> {
-//                        relaysObserverJob?.cancel()
-//                        relaysObserverJob = observeRelays(userId)
+//                        observeRelayJobs[publicKey] = observeRelays(publicKey)
 //                    }
 //                }
 //            }
         }
-
-    private suspend fun isCachingProxyEnabled() = false // TODO: activeAccountStore.activeUserAccount().cachingProxyEnabled
 
     private fun observeRelays(publicKey: String): Job =
         scope.launch {
@@ -129,7 +129,7 @@ class RelaysSocketManager constructor(
 //        customPool.closePool()
     }
 
-    fun tryConnectingToAllUserRelays() {
+    fun tryConnectingToAllRelays() {
         relayPool.relays.forEach {
             scope.launch {
                 relayPool.tryConnectingToRelay(it.url)
@@ -138,4 +138,11 @@ class RelaysSocketManager constructor(
     }
 
     suspend fun tryConnectingToUserRelay(url: String) = relayPool.tryConnectingToRelay(url)
+
+    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
+        return relayPool.query(
+            reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
 }

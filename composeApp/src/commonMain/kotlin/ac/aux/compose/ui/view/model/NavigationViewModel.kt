@@ -59,10 +59,8 @@ class NavigationViewModel(
     val relaysSocketManager = RelaysSocketManager(
         nostrSocketClientFactory = NostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
-        relayRepository = relayRepository
+        relayRepository = relayRepository,
     )
-
-
 
     companion object {
         private const val TAG = "NavigationViewModel"
@@ -86,8 +84,6 @@ class NavigationViewModel(
 
     private val logger = Logger.withTag(TAG)
 
-    private val syncingJobs = mutableMapOf<String, Job>()
-
     val httpClient = HttpClient() {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(Json {
@@ -97,10 +93,6 @@ class NavigationViewModel(
             pingIntervalMillis = 20_000
         }
     }
-
-    val nostrEventBroadcaster = NostrEventBroadcaster(
-        scope = scope
-    )
 
     private val _navigationUIState = MutableStateFlow(
         initialNavigationUIState
@@ -156,8 +148,6 @@ class NavigationViewModel(
     private fun observePendingSyncNostrEventRequests() {
         logger.i { "observePendingSyncNostrEventRequests" }
 
-        val syncEventCache = mutableMapOf<String, NostrEvent>()
-
         scope.launch(Dispatchers.IO) {
             nostrRepository.observePendingSynchronizeNostrEventRequests().collect { synchronizeNostrEventRequestOrNull ->
                 synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
@@ -179,120 +169,32 @@ class NavigationViewModel(
                         }
                     )
 
+
                     scope.launch {
                         try {
-                            val webSocketSession = httpClient.webSocketSession(
-                                urlString = synchronizeNostrEventRequest.relayURL
+
+                            val result = relaysSocketManager.query(
+                                reqCommand,
+                                synchronizeNostrEventRequest.relayURL
                             )
 
-                            // TODO: don't make a new sync job if there's an active job?
-                            syncingJobs[synchronizeNostrEventRequest.relayURL] = scope.launch {
-                                val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
-                                logger.d("Syncing: $filterRequest")
-                                webSocketSession.send(
-                                    frame = Frame.Text(filterRequest)
+                            logger.d("Result: $result")
+
+                            result.second.forEach { nostrEvent ->
+                                nostrRepository.saveNostrEvent(
+                                    nostrEvent = nostrEvent,
+                                    synchronizeNostrEventRequest,
+                                    synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
                                 )
-
-                                nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
-
-                                webSocketSession.incoming.consumeAsFlow().collect { frame ->
-                                    when(frame) {
-                                        is Frame.Text -> {
-                                            frame.readText().let { text ->
-                                                try {
-                                                    logger.d("WebSocket Read Text: $text")
-                                                    val result = Json.decodeFromString<JsonArray>(text)
-
-                                                    if (result.firstOrNull()?.text == "EVENT") {
-                                                        result.getOrNull(1)?.text?.let { subscriptionId ->
-                                                            if (subscriptionId == synchronizeNostrEventRequest.id) {
-
-                                                                result.getOrNull(2)?.jsonObject?.toString()?.let { jsonText ->
-                                                                    logger.i("Processing: $jsonText")
-                                                                    val event = Event.fromJson(
-                                                                        jsonText
-                                                                    )
-
-                                                                    // TODO: Do profile specific cache (to avoid wiping an updated profile)
-                                                                    syncEventCache.getOrPut(event.id, {
-                                                                        val taggedEvent = event.firstTaggedEvent()
-                                                                        val taggedUser = event.firstTaggedUser()
-
-                                                                        val nostrEvent = NostrEvent(
-                                                                            id = event.id,
-                                                                            pubKey = event.pubKey,
-                                                                            kind = event.kind,
-                                                                            content = event.content,
-                                                                            tags = event.tags,
-                                                                            createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                                                            unsignedNostrEventId = synchronizeNostrEventRequest.unsignedNostrEventId,
-                                                                            sig = event.sig,
-
-                                                                            taggedNostrEventId = taggedEvent?.eventId,
-                                                                            taggedNostrEventRelayUrl = taggedEvent?.relay?.url,
-
-                                                                            taggedPublicKey = taggedUser?.pubKey,
-                                                                            taggedPublicKeyRelayUrl = taggedUser?.relayHint?.url
-                                                                        )
-
-                                                                        nostrRepository.saveNostrEvent(
-                                                                            nostrEvent = nostrEvent,
-                                                                            synchronizeNostrEventRequest,
-                                                                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                                                                        )
-
-                                                                        nostrEvent
-                                                                    })
-
-                                                                }
-                                                            }
-                                                        }
-                                                    } else if(result.firstOrNull()?.text == "EOSE") {
-                                                        result.getOrNull(1)?.text?.let { subscriptionId ->
-                                                            if (subscriptionId == synchronizeNostrEventRequest.id) {
-                                                                // Close the job
-                                                                logger.d("We need to close the job")
-                                                            }
-                                                        }
-                                                    } else {
-                                                        logger.d("Unsupported: $text")
-                                                    }
-                                                } catch (e: Throwable) {
-                                                    logger.e("Error processing receipt: $text", e)
-                                                }
-                                            }
-                                            // Syncing doesn't necessary have to close after result..
-                                            webSocketSession.close()
-                                            syncingJobs.remove(synchronizeNostrEventRequest.relayURL)?.cancel()
-                                        }
-                                        is Frame.Close -> {
-                                            logger.d("Close $frame")
-                                        }
-                                        is Frame.Ping -> {
-                                            logger.d("Ping: $frame")
-                                        }
-                                        is Frame.Pong -> {
-                                            logger.d("Pong: $frame")
-                                        }
-                                        is Frame.Binary -> {
-                                            logger.d("Binary Message: $frame")
-                                        }
-                                        else -> {
-                                            logger.d("Unsupported frame: $frame")
-                                        }
-                                    }
-                                }
-
-                                logger.i("Websocket exit")
                             }
 
-                            syncingJobs[synchronizeNostrEventRequest.relayURL]?.join()
-                        } catch (e: Throwable) {
-                            logger.e("Relay Error (${synchronizeNostrEventRequest.relayURL})", e)
-                            // TODO: Have it failed instead of processed...
                             nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
+                        } catch (e: Throwable) {
+                            logger.e("Failed to sync", e)
                         }
                     }
+
+
                 }
             }
         }
@@ -325,24 +227,6 @@ class NavigationViewModel(
                             )
                         )
                     )
-
-//                    nostrEventBroadcaster.broadcastEvent(
-//                        localBroadcastNostrEventRequest = localBroadcastNostrEventRequest,
-//                        onBroadcastRequestProcessed = { broadcastNostrEventRequest ->
-//                            scope.launch(Dispatchers.IO) {
-//                                nostrRepository.broadcastProcessed(
-//                                    broadcastNostrEventRequest
-//                                )
-//                            }
-//                        },
-//                        onBroadcastReceipt = { broadcastNostrEventReceipt ->
-//                            scope.launch(Dispatchers.IO) {
-//                                nostrRepository.saveBroadcastReceipt(
-//                                    broadcastNostrEventReceipt
-//                                )
-//                            }
-//                        }
-//                    )
                 }
             }
         }

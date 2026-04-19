@@ -7,11 +7,13 @@ import ac.aux.compose.exceptions.SignatureException
 import ac.aux.compose.exceptions.SigningKeyNotFoundException
 import ac.aux.compose.exceptions.SigningRejectedException
 import ac.aux.compose.managers.CredentialsManager
+import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.managers.hexToNpubHrp
 import ac.aux.compose.network.UserAgent
 import ac.aux.compose.network.asClientTag
 import ac.aux.compose.network.dto.RelayDTO
 import com.vitorpamplona.quartz.nip19Bech32.toNpub
+import com.vitorpamplona.quartz.nip19Bech32.toNsec
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import fr.acinq.secp256k1.Hex
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +33,6 @@ import kotlinx.coroutines.sync.withLock
  */
 class NostrNotaryRepository(
     private val nostrRepository: NostrRepository,
-    private val credentialsStore: CredentialsManager,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -75,13 +76,15 @@ class NostrNotaryRepository(
 
     private fun findNsecOrThrow(pubkey: String): String =
         runCatching {
-            val npub = Hex.decode(pubkey).toNpub()
-            credentialsStore.findOrThrow(npub = npub).nsec
+//            val npub = Hex.decode(pubkey).toNpub()
+//            credentialsStore.findOrThrow(npub = npub).nsec
+            SeedManager.activeKeyPair().privKey?.toNsec()
         }.getOrNull() ?: throw SigningKeyNotFoundException()
 
     private fun signNostrEvent(publicKey: String, event: UnsignedNostrEvent): NostrEvent? {
         val isExternalSignerLogin = runCatching {
-            credentialsStore.isExternalSignerCredential(npub = publicKey.hexToNpubHrp())
+//            credentialsStore.isExternalSignerCredential(npub = publicKey.hexToNpubHrp())
+            false
         }.getOrDefault(false)
 
         if (isExternalSignerLogin) {

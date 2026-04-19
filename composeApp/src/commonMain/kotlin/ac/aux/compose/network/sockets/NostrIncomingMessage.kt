@@ -1,6 +1,8 @@
 package ac.aux.compose.network.sockets
 
 import ac.aux.compose.database.model.NostrEvent
+import ac.aux.compose.exceptions.NetworkException
+import ac.aux.compose.exceptions.NostrNoticeException
 
 sealed class NostrIncomingMessage {
 
@@ -37,4 +39,17 @@ sealed class NostrIncomingMessage {
         val subscriptionId: String,
         val nostrEvents: List<NostrEvent> = emptyList(),
     ) : NostrIncomingMessage()
+}
+
+fun NostrIncomingMessage?.verifyOrThrow(subscriptionId: String) {
+    if (this == null) {
+        throw NetworkException("No messages received.")
+    }
+
+    if (this is NostrIncomingMessage.NoticeMessage) {
+        throw NostrNoticeException(
+            reason = this.message,
+            subscriptionId = subscriptionId,
+        )
+    }
 }

@@ -26,4 +26,6 @@ interface NostrSocketClient {
     suspend fun sendEVENT(signedEvent: JsonObject)
 
     suspend fun sendREQ(subscriptionId: String, data: JsonObject)
+
+    suspend fun sendMESSAGE(text: String, ensureSessionBeforeSend: Boolean = true)
 }

@@ -73,7 +73,7 @@ internal class NostrSocketClientImpl(
                 onSocketConnectionOpened?.invoke(url)
                 if (incomingCompressionEnabled) {
                     val id = Uuid.generateV4().toHexDashString()
-                    sendMessage(
+                    sendMESSAGE(
                         text = """["REQ","$id",{"cache":["set_primal_protocol",{"compression":"zlib"}]}]""",
                         ensureSessionBeforeSend = false,
                     )
@@ -155,7 +155,7 @@ internal class NostrSocketClientImpl(
         }
     }
 
-    private suspend fun sendMessage(text: String, ensureSessionBeforeSend: Boolean = true) {
+    override suspend fun sendMESSAGE(text: String, ensureSessionBeforeSend: Boolean) {
         if (ensureSessionBeforeSend) {
             ensureSocketConnectionOrThrow()
         }
@@ -165,21 +165,21 @@ internal class NostrSocketClientImpl(
 
     override suspend fun sendREQ(subscriptionId: String, data: JsonObject) {
         val reqMessage = data.buildNostrREQMessage(subscriptionId)
-        return sendMessage(text = reqMessage)
+        return sendMESSAGE(text = reqMessage)
     }
 
     override suspend fun sendCOUNT(data: JsonObject): String {
         val subscriptionId: String = Uuid.generateV4().toHexDashString()
         val reqMessage = data.buildNostrCOUNTMessage(subscriptionId)
-        sendMessage(text = reqMessage)
+        sendMESSAGE(text = reqMessage)
         return subscriptionId
     }
 
-    override suspend fun sendCLOSE(subscriptionId: String) = sendMessage(text = subscriptionId.buildNostrCLOSEMessage())
+    override suspend fun sendCLOSE(subscriptionId: String) = sendMESSAGE(text = subscriptionId.buildNostrCLOSEMessage())
 
-    override suspend fun sendEVENT(signedEvent: JsonObject) = sendMessage(text = signedEvent.buildNostrEVENTMessage())
+    override suspend fun sendEVENT(signedEvent: JsonObject) = sendMESSAGE(text = signedEvent.buildNostrEVENTMessage())
 
-    override suspend fun sendAUTH(signedEvent: JsonObject) = sendMessage(text = signedEvent.buildNostrAUTHMessage())
+    override suspend fun sendAUTH(signedEvent: JsonObject) = sendMESSAGE(text = signedEvent.buildNostrAUTHMessage())
 
     private fun logLargeText(
         text: String,

@@ -20,15 +20,28 @@ import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import ac.aux.compose.exceptions.NostrPublishException
+import ac.aux.compose.network.dto.toRelayDTO
 import ac.aux.compose.network.sockets.NostrIncomingMessage
 import ac.aux.compose.network.sockets.NostrSocketClient
 import ac.aux.compose.network.sockets.NostrSocketClientFactory
 import ac.aux.compose.network.sockets.SocketConnectionClosedCallback
 import ac.aux.compose.network.sockets.SocketConnectionOpenedCallback
 import ac.aux.compose.network.sockets.filterByEventId
-import ac.aux.compose.network.sockets.parseIncomingMessage
+import ac.aux.compose.network.sockets.filterBySubscriptionId
+import ac.aux.compose.network.sockets.verifyOrThrow
 import ac.aux.compose.repository.CachingImportRepository
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.transformWhile
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * As seen in Primal
@@ -114,10 +127,11 @@ class RelayPool(
 
         val toAddRelayUrls = newRelayUrls.filter { it !in existingRelayUrls }
         val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
-
+        logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
         val newSocketClients = socketClients.toMutableList().apply {
             addAll(toAddSocketClients)
         }
+        logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
 
         socketClients = newSocketClients
 
@@ -165,30 +179,60 @@ class RelayPool(
         }
     }
 
-    private suspend fun handleBroadcastEventThroughCachingProxy(relayUrls: List<String>, nostrEvent: NostrEvent) {
-        val result =
-            cachingImportRepository.broadcastEvents(
-                events = listOf(nostrEvent),
-                relays = relayUrls,
-            ).getOrNull()
-                ?: throw NostrPublishException(
-                    cause = NetworkException(message = "Primal NostrEvent 10_000_149 not found or invalid."),
-                )
-
-        result.find { response -> response.eventId == nostrEvent.id }?.responses
-            ?.mapNotNull { relayResponse ->
-                val relay = relayResponse.firstOrNull()
-                val responseMessage = relayResponse.getOrNull(index = 1)?.parseIncomingMessage()
-                if (relay != null && responseMessage != null) {
-                    relay to responseMessage
-                } else {
-                    null
-                }
-            }
-            ?.find { (_, relayMessage) -> relayMessage is NostrIncomingMessage.OkMessage && relayMessage.success }
-            ?: throw NostrPublishException(
-                cause = NetworkException("Event broadcast failed. Could not find success response from relays."),
+    @OptIn(FlowPreview::class)
+    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
+        addRelays(
+            setOf(
+                NormalizedRelayUrl(relayUrl).url.toRelayDTO()
             )
+        )
+
+        logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
+        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+
+        val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
+
+        if (nostrSocketClient == null) {
+            throw NetworkException("$relayUrl is not connected")
+        }
+        return coroutineScope {
+            val deferredQueryResult = async { nostrSocketClient.collectQueryResult(reqCommand.subId) }
+            with(nostrSocketClient) {
+                sendMESSAGE(filterRequest)
+            }
+            deferredQueryResult.await()
+        }
+    }
+
+    private fun Flow<NostrIncomingMessage>.transformWhileEventsAreIncoming() =
+        transformWhile {
+            emit(it)
+            it is NostrIncomingMessage.EventMessage || it is NostrIncomingMessage.EventsMessage
+        }
+
+    @OptIn(FlowPreview::class)
+    private suspend fun NostrSocketClient.collectQueryResult(subscriptionId: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
+        val messages = this.incomingMessages
+            .filterBySubscriptionId(id = subscriptionId)
+            .transformWhileEventsAreIncoming()
+            .timeout(15.seconds)
+            .toList()
+
+        val terminationMessage = messages.lastOrNull()
+        terminationMessage.verifyOrThrow(subscriptionId)
+        checkNotNull(terminationMessage)
+
+        val eventMessages = messages.filterIsInstance<NostrIncomingMessage.EventMessage>()
+        val eventsMessage = messages.filterIsInstance<NostrIncomingMessage.EventsMessage>()
+
+        val allNostrEvents = eventMessages.mapNotNull { it.nostrEvent } +
+                eventsMessage.map { it.nostrEvents }.flatten()
+
+
+        return Pair(
+            terminationMessage,
+            allNostrEvents,
+        )
     }
 
     @OptIn(FlowPreview::class)
