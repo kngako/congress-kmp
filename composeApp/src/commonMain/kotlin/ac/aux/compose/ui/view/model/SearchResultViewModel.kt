@@ -148,8 +148,7 @@ class SearchResultViewModel(
         logger.d("loadSearchResultFeed: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             // This is something not taking into consideration the results we are actually looking for...
-            // TODO: Search local notes using the [synchronizationFilter]
-            nostrRepository.observeNostrFeed().collect { localNostrEvents ->
+            nostrRepository.observeNostrFeed(synchronizationFilter).collect { localNostrEvents ->
                 searchResultListUIState = SearchResultListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )

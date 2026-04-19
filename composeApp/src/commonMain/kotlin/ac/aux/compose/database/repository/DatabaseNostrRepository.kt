@@ -15,9 +15,11 @@ import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalAccount
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
+import ac.aux.compose.database.model.types.SynchronizationFilter
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.NostrRepository
 import ac.aux.compose.repository.RelayRepository
+import androidx.room.RoomRawQuery
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -38,6 +40,7 @@ import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import okio.Buffer
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
@@ -322,6 +325,37 @@ class DatabaseNostrRepository(
                 LnZapEvent.KIND
             )
         )
+    }
+
+    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
+
+        return when {
+            synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
+                database.nostrEventDao().observeFilteredNostrEvents(
+                    kinds = synchronizationFilter.kinds,
+                    search = synchronizationFilter.search
+                )
+            }
+            synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
+                database.nostrEventDao().observeFilteredNostrEvents(
+                    kinds = synchronizationFilter.kinds,
+                    ids = synchronizationFilter.ids
+                )
+            }
+            synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
+                database.nostrEventDao().observeAuthoredNostrEvents(
+                    kinds = synchronizationFilter.kinds,
+                    authors = synchronizationFilter.authors
+                )
+            }
+            else -> {
+                database.nostrEventDao().observeNostrEvents(
+                    kinds = arrayOf(
+                        TextNoteEvent.KIND,
+                    )
+                )
+            }
+        }
     }
 
     override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?> {

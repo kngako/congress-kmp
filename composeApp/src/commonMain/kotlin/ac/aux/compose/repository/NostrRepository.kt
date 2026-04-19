@@ -12,6 +12,7 @@ import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.database.model.intermdiate.LocalAccount
 import ac.aux.compose.database.model.intermdiate.LocalProfile
 import ac.aux.compose.database.model.typealiases.SynchronizationFilterArray
+import ac.aux.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 
@@ -71,6 +72,8 @@ interface NostrRepository {
     suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int>
 
     suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
+
+    suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>>
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
@@ -168,6 +171,10 @@ interface NostrRepository {
             }
 
             override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
                 TODO("Not yet implemented")
             }
 

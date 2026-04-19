@@ -1,7 +1,9 @@
 package ac.aux.compose.database.model.types
 
+import androidx.sqlite.SQLiteStatement
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.store.sqlite.bindAny
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
