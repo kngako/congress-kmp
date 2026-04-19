@@ -250,14 +250,17 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest) {
+    override suspend fun broadcastProcessed(
+        broadcastNostrEventRequest: BroadcastNostrEventRequest,
+        status: String
+    ) {
         logger.d("Update local reference: $broadcastNostrEventRequest")
         database.broadcastNostrEventRequestDao().upsert(
             broadcastNostrEventRequest.copy(
-                status = "sent"
+                status = status
             )
         )
-        logger.d("Processed: $broadcastNostrEventRequest")
+        logger.d("$status: $broadcastNostrEventRequest")
     }
 
     override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {

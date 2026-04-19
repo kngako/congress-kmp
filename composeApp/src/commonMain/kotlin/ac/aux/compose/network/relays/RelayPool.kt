@@ -161,10 +161,10 @@ class RelayPool(
         }
 
     @Throws(NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO> = emptySet()) {
+    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO> = emptySet()): Flow<NostrPublishResult> {
         val relayUrls = relays.map { it.url }
 
-        if (relayUrls.isEmpty()) {
+        return if (relayUrls.isEmpty()) {
             handlePublishEventToRelays(socketClients, nostrEvent)
         } else {
             addRelaysIfMissing(relays)
@@ -235,7 +235,7 @@ class RelayPool(
     }
 
     @OptIn(FlowPreview::class)
-    private suspend fun handlePublishEventToRelays(relayConnections: List<NostrSocketClient>, nostrEvent: NostrEvent) {
+    private suspend fun handlePublishEventToRelays(relayConnections: List<NostrSocketClient>, nostrEvent: NostrEvent): Flow<NostrPublishResult> {
         val responseFlow = MutableSharedFlow<NostrPublishResult>()
         relayConnections.forEach { nostrSocketClient ->
             scope.launch {
@@ -246,27 +246,41 @@ class RelayPool(
                         collectPublishResponse(eventId = nostrEvent.id)
                     }
                     sendEventResult.getOrNull()?.let {
-                        responseFlow.emit(NostrPublishResult(result = it))
+                        responseFlow.emit(
+                            NostrPublishResult(
+                                result = it,
+                                relayUrl = nostrSocketClient.socketUrl
+                            )
+                        )
                     }
                     sendEventResult.exceptionOrNull()?.let {
                         logger.w(throwable = it) { "sendEVENT failed to $socketUrl" }
-                        responseFlow.emit(NostrPublishResult(error = it))
+                        responseFlow.emit(
+                            NostrPublishResult(
+                                error = it,
+                                relayUrl = nostrSocketClient.socketUrl
+                            )
+                        )
                     }
                 }
             }
         }
 
-        var responseCount = 0
-        responseFlow.timeout(PUBLISH_TIMEOUT.milliseconds)
-            .catch { throw NostrPublishException(cause = it) }
-            .transform {
-                emit(it)
-                responseCount++
-                if (relayConnections.size == responseCount && !it.isSuccessful()) {
-                    throw NostrPublishException(cause = null)
-                }
-            }
-            .first { it.isSuccessful() }
+//        var responseCount = 0
+//        responseFlow.timeout(PUBLISH_TIMEOUT.milliseconds)
+//            .catch {
+//                logger.e("Caught a nostr publish exception: $it")
+//                throw NostrPublishException(cause = it)
+//            }
+//            .transform {
+//                emit(it)
+//                responseCount++
+//                if (relayConnections.size == responseCount && !it.isSuccessful()) {
+//                    throw NostrPublishException(cause = null)
+//                }
+//            }
+//            .first { it.isSuccessful() }
+        return responseFlow
     }
 
     @FlowPreview

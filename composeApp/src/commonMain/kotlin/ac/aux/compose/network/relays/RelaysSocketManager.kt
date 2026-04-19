@@ -106,8 +106,8 @@ class RelaysSocketManager constructor(
         }
 
     @Throws(NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: NostrEvent) {
-        if (userRelays.isNotEmpty()) {
+    suspend fun publishEvent(nostrEvent: NostrEvent): Flow<NostrPublishResult> {
+        return if (userRelays.isNotEmpty()) {
             relayPool.publishEvent(
                 nostrEvent = nostrEvent,
                 relays = userRelays
@@ -121,14 +121,11 @@ class RelaysSocketManager constructor(
     }
 
     @Throws(NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO>) {
-        relayPool.publishEvent(
+    suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO>): Flow<NostrPublishResult> {
+        return relayPool.publishEvent(
             nostrEvent = nostrEvent,
             relays = relays
         )
-
-        // TODO: Close relays and remove them from relayPool
-//        customPool.closePool()
     }
 
     fun tryConnectingToAllRelays() {

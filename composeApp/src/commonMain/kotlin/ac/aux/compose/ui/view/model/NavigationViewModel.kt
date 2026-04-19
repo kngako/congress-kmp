@@ -2,8 +2,9 @@ package ac.aux.compose.ui.view.model
 
 import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.managers.SeedManager
-import ac.aux.compose.network.NostrEventBroadcaster
 import ac.aux.compose.network.dto.RelayDTO
+import ac.aux.compose.network.relays.RelayPool
+import ac.aux.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
 import ac.aux.compose.network.relays.RelaysSocketManager
 import ac.aux.compose.network.sockets.NostrIncomingMessage
 import ac.aux.compose.network.sockets.NostrSocketClientFactory
@@ -18,37 +19,25 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
-import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
-import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
-import com.vitorpamplona.quartz.nip01Core.tags.people.firstTaggedUser
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
-import com.vitorpamplona.quartz.utils.text
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocketSession
-import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlin.collections.set
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class NavigationViewModel(
@@ -85,16 +74,6 @@ class NavigationViewModel(
     }
 
     private val logger = Logger.withTag(TAG)
-
-    val httpClient = HttpClient() {
-        install(WebSockets) {
-            contentConverter = KotlinxWebsocketSerializationConverter(Json {
-                isLenient = true
-                ignoreUnknownKeys = true
-            })
-            pingIntervalMillis = 20_000
-        }
-    }
 
     private val _navigationUIState = MutableStateFlow(
         initialNavigationUIState
@@ -231,6 +210,7 @@ class NavigationViewModel(
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun observePendingBroadcastNostrEventRequests() {
         logger.i { "observePendingBroadcastNostrEventRequests" }
 
@@ -238,26 +218,65 @@ class NavigationViewModel(
             nostrRepository.observePendingBroadcastNostrEventRequests().collect { localBroadcastNostrEventRequests ->
                 localBroadcastNostrEventRequests.forEach { localBroadcastNostrEventRequest ->
 
+                    nostrRepository.broadcastProcessed(
+                        localBroadcastNostrEventRequest.broadcastNostrEventRequest
+                    )
+
                     if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
-                        relaysSocketManager.publishEvent(localBroadcastNostrEventRequest.nostrEvent)
+                        scope.launch(Dispatchers.IO) {
+                            relaysSocketManager.publishEvent(
+                                localBroadcastNostrEventRequest.nostrEvent
+                            ).timeout(PUBLISH_TIMEOUT.milliseconds).catch {
+                                // Timeout...
+                            }.collect { nostrPublishResult ->
+                                if (nostrPublishResult.error != null) {
+                                    logger.e("Error publishing note: $nostrPublishResult")
+                                    nostrRepository.broadcastProcessed(
+                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                        "failed"
+                                    )
+                                } else {
+                                    logger.d("Nostr Publish Result: $nostrPublishResult")
+                                    nostrRepository.broadcastProcessed(
+                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                        "published"
+                                    )
+                                }
+                            }
+                        }
+
                     }
 
                     scope.launch(Dispatchers.IO) {
-                        nostrRepository.broadcastProcessed(
-                            localBroadcastNostrEventRequest.broadcastNostrEventRequest
-                        )
-                    }
-                    // Broadcast to the intended relay...
-                    relaysSocketManager.publishEvent(
-                        localBroadcastNostrEventRequest.nostrEvent,
-                        setOf(
-                            RelayDTO(
-                                localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL,
-                                write = true,
-                                read = true
+                        // Broadcast to the intended relay...
+                        relaysSocketManager.publishEvent(
+                            localBroadcastNostrEventRequest.nostrEvent,
+                            setOf(
+                                RelayDTO(
+                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL,
+                                    write = true,
+                                    read = true
+                                )
                             )
-                        )
-                    )
+                        ).timeout(PUBLISH_TIMEOUT.milliseconds).catch {
+                            // Timeout...
+                        }.collect { nostrPublishResult ->
+                            if (nostrPublishResult.error != null) {
+                                logger.e("Error publishing note: $nostrPublishResult")
+                                nostrRepository.broadcastProcessed(
+                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                    "failed"
+                                )
+                            } else {
+                                logger.d("Nostr Publish Result: $nostrPublishResult")
+                                nostrRepository.broadcastProcessed(
+                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                    "published"
+                                )
+                            }
+                        }
+                    }
+
                 }
             }
         }

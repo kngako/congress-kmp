@@ -52,7 +52,7 @@ interface NostrRepository {
         relayURLs: List<String> = emptyList()
     )
 
-    suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest)
+    suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest, status: String = "processing")
 
     suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 
@@ -136,7 +136,10 @@ interface NostrRepository {
 
             }
 
-            override suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest) {
+            override suspend fun broadcastProcessed(
+                broadcastNostrEventRequest: BroadcastNostrEventRequest,
+                status: String
+            ) {
                 TODO("Not yet implemented")
             }
 
