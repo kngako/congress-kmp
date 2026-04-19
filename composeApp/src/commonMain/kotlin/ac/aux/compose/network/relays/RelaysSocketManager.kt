@@ -21,7 +21,9 @@ import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.managers.bech32ToHexOrNull
 import ac.aux.compose.managers.toHex
 import ac.aux.compose.network.sockets.NostrIncomingMessage
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
+import kotlinx.coroutines.flow.Flow
 
 
 /**
@@ -139,9 +141,16 @@ class RelaysSocketManager constructor(
 
     suspend fun tryConnectingToUserRelay(url: String) = relayPool.tryConnectingToRelay(url)
 
-    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
+    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Flow<NostrIncomingMessage> {
         return relayPool.query(
             reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {
+        return relayPool.closeQuery(
+            closeCmd = closeCmd,
             relayUrl = relayUrl
         )
     }

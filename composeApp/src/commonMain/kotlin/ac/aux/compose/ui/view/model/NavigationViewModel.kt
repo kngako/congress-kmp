@@ -5,6 +5,7 @@ import ac.aux.compose.managers.SeedManager
 import ac.aux.compose.network.NostrEventBroadcaster
 import ac.aux.compose.network.dto.RelayDTO
 import ac.aux.compose.network.relays.RelaysSocketManager
+import ac.aux.compose.network.sockets.NostrIncomingMessage
 import ac.aux.compose.network.sockets.NostrSocketClientFactory
 import ac.aux.compose.nostr.Relays
 import ac.aux.compose.repository.CachingImportRepository
@@ -19,6 +20,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -169,26 +171,55 @@ class NavigationViewModel(
                         }
                     )
 
+                    nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
 
-                    scope.launch {
+                    scope.launch(Dispatchers.IO) {
                         try {
 
-                            val result = relaysSocketManager.query(
+                            relaysSocketManager.query(
                                 reqCommand,
                                 synchronizeNostrEventRequest.relayURL
-                            )
+                            ).collect { nostrIncomingMessage ->
+                                when (nostrIncomingMessage) {
+                                    is NostrIncomingMessage.EventMessage -> {
+                                        logger.d("Import message: $nostrIncomingMessage")
+                                        nostrIncomingMessage.nostrEvent?.let {
+                                            nostrRepository.saveNostrEvent(
+                                                nostrEvent = it,
+                                                synchronizeNostrEventRequest,
+                                                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
+                                            )
+                                        }
 
-                            logger.d("Result: $result")
+                                    }
+                                    is NostrIncomingMessage.EventsMessage -> {
+                                        logger.d("Import messages: $nostrIncomingMessage")
 
-                            result.second.forEach { nostrEvent ->
-                                nostrRepository.saveNostrEvent(
-                                    nostrEvent = nostrEvent,
-                                    synchronizeNostrEventRequest,
-                                    synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
-                                )
+                                        nostrIncomingMessage.nostrEvents.forEach { nostrEvent ->
+                                            nostrRepository.saveNostrEvent(
+                                                nostrEvent = nostrEvent,
+                                                synchronizeNostrEventRequest,
+                                                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
+                                            )
+                                        }
+                                    }
+                                    is NostrIncomingMessage.EoseMessage -> {
+                                        logger.d("Sync request has been successfully processed (${synchronizeNostrEventRequest.relayURL}): $nostrIncomingMessage")
+                                        val closeCommand = CloseCmd(
+                                            subId = synchronizeNostrEventRequest.id,
+                                        )
+
+                                        relaysSocketManager.closeQuery(
+                                            closeCommand,
+                                            synchronizeNostrEventRequest.relayURL
+                                        )
+                                    }
+                                    else -> {
+                                        logger.d("Unhandled message: $nostrIncomingMessage")
+                                    }
+                                }
                             }
 
-                            nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
                         } catch (e: Throwable) {
                             logger.e("Failed to sync", e)
                         }

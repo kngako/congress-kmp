@@ -28,20 +28,16 @@ import ac.aux.compose.network.sockets.SocketConnectionClosedCallback
 import ac.aux.compose.network.sockets.SocketConnectionOpenedCallback
 import ac.aux.compose.network.sockets.filterByEventId
 import ac.aux.compose.network.sockets.filterBySubscriptionId
-import ac.aux.compose.network.sockets.verifyOrThrow
 import ac.aux.compose.repository.CachingImportRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
+import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transformWhile
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * As seen in Primal
@@ -121,7 +117,7 @@ class RelayPool(
         this.relays.removeAll(relays)
     }
 
-    fun addRelays(relays: Set<RelayDTO>) {
+    fun addRelaysIfMissing(relays: Set<RelayDTO>) {
         val existingRelayUrls = socketClients.map { it.socketUrl }
         val newRelayUrls = relays.map { it.url }
 
@@ -171,7 +167,7 @@ class RelayPool(
         if (relayUrls.isEmpty()) {
             handlePublishEventToRelays(socketClients, nostrEvent)
         } else {
-            addRelays(relays)
+            addRelaysIfMissing(relays)
 
             val filteredSocketClients = socketClients.filter { relayUrls.contains(it.socketUrl) }
 
@@ -179,9 +175,8 @@ class RelayPool(
         }
     }
 
-    @OptIn(FlowPreview::class)
-    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
-        addRelays(
+    suspend fun query(reqCommand: ReqCmd, relayUrl: String): Flow<NostrIncomingMessage> {
+        addRelaysIfMissing(
             setOf(
                 NormalizedRelayUrl(relayUrl).url.toRelayDTO()
             )
@@ -196,11 +191,33 @@ class RelayPool(
             throw NetworkException("$relayUrl is not connected")
         }
         return coroutineScope {
-            val deferredQueryResult = async { nostrSocketClient.collectQueryResult(reqCommand.subId) }
+            val eventFlow =  nostrSocketClient.queryAsFlow(reqCommand.subId)
             with(nostrSocketClient) {
                 sendMESSAGE(filterRequest)
             }
-            deferredQueryResult.await()
+            eventFlow
+        }
+    }
+
+    suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {
+        addRelaysIfMissing(
+            setOf(
+                NormalizedRelayUrl(relayUrl).url.toRelayDTO()
+            )
+        )
+
+        logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
+        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+
+        val closeSubscription = OptimizedJsonMapper.toJson(closeCmd)
+
+        if (nostrSocketClient == null) {
+            throw NetworkException("$relayUrl is not connected")
+        }
+        coroutineScope {
+            with(nostrSocketClient) {
+                sendMESSAGE(closeSubscription)
+            }
         }
     }
 
@@ -211,28 +228,10 @@ class RelayPool(
         }
 
     @OptIn(FlowPreview::class)
-    private suspend fun NostrSocketClient.collectQueryResult(subscriptionId: String): Pair<NostrIncomingMessage, List<NostrEvent>> {
-        val messages = this.incomingMessages
+    private suspend fun NostrSocketClient.queryAsFlow(subscriptionId: String): Flow<NostrIncomingMessage> {
+        return this.incomingMessages
             .filterBySubscriptionId(id = subscriptionId)
-            .transformWhileEventsAreIncoming()
-            .timeout(15.seconds)
-            .toList()
-
-        val terminationMessage = messages.lastOrNull()
-        terminationMessage.verifyOrThrow(subscriptionId)
-        checkNotNull(terminationMessage)
-
-        val eventMessages = messages.filterIsInstance<NostrIncomingMessage.EventMessage>()
-        val eventsMessage = messages.filterIsInstance<NostrIncomingMessage.EventsMessage>()
-
-        val allNostrEvents = eventMessages.mapNotNull { it.nostrEvent } +
-                eventsMessage.map { it.nostrEvents }.flatten()
-
-
-        return Pair(
-            terminationMessage,
-            allNostrEvents,
-        )
+//            .transformWhileEventsAreIncoming()
     }
 
     @OptIn(FlowPreview::class)
