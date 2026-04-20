@@ -5,6 +5,7 @@ import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.Repost
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.extensions.toFormattedTimeAndDateString
+import ac.aux.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.aux.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -162,16 +163,17 @@ private fun TextNoteFeedItem(
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(
                         onClick = {
-                            onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
+                            onNavigateToEvent.invoke(profile.nostrEventId)
                         }
                     ),
                     horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Profile picture",
+                    ProfileAvatar(
+                        publicKey = nostrEvent.pubKey,
+                        profile = profile
                     )
+
                     Text(
                         modifier = Modifier.weight(1f),
                         text = profile.displayName ?: profile.userName ?: nostrEvent.pubKey,
