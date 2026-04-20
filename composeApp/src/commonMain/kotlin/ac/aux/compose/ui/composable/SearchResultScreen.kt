@@ -206,37 +206,72 @@ fun SearchResultScreen(
                                     Text("Posts")
                                 }
                                 SearchResultType.Articles -> {
-                                    Text("Posts")
+                                    Text("Articles")
                                 }
                                 SearchResultType.Profiles -> {
-                                    Text("Posts")
+                                    Text("Profiles")
                                 }
                                 SearchResultType.Photos -> {
-
-                                    Text("Posts")
+                                    Text("Photos")
                                 }
                                 SearchResultType.Videos -> {
-
-                                    Text("Posts")
+                                    Text("Videos")
                                 }
                             }
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
-                            SearchResultListUIState.Error -> {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Spacer(
-                                        modifier = Modifier.height(50.dp)
-                                    )
-                                    Text(
-                                        text = "Something went wrong",
-                                    )
+                                SearchResultListUIState.Error -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Spacer(
+                                            modifier = Modifier.height(50.dp)
+                                        )
+                                        Text(
+                                            text = "Something went wrong",
+                                        )
+                                    }
                                 }
-                            }
-                            is SearchResultListUIState.Loaded -> {
-                                if (searchResultListUIState.localNostrEvents.isEmpty()) {
+                                is SearchResultListUIState.Loaded -> {
+                                    if (searchResultListUIState.localNostrEvents.isEmpty()) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        )  {
+                                            Spacer(
+                                                modifier = Modifier.height(50.dp)
+                                            )
+                                            Text(
+                                                text = "No events were found",
+                                            )
+                                        }
+                                    } else {
+
+                                        LazyColumn(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            items(
+                                                items = searchResultListUIState.localNostrEvents,
+                                                key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
+                                            ) { localNostrEvent ->
+                                                localNostrEvent.ListView(
+                                                    onNavigateToEvent = { nostrEventId ->
+                                                        onNavigateToEvent.invoke(
+                                                            NostrEventDetailRoute(
+                                                                nostrEventId = nostrEventId
+                                                            )
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                }
+                                SearchResultListUIState.Loading -> {
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally
@@ -245,66 +280,19 @@ fun SearchResultScreen(
                                             modifier = Modifier.height(50.dp)
                                         )
                                         Text(
-                                            text = "No events were found",
+                                            text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                            textAlign = TextAlign.Center
                                         )
+                                        Spacer(
+                                            modifier = Modifier.height(50.dp)
+                                        )
+
+                                        LoadingIndicator()
                                     }
-                                } else {
-
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        items(
-                                            items = searchResultListUIState.localNostrEvents,
-                                            key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
-                                        ) { localNostrEvent ->
-                                            localNostrEvent.ListView(
-                                                onNavigateToEvent = { nostrEventId ->
-                                                    onNavigateToEvent.invoke(
-                                                        NostrEventDetailRoute(
-                                                            nostrEventId = nostrEventId
-                                                        )
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-
-                            }
-                            SearchResultListUIState.Loading -> {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                )  {
-                                    Spacer(
-                                        modifier = Modifier.height(50.dp)
-                                    )
-                                    Text(
-                                        text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Spacer(
-                                        modifier = Modifier.height(50.dp)
-                                    )
-
-                                    LoadingIndicator()
                                 }
                             }
                         }
-                        }
-
-
-
-
-
                     }
-
-
-
-
-
                 }
             }
         }

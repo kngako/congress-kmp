@@ -4,6 +4,7 @@ import ac.aux.compose.database.model.NostrEvent
 import ac.aux.compose.database.model.Profile
 import ac.aux.compose.database.model.intermdiate.LocalNostrEvent
 import ac.aux.compose.repository.NostrRepository
+import ac.aux.compose.ui.composable.navigation.routes.Route
 import ac.aux.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.aux.compose.ui.composable.widgets.detail.MetadataEventDetail
 import ac.aux.compose.ui.composable.widgets.detail.TextNoteEventDetail
@@ -37,6 +38,7 @@ fun NostrEventDetailScreen(
     nostrEventId: HexKey,
     nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
+    onNavigateToEvent: (Route) -> Unit,
     onNavigateToWriteAReply: (String) -> Unit
 ) {
     val nostrEventDetailViewModel: NostrEventDetailViewModel = viewModel(
@@ -64,6 +66,8 @@ fun NostrEventDetailScreen(
                     MetadataEventDetail(
                         localNostrEvent = feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
+                        onNavigateToEvent = onNavigateToEvent,
+                        nostrRepository = nostrRepository
                     )
                 }
                 TextNoteEvent.KIND -> {
@@ -155,6 +159,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 nostrEventId = "",
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {},
+                onNavigateToEvent = {},
                 onNavigateToWriteAReply = {}
             )
         }

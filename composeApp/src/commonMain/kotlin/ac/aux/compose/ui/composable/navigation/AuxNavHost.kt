@@ -376,6 +376,11 @@ fun AuxNavHost(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
+                onNavigateToEvent = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                },
                 onNavigateToWriteAReply = { nostrEventId ->
                     navController.navigate(
                         route = WriteNewNoteRoute(
