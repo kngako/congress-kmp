@@ -22,6 +22,7 @@ import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class NostrEventDetailViewModel(
@@ -66,7 +67,7 @@ class NostrEventDetailViewModel(
             // Get contact list and sync feed...
             nostrRepository.observeLocalNostrEventById(
                 nostrEventId
-            ).collect { localNostrEvent ->
+            ).collectLatest { localNostrEvent ->
                 nostrEventDetailUIState = if (localNostrEvent != null) {
                     NostrEventDetailUIState.Loaded(
                         localNostrEvent = localNostrEvent
