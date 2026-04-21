@@ -99,11 +99,11 @@ kotlin {
 }
 
 android {
-    namespace = "ac.aux.compose"
+    namespace = "ac.cord.auxiliary.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "ac.aux.compose"
+        applicationId = "ac.cord.auxiliary.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -146,11 +146,11 @@ room {
 
 compose.desktop {
     application {
-        mainClass = "ac.aux.compose.MainKt"
+        mainClass = "ac.cord.auxiliary.compose.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ac.aux.compose"
+            packageName = "ac.cord.auxiliary.compose"
             packageVersion = "1.0.0"
         }
     }
