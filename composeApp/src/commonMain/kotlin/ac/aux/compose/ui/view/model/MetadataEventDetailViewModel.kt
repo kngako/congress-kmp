@@ -207,7 +207,7 @@ class MetadataEventDetailViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventFinderRelaySet.map { normalizedRelay ->
+                Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
                     SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(

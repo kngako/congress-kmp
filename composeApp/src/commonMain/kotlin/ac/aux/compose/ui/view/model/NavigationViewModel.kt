@@ -164,7 +164,7 @@ class NavigationViewModel(
                                             nostrRepository.saveNostrEvent(
                                                 nostrEvent = it,
                                                 synchronizeNostrEventRequest,
-                                                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
+                                                synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                             )
                                         }
 
@@ -176,7 +176,7 @@ class NavigationViewModel(
                                             nostrRepository.saveNostrEvent(
                                                 nostrEvent = nostrEvent,
                                                 synchronizeNostrEventRequest,
-                                                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url } + synchronizeNostrEventRequest.relayURL
+                                                synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                             )
                                         }
                                     }

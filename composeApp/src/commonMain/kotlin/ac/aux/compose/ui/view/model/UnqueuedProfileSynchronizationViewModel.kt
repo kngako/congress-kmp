@@ -53,7 +53,7 @@ class UnqueuedProfileSynchronizationViewModel(
             delay(2_000)
 
             nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
+                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl -> // TODO: Sync from all relays instead of 1
                     SynchronizeNostrEventRequest(
                         purpose = "sign-in",
                         synchronizationFilters = arrayOf(

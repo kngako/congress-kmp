@@ -73,7 +73,7 @@ class FeedListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventPublishRelaySet.map { normalizedRelay ->
+                Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all the publish relays...
                     SynchronizeNostrEventRequest(
                         purpose = "feed",
                         synchronizationFilters = arrayOf(

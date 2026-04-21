@@ -16,6 +16,7 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip37Drafts.DraftWrapEvent
+import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -92,8 +93,12 @@ abstract class NostrDao(
             // Add new nostr event
             database.nostrEventDao().insert(nostrEvent)
         } else if (nostrEvent.createdAt > storedNostrEvent.createdAt) {
-            // Update nostr event
+            // Update nostr event`
             database.nostrEventDao().upsert(nostrEvent)
+        } else {
+            // Nothing else needs to be done
+            logger.i("We have the latest version for: ${nostrEvent.id}")
+            return
         }
 
         // Index nostrEvent

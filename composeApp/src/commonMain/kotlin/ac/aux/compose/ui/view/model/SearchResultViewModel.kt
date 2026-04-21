@@ -128,7 +128,7 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
-                Relays.eventFinderRelaySet.map { normalizedRelay ->
+                Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Search all relays instead of the first
                     SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
