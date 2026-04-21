@@ -146,11 +146,11 @@ room {
 
 compose.desktop {
     application {
-        mainClass = "ac.cord.auxiliary.compose.MainKt"
+        mainClass = "ac.cord.auxiliary.desktop.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ac.cord.auxiliary.compose"
+            packageName = "ac.cord.auxiliary.desktop"
             packageVersion = "1.0.0"
         }
     }
