@@ -13,6 +13,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
+import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
+import com.vitorpamplona.quartz.nip51Lists.relayLists.IndexerRelayListEvent
+import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
+import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
@@ -52,13 +59,22 @@ class UnqueuedProfileSynchronizationViewModel(
             delay(2_000)
 
             nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl -> // TODO: Sync from all relays instead of 1
+                Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     SynchronizeNostrEventRequest(
                         purpose = "sign-in",
                         synchronizationFilters = arrayOf(
                             SynchronizationFilter(
                                 authors = arrayOf(profilePublicKey),
-                                kinds = arrayOf(MetadataEvent.KIND)
+                                kinds = arrayOf(
+                                    MetadataEvent.KIND,
+                                    ContactListEvent.KIND,
+                                    AdvertisedRelayListEvent.KIND,
+                                    ChatMessageRelayListEvent.KIND,
+                                    SearchRelayListEvent.KIND,
+                                    IndexerRelayListEvent.KIND,
+                                    ChannelListEvent.KIND,
+                                    RelayFeedsListEvent.KIND
+                                )
                             )
                         ),
                         unsignedNostrEventId = unsignedNostrEventId,
