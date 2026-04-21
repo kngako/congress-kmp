@@ -1,6 +1,7 @@
 package ac.aux.compose.ui.composable.widgets.profile
 
 import ac.aux.compose.database.model.Profile
+import ac.aux.compose.ui.composable.widgets.coil.forwardingPainter
 import ac.aux.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,9 +46,19 @@ fun ProfileAvatar(publicKey: String, profile: Profile?) {
         )
     } else {
         // Load image...
-        val placeHolderGraphic = rememberVectorPainter(Icons.Default.Face5)
-        val fallbackGraphic = rememberVectorPainter(Icons.Default.Face5)
-        val errorGraphic = rememberVectorPainter(Icons.Default.FaceRetouchingOff)
+        val placeHolderGraphic = forwardingPainter(
+            painter = rememberVectorPainter(Icons.Default.Face5),
+            colorFilter = ColorFilter.tint(tintColor)
+        )
+
+        val fallbackGraphic = forwardingPainter(
+            painter = rememberVectorPainter(Icons.Default.Face5),
+            colorFilter = ColorFilter.tint(tintColor)
+        )
+        val errorGraphic = forwardingPainter(
+            painter = rememberVectorPainter(Icons.Default.FaceRetouchingOff),
+            colorFilter = ColorFilter.tint(tintColor)
+        )
 
         AsyncImage(
             model = profile.picture,

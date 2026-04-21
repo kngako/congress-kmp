@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAbsoluteAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -130,6 +131,7 @@ private fun TextNoteFeedItem(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // TODO: If we don't have the name of the author being replied too we shouldn't show this..
             Text(
                 "In reply to ",
                 style = MaterialTheme.typography.labelSmall
@@ -146,6 +148,7 @@ private fun TextNoteFeedItem(
             )
         }
     }
+
     ElevatedCard(
         modifier = Modifier.padding(
             horizontal = 10.dp
