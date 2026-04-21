@@ -43,7 +43,7 @@ kotlin {
             implementation(libs.okhttp.coroutines)
         }
         commonMain.dependencies {
-            api("fr.acinq.lightning:lightning-kmp-core:1.11.5")
+            implementation(libs.lightning.kmp.core)
 
             implementation(libs.androidx.datastore)
             implementation(libs.androidx.datastore.preferences)
