@@ -42,198 +42,148 @@ class MetadataEventDetailViewModel(
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
 
-
-    var feedJob: Job? = null
-
     var metadataEventDetailType: MetadataEventDetailType by mutableStateOf(initialMetadataEventDetailType)
-        private set
-
-    var feedListUIState: FeedListUIState by mutableStateOf(FeedListUIState.Loading)
         private set
 
     fun updateMetadataEventDetailType (metadataEventDetailType: MetadataEventDetailType, navigateToPage: () -> Unit) {
         this.metadataEventDetailType = metadataEventDetailType
 
-        initiateMetadataFeed(this.metadataEventDetailType)
         navigateToPage.invoke()
     }
 
-    fun initiateMetadataFeed(metadataEventDetailType: MetadataEventDetailType = this.metadataEventDetailType) {
-        feedListUIState = FeedListUIState.Loading
-
-        logger.d("initiateMetadataFeed")
-        val synchronizationFilter = when (metadataEventDetailType) {
-            MetadataEventDetailType.Posts -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                        RepostEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Replies -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                        ReactionEvent.KIND,
-                    ),
-                    // TODO: replyTo is set...
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Articles -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        LongTextNoteEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Followers -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        ContactListEvent.KIND,
-                    ),
-                    // TODO: Check users with hexKey
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Following -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        ContactListEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Zaps -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        LnZapEvent.KIND,
-                    ),
-                    // TODO: Zaps user has received...
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Photos -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                    ),
-                    // TODO: filter for tags of pictures...
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Videos -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                    ),
-                    // TODO: filter for tags of videos...
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Bookmarks -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        BookmarkListEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Reports -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        ReportEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
-            MetadataEventDetailType.Relays -> {
-                SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
-                    kinds = arrayOf(
-                        RelayFeedsListEvent.KIND,
-                    ),
-                    limit = 50
-                )
-            }
+    fun getSynchronizationFilter() = when (metadataEventDetailType) {
+        MetadataEventDetailType.Posts -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    TextNoteEvent.KIND,
+                    RepostEvent.KIND,
+                ),
+                limit = 50
+            )
         }
-
-        syncFeed(synchronizationFilter)
-        loadFeed(synchronizationFilter)
-    }
-
-
-
-    private fun syncFeed(synchronizationFilter: SynchronizationFilter) {
-        logger.d("syncFeed")
-
-        viewModelScope.launch(Dispatchers.IO) {
-            // Sync Notifications... might want to also run this in the background
-            nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
-                    SynchronizeNostrEventRequest(
-                        purpose = "search",
-                        synchronizationFilters = arrayOf(
-                            synchronizationFilter
-                        ),
-                        relayURL = normalizedRelay.url
-                    )
-                }
+        MetadataEventDetailType.Replies -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    TextNoteEvent.KIND,
+                    ReactionEvent.KIND,
+                ),
+                // TODO: replyTo is set...
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Articles -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    LongTextNoteEvent.KIND,
+                ),
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Followers -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    ContactListEvent.KIND,
+                ),
+                // TODO: Check users with hexKey
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Following -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    ContactListEvent.KIND,
+                ),
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Zaps -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    LnZapEvent.KIND,
+                ),
+                // TODO: Zaps user has received...
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Photos -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    TextNoteEvent.KIND,
+                ),
+                // TODO: filter for tags of pictures...
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Videos -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    TextNoteEvent.KIND,
+                ),
+                // TODO: filter for tags of videos...
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Bookmarks -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    BookmarkListEvent.KIND,
+                ),
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Reports -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    ReportEvent.KIND,
+                ),
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Relays -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    RelayFeedsListEvent.KIND,
+                ),
+                limit = 50
             )
         }
     }
 
-    private fun loadFeed(synchronizationFilter: SynchronizationFilter) {
-        logger.d("loadFeed")
-
-        feedJob?.cancel()
-        feedJob = viewModelScope.launch(Dispatchers.IO) {
-            // This is something not taking into consideration the results we are actually looking for...
-            nostrRepository.observeNostrFeed(synchronizationFilter).collect { localNostrEvents ->
-                feedListUIState = FeedListUIState.Loaded(
-                    localNostrEvents = localNostrEvents
-                )
-            }
-        }
-    }
-
     companion object {
-        const val TAG = "SearchViewModel"
+        const val TAG = "MetadataEventDetailViewModel"
 
         fun factory(
             initialMetadataEventDetailType: MetadataEventDetailType = MetadataEventDetailType.Posts,

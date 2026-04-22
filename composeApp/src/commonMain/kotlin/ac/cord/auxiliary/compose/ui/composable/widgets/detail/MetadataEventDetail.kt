@@ -8,6 +8,7 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetai
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.feed.ListView
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
+import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.MetadataEventDetailType
 import ac.cord.auxiliary.compose.ui.view.model.MetadataEventDetailViewModel
 import ac.cord.auxiliary.compose.ui.view.model.SearchResultType
@@ -216,81 +217,40 @@ fun MetadataEventDetail(
                         HorizontalPager(
                             state = metadataEventDetailViewModel.pagerState,
                         ) { pageIndex ->
+                            when (MetadataEventDetailType.entries[pageIndex]) {
+                                MetadataEventDetailType.Posts, MetadataEventDetailType.Replies,
+                                MetadataEventDetailType.Articles, MetadataEventDetailType.Zaps,
+                                MetadataEventDetailType.Photos, MetadataEventDetailType.Videos,
+                                MetadataEventDetailType.Bookmarks, MetadataEventDetailType.Reports, MetadataEventDetailType.Relays -> {
+                                    val feedListViewModel: FeedListViewModel = viewModel(
+                                        factory = FeedListViewModel.factory(
+                                            initialFeedListUIState = FeedListUIState.Loading,
+                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(),
+                                            nostrRepository = nostrRepository
+                                        ),
+                                    )
 
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                when (val feedListUIState = metadataEventDetailViewModel.feedListUIState) {
-                                    FeedListUIState.Error -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Spacer(
-                                                modifier = Modifier.height(50.dp)
-                                            )
-                                            Text(
-                                                text = "Something went wrong",
-                                            )
-                                        }
-                                    }
-                                    is FeedListUIState.Loaded -> {
-                                        if (feedListUIState.localNostrEvents.isEmpty()) {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            )  {
-                                                Spacer(
-                                                    modifier = Modifier.height(50.dp)
-                                                )
-                                                Text(
-                                                    text = "No events were found",
-                                                )
-                                            }
-                                        } else {
-                                            LazyColumn(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                items(
-                                                    items = feedListUIState.localNostrEvents,
-                                                    key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
-                                                ) { localNostrEvent ->
-                                                    localNostrEvent.ListView(
-                                                        onNavigateToEvent = { nostrEventId ->
-                                                            onNavigateToEvent.invoke(
-                                                                NostrEventDetailRoute(
-                                                                    nostrEventId = nostrEventId
-                                                                )
-                                                            )
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
+                                    feedListViewModel.RenderFeed(
+                                        onNavigateToEvent = onNavigateToEvent
+                                    )
+                                }
 
-                                    }
-                                    FeedListUIState.Loading -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        )  {
-                                            Spacer(
-                                                modifier = Modifier.height(50.dp)
-                                            )
-                                            Text(
-                                                text = "Loading ${MetadataEventDetailType.entries[pageIndex].name.lowercase()}",
-                                                textAlign = TextAlign.Center
-                                            )
-                                            Spacer(
-                                                modifier = Modifier.height(50.dp)
-                                            )
+                                MetadataEventDetailType.Following -> {
 
-                                            LoadingIndicator()
-                                        }
-                                    }
+                                    Text("Implementing logic to see following")
+                                }
+                                MetadataEventDetailType.Followers -> {
+
+                                    Text("Implementing logic to see followers")
+                                }
+                            }
+
+
+                            LaunchedEffect(true) {
+                                metadataEventDetailViewModel.updateMetadataEventDetailType(
+                                    MetadataEventDetailType.Posts
+                                ) {
+
                                 }
                             }
                         }

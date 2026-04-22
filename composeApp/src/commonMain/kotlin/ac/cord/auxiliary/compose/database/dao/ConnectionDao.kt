@@ -22,6 +22,9 @@ interface ConnectionDao {
     @Query("SELECT * FROM Connection WHERE destinationPublicKey = :destinationPublicKey")
     fun getPublicKeyFollowers(destinationPublicKey: String): LocalFollowers?
 
+    @Query("SELECT * FROM Connection WHERE destinationPublicKey = :destinationPublicKey")
+    fun observe(destinationPublicKey: String): LocalFollowers?
+
     @Insert
     suspend fun insertPlaceholderProfile(connection: Connection)
 

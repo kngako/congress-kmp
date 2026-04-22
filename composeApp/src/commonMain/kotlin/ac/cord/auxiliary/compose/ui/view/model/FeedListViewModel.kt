@@ -5,11 +5,29 @@ import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
+import ac.cord.auxiliary.compose.ui.composable.widgets.feed.ListView
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -33,6 +51,7 @@ import kotlinx.coroutines.launch
 
 class FeedListViewModel(
     initialFeedListUIState: FeedListUIState,
+    val synchronizationFilter: SynchronizationFilter,
     val nostrRepository: NostrRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
@@ -58,7 +77,9 @@ class FeedListViewModel(
             if (localProfile?.profile == null) {
                 feedListUIState = FeedListUIState.Error
             } else {
-                nostrRepository.observeNostrFeed().collect { localNostrEvents ->
+                nostrRepository.observeNostrFeed(
+                    synchronizationFilter
+                ).collect { localNostrEvents ->
                     feedListUIState = FeedListUIState.Loaded(
                         localNostrEvents = localNostrEvents
                     )
@@ -77,23 +98,7 @@ class FeedListViewModel(
                     SynchronizeNostrEventRequest(
                         purpose = "feed",
                         synchronizationFilters = arrayOf(
-                            SynchronizationFilter(
-                                kinds = arrayOf(
-                                    TextNoteEvent.KIND,
-                                    RepostEvent.KIND,
-                                    ReactionEvent.KIND,
-                                    LnZapEvent.KIND,
-                                    ContactListEvent.KIND,
-                                    AdvertisedRelayListEvent.KIND,
-                                    PrivateDmEvent.KIND,
-                                    BlossomServersEvent.KIND,
-                                    FileServersEvent.KIND
-                                ),
-                                tags = mapOf(
-                                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
-                                ),
-                                limit = 50
-                            )
+                            synchronizationFilter
                         ),
                         relayURL = normalizedRelay.url
                     )
@@ -112,16 +117,101 @@ class FeedListViewModel(
         }
     }
 
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    @Composable
+    fun RenderFeed(
+        onNavigateToEvent: (Route) -> Unit
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            when (val feedListUIState = feedListUIState) {
+                FeedListUIState.Error -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(
+                            modifier = Modifier.height(50.dp)
+                        )
+                        Text(
+                            text = "Something went wrong",
+                        )
+                    }
+                }
+                is FeedListUIState.Loaded -> {
+                    if (feedListUIState.localNostrEvents.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        )  {
+                            Spacer(
+                                modifier = Modifier.height(50.dp)
+                            )
+                            Text(
+                                text = "No events were found",
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(
+                                items = feedListUIState.localNostrEvents,
+                                key = { localNostrEvent -> localNostrEvent.nostrEvent.id}
+                            ) { localNostrEvent ->
+                                localNostrEvent.ListView(
+                                    onNavigateToEvent = { nostrEventId ->
+                                        onNavigateToEvent.invoke(
+                                            NostrEventDetailRoute(
+                                                nostrEventId = nostrEventId
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                }
+                FeedListUIState.Loading -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    )  {
+                        Spacer(
+                            modifier = Modifier.height(50.dp)
+                        )
+                        Text(
+                            text = "Loading",
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(
+                            modifier = Modifier.height(50.dp)
+                        )
+
+                        LoadingIndicator()
+                    }
+                }
+            }
+        }
+    }
+
     companion object {
         const val TAG = "FeedListViewModel"
 
         fun factory(
             initialFeedListUIState: FeedListUIState = FeedListUIState.Loading,
+            synchronizationFilter: SynchronizationFilter,
             nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 FeedListViewModel(
                     initialFeedListUIState = initialFeedListUIState,
+                    synchronizationFilter = synchronizationFilter,
                     nostrRepository = nostrRepository
                 )
             }

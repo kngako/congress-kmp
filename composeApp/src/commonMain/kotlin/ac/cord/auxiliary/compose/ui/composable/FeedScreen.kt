@@ -1,5 +1,7 @@
 package ac.cord.auxiliary.compose.ui.composable
 
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.composable.widgets.feed.FeedListItem
@@ -43,6 +45,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip04Dm.messages.PrivateDmEvent
+import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
+import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
+import com.vitorpamplona.quartz.nip96FileStorage.config.FileServersEvent
+import com.vitorpamplona.quartz.nipB7Blossom.BlossomServersEvent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -56,6 +68,23 @@ fun FeedScreen(
     val feedListViewModel: FeedListViewModel = viewModel(
         factory = FeedListViewModel.factory(
             initialFeedListUIState = initialFeedListUIState,
+            synchronizationFilter = SynchronizationFilter(
+                kinds = arrayOf(
+                    TextNoteEvent.KIND,
+                    RepostEvent.KIND,
+                    ReactionEvent.KIND,
+                    LnZapEvent.KIND,
+                    ContactListEvent.KIND,
+                    AdvertisedRelayListEvent.KIND,
+                    PrivateDmEvent.KIND,
+                    BlossomServersEvent.KIND,
+                    FileServersEvent.KIND
+                ),
+                tags = mapOf(
+                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
+                ),
+                limit = 50
+            ),
             nostrRepository = nostrRepository
         ),
     )
