@@ -70,21 +70,12 @@ class FeedListViewModel(
     fun observeLocalNostrFeed() {
         logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            // Get contact list and sync feed...
-
-            val localProfile = nostrRepository.observeProfile(SeedManager.activePublicKey().toHexKey()).firstOrNull()
-
-            if (localProfile?.profile == null) {
-                feedListUIState = FeedListUIState.Error
-            } else {
-                nostrRepository.observeNostrFeed(
-                    synchronizationFilter
-                ).collect { localNostrEvents ->
-                    feedListUIState = FeedListUIState.Loaded(
-                        localNostrEvents = localNostrEvents
-                    )
-                }
-
+            nostrRepository.observeNostrFeed(
+                synchronizationFilter
+            ).collect { localNostrEvents ->
+                feedListUIState = FeedListUIState.Loaded(
+                    localNostrEvents = localNostrEvents
+                )
             }
         }
     }

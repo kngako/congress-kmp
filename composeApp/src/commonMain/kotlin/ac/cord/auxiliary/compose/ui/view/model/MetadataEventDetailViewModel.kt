@@ -35,23 +35,15 @@ enum class MetadataEventDetailType {
 }
 
 class MetadataEventDetailViewModel(
-    initialMetadataEventDetailType: MetadataEventDetailType,
     val publicKey: HexKey,
     val nostrRepository: NostrRepository,
     val pagerState: PagerState
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
 
-    var metadataEventDetailType: MetadataEventDetailType by mutableStateOf(initialMetadataEventDetailType)
-        private set
-
-    fun updateMetadataEventDetailType (metadataEventDetailType: MetadataEventDetailType, navigateToPage: () -> Unit) {
-        this.metadataEventDetailType = metadataEventDetailType
-
-        navigateToPage.invoke()
-    }
-
-    fun getSynchronizationFilter() = when (metadataEventDetailType) {
+    fun getSynchronizationFilter(
+        metadataEventDetailType: MetadataEventDetailType
+    ) = when (metadataEventDetailType) {
         MetadataEventDetailType.Posts -> {
             SynchronizationFilter(
                 authors = arrayOf(
@@ -186,14 +178,12 @@ class MetadataEventDetailViewModel(
         const val TAG = "MetadataEventDetailViewModel"
 
         fun factory(
-            initialMetadataEventDetailType: MetadataEventDetailType = MetadataEventDetailType.Posts,
             publicKey: HexKey,
             nostrRepository: NostrRepository,
             pagerState: PagerState
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 MetadataEventDetailViewModel(
-                    initialMetadataEventDetailType = initialMetadataEventDetailType,
                     nostrRepository = nostrRepository,
                     pagerState = pagerState,
                     publicKey = publicKey

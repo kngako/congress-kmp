@@ -329,24 +329,28 @@ class DatabaseNostrRepository(
 
         return when {
             synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
+                logger.d("observeFilteredNostrEvents: $synchronizationFilter")
                 database.nostrEventDao().observeFilteredNostrEvents(
                     kinds = synchronizationFilter.kinds,
                     search = synchronizationFilter.search
                 )
             }
             synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
+                logger.d("observeFilteredNostrEvents: $synchronizationFilter")
                 database.nostrEventDao().observeFilteredNostrEvents(
                     kinds = synchronizationFilter.kinds,
                     ids = synchronizationFilter.ids
                 )
             }
             synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
+                logger.d("observeAuthoredNostrEvents: $synchronizationFilter")
                 database.nostrEventDao().observeAuthoredNostrEvents(
                     kinds = synchronizationFilter.kinds,
                     authors = synchronizationFilter.authors
                 )
             }
             else -> {
+                logger.d("observeNostrEvents: $synchronizationFilter")
                 database.nostrEventDao().observeNostrEvents(
                     kinds = arrayOf(
                         TextNoteEvent.KIND,

@@ -47,6 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,10 +75,9 @@ fun MetadataEventDetail(
 
     val metadataEventDetailViewModel: MetadataEventDetailViewModel = viewModel(
         factory = MetadataEventDetailViewModel.factory(
-            initialMetadataEventDetailType = MetadataEventDetailType.Posts,
             publicKey = localNostrEvent.nostrEvent.pubKey,
             nostrRepository = nostrRepository,
-            pagerState = rememberPagerState { SearchResultType.entries.size }
+            pagerState = rememberPagerState { MetadataEventDetailType.entries.size }
         ),
     )
 
@@ -193,11 +193,8 @@ fun MetadataEventDetail(
                             Tab(
                                 selected = metadataEventDetailViewModel.pagerState.currentPage == index,
                                 onClick = {
-
-                                    metadataEventDetailViewModel.updateMetadataEventDetailType(destination) {
-                                        scope.launch {
-                                            metadataEventDetailViewModel.pagerState.animateScrollToPage(destination.ordinal)
-                                        }
+                                    scope.launch {
+                                        metadataEventDetailViewModel.pagerState.animateScrollToPage(destination.ordinal)
                                     }
                                 },
                                 text = {
@@ -217,22 +214,27 @@ fun MetadataEventDetail(
                         HorizontalPager(
                             state = metadataEventDetailViewModel.pagerState,
                         ) { pageIndex ->
-                            when (MetadataEventDetailType.entries[pageIndex]) {
+                            val metadataEventDetailType = MetadataEventDetailType.entries[pageIndex]
+
+                            when (metadataEventDetailType) {
                                 MetadataEventDetailType.Posts, MetadataEventDetailType.Replies,
                                 MetadataEventDetailType.Articles, MetadataEventDetailType.Zaps,
                                 MetadataEventDetailType.Photos, MetadataEventDetailType.Videos,
                                 MetadataEventDetailType.Bookmarks, MetadataEventDetailType.Reports, MetadataEventDetailType.Relays -> {
                                     val feedListViewModel: FeedListViewModel = viewModel(
+                                        key = metadataEventDetailType.name,
                                         factory = FeedListViewModel.factory(
                                             initialFeedListUIState = FeedListUIState.Loading,
-                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(),
+                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
                                             nostrRepository = nostrRepository
                                         ),
                                     )
 
-                                    feedListViewModel.RenderFeed(
-                                        onNavigateToEvent = onNavigateToEvent
-                                    )
+                                    key(feedListViewModel.feedListUIState) {
+                                        feedListViewModel.RenderFeed(
+                                            onNavigateToEvent = onNavigateToEvent
+                                        )
+                                    }
                                 }
 
                                 MetadataEventDetailType.Following -> {
@@ -244,26 +246,8 @@ fun MetadataEventDetail(
                                     Text("Implementing logic to see followers")
                                 }
                             }
-
-
-                            LaunchedEffect(true) {
-                                metadataEventDetailViewModel.updateMetadataEventDetailType(
-                                    MetadataEventDetailType.Posts
-                                ) {
-
-                                }
-                            }
                         }
                     }
-
-                    LaunchedEffect(true) {
-                        metadataEventDetailViewModel.updateMetadataEventDetailType(
-                            MetadataEventDetailType.Posts
-                        ) {
-
-                        }
-                    }
-
                 }
             }
         }
