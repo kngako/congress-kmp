@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.database
 import ac.cord.auxiliary.compose.database.converters.AuxConverters
 import ac.cord.auxiliary.compose.database.dao.BroadcastNostrEventReceiptDao
 import ac.cord.auxiliary.compose.database.dao.BroadcastNostrEventRequestDao
+import ac.cord.auxiliary.compose.database.dao.ConnectionDao
 import ac.cord.auxiliary.compose.database.dao.NostrDao
 import ac.cord.auxiliary.compose.database.dao.NostrEventDao
 import ac.cord.auxiliary.compose.database.dao.PostDao
@@ -17,6 +18,7 @@ import ac.cord.auxiliary.compose.database.dao.UnsignedNostrEventDao
 import ac.cord.auxiliary.compose.database.dao.ZapDao
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
@@ -41,6 +43,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
     entities = [
         BroadcastNostrEventReceipt::class,
         BroadcastNostrEventRequest::class,
+        Connection::class,
         NostrEvent::class,
         Post::class,
         Profile::class,
@@ -59,6 +62,8 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
 abstract class AuxDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao
     abstract fun broadcastNostrEventRequestDao(): BroadcastNostrEventRequestDao
+    abstract fun connectionDao(): ConnectionDao
+
     abstract fun nostrDao(): NostrDao
 
     abstract fun nostrEventDao(): NostrEventDao

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "37219e58733785a0530005387bc4e1f4",
+    "identityHash": "4e55adbd5b9ce2c2de417983fce1b078",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -175,6 +175,89 @@
             ],
             "referencedColumns": [
               "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "Connection",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sourcePublicKey` TEXT NOT NULL, `destinationPublicKey` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`sourcePublicKey`, `destinationPublicKey`), FOREIGN KEY(`sourcePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`destinationPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "sourcePublicKey",
+            "columnName": "sourcePublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destinationPublicKey",
+            "columnName": "destinationPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nostrEventId",
+            "columnName": "nostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sourcePublicKey",
+            "destinationPublicKey"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sourcePublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "destinationPublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
             ]
           }
         ]
@@ -1453,7 +1536,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '37219e58733785a0530005387bc4e1f4')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4e55adbd5b9ce2c2de417983fce1b078')"
     ]
   }
 }

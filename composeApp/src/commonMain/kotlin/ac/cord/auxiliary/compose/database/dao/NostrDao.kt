@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.database.dao
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
@@ -358,6 +359,67 @@ abstract class NostrDao(
             }
 
             database.zapDao().upsert(zap)
+        }
+
+        if (nostrEvent.kind == ContactListEvent.KIND) {
+            val contactListEvent = ContactListEvent(
+                id = nostrEvent.id,
+                tags = nostrEvent.tags,
+                pubKey = nostrEvent.pubKey,
+                createdAt = nostrEvent.createdAt.epochSeconds,
+                content = nostrEvent.content,
+                sig = nostrEvent.sig
+            )
+            logger.i("Store contact list: $contactListEvent")
+
+            contactListEvent.verifiedFollowKeySet().forEach { followedHexKEys ->
+
+                // Find or create profile with the pubKey... if not found submit a sync request...
+                val profile = database.profileDao().getProfileByPublicKey(followedHexKEys)
+
+                if (profile == null) {
+                    val placeHolderProfile = Profile(
+                        publicKey = nostrEvent.pubKey,
+                        createdAt = GENESIS_AT,
+                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                    )
+                    database.profileDao().insertPlaceholderProfile(placeHolderProfile)
+
+                    database.synchronizeNostrEventRequestDao().insert(
+                        synchronizationRelayURLs.map { synchronizationRelayURL ->
+                            SynchronizeNostrEventRequest(
+                                purpose = "synchronization",
+                                synchronizationFilters = arrayOf(
+                                    SynchronizationFilter(
+                                        authors = arrayOf(nostrEvent.pubKey),
+                                        kinds = arrayOf(
+                                            MetadataEvent.KIND,
+                                            ContactListEvent.KIND,
+                                            AdvertisedRelayListEvent.KIND,
+                                            ChatMessageRelayListEvent.KIND,
+                                            SearchRelayListEvent.KIND,
+                                            IndexerRelayListEvent.KIND,
+                                            ChannelListEvent.KIND,
+                                            RelayFeedsListEvent.KIND
+                                        )
+                                    )
+                                ),
+                                relayURL = synchronizationRelayURL
+                            )
+                        }
+                    )
+                }
+
+                // Save profile connections...
+                database.connectionDao().upsert(
+                    Connection(
+                        sourcePublicKey = nostrEvent.pubKey,
+                        destinationPublicKey = followedHexKEys,
+                        nostrEventId = nostrEvent.id
+                    )
+                )
+            }
+            // TODO: Delete connections where sourcePublicKey == nostr.pubKey but destinationPublickKey !in verifiedFollowKeySet
         }
     }
 }
