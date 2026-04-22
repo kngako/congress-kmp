@@ -10,6 +10,8 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowers
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowing
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
@@ -80,6 +82,10 @@ interface NostrRepository {
     suspend fun searchableProfiles(): List<Profile>
 
     suspend fun filterProfiles(searchTerm: String): List<LocalProfile>
+
+    suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?>
+
+    suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?>
 
     suspend fun getRecentSearches(): List<RecentSearch>
 
@@ -187,6 +193,14 @@ interface NostrRepository {
             }
 
             override suspend fun filterProfiles(searchTerm: String): List<LocalProfile> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?> {
                 TODO("Not yet implemented")
             }
 

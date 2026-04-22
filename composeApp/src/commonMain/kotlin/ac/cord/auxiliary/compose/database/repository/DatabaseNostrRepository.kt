@@ -13,6 +13,8 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowers
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowing
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
@@ -372,6 +374,13 @@ class DatabaseNostrRepository(
         return database.profileDao().filterProfiles(searchTerm = searchTerm)
     }
 
+    override suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?> {
+        return database.connectionDao().observePublicKeyFollowers(publicKey)
+    }
+
+    override suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?> {
+        return database.connectionDao().observePublicKeyFollowing(publicKey)
+    }
     override suspend fun getRecentSearches(): List<RecentSearch> {
         return database.recentSearchDao().getAllRecentSearches()
     }
