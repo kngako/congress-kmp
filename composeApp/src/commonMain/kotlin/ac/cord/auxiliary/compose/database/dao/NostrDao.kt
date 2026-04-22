@@ -302,7 +302,7 @@ abstract class NostrDao(
                 // Persist PlaceHolder and sync
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
-                        publicKey = nostrEvent.pubKey,
+                        publicKey = repost.repostedPostAuthorPublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync handled by tagged events...
                     )
