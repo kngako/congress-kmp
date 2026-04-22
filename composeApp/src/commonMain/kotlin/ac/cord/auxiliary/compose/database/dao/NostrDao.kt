@@ -10,6 +10,7 @@ import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.nostr.Relays
 import androidx.room.Dao
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
@@ -34,12 +35,12 @@ abstract class NostrDao(
     val profileEventKinds = arrayOf(
         MetadataEvent.KIND,
         ContactListEvent.KIND,
-        AdvertisedRelayListEvent.KIND,
-        ChatMessageRelayListEvent.KIND,
-        SearchRelayListEvent.KIND,
-        IndexerRelayListEvent.KIND,
-        ChannelListEvent.KIND,
-        RelayFeedsListEvent.KIND
+//        AdvertisedRelayListEvent.KIND,
+//        ChatMessageRelayListEvent.KIND,
+//        SearchRelayListEvent.KIND,
+//        IndexerRelayListEvent.KIND,
+//        ChannelListEvent.KIND,
+//        RelayFeedsListEvent.KIND
     )
 
     @Transaction
@@ -117,13 +118,12 @@ abstract class NostrDao(
             // Nothing else needs to be done
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
             if (profile?.createdAt == GENESIS_AT) {
-                logger.i("This is a placeholder profile might need to get synced...")
+                logger.i("This is a placeholder profile might need to get synced...: ${profile.publicKey}")
                 // Setup the sync here...
             } else {
                 logger.i("We have the latest version for: ${nostrEvent.id}")
-
+                return
             }
-            return
         }
 
         // Index nostrEvent
@@ -178,8 +178,8 @@ abstract class NostrDao(
 //                    )
 //                )
                 profilePublicKeysToSync.add(nostrEvent.pubKey)
-            } else if (profile.createdAt == GENESIS_AT) {
-                logger.i("This is a placeholder profile... that might need to get synced...")
+            } else if (profile.createdAt == GENESIS_AT && level == 0) {
+                logger.i("This is a placeholder profile... that might need to get synced...: $profile")
                 profilePublicKeysToSync.add(nostrEvent.pubKey)
             }
         } else {
@@ -377,8 +377,8 @@ abstract class NostrDao(
                 profilePublicKeysToSync.add(
                     repost.repostedPostAuthorPublicKey
                 )
-            } else if (repostedPostProfile.createdAt == GENESIS_AT) {
-                logger.i("This is a placeholder profile... that might need to get synced...")
+            } else if (repostedPostProfile.createdAt == GENESIS_AT && level == 0) {
+                logger.i("${level} This is a placeholder profile... that might need to get synced...: $repostedPostProfile")
                 profilePublicKeysToSync.add(repost.repostedPostAuthorPublicKey)
             }
         }
@@ -460,8 +460,8 @@ abstract class NostrDao(
 //                        }
 //                    )
                     profilePublicKeysToSync.add(followedHexKEys)
-                } else if (profile.createdAt == GENESIS_AT) {
-                    logger.i("This is a placeholder profile... that might need to get synced...")
+                } else if (profile.createdAt == GENESIS_AT && level == 0) {
+                    logger.i("${level} This is a placeholder profile... that might need to get synced...: $profile")
                     profilePublicKeysToSync.add(followedHexKEys)
                 }
 
@@ -506,9 +506,19 @@ abstract class NostrDao(
 
         if (synchronizationFilters.isNotEmpty()) {
             logger.d("Synchronize ${level}: $synchronizationFilters")
+
+            val relays = if( profilePublicKeysToSync.isNotEmpty()) {
+                // If we are syncing profilePublicKeys we might want
+                Relays.eventFinderRelaySet.map { it.url }
+            } else {
+
+                synchronizationRelayURLs
+            }
+
             synchronizationFilters.forEach { synchronizationFilter ->
                 database.synchronizeNostrEventRequestDao().insert(
-                    synchronizationRelayURLs.take(1).map { synchronizationRelayURL -> // TODO: Get all relayURLs instead of 1
+
+                    relays.take(3).map { synchronizationRelayURL -> // TODO: Get all relayURLs instead of 1
                         SynchronizeNostrEventRequest(
                             purpose = "synchronization",
                             synchronizationFilters = arrayOf(
