@@ -174,6 +174,7 @@ class MetadataEventDetailViewModel(
         }
     }
 
+    // TODO: Queue profile synchronization request...
     companion object {
         const val TAG = "MetadataEventDetailViewModel"
 

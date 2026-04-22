@@ -43,6 +43,8 @@ data class SynchronizeNostrEventRequest(
     val relayURL: String,
     val isRecommendedRelay: Boolean = false,
 
+    val level: Int,
+
     val synchronizationFilters: SynchronizationFilterArray,
 
     override val nostrEventId: HexKey? = null,

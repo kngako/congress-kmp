@@ -59,7 +59,8 @@ class NostrEventDetailViewModel(
                                 limit = 50
                             )
                         ),
-                        relayURL = normalizedRelay.url
+                        relayURL = normalizedRelay.url,
+                        level = 0
                     )
                 }
             )

@@ -78,7 +78,8 @@ class UnqueuedProfileSynchronizationViewModel(
                             )
                         ),
                         unsignedNostrEventId = unsignedNostrEventId,
-                        relayURL = normalizedRelayUrl.url
+                        relayURL = normalizedRelayUrl.url,
+                        level = 0
                     )
                 }
 

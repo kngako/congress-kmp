@@ -91,7 +91,8 @@ class FeedListViewModel(
                         synchronizationFilters = arrayOf(
                             synchronizationFilter
                         ),
-                        relayURL = normalizedRelay.url
+                        relayURL = normalizedRelay.url,
+                        level = 0,
                     )
                 }
             )

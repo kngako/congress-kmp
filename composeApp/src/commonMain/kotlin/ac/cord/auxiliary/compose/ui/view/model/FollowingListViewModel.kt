@@ -79,7 +79,8 @@ class FollowingListViewModel(
                         synchronizationFilters = arrayOf(
                             synchronizationFilter
                         ),
-                        relayURL = normalizedRelay.url
+                        relayURL = normalizedRelay.url,
+                        level = 0
                     )
                 }
             )

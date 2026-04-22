@@ -289,7 +289,8 @@ class DatabaseNostrRepository(
     ) {
         database.nostrDao().storeNostrEvent(
             nostrEvent,
-            synchronizationRelayURLs = synchronizationRelayURLs
+            synchronizationRelayURLs = synchronizationRelayURLs,
+            level = synchronizeNostrEventRequest.level
         )
 
         database.synchronizeNostrEventRequestDao().upsert(

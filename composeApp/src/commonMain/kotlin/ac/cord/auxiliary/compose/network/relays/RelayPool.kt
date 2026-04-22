@@ -58,7 +58,7 @@ class RelayPool(
     val relays: MutableSet<RelayDTO> = mutableSetOf()
 
     @VisibleForTesting
-    var socketClients = listOf<NostrSocketClient>()
+    var socketClients = setOf<NostrSocketClient>()
 
     private val _relayPoolStatus = MutableStateFlow(mapOf<String, Boolean>())
     val relayPoolStatus = _relayPoolStatus.asStateFlow()
@@ -85,7 +85,7 @@ class RelayPool(
         val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
         val toRemoveSocketClients = socketClients.filter { it.socketUrl !in newRelayUrls }
 
-        val newSocketClients = socketClients.toMutableList().apply {
+        val newSocketClients = socketClients.toMutableSet().apply {
             removeAll(toRemoveSocketClients)
             addAll(toAddSocketClients)
         }
@@ -104,7 +104,7 @@ class RelayPool(
 
         val toRemoveSocketClients = socketClients.filter { it.socketUrl in relayUrls }
 
-        val newSocketClients = socketClients.toMutableList().apply {
+        val newSocketClients = socketClients.toMutableSet().apply {
             removeAll(toRemoveSocketClients)
         }
 
@@ -120,10 +120,10 @@ class RelayPool(
         val existingRelayUrls = socketClients.map { it.socketUrl }
         val newRelayUrls = relays.map { it.url }
 
-        val toAddRelayUrls = newRelayUrls.filter { it !in existingRelayUrls }
+        val toAddRelayUrls = newRelayUrls.filter { it !in existingRelayUrls }.toSet()
         val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
         logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
-        val newSocketClients = socketClients.toMutableList().apply {
+        val newSocketClients = socketClients.toMutableSet().apply {
             addAll(toAddSocketClients)
         }
         logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
@@ -138,7 +138,7 @@ class RelayPool(
             updateRelayStatus(url = client.socketUrl, connected = false)
             scope.launch { client.close() }
         }
-        socketClients = emptyList()
+        socketClients = emptySet()
         relays.clear()
     }
 
@@ -170,7 +170,7 @@ class RelayPool(
 
             val filteredSocketClients = socketClients.filter { relayUrls.contains(it.socketUrl) }
 
-            handlePublishEventToRelays(filteredSocketClients, nostrEvent)
+            handlePublishEventToRelays(filteredSocketClients.toSet(), nostrEvent)
         }
     }
 
@@ -234,7 +234,7 @@ class RelayPool(
     }
 
     @OptIn(FlowPreview::class)
-    private suspend fun handlePublishEventToRelays(relayConnections: List<NostrSocketClient>, nostrEvent: NostrEvent): Flow<NostrPublishResult> {
+    private suspend fun handlePublishEventToRelays(relayConnections: Set<NostrSocketClient>, nostrEvent: NostrEvent): Flow<NostrPublishResult> {
         val responseFlow = MutableSharedFlow<NostrPublishResult>()
         relayConnections.forEach { nostrSocketClient ->
             scope.launch {

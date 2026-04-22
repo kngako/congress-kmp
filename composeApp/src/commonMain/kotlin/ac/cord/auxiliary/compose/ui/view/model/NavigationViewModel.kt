@@ -152,7 +152,6 @@ class NavigationViewModel(
 
                     scope.launch(Dispatchers.IO) {
                         try {
-
                             relaysSocketManager.query(
                                 reqCommand,
                                 synchronizeNostrEventRequest.relayURL
@@ -279,6 +278,7 @@ class NavigationViewModel(
             }
         }
     }
+
     private fun observeProfile() {
         logger.i("observeProfile")
         scope.launch(Dispatchers.IO) {
