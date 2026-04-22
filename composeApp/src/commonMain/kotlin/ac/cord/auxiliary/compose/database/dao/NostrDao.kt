@@ -379,7 +379,7 @@ abstract class NostrDao(
 
                 if (profile == null) {
                     val placeHolderProfile = Profile(
-                        publicKey = nostrEvent.pubKey,
+                        publicKey = followedHexKEys,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )

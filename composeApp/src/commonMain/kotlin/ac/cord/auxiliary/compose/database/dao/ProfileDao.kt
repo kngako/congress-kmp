@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFoll
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy.Companion.IGNORE
 import androidx.room.Query
 import androidx.room.Upsert
 
