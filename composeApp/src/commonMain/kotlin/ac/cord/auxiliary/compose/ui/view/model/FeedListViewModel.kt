@@ -60,7 +60,7 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
-    init {
+    fun initiate() {
         logger.d("init")
         scheduleSynchronization()
         observeLocalNostrFeed()

@@ -7,10 +7,12 @@ import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
+import ac.cord.auxiliary.compose.ui.view.model.FollowersListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.FollowingListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.MetadataEventDetailType
 import ac.cord.auxiliary.compose.ui.view.model.MetadataEventDetailViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
+import ac.cord.auxiliary.compose.ui.view.state.FollowersListUIState
 import ac.cord.auxiliary.compose.ui.view.state.FollowingListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -230,6 +232,10 @@ fun MetadataEventDetail(
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
+
+                                    key(true) {
+                                        feedListViewModel.initiate()
+                                    }
                                 }
 
                                 MetadataEventDetailType.Following -> {
@@ -249,10 +255,32 @@ fun MetadataEventDetail(
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
+
+                                    key(true) {
+                                        followingListViewModel.initiate()
+                                    }
                                 }
                                 MetadataEventDetailType.Followers -> {
+                                    val followersListViewModel: FollowersListViewModel = viewModel(
+                                        key = metadataEventDetailType.name,
+                                        factory = FollowersListViewModel.factory(
+                                            initialFeedListUIState = FollowersListUIState.Loading,
+                                            publicKey = localNostrEvent.nostrEvent.pubKey,
+                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
+                                            nostrRepository = nostrRepository
+                                        ),
+                                    )
 
-                                    Text("Implementing logic to see followers")
+
+                                    key(followersListViewModel.followersListUIState) {
+                                        followersListViewModel.RenderFeed(
+                                            onNavigateToEvent = onNavigateToEvent
+                                        )
+                                    }
+
+                                    key(true) {
+                                        followersListViewModel.initiate()
+                                    }
                                 }
                             }
                         }

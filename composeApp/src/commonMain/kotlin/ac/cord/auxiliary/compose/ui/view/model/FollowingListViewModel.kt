@@ -6,7 +6,6 @@ import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
-import ac.cord.auxiliary.compose.ui.composable.widgets.feed.ListView
 import ac.cord.auxiliary.compose.ui.view.state.FollowingListUIState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,13 +49,12 @@ class FollowingListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
-    init {
+    fun initiate() {
         logger.d("init")
         scheduleSynchronization()
         observeLocalNostrFeed()
         observeSynchronizeNostrEventRequestByPurposeAndStatusCount()
     }
-
     fun observeLocalNostrFeed() {
         logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
@@ -64,7 +62,7 @@ class FollowingListViewModel(
                 publicKey
             ).collect { localFollowing ->
                 followingListUIState = FollowingListUIState.Loaded(
-                    profilesBeingFollowed = localFollowing?.following ?: emptyList()
+                    following = localFollowing?.following ?: emptyList()
                 )
             }
         }
@@ -122,7 +120,7 @@ class FollowingListViewModel(
                     }
                 }
                 is FollowingListUIState.Loaded -> {
-                    if (feedListUIState.profilesBeingFollowed.isEmpty()) {
+                    if (feedListUIState.following.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -141,7 +139,7 @@ class FollowingListViewModel(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(
-                                items = feedListUIState.profilesBeingFollowed,
+                                items = feedListUIState.following,
                                 key = { profile -> profile.publicKey }
                             ) { profile ->
                                 Column(
