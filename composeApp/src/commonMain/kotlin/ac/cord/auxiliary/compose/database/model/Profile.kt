@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.room.Entity
@@ -97,11 +98,13 @@ data class Profile(
                 modifier = Modifier.fillMaxWidth().padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(
-                    space = 4.dp,
+                    space = 10.dp,
                     alignment = Alignment.Start
                 )
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.padding(4.dp)
+                ) {
                     ProfileAvatar(
                         publicKey = publicKey,
                         profile = this@Profile
@@ -109,7 +112,11 @@ data class Profile(
                 }
 
                 Column(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(
+                        space = 10.dp,
+                        alignment = Alignment.CenterVertically
+                    )
                 ) {
                     Text(
                         text = humanReadableNameOrPubkey(),
