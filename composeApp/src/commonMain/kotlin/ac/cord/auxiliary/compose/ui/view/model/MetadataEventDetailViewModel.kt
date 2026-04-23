@@ -1,11 +1,12 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
-import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.nostr.Relays
+import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
-import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
+import ac.cord.auxiliary.compose.ui.view.state.MetadataEventDetailUIState
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,6 +17,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
@@ -27,7 +29,6 @@ import com.vitorpamplona.quartz.nip56Reports.ReportEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 enum class MetadataEventDetailType {
@@ -35,11 +36,41 @@ enum class MetadataEventDetailType {
 }
 
 class MetadataEventDetailViewModel(
+    initialMetadataEventDetailUIState: MetadataEventDetailUIState = MetadataEventDetailUIState.Loading,
     val publicKey: HexKey,
     val nostrRepository: NostrRepository,
     val pagerState: PagerState
 ): ViewModel() {
-    val logger = Logger.withTag(TAG)
+
+    val isActionPending: MutableState<Boolean> = mutableStateOf(false)
+
+    var metadataEventDetailUIState: MetadataEventDetailUIState by mutableStateOf(initialMetadataEventDetailUIState)
+        private set
+
+    val logger = Logger.withTag("MetadataEventDetailViewModel")
+
+    fun initiate() {
+        observeMetadataEventRelationWithActiveUser()
+    }
+
+    fun observeMetadataEventRelationWithActiveUser() {
+        logger.d("observeLocalNostrFeed")
+        viewModelScope.launch(Dispatchers.IO) {
+            val activePublicKey = SeedManager.activePublicKey().toHexKey()
+
+            nostrRepository.observeRelation(
+                publicKey,
+                activePublicKey = activePublicKey
+            ).collect { relations ->
+                logger.d("We found relations: $relations")
+                metadataEventDetailUIState = MetadataEventDetailUIState.Loaded(
+                    isActiveUser = activePublicKey == publicKey,
+                    followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == publicKey && connection.destinationPublicKey == activePublicKey },
+                    followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activePublicKey && connection.destinationPublicKey == publicKey }
+                )
+            }
+        }
+    }
 
     fun getSynchronizationFilter(
         metadataEventDetailType: MetadataEventDetailType
@@ -174,7 +205,20 @@ class MetadataEventDetailViewModel(
         }
     }
 
-    // TODO: Queue profile synchronization request...
+    fun follow() {
+        isActionPending.value = true
+
+        val activePublicKey = SeedManager.activePublicKey().toHexKey()
+
+
+    }
+
+    fun unfollow(connection: Connection) {
+        isActionPending.value = true
+
+        val activePublicKey = SeedManager.activePublicKey().toHexKey()
+
+    }
     companion object {
         const val TAG = "MetadataEventDetailViewModel"
 

@@ -73,9 +73,10 @@ class CreateProfileViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
+            val publicKey = SeedManager.activePublicKey().toHexKey()
 
             nostrRepository.createNewProfile(
-                SeedManager.activePublicKey().toHexKey(),
+                publicKey,
                 name = createProfileFormState.nameField.text.value,
                 biography = createProfileFormState.biographyField.text.value,
                 onError = {

@@ -2,6 +2,7 @@ package ac.cord.auxiliary.compose.repository
 
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
@@ -20,6 +21,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?>
+
+    suspend fun observeRelation(publicKey: HexKey, activePublicKey: HexKey): Flow<List<Connection>>
 
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
@@ -96,6 +99,13 @@ interface NostrRepository {
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeRelation(
+                publicKey: HexKey,
+                activePublicKey: HexKey
+            ): Flow<List<Connection>> {
                 TODO("Not yet implemented")
             }
 

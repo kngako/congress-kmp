@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
@@ -57,6 +58,16 @@ class DatabaseNostrRepository(
 
     override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)
+    }
+
+    override suspend fun observeRelation(
+        publicKey: HexKey,
+        activePublicKey: HexKey
+    ): Flow<List<Connection>> {
+        return database.connectionDao().observeRelation(
+            alicePublicKey = publicKey,
+            bobPublicKey = activePublicKey
+        )
     }
 
     override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {

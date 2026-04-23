@@ -387,6 +387,11 @@ fun AuxNavHost(
                             inReplyToEventId = nostrEventId
                         )
                     )
+                },
+                onNavigateToEditProfile = {
+                    navController.navigate(
+                        route = ImplementationPendingRoute("Edit Profile")
+                    )
                 }
             )
         }

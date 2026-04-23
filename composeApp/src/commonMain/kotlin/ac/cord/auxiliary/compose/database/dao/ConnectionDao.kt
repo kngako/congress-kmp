@@ -5,12 +5,17 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ConnectionDao {
     @Query("SELECT * FROM Connection LIMIT :limit")
     fun  getAllConnections(limit: Int = 21): List<Connection>
 
+
+    @Query("SELECT * FROM Connection WHERE (sourcePublicKey = :alicePublicKey AND destinationPublicKey = :bobPublicKey) OR (sourcePublicKey = :bobPublicKey AND destinationPublicKey = :alicePublicKey)")
+    fun  observeRelation(alicePublicKey: HexKey, bobPublicKey: HexKey): Flow<List<Connection>>
 
     @Insert
     suspend fun insertPlaceholderProfile(connection: Connection)

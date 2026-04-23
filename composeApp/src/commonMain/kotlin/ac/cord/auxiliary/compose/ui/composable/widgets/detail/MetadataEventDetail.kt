@@ -15,6 +15,7 @@ import ac.cord.auxiliary.compose.ui.view.model.MetadataEventDetailViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import ac.cord.auxiliary.compose.ui.view.state.FollowersListUIState
 import ac.cord.auxiliary.compose.ui.view.state.FollowingListUIState
+import ac.cord.auxiliary.compose.ui.view.state.MetadataEventDetailUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,13 +31,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -66,6 +68,7 @@ fun MetadataEventDetail(
     localNostrEvent: LocalNostrEvent,
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
+    onNavigateToEditProfile: () -> Unit,
     nostrRepository: NostrRepository
 ) {
     val scope = rememberCoroutineScope()
@@ -160,14 +163,64 @@ fun MetadataEventDetail(
                             )
 
 
-                            Button(
-                                onClick = {
+
+                            when(val metadataEventDetailUIState = metadataEventDetailViewModel.metadataEventDetailUIState) {
+                                MetadataEventDetailUIState.Error -> {
+                                    Icon(
+                                        Icons.Default.Error,
+                                        contentDescription = "Something went wrong"
+                                    )
+                                }
+                                is MetadataEventDetailUIState.Loaded -> {
+
+                                    if (metadataEventDetailViewModel.isActionPending.value) {
+                                        LoadingIndicator()
+                                    } else {
+                                        if (metadataEventDetailUIState.isActiveUser) {
+                                            Button(
+                                                onClick = onNavigateToEditProfile
+                                            ) {
+                                                Text(
+                                                    "Edit Profile"
+                                                )
+                                            }
+
+                                        } else if (metadataEventDetailUIState.followedByActiveUserConnection != null) {
+                                            Button(
+                                                onClick = {
+                                                    // Unfollow
+                                                    metadataEventDetailViewModel.unfollow(
+                                                        metadataEventDetailUIState.followedByActiveUserConnection
+                                                    )
+                                                }
+                                            ) {
+                                                Text(
+                                                    "Unfollow"
+                                                )
+                                            }
+                                        } else {
+                                            // flow
+                                            Button(
+                                                onClick = {
+                                                    metadataEventDetailViewModel.follow()
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = if (metadataEventDetailUIState.followingActiveUserConnection == null) {
+                                                        "follow back"
+                                                    } else {
+                                                        "follow"
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
 
                                 }
-                            ) {
-                                Text(
-                                    "Follow"
-                                )
+                                MetadataEventDetailUIState.Loading -> {
+                                    LoadingIndicator()
+                                }
                             }
                         }
                         Text(
@@ -182,7 +235,7 @@ fun MetadataEventDetail(
                     }
                 }
 
-                item {
+                stickyHeader {
                     PrimaryScrollableTabRow(
                         modifier = Modifier.padding(10.dp),
                         edgePadding = 10.dp,
@@ -206,7 +259,9 @@ fun MetadataEventDetail(
                             )
                         }
                     }
+                }
 
+                item {
                     Column(
                         modifier = Modifier.fillParentMaxSize()
                     ) {
@@ -289,6 +344,10 @@ fun MetadataEventDetail(
                     }
                 }
             }
+
+            key(true) {
+                metadataEventDetailViewModel.initiate()
+            }
         }
     }
 }
@@ -321,6 +380,7 @@ private fun MetadataEventEventDetailPreview() {
                 ),
                 onNavigateBack = {},
                 onNavigateToEvent = {},
+                onNavigateToEditProfile = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

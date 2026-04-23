@@ -39,6 +39,7 @@ fun NostrEventDetailScreen(
     nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
+    onNavigateToEditProfile: () -> Unit,
     onNavigateToWriteAReply: (String) -> Unit
 ) {
     val nostrEventDetailViewModel: NostrEventDetailViewModel = viewModel(
@@ -67,6 +68,7 @@ fun NostrEventDetailScreen(
                         localNostrEvent = feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToEvent = onNavigateToEvent,
+                        onNavigateToEditProfile = onNavigateToEditProfile,
                         nostrRepository = nostrRepository
                     )
                 }
@@ -160,7 +162,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {},
                 onNavigateToEvent = {},
-                onNavigateToWriteAReply = {}
+                onNavigateToWriteAReply = {},
+                onNavigateToEditProfile = {}
             )
         }
     }
