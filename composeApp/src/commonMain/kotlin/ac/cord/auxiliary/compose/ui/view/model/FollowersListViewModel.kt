@@ -144,25 +144,9 @@ class FollowersListViewModel(
                                 items = followersListUIState.followers,
                                 key = { profile -> profile.publicKey }
                             ) { follower ->
-                                Column(
-                                    modifier = Modifier.clickable {
-                                        onNavigateToEvent.invoke(
-                                            NostrEventDetailRoute(
-                                                follower.nostrEventId
-                                            )
-                                        )
-                                    }
-                                ) {
-                                    Text(
-                                        text = follower.displayName ?: follower.userName ?: follower.userName ?: follower.publicKey
-                                    )
-
-                                    follower.nip05?.let {
-                                        Text(
-                                            text = follower.nip05
-                                        )
-                                    }
-                                }
+                                follower.RenderAsListItem(
+                                    onNavigateToEvent = onNavigateToEvent
+                                )
                             }
                         }
                     }

@@ -143,25 +143,9 @@ class FollowingListViewModel(
                                 items = feedListUIState.following,
                                 key = { profile -> profile.publicKey }
                             ) { profile ->
-                                Column(
-                                    modifier = Modifier.clickable {
-                                        onNavigateToEvent.invoke(
-                                            NostrEventDetailRoute(
-                                                profile.nostrEventId
-                                            )
-                                        )
-                                    }
-                                ) {
-                                    Text(
-                                        text = profile.displayName ?: profile.userName ?: profile.userName ?: profile.publicKey
-                                    )
-
-                                    profile.nip05?.let {
-                                        Text(
-                                            text = profile.nip05
-                                        )
-                                    }
-                                }
+                                profile.RenderAsListItem(
+                                    onNavigateToEvent = onNavigateToEvent
+                                )
                             }
                         }
                     }

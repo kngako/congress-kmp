@@ -6,6 +6,25 @@ import ac.cord.auxiliary.compose.database.model.traits.NostrEventEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.theme.AuxTheme
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -55,5 +74,75 @@ data class Profile(
 ): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity {
     fun humanReadableNameOrPubkey(): String {
         return displayName ?: userName ?: nip05 ?: twitter ?: publicKey
+    }
+
+    @Composable
+    fun RenderAsListItem(
+        onNavigateToEvent: (Route) -> Unit
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(
+                horizontal = 6.dp,
+                vertical = 3.dp
+            ),
+            onClick = {
+                onNavigateToEvent.invoke(
+                    NostrEventDetailRoute(
+                        nostrEventId
+                    )
+                )
+            }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(
+                    space = 4.dp,
+                    alignment = Alignment.Start
+                )
+            ) {
+                Column {
+                    ProfileAvatar(
+                        publicKey = publicKey,
+                        profile = this@Profile
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = humanReadableNameOrPubkey(),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Text(
+                        text = nip05 ?: "",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+fun ProfileRenderAsListItemPreview() {
+    val profile = Profile(
+        publicKey = "pubKey",
+        displayName = "John Doe",
+        nip05 = "john@doe.com",
+        about = "I am the stone that the builder refused.",
+        nostrEventId = "nostrEventId"
+    )
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            profile.RenderAsListItem(
+                onNavigateToEvent = {}
+            )
+        }
     }
 }

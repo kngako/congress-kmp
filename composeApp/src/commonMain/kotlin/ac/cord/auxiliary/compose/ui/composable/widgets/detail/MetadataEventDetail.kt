@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.FollowersListViewModel
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Bolt
@@ -48,6 +50,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -145,11 +148,10 @@ fun MetadataEventDetail(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
-                            Icon(
-                                Icons.Default.Person,
-                                modifier = Modifier.size(50.dp),
-                                contentDescription = profile?.displayName ?: profile?.userName ?: "Profile picture"
+                            ProfileAvatar(
+                                modifier = Modifier.size(75.dp).clip(shape = CircleShape),
+                                profile = profile,
+                                publicKey = localNostrEvent.nostrEvent.pubKey
                             )
 
 

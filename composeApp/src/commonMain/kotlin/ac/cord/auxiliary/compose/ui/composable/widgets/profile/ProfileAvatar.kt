@@ -25,7 +25,11 @@ import coil3.compose.AsyncImage
 import kotlin.math.abs
 
 @Composable
-fun ProfileAvatar(publicKey: String, profile: Profile?) {
+fun ProfileAvatar(
+    modifier: Modifier = Modifier.size(55.dp).clip(shape = CircleShape),
+    publicKey: String,
+    profile: Profile?
+) {
     val tintColor = Color.hsl(
         hue = abs(
             publicKey.hashCode()
@@ -33,11 +37,10 @@ fun ProfileAvatar(publicKey: String, profile: Profile?) {
         saturation = 0.55f,
         lightness = 0.45f
     )
-    val imageModifier = Modifier.size(55.dp).clip(shape = CircleShape)
 
     if (profile?.picture == null) {
         Icon(
-            modifier = imageModifier,
+            modifier = modifier,
             imageVector = Icons.Default.AccountCircle,
             tint = tintColor,
             contentDescription = "Profile picture",
@@ -60,7 +63,7 @@ fun ProfileAvatar(publicKey: String, profile: Profile?) {
 
         AsyncImage(
             model = profile.picture,
-            modifier = imageModifier,
+            modifier = modifier,
             contentDescription = "Profile picture for ${profile.displayName ?: profile.publicKey}",
             placeholder = placeHolderGraphic,
             fallback = fallbackGraphic,
