@@ -74,7 +74,11 @@ data class Profile(
     override val broadcastedAt: Instant? = null,
 ): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity {
     fun humanReadableNameOrPubkey(): String {
-        return displayName ?: userName ?: nip05 ?: twitter ?: publicKey
+        return displayName ?: userName ?: lud16 ?: nip05 ?: twitter ?: publicKey
+    }
+
+    fun staticIdentifier(): String {
+        return  lud16 ?: nip05 ?: ""
     }
 
     @Composable

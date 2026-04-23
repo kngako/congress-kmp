@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.repository.SearchRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.SearchResultRoute
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.SearchViewModel
 import ac.cord.auxiliary.compose.ui.view.state.SearchUIState
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -52,6 +54,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
@@ -221,25 +224,27 @@ fun SearchScreen(
 
                                     )
                             }
-                            itemsIndexed(searchViewModel.filteredProfiles) { index, profile ->
+                            items(
+                                items = searchViewModel.filteredProfiles
+                            ) { profile ->
                                 ListItem(
-                                    headlineContent = { Text(profile.humanReadableNameOrPubkey()) },
+                                    headlineContent = {
+                                        Text(
+                                            profile.humanReadableNameOrPubkey(),
+                                            maxLines = 1,
+                                        )
+                                    },
                                     supportingContent = {
-                                        Text("Profile")
+                                        Text(
+                                            text = profile.staticIdentifier(),
+                                            maxLines = 1,
+                                        )
                                     },
                                     leadingContent = {
-                                        IconButton(
-                                            onClick = {
-                                                onNavigateToProfile.invoke(
-                                                    NostrEventDetailRoute(profile.nostrEventId)
-                                                )
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Person,
-                                                contentDescription = "Person"
-                                            )
-                                        }
+                                        ProfileAvatar(
+                                            profile = profile,
+                                            publicKey = profile.publicKey
+                                        )
                                     },
                                     modifier = Modifier
                                         .clickable {
@@ -274,7 +279,7 @@ fun SearchScreen(
 
                                             LazyRow {
                                                 items(searchViewModel.searchableProfiles) { profile ->
-                                                    val profileName = profile.displayName ?: profile.userName ?: profile.nip05 ?: profile.nostrEventId
+                                                    val profileName = profile.humanReadableNameOrPubkey()
                                                     Column(
                                                         modifier = Modifier.padding(10.dp).width(70.dp),
                                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -291,10 +296,10 @@ fun SearchScreen(
                                                                 )
                                                             }
                                                         ) {
-                                                            Icon(
-                                                                modifier = Modifier.size(70.dp),
-                                                                imageVector = Icons.Default.Person,
-                                                                contentDescription = profileName
+                                                            ProfileAvatar(
+                                                                size = 70.dp,
+                                                                profile = profile,
+                                                                publicKey = profile.publicKey
                                                             )
                                                         }
 

@@ -152,7 +152,7 @@ fun MetadataEventDetail(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ProfileAvatar(
-                                modifier = Modifier.size(75.dp).clip(shape = CircleShape),
+                                size = 75.dp,
                                 profile = profile,
                                 publicKey = localNostrEvent.nostrEvent.pubKey
                             )
