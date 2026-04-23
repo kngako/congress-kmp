@@ -114,7 +114,7 @@ data class Profile(
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(
-                        space = 10.dp,
+                        space = 4.dp,
                         alignment = Alignment.CenterVertically
                     )
                 ) {
