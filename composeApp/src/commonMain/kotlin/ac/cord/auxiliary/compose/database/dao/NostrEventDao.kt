@@ -9,6 +9,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import fr.acinq.bitcoin.PublicKey
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -42,6 +43,9 @@ interface NostrEventDao {
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
     fun getNostrEventById(id: String): NostrEvent?
+
+    @Query("SELECT * FROM NostrEvent WHERE pubKey = :publicKey AND kind = :kind")
+    fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): NostrEvent?
 
     @Upsert
     suspend fun upsert(nostrEvent: NostrEvent)

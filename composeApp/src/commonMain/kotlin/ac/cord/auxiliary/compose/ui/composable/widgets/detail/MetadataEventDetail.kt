@@ -206,7 +206,7 @@ fun MetadataEventDetail(
                                                 }
                                             ) {
                                                 Text(
-                                                    text = if (metadataEventDetailUIState.followingActiveUserConnection == null) {
+                                                    text = if (metadataEventDetailUIState.followingActiveUserConnection != null) {
                                                         "follow back"
                                                     } else {
                                                         "follow"

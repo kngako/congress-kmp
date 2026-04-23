@@ -24,6 +24,7 @@ import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip02FollowList.RelaySet
@@ -68,6 +69,10 @@ class DatabaseNostrRepository(
             alicePublicKey = publicKey,
             bobPublicKey = activePublicKey
         )
+    }
+
+    override suspend fun deleteConnection(connection: Connection) {
+        database.connectionDao().delete(connection)
     }
 
     override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
@@ -239,6 +244,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? = try {
+        // TODO: We can actually check the unsignedNostrEvent.pubKey for support... if it's writeable
         delay(2_100) // Just to make it look like we are doing serious work...
         unsignedNostrEvent.copy(
             id = database.unsignedNostrEventDao().upsert(unsignedNostrEvent)
@@ -325,6 +331,13 @@ class DatabaseNostrRepository(
         return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestByPurposeAndStatusCount(
             "feed",
             listOf("pending", "processing")
+        )
+    }
+
+    override suspend fun getNostrEvent(publicKey: HexKey, kind: Kind): NostrEvent? {
+        return database.nostrEventDao().getNostrEventByPublicKeyAndKind(
+            publicKey = publicKey,
+            kind = kind
         )
     }
 

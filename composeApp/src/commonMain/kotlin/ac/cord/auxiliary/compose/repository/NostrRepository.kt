@@ -17,12 +17,15 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFoll
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
     suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?>
 
     suspend fun observeRelation(publicKey: HexKey, activePublicKey: HexKey): Flow<List<Connection>>
+
+    suspend fun deleteConnection(connection: Connection)
 
     suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
 
@@ -76,6 +79,9 @@ interface NostrRepository {
 
     suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int>
 
+
+    suspend fun getNostrEvent(publicKey: HexKey, kind: Kind): NostrEvent?
+
     suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
 
     suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>>
@@ -106,6 +112,10 @@ interface NostrRepository {
                 publicKey: HexKey,
                 activePublicKey: HexKey
             ): Flow<List<Connection>> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun deleteConnection(connection: Connection) {
                 TODO("Not yet implemented")
             }
 
@@ -183,6 +193,13 @@ interface NostrRepository {
             }
 
             override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun getNostrEvent(
+                publicKey: HexKey,
+                kind: Kind
+            ): NostrEvent? {
                 TODO("Not yet implemented")
             }
 

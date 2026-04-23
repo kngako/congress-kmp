@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.Connection
+import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
@@ -17,12 +18,17 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.tags.people.isTaggedUser
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip02FollowList.RelaySet
+import com.vitorpamplona.quartz.nip02FollowList.tags.ContactTag
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip23LongContent.LongTextNoteEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import com.vitorpamplona.quartz.nip51Lists.bookmarkList.BookmarkListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip56Reports.ReportEvent
@@ -63,11 +69,17 @@ class MetadataEventDetailViewModel(
                 activePublicKey = activePublicKey
             ).collect { relations ->
                 logger.d("We found relations: $relations")
+
                 metadataEventDetailUIState = MetadataEventDetailUIState.Loaded(
                     isActiveUser = activePublicKey == publicKey,
                     followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == publicKey && connection.destinationPublicKey == activePublicKey },
                     followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activePublicKey && connection.destinationPublicKey == publicKey }
                 )
+
+                if (isActionPending.value) {
+                    // This means this new relation was caused by user action...
+                    isActionPending.value = false
+                }
             }
         }
     }
@@ -210,7 +222,45 @@ class MetadataEventDetailViewModel(
 
         val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
+        viewModelScope.launch(Dispatchers.IO) {
+            val contactListEvent = nostrRepository.getNostrEvent(
+                publicKey = activePublicKey,
+                kind = ContactListEvent.KIND
+            )
 
+
+            val followUsers: TagArray = if (contactListEvent != null) {
+                if (contactListEvent.tags.isTaggedUser(publicKey)) {
+                    // User already being followed
+                    logger.d("User is already following $publicKey")
+                    return@launch
+                }
+
+                contactListEvent.tags.plus(
+                    ContactTag(
+                        pubKey = publicKey
+                    ).toTagArray()
+                )
+            } else {
+                arrayOf(
+                    ContactTag(activePublicKey, null, null).toTagArray(),
+                    ContactTag(publicKey, null, null).toTagArray(),
+                )
+            }
+            val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
+                    followUsers.map { it }
+
+            nostrRepository.saveUnsignedNostrEvent(
+                UnsignedNostrEvent(
+                    pubKey = activePublicKey,
+                    kind = ContactListEvent.KIND,
+                    tags = contactListTagList.toTypedArray(),
+                    content = RelaySet.assemble(
+                        emptyMap()
+                    )
+                )
+            )
+        }
     }
 
     fun unfollow(connection: Connection) {
@@ -218,6 +268,34 @@ class MetadataEventDetailViewModel(
 
         val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
+        viewModelScope.launch(Dispatchers.IO) {
+            val contactListEvent = nostrRepository.getNostrEvent(
+                publicKey = activePublicKey,
+                kind = ContactListEvent.KIND
+            )
+
+
+            if (contactListEvent != null) {
+                if (!contactListEvent.tags.isTaggedUser(publicKey)) {
+                    logger.d("User is not being followed so no need to unfollow: $publicKey")
+                } else {
+                    nostrRepository.saveUnsignedNostrEvent(
+                        UnsignedNostrEvent(
+                            pubKey = activePublicKey,
+                            kind = ContactListEvent.KIND,
+                            tags = contactListEvent.tags.filter { it.size > 1 && it[1] != publicKey }.toTypedArray(),
+                            content = RelaySet.assemble(
+                                emptyMap()
+                            )
+                        )
+                    )
+                }
+
+                nostrRepository.deleteConnection(
+                    connection
+                )
+            }
+        }
     }
     companion object {
         const val TAG = "MetadataEventDetailViewModel"

@@ -2,6 +2,7 @@ package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.Connection
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
@@ -22,5 +23,8 @@ interface ConnectionDao {
 
     @Upsert
     suspend fun upsert(connection: Connection)
+
+    @Delete
+    suspend fun delete(connection: Connection)
 
 }
