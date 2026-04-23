@@ -10,9 +10,9 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowers
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowing
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -83,9 +83,9 @@ interface NostrRepository {
 
     suspend fun filterProfiles(searchTerm: String): List<LocalProfile>
 
-    suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?>
+    suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?>
 
-    suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?>
+    suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?>
 
     suspend fun getRecentSearches(): List<RecentSearch>
 
@@ -196,11 +196,11 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?> {
+            override suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?> {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?> {
+            override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> {
                 TODO("Not yet implemented")
             }
 

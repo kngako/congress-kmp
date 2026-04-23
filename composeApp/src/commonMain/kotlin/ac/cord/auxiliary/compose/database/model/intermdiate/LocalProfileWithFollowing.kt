@@ -25,5 +25,5 @@ data class LocalProfileWithFollowing(
             entityColumn = "destinationPublicKey"
         )
     )
-    val followers: List<Profile>
+    val following: List<Profile>
 )

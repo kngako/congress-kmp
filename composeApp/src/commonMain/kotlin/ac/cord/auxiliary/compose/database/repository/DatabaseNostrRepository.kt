@@ -13,9 +13,9 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowers
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalFollowing
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
@@ -375,13 +375,15 @@ class DatabaseNostrRepository(
         return database.profileDao().filterProfiles(searchTerm = searchTerm)
     }
 
-    override suspend fun observeProfileFollowers(publicKey: String): Flow<LocalFollowers?> {
-        return database.connectionDao().observePublicKeyFollowers(publicKey)
+
+    override suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?> {
+        return database.profileDao().observeProfileWithFollowersByPublicKey(publicKey)
     }
 
-    override suspend fun observeProfileFollowing(publicKey: String): Flow<LocalFollowing?> {
-        return database.connectionDao().observePublicKeyFollowing(publicKey)
+    override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> {
+        return database.profileDao().observeProfileWithFollowingByPublicKey(publicKey)
     }
+
     override suspend fun getRecentSearches(): List<RecentSearch> {
         return database.recentSearchDao().getAllRecentSearches()
     }

@@ -9,6 +9,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy.Companion.IGNORE
 import androidx.room.Query
 import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProfileDao {
@@ -22,10 +23,10 @@ interface ProfileDao {
     fun getProfileByPublicKey(publicKey: String): Profile?
 
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
-    fun observeProfileWithFollowersByPublicKey(publicKey: String): LocalProfileWithFollowers?
+    fun observeProfileWithFollowersByPublicKey(publicKey: String): Flow<LocalProfileWithFollowers?>
 
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
-    fun observeProfileWithFollowingByPublicKey(publicKey: String): LocalProfileWithFollowing?
+    fun observeProfileWithFollowingByPublicKey(publicKey: String): Flow<LocalProfileWithFollowing?>
 
     @Insert
     suspend fun insertPlaceholderProfile(profile: Profile)

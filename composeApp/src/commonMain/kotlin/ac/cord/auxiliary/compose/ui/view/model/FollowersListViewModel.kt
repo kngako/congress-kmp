@@ -59,7 +59,7 @@ class FollowersListViewModel(
     fun observeLocalNostrFeed() {
         logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeProfileFollowers(
+            nostrRepository.observeProfileWithFollowers(
                 publicKey
             ).collect { localFollowers ->
                 followersListUIState = FollowersListUIState.Loaded(

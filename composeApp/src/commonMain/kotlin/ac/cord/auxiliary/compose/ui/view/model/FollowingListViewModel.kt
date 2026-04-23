@@ -58,7 +58,7 @@ class FollowingListViewModel(
     fun observeLocalNostrFeed() {
         logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeProfileFollowing(
+            nostrRepository.observeProfileWithFollowing(
                 publicKey
             ).collect { localFollowing ->
                 followingListUIState = FollowingListUIState.Loaded(
