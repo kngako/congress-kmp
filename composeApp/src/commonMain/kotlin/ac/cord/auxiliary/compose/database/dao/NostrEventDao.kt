@@ -6,6 +6,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy.Companion.IGNORE
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.room.RoomRawQuery
 import androidx.room.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -29,10 +31,21 @@ interface NostrEventDao {
         ids: Array<HexKey>,
     ): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors) ORDER BY createdAt DESC LIMIT 50")
     fun  observeAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
+    ): Flow<List<LocalNostrEvent>>
+
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds) ORDER BY createdAt DESC")
+    fun  observePublicKeyMentionedNostrEvents(
+        kinds: Array<Kind>,
+        publicKey: HexKey
+    ): Flow<List<LocalNostrEvent>>
+
+    @RawQuery
+    fun  observePublicKeyFollowingNostrEvents(
+        query: RoomRawQuery
     ): Flow<List<LocalNostrEvent>>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")

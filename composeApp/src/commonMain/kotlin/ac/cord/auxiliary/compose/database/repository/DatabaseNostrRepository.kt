@@ -22,6 +22,7 @@ import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
+import androidx.room.RoomRawQuery
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -374,6 +375,15 @@ class DatabaseNostrRepository(
                 database.nostrEventDao().observeAuthoredNostrEvents(
                     kinds = synchronizationFilter.kinds,
                     authors = synchronizationFilter.authors
+                )
+            }
+            synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
+                logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                database.nostrEventDao().observePublicKeyMentionedNostrEvents(
+                    kinds = arrayOf(
+                        TextNoteEvent.KIND,
+                    ),
+                    publicKey = synchronizationFilter.tags["p"]?.first()!!
                 )
             }
             else -> {

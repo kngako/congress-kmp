@@ -5,7 +5,7 @@ import ac.cord.auxiliary.compose.database.repository.DatabaseNostrRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseSearchRepository
 import ac.cord.auxiliary.compose.managers.DatabaseManager
 import ac.cord.auxiliary.compose.ui.composable.CreateProfileScreen
-import ac.cord.auxiliary.compose.ui.composable.FeedScreen
+import ac.cord.auxiliary.compose.ui.composable.HomeScreen
 import ac.cord.auxiliary.compose.ui.composable.ImplementationPendingScreen
 import ac.cord.auxiliary.compose.ui.composable.LandingScreen
 import ac.cord.auxiliary.compose.ui.composable.LoadingScreen
@@ -302,13 +302,10 @@ fun AuxNavHost(
             )
         }
         composable<FeedRoute> {
-            FeedScreen(
-                initialFeedListUIState = FeedListUIState.Loading,
-                onNavigateToEvent = { nostrEventId ->
+            HomeScreen(
+                onNavigateToEvent = { eventRoute ->
                     navController.navigate(
-                        route = NostrEventDetailRoute(
-                            nostrEventId = nostrEventId
-                        )
+                        route = eventRoute
                     )
                 },
                 onNavigateToWriteNewNote = {
