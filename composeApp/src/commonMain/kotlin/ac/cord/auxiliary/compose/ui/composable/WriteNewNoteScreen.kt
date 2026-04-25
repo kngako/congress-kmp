@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.ui.composable
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
+import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -11,6 +12,7 @@ import ac.cord.auxiliary.compose.ui.view.model.WriteNewNoteViewModel
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -62,7 +66,7 @@ fun WriteNewNoteScreen(
                     10.dp
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
                 when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState) {
@@ -135,15 +139,34 @@ fun WriteNewNoteScreen(
                     is WriteNewNoteUIState.ConfirmNote-> {
 
                         // TODO: Get profile for active pubKey
+
                         Text(
-                            text = "Display Name",
-                            style = MaterialTheme.typography.labelLarge
+                            text = writeNewNoteUIState.localProfile.profile.humanReadableNameOrPubkey(),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+
+
+                        writeNewNoteUIState.localProfile.profile.staticIdentifier()?.let { staticIdentifier ->
+                            Text(
+                                text = staticIdentifier,
+                                style = MaterialTheme.typography.labelSmallEmphasized
+                            )
+                        }
+
+
+                        ProfileAvatar(
+                            profile = writeNewNoteUIState.localProfile.profile
                         )
 
                         Text(
                             text = writeNewNoteUIState.text,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center
+                        )
+
+                        Text(
+                            text = Clock.System.now().toFormattedTimeAndDateString(),
+                            style = MaterialTheme.typography.labelSmall
                         )
 
 
@@ -209,7 +232,8 @@ private fun WriteNewNoteScreenPreview() {
         ) {
             WriteNewNoteScreen(
                 initialWriteNewNoteUIState =
-                    WriteNewNoteUIState.InputPrompt(
+                    WriteNewNoteUIState.ConfirmNote(
+                        text = "Yes, I did it. So WHAT?!",
                         localProfile = LocalProfileWithFollowing(
                             nostrEvent = NostrEvent(
                                 id = "eventId",
@@ -226,6 +250,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             profile = Profile(
                                 publicKey = "pubKey",
                                 displayName = "John Doe",
+                                nip05 = "john@doe.com",
                                 nostrEventId = "nostrEventId"
                             ),
                             following = emptyList()

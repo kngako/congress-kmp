@@ -77,8 +77,8 @@ data class Profile(
         return displayName ?: userName ?: lud16 ?: nip05 ?: twitter ?: publicKey
     }
 
-    fun staticIdentifier(): String {
-        return  lud16 ?: nip05 ?: ""
+    fun staticIdentifier(): String? {
+        return  lud16 ?: nip05
     }
 
     @Composable

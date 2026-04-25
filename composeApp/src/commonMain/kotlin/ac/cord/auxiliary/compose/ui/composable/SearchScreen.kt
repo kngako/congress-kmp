@@ -236,7 +236,7 @@ fun SearchScreen(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = profile.staticIdentifier(),
+                                            text = profile.staticIdentifier() ?: "",
                                             maxLines = 1,
                                         )
                                     },
