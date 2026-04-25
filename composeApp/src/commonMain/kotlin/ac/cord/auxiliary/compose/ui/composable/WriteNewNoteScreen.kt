@@ -1,6 +1,11 @@
 package ac.cord.auxiliary.compose.ui.composable
 
+import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.WriteNewNoteViewModel
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
@@ -24,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,11 +37,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WriteNewNoteScreen(
-    initialWriteNewNoteUIState: WriteNewNoteUIState = WriteNewNoteUIState.InputPrompt,
+    initialWriteNewNoteUIState: WriteNewNoteUIState = WriteNewNoteUIState.Loading,
     onNostrEventPublished: () -> Unit,
     nostrRepository: NostrRepository
 ) {
@@ -58,7 +65,10 @@ fun WriteNewNoteScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
 
-                when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState.value) {
+                when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState) {
+                    is WriteNewNoteUIState.Loading -> {
+                        LoadingDataIndicator()
+                    }
                     is WriteNewNoteUIState.InputPrompt -> {
                         Text(
                             "Write new note",
@@ -98,24 +108,18 @@ fun WriteNewNoteScreen(
                                 )
                             },
                             leadingIcon = {
-                                Icon(
-                                    Icons.Default.Create,
-                                    contentDescription = "Write note"
+                                ProfileAvatar(
+                                    profile = writeNewNoteUIState.localProfile.profile,
+                                    size = 35.dp
                                 )
                             }
                         )
 
                         Button(
                             onClick = {
-
-                                writeNewNoteViewModel.validateInput().let { isInputValid ->
-                                    if (isInputValid) {
-                                        writeNewNoteViewModel.writeNewNoteUIState.value =
-                                            WriteNewNoteUIState.ConfirmNote(
-                                                text = writeNewNoteViewModel.writeNewNoteFormState.textField.text.value,
-                                            )
-                                    }
-                                }
+                                writeNewNoteViewModel.confirmNote(
+                                    localProfile = writeNewNoteUIState.localProfile
+                                )
                             },
                         ) {
                             Text(
@@ -190,6 +194,10 @@ fun WriteNewNoteScreen(
             }
         }
     }
+
+    key(true) {
+        writeNewNoteViewModel.initiate()
+    }
 }
 
 @Preview
@@ -201,33 +209,28 @@ private fun WriteNewNoteScreenPreview() {
         ) {
             WriteNewNoteScreen(
                 initialWriteNewNoteUIState =
-                    WriteNewNoteUIState.InputPrompt,
-//                    CreateProfileUIState.Error,
-//                    CreateProfileUIState.ConfirmInput(
-//                        name = "Alan Turing",
-//                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
-//                    ),
-//                    CreateProfileUIState.UnsignedProfile(
-//                        unsignedNostrEvent = UnsignedNostrEvent(
-//                            kind = 0,
-//                            content = "Something here",
-//                            tags = emptyArray(),
-//                        ),
-//                        name = "Alan Turing",
-//                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
-//                    ),
-//                    CreateProfileUIState.UnbroadcastedProfile(
-//                        nostrEvent = NostrEvent(
-//                            id = "",
-//                            pubKey = "",
-//                            kind = 0,
-//                            content = "Something here",
-//                            tags = emptyArray(),
-//                            sig = ""
-//                        ),
-//                        name = "Alan Turing",
-//                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
-//                    ),
+                    WriteNewNoteUIState.InputPrompt(
+                        localProfile = LocalProfileWithFollowing(
+                            nostrEvent = NostrEvent(
+                                id = "eventId",
+                                pubKey = "publicKey",
+                                content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
+                                
+Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. 
+                                
+It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.""".trimIndent(),
+                                tags = emptyArray(),
+                                sig = "",
+                                kind = TextNoteEvent.KIND
+                            ),
+                            profile = Profile(
+                                publicKey = "pubKey",
+                                displayName = "John Doe",
+                                nostrEventId = "nostrEventId"
+                            ),
+                            following = emptyList()
+                        )
+                    ),
                 onNostrEventPublished = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY)
         }

@@ -30,6 +30,20 @@ import kotlin.math.abs
 fun ProfileAvatar(
     size: Dp = 55.dp,
     shape: Shape = CircleShape,
+    profile: Profile
+) {
+    ProfileAvatar(
+        size = size,
+        shape = shape,
+        profile = profile,
+        publicKey = profile.publicKey
+    )
+}
+
+@Composable
+fun ProfileAvatar(
+    size: Dp = 55.dp,
+    shape: Shape = CircleShape,
     publicKey: String,
     profile: Profile?
 ) {
