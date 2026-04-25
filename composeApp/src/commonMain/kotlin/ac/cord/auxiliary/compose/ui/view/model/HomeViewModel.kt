@@ -35,7 +35,7 @@ enum class HomeScreenType {
 }
 
 class HomeViewModel(
-    val initialHomeScreenUIState: HomeScreenUIState = HomeScreenUIState.Loading,
+    val initialHomeScreenUIState: HomeScreenUIState,
     val nostrRepository: NostrRepository,
     val pagerState: PagerState
 ): ViewModel() {
@@ -123,11 +123,13 @@ class HomeViewModel(
         const val TAG = "HomeViewModel"
 
         fun factory(
+            initialHomeScreenUIState: HomeScreenUIState,
             nostrRepository: NostrRepository,
             pagerState: PagerState
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 HomeViewModel(
+                    initialHomeScreenUIState = initialHomeScreenUIState,
                     nostrRepository = nostrRepository,
                     pagerState = pagerState,
                 )
