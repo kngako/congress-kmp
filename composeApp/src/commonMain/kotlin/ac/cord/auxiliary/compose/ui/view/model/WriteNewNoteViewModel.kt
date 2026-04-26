@@ -1,11 +1,9 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
-import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -123,7 +121,9 @@ class WriteNewNoteViewModel(
     }
 
     fun createNewNote(
-        onNostrEventPublished: () -> Unit
+        onNostrEventPublished: () -> Unit,
+        inReplyToNostrEvent: LocalNostrEvent? = null,
+        quotedNostrEvent: LocalNostrEvent? = null,
     ) {
         logger.d { "createAccount" }
         isActionPending.value = true
@@ -132,10 +132,12 @@ class WriteNewNoteViewModel(
             nostrRepository.createNewTextNote(
                 publicKey = SeedManager.activePublicKey().toHexKey(),
                 text = writeNewNoteFormState.textField.text.value,
-                onSuccess = onNostrEventPublished,
+                inReplyToNostrEvent = inReplyToNostrEvent,
+                quotedNostrEvent = quotedNostrEvent,
                 onError = {
                     writeNewNoteUIState = WriteNewNoteUIState.Error
-                }
+                },
+                onSuccess = onNostrEventPublished
             )
         }
     }

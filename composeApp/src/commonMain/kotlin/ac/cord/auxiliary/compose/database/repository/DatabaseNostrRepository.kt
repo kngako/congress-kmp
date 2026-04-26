@@ -22,17 +22,30 @@ import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
-import androidx.room.RoomRawQuery
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.hints.EventHintBundle
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.tags.hashtags.hashtags
+import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
+import com.vitorpamplona.quartz.nip01Core.tags.references.references
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip02FollowList.RelaySet
 import com.vitorpamplona.quartz.nip02FollowList.tags.ContactTag
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import com.vitorpamplona.quartz.nip10Notes.content.findHashtags
+import com.vitorpamplona.quartz.nip10Notes.content.findNostrUris
+import com.vitorpamplona.quartz.nip10Notes.content.findURLs
+import com.vitorpamplona.quartz.nip10Notes.tags.markedETag
+import com.vitorpamplona.quartz.nip10Notes.tags.markedETags
+import com.vitorpamplona.quartz.nip10Notes.tags.notify
+import com.vitorpamplona.quartz.nip10Notes.tags.prepareETagsAsReplyTo
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip18Reposts.quotes.quotes
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
@@ -220,12 +233,55 @@ class DatabaseNostrRepository(
     override suspend fun createNewTextNote(
         publicKey: HexKey,
         text: String,
+        inReplyToNostrEvent: LocalNostrEvent?,
+        quotedNostrEvent: LocalNostrEvent?,
         onError: () -> Unit,
         onSuccess: () -> Unit
     ) {
+        // TODO: Handle event and profile tags...
         val textNote = TextNoteEvent.build(
             note = text,
-        )
+        ) {
+            inReplyToNostrEvent?.let {
+                val replyToTextNoteEvent = TextNoteEvent(
+                    id = it.nostrEvent.id,
+                    content = it.nostrEvent.content,
+                    sig = it.nostrEvent.sig,
+                    tags = it.nostrEvent.tags,
+                    createdAt = it.nostrEvent.createdAt.epochSeconds,
+                    pubKey = it.nostrEvent.pubKey
+                )
+
+                val replyingTo = EventHintBundle(
+                    replyToTextNoteEvent
+                )
+
+                val tags = prepareETagsAsReplyTo(replyingTo)
+
+                markedETags(
+                    tags
+                )
+
+                it.profile?.let { profile ->
+                    val ptags = arrayOf(
+                        profile,
+                        // Other profiles tagged in the event...
+                    ).map { notifyProfile ->
+                        PTag(
+                            notifyProfile.publicKey,
+                            // TODO: Add relayHints...
+                        )
+                    }
+
+                    notify(ptags)
+                }
+            }
+
+            hashtags(findHashtags(text))
+            references(findURLs(text))
+            quotes(findNostrUris(text))
+        }
+
 
         val unsignedNostrEvent = saveUnsignedNostrEvent(
             UnsignedNostrEvent(

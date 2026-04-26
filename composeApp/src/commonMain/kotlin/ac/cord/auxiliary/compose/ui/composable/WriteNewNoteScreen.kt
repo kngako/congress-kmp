@@ -288,7 +288,9 @@ fun WriteNewNoteScreen(
                             Button(
                                 onClick = {
                                     writeNewNoteViewModel.createNewNote(
-                                        onNostrEventPublished = onNostrEventPublished
+                                        onNostrEventPublished = onNostrEventPublished,
+                                        inReplyToNostrEvent = writeNewNoteUIState.inReplyToNostrEvent,
+                                        quotedNostrEvent = writeNewNoteUIState.quotedNostrEvent
                                     )
                                 }
                             ) {
