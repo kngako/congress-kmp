@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,7 +51,6 @@ fun TextNoteEventDetail(
     onNavigateBack: () -> Unit,
     onNavigateToWriteAReply: (String) -> Unit
 ) {
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -91,10 +91,9 @@ fun TextNoteEventDetail(
                         ) {
                             val profile = localNostrEvent.profile
 
-                            Icon(
-                                Icons.Default.Person,
-                                modifier = Modifier.size(50.dp),
-                                contentDescription = profile?.displayName ?: profile?.userName ?: "Profile picture"
+                            ProfileAvatar(
+                                profile = localNostrEvent.profile,
+                                publicKey = localNostrEvent.nostrEvent.pubKey
                             )
 
                             Column(

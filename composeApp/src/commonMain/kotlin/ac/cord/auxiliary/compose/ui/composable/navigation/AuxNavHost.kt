@@ -237,8 +237,11 @@ fun AuxNavHost(
                 nostrRepository = databaseNostrRepository
             )
         }
-        composable< WriteNewNoteRoute> {
+        composable<WriteNewNoteRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<WriteNewNoteRoute>()
             WriteNewNoteScreen(
+                replyToNostrEventId = route.inReplyToEventId,
+                quotedNostrEventId = route.quotedEventId,
                 onNostrEventPublished = {
                     applicationMainScope.launch {
                         navController.popBackStack()

@@ -1,5 +1,6 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.managers.SeedManager
@@ -17,13 +18,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class WriteNewNoteViewModel(
-    val initialWriteNewNoteUIState: WriteNewNoteUIState,
+    val replyToNostrEventId: HexKey?,
+    val quotedNostrEventId: HexKey?,
+
+    initialWriteNewNoteUIState: WriteNewNoteUIState,
     val writeNewNoteFormState: WriteNewNoteFormState = WriteNewNoteFormState(),
     val nostrRepository: NostrRepository
 ): ViewModel() {
@@ -31,12 +37,16 @@ class WriteNewNoteViewModel(
         private const val TAG = "WriteNewNoteViewModel"
 
         fun factory(
+            replyToNostrEventId: HexKey?,
+            quotedNostrEventId: HexKey?,
             initialWriteNewNoteUIState: WriteNewNoteUIState,
-            nostrRepository: NostrRepository
+            nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 WriteNewNoteViewModel(
-                    initialWriteNewNoteUIState,
+                    replyToNostrEventId = replyToNostrEventId,
+                    quotedNostrEventId = quotedNostrEventId,
+                    initialWriteNewNoteUIState = initialWriteNewNoteUIState,
                     nostrRepository = nostrRepository
                 )
             }
@@ -57,6 +67,12 @@ class WriteNewNoteViewModel(
     fun observeActiveUserProfileWithFollowing() {
         logger.d("observeActiveUserProfileWithFollowing")
         viewModelScope.launch(Dispatchers.IO) {
+            val nostrEventBeingRepliedTo = replyToNostrEventId?.let {
+                nostrRepository.observeLocalNostrEventById(
+                    it
+                ).firstOrNull()
+            }
+
             val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
             // TODO: Get note being replied too...
@@ -67,7 +83,8 @@ class WriteNewNoteViewModel(
             ).collect { profileWithFollowing ->
                 writeNewNoteUIState = if (profileWithFollowing != null) {
                     WriteNewNoteUIState.InputPrompt(
-                        localProfile = profileWithFollowing
+                        localProfile = profileWithFollowing,
+                        inReplyToNostrEvent = nostrEventBeingRepliedTo
                     )
                 } else {
                     WriteNewNoteUIState.Error
@@ -76,12 +93,18 @@ class WriteNewNoteViewModel(
         }
     }
 
-    fun confirmNote(localProfile: LocalProfileWithFollowing) {
+    fun confirmNote(
+        localProfile: LocalProfileWithFollowing,
+        inReplyToNostrEvent: LocalNostrEvent?,
+        quotedNostrEvent: LocalNostrEvent?
+    ) {
         validateInput().let { isInputValid ->
             if (isInputValid) {
                 writeNewNoteUIState =
                     WriteNewNoteUIState.ConfirmNote(
                         localProfile = localProfile,
+                        inReplyToNostrEvent = inReplyToNostrEvent,
+                        quotedNostrEvent = quotedNostrEvent,
                         text = writeNewNoteFormState.textField.text.value,
                     )
             }

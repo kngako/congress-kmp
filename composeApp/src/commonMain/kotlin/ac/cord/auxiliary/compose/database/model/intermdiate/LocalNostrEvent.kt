@@ -3,6 +3,22 @@ package ac.cord.auxiliary.compose.database.model.intermdiate
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.Repost
+import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
 import androidx.room.Relation
 
@@ -32,4 +48,57 @@ data class LocalNostrEvent(
         entityColumn = "publicKey"
     )
     val taggedAuthor: Profile? = null,
-)
+) {
+    @Composable
+    fun RenderNotePreview() {
+
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val profile = profile
+
+                ProfileAvatar(
+                    profile = profile,
+                    publicKey = nostrEvent.pubKey
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+
+                    profile?.nip05?.let {
+                        Text(
+                            text = profile.nip05 ?: "",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+            Text(
+                modifier = Modifier.fillMaxWidth().padding(
+                    horizontal = 20.dp
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Start,
+                overflow = TextOverflow.Ellipsis,
+                text = nostrEvent.content
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Text(
+                    text = nostrEvent.createdAt.toFormattedTimeAndDateString(),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+    }
+}
