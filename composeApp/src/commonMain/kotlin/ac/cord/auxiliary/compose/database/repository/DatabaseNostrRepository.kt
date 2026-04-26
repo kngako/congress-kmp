@@ -296,6 +296,14 @@ class DatabaseNostrRepository(
         if (unsignedNostrEvent == null) {
            onError.invoke()
         } else {
+            if (inReplyToNostrEvent != null) {
+                // TODO: Schedule inReplyToNostrEvent broadcast
+            }
+
+            if (quotedNostrEvent != null) {
+                // TODO: Schedule quotedNostrEvent broadcast
+            }
+
             onSuccess.invoke()
         }
     }
