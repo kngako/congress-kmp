@@ -294,6 +294,8 @@ class DatabaseNostrRepository(
                     }
 
                     notify(ptags)
+
+                    // TODO: ZapForwarding support...
                 }
             }
 
