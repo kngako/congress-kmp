@@ -45,6 +45,8 @@ import com.vitorpamplona.quartz.nip10Notes.tags.notify
 import com.vitorpamplona.quartz.nip10Notes.tags.prepareETagsAsReplyTo
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
+import com.vitorpamplona.quartz.nip18Reposts.quotes.QTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.quotes
 import com.vitorpamplona.quartz.nip21UriScheme.toNostrUri
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
@@ -245,7 +247,7 @@ class DatabaseNostrRepository(
 
             val relayHint = null // TODO: get relyhint from where ever the nostrEvent was synced from...
 
-            "\n\n${quotedTextNoteEvent.toNostrUri(relayHint)}"
+            "\n${quotedTextNoteEvent.toNostrUri(relayHint)}"
         } ?: ""
         val text: String = textInput + quotedNostrURI
 
@@ -283,16 +285,21 @@ class DatabaseNostrRepository(
 
             quotedNostrEvent?.let {
                 it.profile?.let { profile ->
-                    val ptags = arrayOf(
-                        profile,
-                        // Other profiles tagged in the event...
-                    ).map { notifyProfile ->
+                    val ptags = listOf(
                         PTag(
-                            notifyProfile.publicKey,
+                            profile.publicKey,
                             // TODO: Add relayHints...
-                        )
-                    }
+                        ),
+                        // Other profiles tagged in the event...
+                    )
 
+                    add(
+                        QEventTag.assemble(
+                            eventId = quotedNostrEvent.nostrEvent.id,
+                            relay = null, // TODO: Add relayHints...
+                            author = profile.publicKey
+                        )
+                    )
                     notify(ptags)
 
                     // TODO: ZapForwarding support...

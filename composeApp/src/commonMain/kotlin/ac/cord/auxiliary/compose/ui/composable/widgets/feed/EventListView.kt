@@ -181,6 +181,7 @@ private fun TextNoteFeedItem(
                 )
             }
 
+            // TODO: RichContent here...
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = nostrEvent.content,

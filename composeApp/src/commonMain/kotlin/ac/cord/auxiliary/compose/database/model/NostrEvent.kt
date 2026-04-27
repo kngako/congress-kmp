@@ -287,6 +287,7 @@ data class NostrEvent(
             pubKey = pubKey
         )
     }
+
     companion object {
 
         fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {
