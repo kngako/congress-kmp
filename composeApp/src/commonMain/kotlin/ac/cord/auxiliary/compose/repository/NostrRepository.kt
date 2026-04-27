@@ -46,7 +46,7 @@ interface NostrRepository {
 
     suspend fun createNewTextNote(
         publicKey: HexKey,
-        text: String,
+        textInput: String,
         inReplyToNostrEvent: LocalNostrEvent?,
         quotedNostrEvent: LocalNostrEvent?,
         onError: () -> Unit,
@@ -145,7 +145,7 @@ interface NostrRepository {
 
             override suspend fun createNewTextNote(
                 publicKey: HexKey,
-                text: String,
+                textInput: String,
                 inReplyToNostrEvent: LocalNostrEvent?,
                 quotedNostrEvent: LocalNostrEvent?,
                 onError: () -> Unit,

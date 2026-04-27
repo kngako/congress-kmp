@@ -138,7 +138,7 @@ class WriteNewNoteViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.createNewTextNote(
                 publicKey = SeedManager.activePublicKey().toHexKey(),
-                text = writeNewNoteFormState.textField.text.value,
+                textInput = writeNewNoteFormState.textField.text.value,
                 inReplyToNostrEvent = inReplyToNostrEvent,
                 quotedNostrEvent = quotedNostrEvent,
                 onError = {
