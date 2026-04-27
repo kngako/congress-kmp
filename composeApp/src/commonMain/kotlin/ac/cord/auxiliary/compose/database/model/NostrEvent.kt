@@ -277,6 +277,16 @@ data class NostrEvent(
         }
     }
 
+    fun toTextNoteEvent(): TextNoteEvent {
+        return TextNoteEvent(
+            id = id,
+            content = content,
+            sig = sig,
+            tags = tags,
+            createdAt = createdAt.epochSeconds,
+            pubKey = pubKey
+        )
+    }
     companion object {
 
         fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {

@@ -49,7 +49,8 @@ import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 fun TextNoteEventDetail(
     localNostrEvent: LocalNostrEvent,
     onNavigateBack: () -> Unit,
-    onNavigateToWriteAReply: (String) -> Unit
+    onNavigateToWriteAReply: (String) -> Unit,
+    onNavigateToQuoteNostrEvent: (String) -> Unit,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -184,7 +185,9 @@ fun TextNoteEventDetail(
 
                                 IconButton(
                                     onClick = {
-                                        // TODO: Repost...
+                                        onNavigateToQuoteNostrEvent.invoke(
+                                            localNostrEvent.nostrEvent.id
+                                        )
                                     }
                                 ) {
                                     Icon(
@@ -253,7 +256,8 @@ It has survived not only five centuries, but also the leap into electronic types
                     )
                 ),
                 onNavigateBack = {},
-                onNavigateToWriteAReply = {}
+                onNavigateToWriteAReply = {},
+                onNavigateToQuoteNostrEvent = {}
             )
         }
     }

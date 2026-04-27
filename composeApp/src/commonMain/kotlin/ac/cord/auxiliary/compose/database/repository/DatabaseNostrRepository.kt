@@ -46,6 +46,7 @@ import com.vitorpamplona.quartz.nip10Notes.tags.prepareETagsAsReplyTo
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip18Reposts.quotes.quotes
+import com.vitorpamplona.quartz.nip21UriScheme.toNostrUri
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
@@ -232,25 +233,28 @@ class DatabaseNostrRepository(
 
     override suspend fun createNewTextNote(
         publicKey: HexKey,
-        text: String,
+        textInput: String,
         inReplyToNostrEvent: LocalNostrEvent?,
         quotedNostrEvent: LocalNostrEvent?,
         onError: () -> Unit,
         onSuccess: () -> Unit
     ) {
-        // TODO: Handle event and profile tags...
+        val quotedNostrURI = quotedNostrEvent?.let {
+            // TODO: Convert qoutedNostrEvent to nostrURI
+            val quotedTextNoteEvent = it.nostrEvent.toTextNoteEvent()
+
+            val relayHint = null // TODO: get relyhint from where ever the nostrEvent was synced from...
+
+            "\n\n${quotedTextNoteEvent.toNostrUri(relayHint)}"
+        } ?: ""
+        val text: String = textInput + quotedNostrURI
+
+        // TODO: Handle mentioned profile tags...
         val textNote = TextNoteEvent.build(
             note = text,
         ) {
             inReplyToNostrEvent?.let {
-                val replyToTextNoteEvent = TextNoteEvent(
-                    id = it.nostrEvent.id,
-                    content = it.nostrEvent.content,
-                    sig = it.nostrEvent.sig,
-                    tags = it.nostrEvent.tags,
-                    createdAt = it.nostrEvent.createdAt.epochSeconds,
-                    pubKey = it.nostrEvent.pubKey
-                )
+                val replyToTextNoteEvent = it.nostrEvent.toTextNoteEvent()
 
                 val replyingTo = EventHintBundle(
                     replyToTextNoteEvent
@@ -262,6 +266,22 @@ class DatabaseNostrRepository(
                     tags
                 )
 
+                it.profile?.let { profile ->
+                    val ptags = arrayOf(
+                        profile,
+                        // Other profiles tagged in the event...
+                    ).map { notifyProfile ->
+                        PTag(
+                            notifyProfile.publicKey,
+                            // TODO: Add relayHints...
+                        )
+                    }
+
+                    notify(ptags)
+                }
+            }
+
+            quotedNostrEvent?.let {
                 it.profile?.let { profile ->
                     val ptags = arrayOf(
                         profile,

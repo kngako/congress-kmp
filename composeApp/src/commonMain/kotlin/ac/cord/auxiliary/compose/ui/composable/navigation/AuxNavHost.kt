@@ -392,6 +392,13 @@ fun AuxNavHost(
                     navController.navigate(
                         route = ImplementationPendingRoute("Edit Profile")
                     )
+                },
+                onNavigateToQuoteNostrEvent = { nostrEventId ->
+                    navController.navigate(
+                        route = WriteNewNoteRoute(
+                            quotedEventId = nostrEventId
+                        )
+                    )
                 }
             )
         }

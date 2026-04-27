@@ -71,6 +71,12 @@ class WriteNewNoteViewModel(
                 ).firstOrNull()
             }
 
+            val nostrEventBeingQuoted = quotedNostrEventId?.let {
+                nostrRepository.observeLocalNostrEventById(
+                    it
+                ).firstOrNull()
+            }
+
             val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
             // TODO: Get note being replied too...
@@ -82,7 +88,8 @@ class WriteNewNoteViewModel(
                 writeNewNoteUIState = if (profileWithFollowing != null) {
                     WriteNewNoteUIState.InputPrompt(
                         localProfile = profileWithFollowing,
-                        inReplyToNostrEvent = nostrEventBeingRepliedTo
+                        inReplyToNostrEvent = nostrEventBeingRepliedTo,
+                        quotedNostrEvent = nostrEventBeingQuoted
                     )
                 } else {
                     WriteNewNoteUIState.Error

@@ -40,7 +40,8 @@ fun NostrEventDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
     onNavigateToEditProfile: () -> Unit,
-    onNavigateToWriteAReply: (String) -> Unit
+    onNavigateToWriteAReply: (String) -> Unit,
+    onNavigateToQuoteNostrEvent: (String) -> Unit,
 ) {
     val nostrEventDetailViewModel: NostrEventDetailViewModel = viewModel(
         factory = NostrEventDetailViewModel.factory(
@@ -76,7 +77,8 @@ fun NostrEventDetailScreen(
                     TextNoteEventDetail(
                         feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
-                        onNavigateToWriteAReply = onNavigateToWriteAReply
+                        onNavigateToWriteAReply = onNavigateToWriteAReply,
+                        onNavigateToQuoteNostrEvent = onNavigateToQuoteNostrEvent
                     )
                 }
                 RepostEvent.KIND -> {
@@ -163,7 +165,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateBack = {},
                 onNavigateToEvent = {},
                 onNavigateToWriteAReply = {},
-                onNavigateToEditProfile = {}
+                onNavigateToEditProfile = {},
+                onNavigateToQuoteNostrEvent = {}
             )
         }
     }

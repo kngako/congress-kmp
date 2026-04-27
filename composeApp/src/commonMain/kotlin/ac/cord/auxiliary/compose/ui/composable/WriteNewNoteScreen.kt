@@ -125,6 +125,7 @@ fun WriteNewNoteScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+
                                     TextField(
                                         modifier = Modifier.fillMaxWidth(),
                                         value = writeNewNoteViewModel.writeNewNoteFormState.textField.text.value,
@@ -147,7 +148,13 @@ fun WriteNewNoteScreen(
                                         ),
                                         label = {
                                             Text(
-                                                text = "What vibrations do you want to send out?",
+                                                text = if (writeNewNoteUIState.inReplyToNostrEvent != null) {
+                                                    "What's your reply to the above"
+                                                } else if (writeNewNoteUIState.quotedNostrEvent != null) {
+                                                    "What's your comment on the below"
+                                                } else {
+                                                    "What vibrations do you want to send out?"
+                                                },
                                                 maxLines = 1,
                                             )
                                         },
@@ -164,6 +171,17 @@ fun WriteNewNoteScreen(
                                             )
                                         }
                                     )
+
+                                    if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
+                                        Card(
+                                            modifier = Modifier.padding(
+                                                start = 50.dp,
+                                                top = 10.dp
+                                            )
+                                        ) {
+                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview()
+                                        }
+                                    }
                                 }
 
 
@@ -260,6 +278,13 @@ fun WriteNewNoteScreen(
                                         textAlign = TextAlign.Center
                                     )
 
+                                    if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
+                                        Card {
+                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview()
+                                        }
+
+                                    }
+
                                     Text(
                                         text = Clock.System.now().toFormattedTimeAndDateString(),
                                         style = MaterialTheme.typography.labelSmall
@@ -335,9 +360,9 @@ private fun WriteNewNoteScreenPreview() {
                 replyToNostrEventId = null,
                 quotedNostrEventId = null,
                 initialWriteNewNoteUIState =
-                    WriteNewNoteUIState.ConfirmNote(
-                        text = "Yes, I did it. So WHAT?!",
-                        inReplyToNostrEvent = LocalNostrEvent(
+                    WriteNewNoteUIState.InputPrompt(
+//                        text = "Yes, I did it. So WHAT?!",
+                        quotedNostrEvent = LocalNostrEvent(
                             nostrEvent = NostrEvent(
                                 id = "eventId",
                                 pubKey = "publicKey",
