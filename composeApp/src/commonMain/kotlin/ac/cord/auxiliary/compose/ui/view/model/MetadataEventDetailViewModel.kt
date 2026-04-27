@@ -33,12 +33,15 @@ import com.vitorpamplona.quartz.nip51Lists.bookmarkList.BookmarkListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip56Reports.ReportEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip68Picture.PictureEvent
+import com.vitorpamplona.quartz.nip71Video.VideoNormalEvent
+import com.vitorpamplona.quartz.nip71Video.VideoShortEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 enum class MetadataEventDetailType {
-    Posts, Replies, Articles, Followers, Following, Zaps, Photos, Videos,  Bookmarks, Reports, Relays
+    Posts, Replies, Articles, Followers, Following, Zaps, Photos, Shorts, Videos,  Bookmarks, Reports, Relays
 }
 
 class MetadataEventDetailViewModel(
@@ -164,9 +167,19 @@ class MetadataEventDetailViewModel(
                     publicKey
                 ),
                 kinds = arrayOf(
-                    TextNoteEvent.KIND,
+                    PictureEvent.KIND,
                 ),
-                // TODO: filter for tags of pictures...
+                limit = 50
+            )
+        }
+        MetadataEventDetailType.Shorts -> {
+            SynchronizationFilter(
+                authors = arrayOf(
+                    publicKey
+                ),
+                kinds = arrayOf(
+                    VideoShortEvent.KIND,
+                ),
                 limit = 50
             )
         }
@@ -176,9 +189,8 @@ class MetadataEventDetailViewModel(
                     publicKey
                 ),
                 kinds = arrayOf(
-                    TextNoteEvent.KIND,
+                    VideoNormalEvent.KIND,
                 ),
-                // TODO: filter for tags of videos...
                 limit = 50
             )
         }

@@ -217,6 +217,9 @@ fun SearchResultScreen(
                                 SearchResultType.Videos -> {
                                     Text("Videos")
                                 }
+                                SearchResultType.Shorts -> {
+                                    Text("Shorts")
+                                }
                             }
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
@@ -234,6 +237,7 @@ fun SearchResultScreen(
                                     }
                                 }
                                 is SearchResultListUIState.Loaded -> {
+                                    // TODO: Handle gallery UI
                                     if (searchResultListUIState.localNostrEvents.isEmpty()) {
                                         Column(
                                             modifier = Modifier.fillMaxWidth(),

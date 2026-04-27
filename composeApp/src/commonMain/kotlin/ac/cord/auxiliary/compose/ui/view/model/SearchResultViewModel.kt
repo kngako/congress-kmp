@@ -21,12 +21,15 @@ import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip23LongContent.LongTextNoteEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip68Picture.PictureEvent
+import com.vitorpamplona.quartz.nip71Video.VideoNormalEvent
+import com.vitorpamplona.quartz.nip71Video.VideoShortEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 enum class SearchResultType {
-    Posts, Articles, Profiles, Photos, Videos
+    Posts, Articles, Profiles, Photos, Shorts, Videos
 }
 
 class SearchResultViewModel(
@@ -87,7 +90,7 @@ class SearchResultViewModel(
             SearchResultType.Photos -> {
                 SynchronizationFilter(
                     kinds = arrayOf(
-                        TextNoteEvent.KIND,
+                        PictureEvent.KIND,
                     ),
                     // TODO: filter for tags of pictures...
                     search = searchQuery,
@@ -97,7 +100,17 @@ class SearchResultViewModel(
             SearchResultType.Videos -> {
                 SynchronizationFilter(
                     kinds = arrayOf(
-                        TextNoteEvent.KIND,
+                        VideoNormalEvent.KIND,
+                    ),
+                    // TODO: filter for tags of videos...
+                    search = searchQuery,
+                    limit = 50
+                )
+            }
+            SearchResultType.Shorts -> {
+                SynchronizationFilter(
+                    kinds = arrayOf(
+                        VideoShortEvent.KIND,
                     ),
                     // TODO: filter for tags of videos...
                     search = searchQuery,

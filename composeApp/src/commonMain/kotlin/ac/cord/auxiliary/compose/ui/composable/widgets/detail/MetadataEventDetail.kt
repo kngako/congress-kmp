@@ -273,7 +273,7 @@ fun MetadataEventDetail(
                             when (metadataEventDetailType) {
                                 MetadataEventDetailType.Posts, MetadataEventDetailType.Replies,
                                 MetadataEventDetailType.Articles, MetadataEventDetailType.Zaps,
-                                MetadataEventDetailType.Photos, MetadataEventDetailType.Videos,
+                                MetadataEventDetailType.Photos, MetadataEventDetailType.Shorts, MetadataEventDetailType.Videos,
                                 MetadataEventDetailType.Bookmarks, MetadataEventDetailType.Reports, MetadataEventDetailType.Relays -> {
                                     val feedListViewModel: FeedListViewModel = viewModel(
                                         key = metadataEventDetailType.name,
@@ -294,7 +294,7 @@ fun MetadataEventDetail(
                                         feedListViewModel.initiate()
                                     }
                                 }
-
+                                // TODO: Support gallery feeds...
                                 MetadataEventDetailType.Following -> {
                                     val followingListViewModel: FollowingListViewModel = viewModel(
                                         key = metadataEventDetailType.name,
