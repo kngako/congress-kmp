@@ -1,7 +1,10 @@
 package ac.cord.auxiliary.compose.database.model.intermdiate
 
+import ac.cord.auxiliary.compose.database.model.InReplyToPost
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.QuotedPost
 import ac.cord.auxiliary.compose.database.model.Repost
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -10,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
+import androidx.room.Junction
 import androidx.room.Relation
 
 data class LocalNostrEvent(
@@ -38,20 +41,30 @@ data class LocalNostrEvent(
     val repost: Repost? = null,
 
     @Relation(
-        parentColumn = "taggedNostrEventId",
-        entityColumn = "id"
+        parentColumn = "id",
+        entityColumn = "nostrEventId"
     )
-    val taggedNostrEvent: NostrEvent? = null,
+    val quotedPost: QuotedPost? = null,
 
     @Relation(
-        parentColumn = "taggedPublicKey",
-        entityColumn = "publicKey"
+        parentColumn = "id",
+        entityColumn = "nostrEventId"
     )
-    val taggedAuthor: Profile? = null,
+    val inReplyToNostrEvent: InReplyToPost? = null,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "nostrEventId",
+        associateBy = Junction(
+            value = Mention::class,
+            parentColumn = "publicKey",
+            entityColumn = "publicKey"
+        )
+    )
+    val mentionedProfiles: List<Profile> = emptyList()
 ) {
     @Composable
     fun RenderNotePreview() {
-
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),

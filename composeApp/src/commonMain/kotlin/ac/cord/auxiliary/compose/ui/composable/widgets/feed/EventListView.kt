@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
@@ -61,10 +62,9 @@ fun LocalNostrEvent.ListView(
                         style = MaterialTheme.typography.labelSmall)
                 }
 
-                if (taggedNostrEvent != null) {
+                if (repost != null) {
                     TextNoteFeedItem(
-                        nostrEvent = taggedNostrEvent,
-                        profile = taggedAuthor,
+                        localNostrEvent = this@ListView,
                         onNavigateToEvent = onNavigateToEvent
                     )
                 } else {
@@ -96,10 +96,7 @@ fun LocalNostrEvent.ListView(
         // TODO: Support other kinds...
         else -> {
             TextNoteFeedItem(
-                nostrEvent = nostrEvent,
-                profile = profile,
-                taggedAuthor = taggedAuthor,
-                taggedNostrEvent = taggedNostrEvent,
+                localNostrEvent = this,
                 onNavigateToEvent = onNavigateToEvent
             )
         }
@@ -109,13 +106,11 @@ fun LocalNostrEvent.ListView(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TextNoteFeedItem(
-    nostrEvent: NostrEvent,
-    profile: Profile?,
-    taggedNostrEvent: NostrEvent? = null,
-    taggedAuthor: Profile? = null,
+    localNostrEvent: LocalNostrEvent,
     onNavigateToEvent: (HexKey) -> Unit
 ) {
-    if (nostrEvent.kind == 1 && taggedNostrEvent != null) {
+    val nostrEvent = localNostrEvent.nostrEvent
+    if (localNostrEvent.repost != null) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(
                 horizontal = 20.dp
@@ -123,7 +118,7 @@ private fun TextNoteFeedItem(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // TODO: If we don't have the name of the author being replied too we shouldn't show this..
+            // TODO: Get a nested repost... localNostrEvent...
             Text(
                 "In reply to ",
                 style = MaterialTheme.typography.labelSmall
@@ -132,11 +127,11 @@ private fun TextNoteFeedItem(
             Text(
                 modifier = Modifier.clickable(
                     onClick = {
-                        onNavigateToEvent.invoke(taggedAuthor?.nostrEventId ?: taggedNostrEvent.id)
+                        onNavigateToEvent.invoke(localNostrEvent.repost.repostedPostId)
                     }
                 ),
                 style = MaterialTheme.typography.labelLargeEmphasized,
-                text = taggedAuthor?.displayName ?: taggedAuthor?.userName ?: "loading information..."
+                text = localNostrEvent.repost.repostedPostAuthorPublicKey ?: "loading information..."
             )
         }
     }
@@ -154,6 +149,7 @@ private fun TextNoteFeedItem(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val profile = localNostrEvent.profile
             if (profile != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(
@@ -182,10 +178,9 @@ private fun TextNoteFeedItem(
             }
 
             // TODO: RichContent here...
-            Text(
+            RichContent(
                 modifier = Modifier.fillMaxWidth(),
-                text = nostrEvent.content,
-                style = MaterialTheme.typography.bodyLarge
+                localNostrEvent = localNostrEvent,
             )
 
             LazyRow(
@@ -255,6 +250,10 @@ private fun EventListViewPreview() {
                     nostrEventId = "referenced",
                     displayName = "Frank Talk"
                 ),
+                repost = null,
+                quotedPost = null,
+                inReplyToNostrEvent = null,
+                mentionedProfiles = emptyList()
             ).ListView(
                 onNavigateToEvent = {}
             )

@@ -379,7 +379,7 @@ It has survived not only five centuries, but also the leap into electronic types
                                 publicKey = "pubKey",
                                 displayName = "John Doe",
                                 nostrEventId = "nostrEventId"
-                            )
+                            ),
                         ),
                         localProfile = LocalProfileWithFollowing(
                             nostrEvent = NostrEvent(

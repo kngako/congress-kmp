@@ -36,6 +36,9 @@ import kotlin.time.Instant
     indices = [
         Index("kind"),
         Index("pubKey"),
+        Index("quotedNostrEventId"),
+        Index("rootNostrEventId"),
+        Index("replyNostrEventId"),
     ]
 )
 data class NostrEvent(
@@ -47,11 +50,13 @@ data class NostrEvent(
     val content: String,
     val sig: HexKey,
 
+    val quotedNostrEventId: HexKey? = null,
+
+    val rootNostrEventId: HexKey? = null,
+    val replyNostrEventId: HexKey? = null,
+
     val taggedNostrEventId: HexKey? = null,
     val taggedNostrEventRelayUrl: String? = null,
-
-    val taggedPublicKey: HexKey? = null,
-    val taggedPublicKeyRelayUrl: String? = null,
 
     override val unsignedNostrEventId: Long? = null,
 
@@ -293,7 +298,6 @@ data class NostrEvent(
         fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {
             // TODO: Check for unsupported kind
             val taggedEvent = event.firstTaggedEvent()
-            val taggedUser = event.firstTaggedUser()
 
             return NostrEvent(
                 id = event.id,
@@ -307,9 +311,6 @@ data class NostrEvent(
 
                 taggedNostrEventId = taggedEvent?.eventId,
                 taggedNostrEventRelayUrl = taggedEvent?.relay?.url,
-
-                taggedPublicKey = taggedUser?.pubKey,
-                taggedPublicKeyRelayUrl = taggedUser?.relayHint?.url
             )
         } catch (e: Throwable) {
             return null

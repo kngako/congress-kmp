@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "70c9c412240874729c50b9c7b6cfc96a",
+    "identityHash": "98aa54dd7fe776faca364638070a3871",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -263,8 +263,264 @@
         ]
       },
       {
+        "tableName": "InReplyToPost",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `inReplyToPostId` TEXT NOT NULL, `inReplyToPostTags` TEXT NOT NULL, `inReplyToPostCreatedAt` INTEGER NOT NULL, `inReplyToPostContent` TEXT NOT NULL, `inReplyToPostAuthorPublicKey` TEXT NOT NULL, `content` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `profilePublicKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`profilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToPostAuthorPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToPostId`) REFERENCES `Post`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToPostId",
+            "columnName": "inReplyToPostId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToPostTags",
+            "columnName": "inReplyToPostTags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToPostCreatedAt",
+            "columnName": "inReplyToPostCreatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToPostContent",
+            "columnName": "inReplyToPostContent",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToPostAuthorPublicKey",
+            "columnName": "inReplyToPostAuthorPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nostrEventId",
+            "columnName": "nostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profilePublicKey",
+            "columnName": "profilePublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "viewedAt",
+            "columnName": "viewedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_InReplyToPost_profilePublicKey",
+            "unique": false,
+            "columnNames": [
+              "profilePublicKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_InReplyToPost_profilePublicKey` ON `${TABLE_NAME}` (`profilePublicKey`)"
+          },
+          {
+            "name": "index_InReplyToPost_nostrEventId",
+            "unique": false,
+            "columnNames": [
+              "nostrEventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_InReplyToPost_nostrEventId` ON `${TABLE_NAME}` (`nostrEventId`)"
+          },
+          {
+            "name": "index_InReplyToPost_inReplyToPostId",
+            "unique": false,
+            "columnNames": [
+              "inReplyToPostId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_InReplyToPost_inReplyToPostId` ON `${TABLE_NAME}` (`inReplyToPostId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "profilePublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToPostAuthorPublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "nostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Post",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToPostId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "Mention",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`publicKey` TEXT NOT NULL, `relayUrl` TEXT, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`nostrEventId`, `publicKey`), FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "publicKey",
+            "columnName": "publicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relayUrl",
+            "columnName": "relayUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nostrEventId",
+            "columnName": "nostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "nostrEventId",
+            "publicKey"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "publicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "nostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
         "tableName": "NostrEvent",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `sig` TEXT NOT NULL, `taggedNostrEventId` TEXT, `taggedNostrEventRelayUrl` TEXT, `taggedPublicKey` TEXT, `taggedPublicKeyRelayUrl` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `pubKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `sig` TEXT NOT NULL, `quotedNostrEventId` TEXT, `rootNostrEventId` TEXT, `replyNostrEventId` TEXT, `taggedNostrEventId` TEXT, `taggedNostrEventRelayUrl` TEXT, `unsignedNostrEventId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -303,6 +559,21 @@
             "notNull": true
           },
           {
+            "fieldPath": "quotedNostrEventId",
+            "columnName": "quotedNostrEventId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rootNostrEventId",
+            "columnName": "rootNostrEventId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replyNostrEventId",
+            "columnName": "replyNostrEventId",
+            "affinity": "TEXT"
+          },
+          {
             "fieldPath": "taggedNostrEventId",
             "columnName": "taggedNostrEventId",
             "affinity": "TEXT"
@@ -310,16 +581,6 @@
           {
             "fieldPath": "taggedNostrEventRelayUrl",
             "columnName": "taggedNostrEventRelayUrl",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "taggedPublicKey",
-            "columnName": "taggedPublicKey",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "taggedPublicKeyRelayUrl",
-            "columnName": "taggedPublicKeyRelayUrl",
             "affinity": "TEXT"
           },
           {
@@ -380,6 +641,33 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_pubKey` ON `${TABLE_NAME}` (`pubKey`)"
+          },
+          {
+            "name": "index_NostrEvent_quotedNostrEventId",
+            "unique": false,
+            "columnNames": [
+              "quotedNostrEventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_quotedNostrEventId` ON `${TABLE_NAME}` (`quotedNostrEventId`)"
+          },
+          {
+            "name": "index_NostrEvent_rootNostrEventId",
+            "unique": false,
+            "columnNames": [
+              "rootNostrEventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_rootNostrEventId` ON `${TABLE_NAME}` (`rootNostrEventId`)"
+          },
+          {
+            "name": "index_NostrEvent_replyNostrEventId",
+            "unique": false,
+            "columnNames": [
+              "replyNostrEventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_replyNostrEventId` ON `${TABLE_NAME}` (`replyNostrEventId`)"
           }
         ]
       },
@@ -690,6 +978,180 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "nostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "QuotedPost",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `quotedPostId` TEXT NOT NULL, `quotedPostTags` TEXT NOT NULL, `quotedPostCreatedAt` INTEGER NOT NULL, `quotedPostContent` TEXT NOT NULL, `quotedPostAuthorPublicKey` TEXT NOT NULL, `content` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `profilePublicKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`profilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`quotedPostAuthorPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`quotedPostId`) REFERENCES `Post`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quotedPostId",
+            "columnName": "quotedPostId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quotedPostTags",
+            "columnName": "quotedPostTags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quotedPostCreatedAt",
+            "columnName": "quotedPostCreatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quotedPostContent",
+            "columnName": "quotedPostContent",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quotedPostAuthorPublicKey",
+            "columnName": "quotedPostAuthorPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nostrEventId",
+            "columnName": "nostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profilePublicKey",
+            "columnName": "profilePublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "viewedAt",
+            "columnName": "viewedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_QuotedPost_profilePublicKey",
+            "unique": false,
+            "columnNames": [
+              "profilePublicKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_QuotedPost_profilePublicKey` ON `${TABLE_NAME}` (`profilePublicKey`)"
+          },
+          {
+            "name": "index_QuotedPost_nostrEventId",
+            "unique": false,
+            "columnNames": [
+              "nostrEventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_QuotedPost_nostrEventId` ON `${TABLE_NAME}` (`nostrEventId`)"
+          },
+          {
+            "name": "index_QuotedPost_quotedPostId",
+            "unique": false,
+            "columnNames": [
+              "quotedPostId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_QuotedPost_quotedPostId` ON `${TABLE_NAME}` (`quotedPostId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "profilePublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "quotedPostAuthorPublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "nostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "Post",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "quotedPostId"
             ],
             "referencedColumns": [
               "id"
@@ -1542,7 +2004,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '70c9c412240874729c50b9c7b6cfc96a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '98aa54dd7fe776faca364638070a3871')"
     ]
   }
 }
