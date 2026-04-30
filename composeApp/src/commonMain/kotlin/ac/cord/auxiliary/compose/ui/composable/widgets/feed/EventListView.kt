@@ -203,6 +203,24 @@ private fun TextNoteFeedItem(
 
                         }
                     )
+                }
+
+                item {
+                    SuggestionChip(
+                        label = {
+                            Text(
+                                text = if (localNostrEvent.mentions.isNotEmpty()) {
+                                    localNostrEvent.mentions.joinToString(",") { it.mentionedPublicKey }
+                                } else {
+                                    ":-|"
+                                }
+                            )
+                        },
+                        onClick = {
+
+                        }
+                    )
+
 
                 }
                 items(
@@ -211,7 +229,8 @@ private fun TextNoteFeedItem(
                     SuggestionChip(
                         label = {
                             Text(
-                                text = tag.joinToString(":")
+                                text = tag.joinToString(":"),
+                                maxLines = 1
                             )
                         },
                         onClick = {
