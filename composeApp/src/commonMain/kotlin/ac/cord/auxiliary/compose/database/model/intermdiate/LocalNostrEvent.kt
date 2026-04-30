@@ -75,21 +75,12 @@ data class LocalNostrEvent(
     )
     val inReplyToNostrEvent: InReplyToRelation? = null,
 
-//    @Relation(
-//        parentColumn = "id",
-//        entityColumn = "nostrEventId",
-//        associateBy = Junction(
-//            value = Mention::class,
-//            parentColumn = "mentionedPublicKey",
-//            entityColumn = "mentionedPublicKey"
-//        )
-//    )
-//    val mentionedProfiles: List<Profile> = emptyList()
     @Relation(
+        entity = Mention::class,
         parentColumn = "id",
         entityColumn = "nostrEventId",
     )
-    val mentions: List<Mention> = emptyList()
+    val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {

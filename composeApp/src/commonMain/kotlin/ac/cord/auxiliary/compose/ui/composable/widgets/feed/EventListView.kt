@@ -209,10 +209,10 @@ private fun TextNoteFeedItem(
                     SuggestionChip(
                         label = {
                             Text(
-                                text = if (localNostrEvent.mentions.isNotEmpty()) {
-                                    localNostrEvent.mentions.joinToString(",") { it.mentionedPublicKey }
+                                text = if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
+                                    localNostrEvent.mentionedProfiles.joinToString(",") { it.profile?.humanReadableNameOrPubkey() ?: "Find user information" }
                                 } else {
-                                    ":-|"
+                                    ":-("
                                 }
                             )
                         },
@@ -220,9 +220,8 @@ private fun TextNoteFeedItem(
 
                         }
                     )
-
-
                 }
+
                 items(
                     items = nostrEvent.tags,
                 ) { tag ->

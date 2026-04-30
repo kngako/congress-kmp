@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
@@ -148,6 +149,7 @@ abstract class NostrDao(
 
             if (profile == null) {
                 val placeHolderProfile = Profile(
+                    displayName = "LOADING PROFILE...",
                     publicKey = nostrEvent.pubKey,
                     createdAt = GENESIS_AT,
                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -335,6 +337,7 @@ abstract class NostrDao(
                 // Save a placeholder
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
+                        displayName = "LOADING PROFILE...",
                         publicKey = taggedUser.pubKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -342,6 +345,13 @@ abstract class NostrDao(
                 )
             }
 
+            database.mentionDao().insert(
+                Mention(
+                    mentionedPublicKey = taggedUser.pubKey,
+                    nostrEventId = nostrEvent.id,
+                    relayUrl = taggedUser.relayHint?.url
+                )
+            )
             val synchronizeNostrEventRequests = if (recommendedRelay != null) {
 //                listOf(
 //                    SynchronizeNostrEventRequest(
@@ -465,6 +475,7 @@ abstract class NostrDao(
             if (quotedProfilePublicKey != null && quotedProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
+                        displayName = "LOADING PROFILE...",
                         publicKey = quotedProfilePublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -509,6 +520,7 @@ abstract class NostrDao(
             if (repostedProfilePublicKey != null && repostedProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
+                        displayName = "LOADING PROFILE...",
                         publicKey = repostedProfilePublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -562,6 +574,7 @@ abstract class NostrDao(
             if (inReplyToRootProfilePublicKey != null && inReplyToProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
+                        displayName = "LOADING PROFILE...",
                         publicKey = inReplyToRootProfilePublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -633,6 +646,7 @@ abstract class NostrDao(
 
                 if (profile == null) {
                     val placeHolderProfile = Profile(
+                        displayName = "LOADING PROFILE...",
                         publicKey = followedHexKEys,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
