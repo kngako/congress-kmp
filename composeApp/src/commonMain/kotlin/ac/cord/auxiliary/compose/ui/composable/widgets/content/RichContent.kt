@@ -101,11 +101,11 @@ fun RichContent(
                     val profileNames = remember(profilePubkeys) {
                         // TODO: Get these from taggedUsers...
                         val names = mutableMapOf<String, String>()
-                        for (pubkey in profilePubkeys) {
-                            val profile = localNostrEvent.mentionedProfiles.find { taggedAuthor -> taggedAuthor.publicKey == pubkey }
-                            names[pubkey] = profile?.humanReadableNameOrPubkey()
-                                ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
-                        }
+//                      TODO  for (pubkey in profilePubkeys) {
+//                            val profile = localNostrEvent.mentionedProfiles.find { taggedAuthor -> taggedAuthor.publicKey == pubkey }
+//                            names[pubkey] = profile?.humanReadableNameOrPubkey()
+//                                ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
+//                        }
                         names
                     }
                     // TODO Queue fetches for any missing profiles
@@ -263,9 +263,9 @@ fun RichContent(
                             LinkPreview(url = segment.url)
                         }
                         is ContentSegment.NostrNoteSegment -> {
-                            if (localNostrEvent.quotedPost != null) {
+                            if (localNostrEvent.quotedRelation != null) {
                                 QuotedNote(
-                                    quotedPost = localNostrEvent.quotedPost,
+                                    quotedNostrEvent = localNostrEvent.quotedRelation,
                                     relayHints = segment.relayHints,
                                     onNoteClick = onNoteClick,
                                     noteActions = noteActions

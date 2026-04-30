@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.database.model.traits.LocalStoreEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.Index
@@ -16,9 +17,12 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
-import com.vitorpamplona.quartz.nip01Core.tags.people.firstTaggedUser
+import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip18Reposts.quotes.QAddressableTag
+import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
+import com.vitorpamplona.quartz.nip18Reposts.quotes.firstTaggedQuote
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.utils.EventFactory
@@ -37,8 +41,8 @@ import kotlin.time.Instant
         Index("kind"),
         Index("pubKey"),
         Index("quotedNostrEventId"),
-        Index("rootNostrEventId"),
-        Index("replyNostrEventId"),
+        Index("inReplyToNostrEventId"),
+        Index("inReplyToRootNostrEventId"),
     ]
 )
 data class NostrEvent(
@@ -51,12 +55,16 @@ data class NostrEvent(
     val sig: HexKey,
 
     val quotedNostrEventId: HexKey? = null,
+    val quotedAuthorPublicKey: HexKey? = null,
 
-    val rootNostrEventId: HexKey? = null,
-    val replyNostrEventId: HexKey? = null,
+    val inReplyToNostrEventId: HexKey? = null,
+    val inReplyToAuthorPublicKey: HexKey? = null,
 
-    val taggedNostrEventId: HexKey? = null,
-    val taggedNostrEventRelayUrl: String? = null,
+    val inReplyToRootNostrEventId: HexKey? = null,
+    val inReplyToRootAuthorPublicKey: HexKey? = null,
+
+    val repostedNostrEventId: HexKey? = null,
+    val repostedAuthorPublicKey: HexKey? = null,
 
     override val unsignedNostrEventId: Long? = null,
 
@@ -202,7 +210,7 @@ data class NostrEvent(
         return null
     }
 
-    fun toRepost(): Repost? = try {
+    fun toRepostedRelation(): RepostedRelation? = try {
         if (kind == RepostEvent.KIND) {
             val repostEvent = EventFactory.create<RepostEvent>(
                 id = id,
@@ -215,17 +223,11 @@ data class NostrEvent(
             )
 
             return repostEvent.containedPost()?.let { containedPost ->
-                Repost(
-                    id = repostEvent.id,
-                    repostedPostId = containedPost.id,
-                    repostedPostTags = containedPost.tags,
-                    repostedPostContent = containedPost.content,
-                    repostedPostCreatedAt = Instant.fromEpochSeconds(containedPost.createdAt),
-                    content = containedPost.content,
+                RepostedRelation(
+                    repostedNostrEventId = containedPost.id,
+                    repostedProfilePublicKey = containedPost.pubKey,
 
-                    nostrEventId = id,
-                    profilePublicKey = repostEvent.pubKey,
-                    repostedPostAuthorPublicKey = containedPost.pubKey,
+                    repostingNostrEventId = repostEvent.id,
 
                     createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
                     updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
@@ -240,6 +242,80 @@ data class NostrEvent(
         return null
     }
 
+    fun toQuotedRelation(): QuotedRelation? = try {
+        if (kind == TextNoteEvent.KIND) {
+            tags.firstTaggedQuote()?.let { taggedQuote ->
+                when (taggedQuote) {
+                    is QEventTag -> {
+                        Triple(
+                            taggedQuote.eventId,
+                            taggedQuote.author,
+                            taggedQuote.relay,
+                        )
+                    }
+                    is QAddressableTag -> {
+                        Triple(
+                            taggedQuote.address.dTag,
+                            taggedQuote.address.pubKeyHex,
+                            taggedQuote.relay,
+                        )
+                    }
+                    else -> null
+                }?.let { quotedEventData ->
+
+                    return QuotedRelation(
+                        quotedNostrEventId = quotedEventData.first,
+                        quotedProfilePublicKey = quotedEventData.second,
+
+                        quotingNostrEventId = id,
+
+                        createdAt = createdAt
+                    )
+                }
+            }
+        }
+
+        // TODO: Get quoted event from content...
+
+        return null
+    } catch (e: Throwable) {
+        logger.e("Failed to return Repost: ", e)
+        return null
+    }
+
+    fun toInReplyToRelation(): InReplyToRelation? = try {
+        if (kind == RepostEvent.KIND) {
+            val textNoteEvent = EventFactory.create<TextNoteEvent>(
+                id = id,
+                pubKey = pubKey,
+                createdAt = createdAt.epochSeconds,
+                kind = kind,
+                tags = tags,
+                content = content,
+                sig = sig
+            )
+
+
+            val rootReply = textNoteEvent.markedRoot()
+            textNoteEvent.markedReply()?.let { replyTag ->
+
+                return InReplyToRelation(
+                    inReplyToNostrEventId = replyTag.eventId,
+                    inReplyToProfilePublicKey = replyTag.author,
+
+                    inReplyToRootNostrEventId = rootReply?.eventId,
+                    inReplyToRootProfilePublicKey = rootReply?.author,
+
+                    replyingNostrEventId = id
+                )
+            }
+        }
+
+        return null
+    } catch (e: Throwable) {
+        logger.e("Failed to return Repost: ", e)
+        return null
+    }
     fun toZap(): Zap? = try {
         if (kind == LnZapEvent.KIND) {
             val zapEvent = EventFactory.create<LnZapEvent>(
@@ -299,6 +375,58 @@ data class NostrEvent(
             // TODO: Check for unsupported kind
             val taggedEvent = event.firstTaggedEvent()
 
+            val quotedEvent = when (val taggedQuote = event.firstTaggedQuote()) {
+                is QEventTag -> {
+                    Triple(
+                        taggedQuote.eventId,
+                        taggedQuote.author,
+                        taggedQuote.relay,
+                    )
+                }
+                is QAddressableTag -> {
+                    Triple(
+                        taggedQuote.address.dTag,
+                        taggedQuote.address.pubKeyHex,
+                        taggedQuote.relay,
+                    )
+                }
+                else -> null
+            }
+
+            val repostedEvent = if (event.kind == RepostEvent.KIND) {
+                val repostedEvent = event.taggedEvents().firstOrNull()
+                when {
+                    (repostedEvent != null) -> {
+                        repostedEvent
+                    }
+                    else -> null
+                }
+            } else {
+                null
+            }
+
+            val (replyToRoot, replyTo) = if (event.kind == TextNoteEvent.KIND) {
+                val textNoteEvent = TextNoteEvent(
+                    id = event.id,
+                    content = event.content,
+                    tags = event.tags,
+                    createdAt = event.createdAt,
+                    sig = event.sig,
+                    pubKey = event.pubKey
+                )
+
+                Pair(
+                    textNoteEvent.markedRoot(),
+                    textNoteEvent.markedReply()
+                )
+            } else {
+                Pair(
+                    null,
+                    null
+                )
+            }
+
+
             return NostrEvent(
                 id = event.id,
                 pubKey = event.pubKey,
@@ -309,8 +437,17 @@ data class NostrEvent(
                 unsignedNostrEventId = synchronizeNostrEventRequest?.unsignedNostrEventId,
                 sig = event.sig,
 
-                taggedNostrEventId = taggedEvent?.eventId,
-                taggedNostrEventRelayUrl = taggedEvent?.relay?.url,
+                quotedNostrEventId = quotedEvent?.first,
+                quotedAuthorPublicKey = quotedEvent?.second,
+
+                repostedNostrEventId = repostedEvent?.eventId,
+                repostedAuthorPublicKey = repostedEvent?.author,
+
+                inReplyToRootNostrEventId = replyToRoot?.eventId,
+                inReplyToRootAuthorPublicKey = replyToRoot?.author,
+
+                inReplyToNostrEventId = replyTo?.eventId,
+                inReplyToAuthorPublicKey = replyTo?.author,
             )
         } catch (e: Throwable) {
             return null

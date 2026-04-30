@@ -1,11 +1,11 @@
 package ac.cord.auxiliary.compose.database.model.intermdiate
 
-import ac.cord.auxiliary.compose.database.model.InReplyToPost
+import ac.cord.auxiliary.compose.database.model.InReplyToRelation
 import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
-import ac.cord.auxiliary.compose.database.model.QuotedPost
-import ac.cord.auxiliary.compose.database.model.Repost
+import ac.cord.auxiliary.compose.database.model.QuotedRelation
+import ac.cord.auxiliary.compose.database.model.RepostedRelation
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
+import androidx.room.Ignore
 import androidx.room.Junction
 import androidx.room.Relation
 
@@ -36,32 +37,59 @@ data class LocalNostrEvent(
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "nostrEventId"
+        entityColumn = "repostingNostrEventId"
     )
-    val repost: Repost? = null,
+    val repostedRelation: RepostedRelation? = null,
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "nostrEventId"
+        entityColumn = "quotingNostrEventId"
     )
-    val quotedPost: QuotedPost? = null,
+    val quotedRelation: QuotedRelation? = null,
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "nostrEventId"
+        entityColumn = "id",
+        associateBy = Junction(
+            value = QuotedRelation::class,
+            parentColumn = "quotingNostrEventId",
+            entityColumn = "quotedNostrEventId"
+        )
     )
-    val inReplyToNostrEvent: InReplyToPost? = null,
+    val quotedNostrEvent: NostrEvent? = null,
 
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "publicKey",
+        associateBy = Junction(
+            value = QuotedRelation::class,
+            parentColumn = "quotingNostrEventId",
+            entityColumn = "quotedProfilePublicKey"
+        )
+    )
+    val quotedAuthorProfile: Profile? = null,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "replyingNostrEventId"
+    )
+    val inReplyToNostrEvent: InReplyToRelation? = null,
+
+//    @Relation(
+//        parentColumn = "id",
+//        entityColumn = "nostrEventId",
+//        associateBy = Junction(
+//            value = Mention::class,
+//            parentColumn = "mentionedPublicKey",
+//            entityColumn = "mentionedPublicKey"
+//        )
+//    )
+//    val mentionedProfiles: List<Profile> = emptyList()
     @Relation(
         parentColumn = "id",
         entityColumn = "nostrEventId",
-        associateBy = Junction(
-            value = Mention::class,
-            parentColumn = "publicKey",
-            entityColumn = "publicKey"
-        )
     )
-    val mentionedProfiles: List<Profile> = emptyList()
+    val mentions: List<Mention> = emptyList()
 ) {
     @Composable
     fun RenderNotePreview() {

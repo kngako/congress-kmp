@@ -1,12 +1,10 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
-import ac.cord.auxiliary.compose.database.model.QuotedPost
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
-import ac.cord.auxiliary.compose.ui.composable.widgets.content.Helpers.isGalleryEvent
-import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,16 +17,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun QuotedNote(
-    quotedPost: QuotedPost? = null,
+    quotedNostrEvent: QuotedRelation? = null,
+    quotedProfile: Profile? = null,
     relayHints: List<String> = emptyList(),
     onNoteClick: ((String) -> Unit)? = null,
     noteActions: NoteActions? = null
@@ -54,7 +50,7 @@ fun QuotedNote(
 //        }
 //    }
 
-    if (quotedPost != null && noteActions != null) {
+    if (quotedNostrEvent != null && noteActions != null) {
         // Full rendering with all interactive features
 
         Surface(
@@ -65,9 +61,10 @@ fun QuotedNote(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
         ) {
-            quotedPost.RenderNotePreview()
+            Text("Quote render coming soon")
+//            quotedNostrEvent.RenderNotePreview()
         }
-    } else if (quotedPost != null) {
+    } else if (quotedNostrEvent != null) {
         // Simple fallback rendering (no noteActions available)
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -77,11 +74,12 @@ fun QuotedNote(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
                 .then(
-                    if (effectiveNoteClick != null) Modifier.clickable { effectiveNoteClick(quotedPost.nostrEventId) }
+                    if (effectiveNoteClick != null) Modifier.clickable { effectiveNoteClick(quotedNostrEvent.quotedNostrEventId) }
                     else Modifier
                 )
         ) {
-            quotedPost.RenderNotePreview()
+            Text("Quote render coming soon")
+//            quotedPost.RenderNotePreview()
         }
     } else {
         // Loading state

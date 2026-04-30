@@ -16,7 +16,7 @@ import kotlin.time.Instant
         ForeignKey(
             entity = Profile::class,
             parentColumns = ["publicKey"],
-            childColumns = ["publicKey"],
+            childColumns = ["mentionedPublicKey"],
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
@@ -26,10 +26,10 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    primaryKeys = ["nostrEventId", "publicKey"]
+    primaryKeys = ["nostrEventId", "mentionedPublicKey"]
 )
 data class Mention(
-    val publicKey: HexKey,
+    val mentionedPublicKey: HexKey,
 
     val relayUrl: String? = null,
 

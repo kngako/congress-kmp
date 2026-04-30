@@ -4,7 +4,6 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
-import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
@@ -62,7 +61,7 @@ fun LocalNostrEvent.ListView(
                         style = MaterialTheme.typography.labelSmall)
                 }
 
-                if (repost != null) {
+                if (repostedRelation != null) {
                     TextNoteFeedItem(
                         localNostrEvent = this@ListView,
                         onNavigateToEvent = onNavigateToEvent
@@ -110,7 +109,7 @@ private fun TextNoteFeedItem(
     onNavigateToEvent: (HexKey) -> Unit
 ) {
     val nostrEvent = localNostrEvent.nostrEvent
-    if (localNostrEvent.repost != null) {
+    if (localNostrEvent.repostedRelation != null) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(
                 horizontal = 20.dp
@@ -127,11 +126,11 @@ private fun TextNoteFeedItem(
             Text(
                 modifier = Modifier.clickable(
                     onClick = {
-                        onNavigateToEvent.invoke(localNostrEvent.repost.repostedPostId)
+                        onNavigateToEvent.invoke(localNostrEvent.repostedRelation.repostedNostrEventId)
                     }
                 ),
                 style = MaterialTheme.typography.labelLargeEmphasized,
-                text = localNostrEvent.repost.repostedPostAuthorPublicKey ?: "loading information..."
+                text = localNostrEvent.repostedRelation.repostedProfilePublicKey ?: "loading information..."
             )
         }
     }
@@ -178,9 +177,12 @@ private fun TextNoteFeedItem(
             }
 
             // TODO: RichContent here...
-            RichContent(
-                modifier = Modifier.fillMaxWidth(),
-                localNostrEvent = localNostrEvent,
+//            RichContent(
+//                modifier = Modifier.fillMaxWidth(),
+//                localNostrEvent = localNostrEvent,
+//            )
+            Text(
+                text = localNostrEvent.nostrEvent.content
             )
 
             LazyRow(
@@ -250,10 +252,6 @@ private fun EventListViewPreview() {
                     nostrEventId = "referenced",
                     displayName = "Frank Talk"
                 ),
-                repost = null,
-                quotedPost = null,
-                inReplyToNostrEvent = null,
-                mentionedProfiles = emptyList()
             ).ListView(
                 onNavigateToEvent = {}
             )
