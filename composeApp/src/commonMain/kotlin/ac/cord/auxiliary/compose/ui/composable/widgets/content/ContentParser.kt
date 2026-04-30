@@ -69,6 +69,14 @@ internal object ContentParser {
                     is NNote -> {
                         segments.add(ContentSegment.NostrNoteSegment(entity.hex))
                     }
+                    is NEvent -> {
+                        segments.add(
+                            ContentSegment.NostrNoteSegment(
+                                eventId = entity.hex,
+                                relayHints = entity.relay.map { it.url }
+                            )
+                        )
+                    }
                     else -> {
                         segments.add(ContentSegment.TextSegment(token))
                     }
