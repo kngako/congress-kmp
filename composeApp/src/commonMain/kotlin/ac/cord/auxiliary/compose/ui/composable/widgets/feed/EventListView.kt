@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
@@ -176,13 +177,9 @@ private fun TextNoteFeedItem(
                 )
             }
 
-            // TODO: RichContent here...
-//            RichContent(
-//                modifier = Modifier.fillMaxWidth(),
-//                localNostrEvent = localNostrEvent,
-//            )
-            Text(
-                text = localNostrEvent.nostrEvent.content
+            RichContent(
+                modifier = Modifier.fillMaxWidth(),
+                localNostrEvent = localNostrEvent,
             )
 
             LazyRow(

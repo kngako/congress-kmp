@@ -15,6 +15,7 @@ import com.vitorpamplona.quartz.nip19Bech32.entities.NAddress
 import com.vitorpamplona.quartz.nip19Bech32.entities.NEvent
 import com.vitorpamplona.quartz.nip19Bech32.entities.NNote
 import com.vitorpamplona.quartz.nip19Bech32.entities.NProfile
+import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
 
 internal object ContentParser {
 
@@ -61,6 +62,9 @@ internal object ContentParser {
                     }
                     is NProfile -> {
                         segments.add(ContentSegment.NostrProfileSegment(entity.hex, entity.relay.map { it.url }))
+                    }
+                    is NPub -> {
+                        segments.add(ContentSegment.NostrProfileSegment(pubkey = entity.hex))
                     }
                     is NNote -> {
                         segments.add(ContentSegment.NostrNoteSegment(entity.hex))

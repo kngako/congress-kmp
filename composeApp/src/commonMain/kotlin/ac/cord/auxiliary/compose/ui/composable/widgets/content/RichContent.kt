@@ -25,6 +25,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
 
 @Composable
@@ -48,6 +49,8 @@ fun RichContent(
     val segments = remember(content, emojiMap, imetaMap, plainLinks) { ContentParser.parse(content.trimEnd('\n', '\r'), emojiMap, imetaMap, trimBlankLines = !plainLinks) }
 //    val profileVer = eventRepo?.profileVersion?.collectAsState()?.value ?: 0
     var fullScreenImageUrl by remember { mutableStateOf<String?>(null) }
+
+    Logger.withTag("RichContent").d("Segments: $segments")
 
     if (fullScreenImageUrl != null) {
         FullScreenImageViewer(
@@ -79,7 +82,7 @@ fun RichContent(
         }
     }
 
-    val defaultLinkColor = MaterialTheme.colorScheme.primary
+    val defaultLinkColor = MaterialTheme.colorScheme.secondary
     val effectiveLinkColor = if (linkColor == Color.Unspecified) defaultLinkColor else linkColor
     val linkDecoration = if (linkColor == Color.Unspecified) TextDecoration.None else TextDecoration.Underline
     val uriHandler = LocalUriHandler.current
@@ -99,13 +102,13 @@ fun RichContent(
                         .map { it.pubkey }
 
                     val profileNames = remember(profilePubkeys) {
-                        // TODO: Get these from taggedUsers...
                         val names = mutableMapOf<String, String>()
-//                      TODO  for (pubkey in profilePubkeys) {
-//                            val profile = localNostrEvent.mentionedProfiles.find { taggedAuthor -> taggedAuthor.publicKey == pubkey }
-//                            names[pubkey] = profile?.humanReadableNameOrPubkey()
-//                                ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
-//                        }
+                        for (pubkey in profilePubkeys) {
+
+                            val mentionedProfile = localNostrEvent.mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == pubkey }
+                            names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
+                                ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
+                        }
                         names
                     }
                     // TODO Queue fetches for any missing profiles
@@ -179,6 +182,7 @@ fun RichContent(
                                     }
                                 }
                                 is ContentSegment.NostrProfileSegment -> {
+                                    Logger.withTag("RichContent").d("NostrProfileSegment: $seg")
                                     val pubkey = seg.pubkey
                                     val displayName = profileNames[seg.pubkey] ?: seg.pubkey.take(8)
                                     withLink(
@@ -224,13 +228,16 @@ fun RichContent(
                                         }
                                     }
                                 }
-                                else -> {}
+                                else -> {
+                                    Logger.withTag("RichContent").w("Unsupported segment: $seg")
+                                }
                             }
                         }
                     }
 
                     Text(text = annotated, style = style, inlineContent = emojiInlineContent)
                 } else {
+                    Logger.w("Doing the else: $group")
                     val segment = group as ContentSegment
                     when (segment) {
 //                        is ContentSegment.ImageSegment -> {
