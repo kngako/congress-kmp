@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +23,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun QuotedAddressableNote(
-    localNostrEvent: LocalNostrEvent? = null,
+    localQuotedNostrEvent: LocalQuotedNostrEvent?,
     kind: Int,
     dTag: String,
     author: String,
@@ -34,15 +35,10 @@ internal fun QuotedAddressableNote(
 ) {
 
     // TODO: Sync quoted event...
-//    LaunchedEffect(kind, author, dTag) {
-//        if (eventRepo.findAddressableEvent(kind, author, dTag) == null) {
-//            eventRepo.requestAddressableEvent(kind, author, dTag, relayHints)
-//        }
-//    }
 
-    if (localNostrEvent?.localQuotedNostrEvent != null) {
+    if (localQuotedNostrEvent != null) {
         QuotedNote(
-            localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
+            localQuotedNostrEvent = localQuotedNostrEvent,
             onNoteClick = onNoteClick,
             noteActions = noteActions
         )

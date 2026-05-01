@@ -250,12 +250,12 @@ fun RichContent(
                     Logger.w("Doing the else: $group")
                     val segment = group as ContentSegment
                     when (segment) {
-//                        is ContentSegment.ImageSegment -> {
-//                            ImageWithContextMenu(
-//                                meta = segment.meta,
-//                                onFullScreen = { fullScreenImageUrl = segment.meta.url }
-//                            )
-//                        }
+                        is ContentSegment.ImageSegment -> {
+                            ImageWithContextMenu(
+                                meta = segment.meta,
+                                onFullScreen = { fullScreenImageUrl = segment.meta.url }
+                            )
+                        }
 //                        is ContentSegment.VideoSegment -> {
 //                            InlineVideoPlayerWithFullscreen(
 //                                meta = segment.meta,
@@ -297,26 +297,27 @@ fun RichContent(
                         is ContentSegment.NostrAddressableSegment -> {
                             val kind = segment.kind
                             when {
-//                                kind == 1 || kind == 0 -> {
-//                                    if (localNostrEvent.quotedPost != null && segment.author != null) {
-//                                        QuotedAddressableNote(
-//                                            kind = kind,
-//                                            dTag = segment.dTag,
-//                                            author = segment.author,
-//                                            relayHints = segment.relays,
-//                                            onNoteClick = onNoteClick,
-//                                            onProfileClick = onProfileClick,
-//                                            noteActions = noteActions,
-//                                            style = style
-//                                        )
-//                                    } else {
-//                                        Text(
-//                                            text = "nostr:${segment.dTag.take(12)}...",
-//                                            style = style,
-//                                            color = MaterialTheme.colorScheme.primary
-//                                        )
-//                                    }
-//                                }
+                                kind == 1 || kind == 0 -> {
+                                    if (localQuotedNostrEvent != null && segment.author != null) {
+                                        QuotedAddressableNote(
+                                            localQuotedNostrEvent = localQuotedNostrEvent,
+                                            kind = kind,
+                                            dTag = segment.dTag,
+                                            author = segment.author,
+                                            relayHints = segment.relays,
+                                            onNoteClick = onNoteClick,
+                                            onProfileClick = onProfileClick,
+                                            noteActions = noteActions,
+                                            style = style
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "nostr:${segment.dTag.take(12)}...",
+                                            style = style,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
 //                                kind == 30023 -> {
 //                                    if (segment.author != null) {
 //                                        // TODO: Add support for articles in localNostrEvents...
