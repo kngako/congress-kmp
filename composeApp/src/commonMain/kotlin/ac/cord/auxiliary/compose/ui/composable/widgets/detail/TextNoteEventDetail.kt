@@ -141,7 +141,9 @@ fun TextNoteEventDetail(
                             modifier = Modifier.fillMaxWidth().padding(
                                 horizontal = 20.dp
                             ),
-                            localNostrEvent = localNostrEvent,
+                            nostrEvent = localNostrEvent.nostrEvent,
+                            localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
+                            mentionedProfiles = localNostrEvent.mentionedProfiles
                         )
 
                         Row(

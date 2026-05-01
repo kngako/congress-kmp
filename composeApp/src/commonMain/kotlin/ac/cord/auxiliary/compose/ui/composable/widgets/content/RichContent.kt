@@ -1,6 +1,9 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
+import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.Constants.INLINE_CONTENT_TAG
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +33,9 @@ import coil3.compose.AsyncImage
 
 @Composable
 fun RichContent(
-    localNostrEvent: LocalNostrEvent,
+    nostrEvent: NostrEvent,
+    localQuotedNostrEvent: LocalQuotedNostrEvent?,
+    mentionedProfiles: List<LocalMention?>,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     color: Color = MaterialTheme.colorScheme.onSurface,
     linkColor: Color = Color.Unspecified,
@@ -44,7 +49,7 @@ fun RichContent(
     noteActions: NoteActions? = null,
     modifier: Modifier = Modifier
 ) {
-    val content = localNostrEvent.nostrEvent.content
+    val content = nostrEvent.content
 
     val segments = remember(content, emojiMap, imetaMap, plainLinks) { ContentParser.parse(content.trimEnd('\n', '\r'), emojiMap, imetaMap, trimBlankLines = !plainLinks) }
 //    val profileVer = eventRepo?.profileVersion?.collectAsState()?.value ?: 0
@@ -105,10 +110,10 @@ fun RichContent(
                     val profileNames = remember(profilePubkeys) {
                         val names = mutableMapOf<String, String>()
 
-                        if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
-                            Logger.withTag("RichContent").d("mentionedProfiles: ${localNostrEvent.mentionedProfiles}")
+                        if (mentionedProfiles.isNotEmpty()) {
+                            Logger.withTag("RichContent").d("mentionedProfiles: ${mentionedProfiles}")
                             for (pubkey in profilePubkeys) {
-                                val mentionedProfile = localNostrEvent.mentionedProfiles.find { mentionedProfile -> mentionedProfile?.profile?.publicKey == pubkey }
+                                val mentionedProfile = mentionedProfiles.find { mentionedProfile -> mentionedProfile?.profile?.publicKey == pubkey }
                                 names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
                                     ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
                             }
@@ -275,9 +280,9 @@ fun RichContent(
                             LinkPreview(url = segment.url)
                         }
                         is ContentSegment.NostrNoteSegment -> {
-                            if (localNostrEvent.localQuotedNostrEvent != null) {
+                            if (localQuotedNostrEvent != null) {
                                 QuotedNote(
-                                    localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
+                                    localQuotedNostrEvent = localQuotedNostrEvent,
                                     relayHints = segment.relayHints,
                                     onNoteClick = onNoteClick,
                                     noteActions = noteActions

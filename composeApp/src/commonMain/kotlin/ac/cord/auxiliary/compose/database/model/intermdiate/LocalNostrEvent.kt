@@ -36,10 +36,11 @@ data class LocalNostrEvent(
     val profile: Profile?,
 
     @Relation(
+        entity = RepostedRelation::class,
         parentColumn = "id",
         entityColumn = "repostingNostrEventId"
     )
-    val repostedRelation: RepostedRelation? = null,
+    val localRepostedNostrEvent: LocalRepostedNostrEvent? = null,
 
     @Relation(
         entity = QuotedRelation::class,
@@ -48,33 +49,12 @@ data class LocalNostrEvent(
     )
     val localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
 
-//    @Relation(
-//        parentColumn = "id",
-//        entityColumn = "id",
-//        associateBy = Junction(
-//            value = QuotedRelation::class,
-//            parentColumn = "quotingNostrEventId",
-//            entityColumn = "quotedNostrEventId"
-//        )
-//    )
-//    val quotedNostrEvent: NostrEvent? = null,
-
     @Relation(
-        parentColumn = "id",
-        entityColumn = "publicKey",
-        associateBy = Junction(
-            value = QuotedRelation::class,
-            parentColumn = "quotingNostrEventId",
-            entityColumn = "quotedProfilePublicKey"
-        )
-    )
-    val quotedAuthorProfile: Profile? = null,
-
-    @Relation(
+        entity = InReplyToRelation::class,
         parentColumn = "id",
         entityColumn = "replyingNostrEventId"
     )
-    val inReplyToNostrEvent: InReplyToRelation? = null,
+    val localInReplyToNostrEvent: LocalInReplyToNostrEvent? = null,
 
     @Relation(
         entity = Mention::class,
