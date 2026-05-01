@@ -277,22 +277,19 @@ data class NostrEvent(
             }
         }
 
-        return null
-        // TODO: Bring in quoted text
-//        val quotedNotes = ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
-//            .filterIsInstance<ContentSegment.NostrNoteSegment>()
-//            .firstOrNull()
-//
-//        return quotedNotes?.let { quotedNote ->
-//            QuotedRelation(
-//                quotedNostrEventId = quotedNote.eventId,
-//                quotedProfilePublicKey = null
-//                ,
-//
-//                quotingNostrEventId = id,
-//                createdAt = createdAt
-//            )
-//        }
+        val quotedNotes = ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
+            .filterIsInstance<ContentSegment.NostrNoteSegment>()
+            .firstOrNull()
+
+        return quotedNotes?.let { quotedNote ->
+            QuotedRelation(
+                quotedNostrEventId = quotedNote.eventId,
+                quotedProfilePublicKey = null,
+
+                quotingNostrEventId = id,
+                createdAt = createdAt
+            )
+        }
     } catch (e: Throwable) {
         logger.e("Failed to return Repost: ", e)
         return null
