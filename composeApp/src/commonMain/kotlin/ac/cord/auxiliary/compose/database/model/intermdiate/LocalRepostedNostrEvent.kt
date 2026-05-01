@@ -43,7 +43,7 @@ data class LocalRepostedNostrEvent(
         parentColumn = "repostedNostrEventId",
         entityColumn = "mentioningNostrEventId",
     )
-    val mentionedProfiles: List<LocalMention?> = emptyList(),
+    val mentionedProfiles: List<LocalMention>? = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {

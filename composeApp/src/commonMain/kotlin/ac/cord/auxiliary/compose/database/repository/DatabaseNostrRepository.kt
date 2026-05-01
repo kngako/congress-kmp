@@ -441,7 +441,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent?>?> {
+    override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>?> {
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(
                 TextNoteEvent.KIND,
@@ -452,7 +452,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent?>?> {
+    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>?> {
 
         return when {
             synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {

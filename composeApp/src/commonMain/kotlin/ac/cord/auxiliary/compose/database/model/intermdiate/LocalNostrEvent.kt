@@ -56,12 +56,11 @@ data class LocalNostrEvent(
     )
     val localInReplyToNostrEvent: LocalInReplyToNostrEvent? = null,
 
-    @Relation(
-        entity = Mention::class,
-        parentColumn = "id",
-        entityColumn = "mentioningNostrEventId",
-    )
-    val mentionedProfiles: List<LocalMention?>? = emptyList(),
+//    @Relation(
+//        parentColumn = "id",
+//        entityColumn = "mentioningNostrEventId",
+//    )
+//    val mentionedProfiles: List<Mention>? = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {

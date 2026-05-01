@@ -68,7 +68,6 @@ fun LocalNostrEvent.ListView(
                         profile = localRepostedNostrEvent.profile,
                         localQuotedNostrEvent = null,
                         localInReplyToNostrEvent = null,
-                        mentionedProfiles = localRepostedNostrEvent.mentionedProfiles,
                         onNavigateToEvent = onNavigateToEvent
                     )
                 } else {
@@ -104,7 +103,6 @@ fun LocalNostrEvent.ListView(
                 profile = profile,
                 localQuotedNostrEvent = localQuotedNostrEvent,
                 localInReplyToNostrEvent = localInReplyToNostrEvent,
-                mentionedProfiles = mentionedProfiles,
                 onNavigateToEvent = onNavigateToEvent
             )
         }

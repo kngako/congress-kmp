@@ -37,13 +37,6 @@ data class LocalQuotedNostrEvent(
         entityColumn = "publicKey"
     )
     val profile: Profile?,
-
-    @Relation(
-        entity = Mention::class,
-        parentColumn = "quotedNostrEventId",
-        entityColumn = "mentioningNostrEventId",
-    )
-    val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {
@@ -85,7 +78,6 @@ data class LocalQuotedNostrEvent(
                 RichContent(
                     nostrEvent = nostrEvent,
                     localQuotedNostrEvent = null,
-                    mentionedProfiles = mentionedProfiles,
                 )
             }
 
