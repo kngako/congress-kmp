@@ -385,7 +385,9 @@ fun RichContent(
 //                        }
                         else -> {
                             Text(
-                                text = segment.toString()
+                                text = segment.toString(),
+                                style = style,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
