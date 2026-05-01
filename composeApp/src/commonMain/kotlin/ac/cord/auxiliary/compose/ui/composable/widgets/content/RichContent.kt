@@ -283,7 +283,6 @@ fun RichContent(
                             if (localQuotedNostrEvent != null) {
                                 QuotedNote(
                                     localQuotedNostrEvent = localQuotedNostrEvent,
-                                    relayHints = segment.relayHints,
                                     onNoteClick = onNoteClick,
                                     noteActions = noteActions
                                 )
@@ -386,7 +385,7 @@ fun RichContent(
 //                        }
                         else -> {
                             Text(
-                                text = "Unsupported Content"
+                                text = segment.toString()
                             )
                         }
                     }

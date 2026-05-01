@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -76,15 +77,10 @@ data class LocalQuotedNostrEvent(
                 }
             }
 
-            // TODO: Use RichContent...
-            Text(
-                modifier = Modifier.fillMaxWidth().padding(
-                    horizontal = 20.dp
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Start,
-                overflow = TextOverflow.Ellipsis,
-                text = nostrEvent.content
+            RichContent(
+                nostrEvent = nostrEvent,
+                localQuotedNostrEvent = null,
+                mentionedProfiles = mentionedProfiles,
             )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
