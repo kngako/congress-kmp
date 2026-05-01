@@ -68,7 +68,7 @@ fun LocalNostrEvent.ListView(
                         profile = localRepostedNostrEvent.profile,
                         localQuotedNostrEvent = null,
                         localInReplyToNostrEvent = null,
-                        mentionedProfiles = emptyList(), // TODO: Add localReposted.mentionedProfiles...
+                        mentionedProfiles = localRepostedNostrEvent.mentionedProfiles,
                         onNavigateToEvent = onNavigateToEvent
                     )
                 } else {

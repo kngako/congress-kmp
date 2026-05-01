@@ -24,8 +24,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun QuotedNote(
     localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
-    quotedProfile: Profile? = null,
-    relayHints: List<String> = emptyList(),
     onNoteClick: ((String) -> Unit)? = null,
     noteActions: NoteActions? = null
 ) {

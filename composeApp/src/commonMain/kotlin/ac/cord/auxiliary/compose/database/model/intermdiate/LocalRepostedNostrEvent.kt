@@ -1,5 +1,6 @@
 package ac.cord.auxiliary.compose.database.model.intermdiate
 
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
@@ -37,12 +38,12 @@ data class LocalRepostedNostrEvent(
     )
     val profile: Profile?,
 
-//    @Relation(
-//        entity = Mention::class,
-//        parentColumn = "id",
-//        entityColumn = "nostrEventId",
-//    )
-//    val mentionedProfiles: List<LocalMention?> = emptyList(),
+    @Relation(
+        entity = Mention::class,
+        parentColumn = "repostedNostrEventId",
+        entityColumn = "nostrEventId",
+    )
+    val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {
