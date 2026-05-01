@@ -275,9 +275,9 @@ fun RichContent(
                             LinkPreview(url = segment.url)
                         }
                         is ContentSegment.NostrNoteSegment -> {
-                            if (localNostrEvent.quotedRelation != null) {
+                            if (localNostrEvent.localQuotedNostrEvent != null) {
                                 QuotedNote(
-                                    quotedNostrEvent = localNostrEvent.quotedRelation,
+                                    localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
                                     relayHints = segment.relayHints,
                                     onNoteClick = onNoteClick,
                                     noteActions = noteActions

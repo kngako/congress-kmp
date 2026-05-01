@@ -42,21 +42,22 @@ data class LocalNostrEvent(
     val repostedRelation: RepostedRelation? = null,
 
     @Relation(
+        entity = QuotedRelation::class,
         parentColumn = "id",
         entityColumn = "quotingNostrEventId"
     )
-    val quotedRelation: QuotedRelation? = null,
+    val localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
 
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-        associateBy = Junction(
-            value = QuotedRelation::class,
-            parentColumn = "quotingNostrEventId",
-            entityColumn = "quotedNostrEventId"
-        )
-    )
-    val quotedNostrEvent: NostrEvent? = null,
+//    @Relation(
+//        parentColumn = "id",
+//        entityColumn = "id",
+//        associateBy = Junction(
+//            value = QuotedRelation::class,
+//            parentColumn = "quotingNostrEventId",
+//            entityColumn = "quotedNostrEventId"
+//        )
+//    )
+//    val quotedNostrEvent: NostrEvent? = null,
 
     @Relation(
         parentColumn = "id",

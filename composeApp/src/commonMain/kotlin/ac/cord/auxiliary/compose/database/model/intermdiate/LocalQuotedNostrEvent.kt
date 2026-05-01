@@ -1,11 +1,8 @@
 package ac.cord.auxiliary.compose.database.model.intermdiate
 
-import ac.cord.auxiliary.compose.database.model.InReplyToRelation
-import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
-import ac.cord.auxiliary.compose.database.model.RepostedRelation
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
@@ -22,24 +19,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
-import androidx.room.Junction
 import androidx.room.Relation
 
 data class LocalQuotedNostrEvent(
-    @Embedded val nostrEvent: NostrEvent,
+    @Embedded val quotedRelation: QuotedRelation,
 
     @Relation(
-        parentColumn = "pubKey",
+        parentColumn = "quotedNostrEventId",
+        entityColumn = "id"
+    )
+    val nostrEvent: NostrEvent,
+
+    @Relation(
+        parentColumn = "quotedProfilePublicKey",
         entityColumn = "publicKey"
     )
     val profile: Profile?,
 
-    @Relation(
-        entity = Mention::class,
-        parentColumn = "id",
-        entityColumn = "nostrEventId",
-    )
-    val mentionedProfiles: List<LocalMention?> = emptyList(),
+//    @Relation(
+//        entity = Mention::class,
+//        parentColumn = "id",
+//        entityColumn = "nostrEventId",
+//    )
+//    val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {
@@ -72,6 +74,8 @@ data class LocalQuotedNostrEvent(
                     }
                 }
             }
+
+            // TODO: Use RichContent...
             Text(
                 modifier = Modifier.fillMaxWidth().padding(
                     horizontal = 20.dp

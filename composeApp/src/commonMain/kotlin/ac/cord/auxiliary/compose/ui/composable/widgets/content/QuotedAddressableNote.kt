@@ -40,9 +40,9 @@ internal fun QuotedAddressableNote(
 //        }
 //    }
 
-    if (localNostrEvent?.quotedRelation != null) {
+    if (localNostrEvent?.localQuotedNostrEvent != null) {
         QuotedNote(
-            quotedNostrEvent = localNostrEvent.quotedRelation,
+            localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
             onNoteClick = onNoteClick,
             noteActions = noteActions
         )

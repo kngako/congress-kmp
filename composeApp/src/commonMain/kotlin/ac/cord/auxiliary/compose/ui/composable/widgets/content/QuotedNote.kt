@@ -1,8 +1,8 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
-import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun QuotedNote(
-    quotedNostrEvent: QuotedRelation? = null,
+    localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
     quotedProfile: Profile? = null,
     relayHints: List<String> = emptyList(),
     onNoteClick: ((String) -> Unit)? = null,
@@ -50,7 +50,7 @@ fun QuotedNote(
 //        }
 //    }
 
-    if (quotedNostrEvent != null && noteActions != null) {
+    if (localQuotedNostrEvent != null && noteActions != null) {
         // Full rendering with all interactive features
 
         Surface(
@@ -61,10 +61,10 @@ fun QuotedNote(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
         ) {
-            Text("Quote render coming soon")
+            localQuotedNostrEvent.RenderNotePreview()
 //            quotedNostrEvent.RenderNotePreview()
         }
-    } else if (quotedNostrEvent != null) {
+    } else if (localQuotedNostrEvent != null) {
         // Simple fallback rendering (no noteActions available)
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -74,12 +74,11 @@ fun QuotedNote(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
                 .then(
-                    if (effectiveNoteClick != null) Modifier.clickable { effectiveNoteClick(quotedNostrEvent.quotedNostrEventId) }
+                    if (effectiveNoteClick != null) Modifier.clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
                     else Modifier
                 )
         ) {
-            Text("Quote render coming soon")
-//            quotedPost.RenderNotePreview()
+            localQuotedNostrEvent.RenderNotePreview()
         }
     } else {
         // Loading state
