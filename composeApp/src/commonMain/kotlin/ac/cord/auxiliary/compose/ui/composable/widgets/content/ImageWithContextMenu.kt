@@ -115,7 +115,7 @@ internal fun ImageWithContextMenu(meta: MediaMeta, onFullScreen: () -> Unit) {
     }
 }
 
-private fun parseAspectRatio(dim: String?): Float? {
+internal fun parseAspectRatio(dim: String?): Float? {
     if (dim == null) return null
     val parts = dim.split('x')
     if (parts.size != 2) return null

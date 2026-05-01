@@ -77,11 +77,18 @@ data class LocalQuotedNostrEvent(
                 }
             }
 
-            RichContent(
-                nostrEvent = nostrEvent,
-                localQuotedNostrEvent = null,
-                mentionedProfiles = mentionedProfiles,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(
+                    horizontal = 10.dp
+                )
+            ) {
+                RichContent(
+                    nostrEvent = nostrEvent,
+                    localQuotedNostrEvent = null,
+                    mentionedProfiles = mentionedProfiles,
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalArrangement = Arrangement.Start
