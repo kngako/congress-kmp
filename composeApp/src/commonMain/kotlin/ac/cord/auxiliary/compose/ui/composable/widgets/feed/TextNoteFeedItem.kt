@@ -36,7 +36,7 @@ internal fun TextNoteFeedItem(
     profile: Profile?,
     localInReplyToNostrEvent: LocalInReplyToNostrEvent?,
     localQuotedNostrEvent: LocalQuotedNostrEvent?,
-    mentionedProfiles: List<LocalMention?>,
+    mentionedProfiles: List<LocalMention?>?,
     onNavigateToEvent: (HexKey) -> Unit
 ) {
     if (localInReplyToNostrEvent != null) {

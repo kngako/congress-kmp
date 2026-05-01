@@ -57,14 +57,11 @@ import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
@@ -73,11 +70,11 @@ class DatabaseNostrRepository(
 ): NostrRepository, RelayRepository {
     companion object {
         const val TAG = "DatabaseNostrRepository"
+
+        private val storeNostrEventMutex = Mutex()
     }
 
     val logger = Logger.withTag(TAG)
-
-    private val storeNostrEventMutex = Mutex()
 
     override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)
@@ -404,6 +401,7 @@ class DatabaseNostrRepository(
         synchronizationRelayURLs: List<String>
     ) {
         storeNostrEventMutex.withLock {
+            logger.d("saveNostrEvent: $nostrEvent")
             database.nostrDao().storeNostrEvent(
                 nostrEvent,
                 synchronizationRelayURLs = synchronizationRelayURLs,
@@ -417,6 +415,7 @@ class DatabaseNostrRepository(
                 )
             )
         }
+        logger.d("done: ${nostrEvent.id}")
     }
 
     override suspend fun queueSynchronizeNostrEvent(
@@ -442,7 +441,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
+    override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent?>?> {
         return database.nostrEventDao().observeNostrEvents(
             kinds = arrayOf(
                 TextNoteEvent.KIND,
@@ -453,7 +452,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
+    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent?>?> {
 
         return when {
             synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {

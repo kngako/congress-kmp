@@ -32,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
@@ -94,7 +95,7 @@ class NavigationViewModel(
         scope.launch(Dispatchers.IO) {
             nostrRepository.observeUnsignedNostrEvents(
                 publicKey = SeedManager.activePublicKey().toHexKey()
-            ).collect { unsignedNostrEventOrNull ->
+            ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
                 unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
                     logger.d("Unsigned")
                     val event = tempSigner.signNormal<Event>(
@@ -128,7 +129,7 @@ class NavigationViewModel(
         logger.i { "observePendingSyncNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingSynchronizeNostrEventRequests().collect { synchronizeNostrEventRequestOrNull ->
+            nostrRepository.observePendingSynchronizeNostrEventRequests().distinctUntilChanged().collect { synchronizeNostrEventRequestOrNull ->
                 synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
                     logger.i("synchronizeNostrEventRequest: $synchronizeNostrEventRequest")
                     val reqCommand = ReqCmd(
@@ -158,15 +159,16 @@ class NavigationViewModel(
                             ).collect { nostrIncomingMessage ->
                                 when (nostrIncomingMessage) {
                                     is NostrIncomingMessage.EventMessage -> {
-                                        logger.d("Import message: $nostrIncomingMessage")
-                                        nostrIncomingMessage.nostrEvent?.let {
-                                            nostrRepository.saveNostrEvent(
-                                                nostrEvent = it,
-                                                synchronizeNostrEventRequest,
-                                                synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                                            )
+                                        scope.launch(Dispatchers.IO) {
+                                            logger.d("Import message: $nostrIncomingMessage")
+                                            nostrIncomingMessage.nostrEvent?.let {
+                                                nostrRepository.saveNostrEvent(
+                                                    nostrEvent = it,
+                                                    synchronizeNostrEventRequest,
+                                                    synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                )
+                                            }
                                         }
-
                                     }
                                     is NostrIncomingMessage.EventsMessage -> {
                                         logger.d("Import messages: $nostrIncomingMessage")
@@ -212,7 +214,7 @@ class NavigationViewModel(
         logger.i { "observePendingBroadcastNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingBroadcastNostrEventRequests().collect { localBroadcastNostrEventRequests ->
+            nostrRepository.observePendingBroadcastNostrEventRequests().distinctUntilChanged().collect { localBroadcastNostrEventRequests ->
                 localBroadcastNostrEventRequests.forEach { localBroadcastNostrEventRequest ->
 
                     nostrRepository.broadcastProcessed(
@@ -289,7 +291,7 @@ class NavigationViewModel(
             logger.i("Observing: $publicKey")
             nostrRepository.observeProfile(
                 publicKey = publicKey
-            ).collect { localProfile ->
+            ).distinctUntilChanged().collect { localProfile ->
                 logger.i("Local Profile: $localProfile")
                 _navigationUIState.getAndUpdate {
                     if (localProfile == null) {

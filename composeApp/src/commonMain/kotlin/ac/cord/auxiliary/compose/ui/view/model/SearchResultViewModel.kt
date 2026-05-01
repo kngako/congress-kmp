@@ -161,7 +161,7 @@ class SearchResultViewModel(
             // This is something not taking into consideration the results we are actually looking for...
             nostrRepository.observeNostrFeed(synchronizationFilter).collect { localNostrEvents ->
                 searchResultListUIState = SearchResultListUIState.Loaded(
-                    localNostrEvents = localNostrEvents
+                    localNostrEvents = localNostrEvents?.filterNotNull() ?: emptyList()
                 )
             }
         }

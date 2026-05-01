@@ -103,15 +103,17 @@ abstract class NostrDao(
         synchronizationRelayURLs: List<String>,
         level: Int
     ) {
-        logger.i("Store Nostr Event: $nostrEvent")
+
 
         val storedNostrEvent = database.nostrEventDao().getNostrEventById(nostrEvent.id)
 
         if (storedNostrEvent == null) {
             // Add new nostr event
+            logger.i("Store Nostr Event: $nostrEvent")
             database.nostrEventDao().insert(nostrEvent)
         } else if (nostrEvent.createdAt > storedNostrEvent.createdAt) {
             // Update nostr event`
+            logger.i("Update Nostr Event: $nostrEvent")
             database.nostrEventDao().upsert(nostrEvent)
         } else {
             // Nothing else needs to be done
@@ -120,12 +122,12 @@ abstract class NostrDao(
                 logger.i("This is a placeholder profile might need to get synced...: ${profile.publicKey}")
                 // Setup the sync here...
             } else {
-                logger.i("We have the latest version for: ${nostrEvent.id}")
                 return
             }
         }
 
         // Index nostrEvent
+        logger.i("Index Nostr Event: ${nostrEvent.id}")
         indexNostrEvent(
             nostrEvent = nostrEvent,
             synchronizationRelayURLs = synchronizationRelayURLs,
@@ -144,7 +146,6 @@ abstract class NostrDao(
         val eventIdsToSync = mutableSetOf<String>()
 
         if (nostrEvent.unsignedNostrEventId == null) {
-            logger.i("Store Nostr Event: $nostrEvent")
             // Find or create profile with the pubKey... if not found submit a sync request...
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 

@@ -2,7 +2,6 @@ package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
@@ -34,19 +33,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
-import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
-import com.vitorpamplona.quartz.nip04Dm.messages.PrivateDmEvent
-import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
-import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
-import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
-import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
-import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
-import com.vitorpamplona.quartz.nip96FileStorage.config.FileServersEvent
-import com.vitorpamplona.quartz.nipB7Blossom.BlossomServersEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class FeedListViewModel(
@@ -74,7 +62,7 @@ class FeedListViewModel(
                 synchronizationFilter
             ).collect { localNostrEvents ->
                 feedListUIState = FeedListUIState.Loaded(
-                    localNostrEvents = localNostrEvents
+                    localNostrEvents = localNostrEvents?.filterNotNull() ?: emptyList()
                 )
             }
         }
