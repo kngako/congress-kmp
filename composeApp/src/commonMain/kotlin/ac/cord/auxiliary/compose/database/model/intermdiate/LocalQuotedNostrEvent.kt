@@ -41,7 +41,7 @@ data class LocalQuotedNostrEvent(
     @Relation(
         entity = Mention::class,
         parentColumn = "quotedNostrEventId",
-        entityColumn = "nostrEventId",
+        entityColumn = "mentioningNostrEventId",
     )
     val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {

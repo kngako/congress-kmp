@@ -7,6 +7,7 @@ import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -22,22 +23,23 @@ import kotlin.time.Instant
         ForeignKey(
             entity = NostrEvent::class,
             parentColumns = ["id"],
-            childColumns = ["nostrEventId"],
+            childColumns = ["mentioningNostrEventId"],
             onDelete = ForeignKey.CASCADE,
         ),
-    ],
-    primaryKeys = ["nostrEventId", "mentionedPublicKey"]
+    ]
 )
 data class Mention(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
     val mentionedPublicKey: HexKey,
+    val mentioningNostrEventId: HexKey? = null,
 
     val relayUrl: String? = null,
-
-    override val nostrEventId: HexKey, // This is the contactListEvent with this following...
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): NostrEventEntity, TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity
+): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity

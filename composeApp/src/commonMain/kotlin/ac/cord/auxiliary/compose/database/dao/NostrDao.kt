@@ -362,7 +362,7 @@ abstract class NostrDao(
             database.mentionDao().insert(
                 Mention(
                     mentionedPublicKey = taggedUser.pubKey,
-                    nostrEventId = nostrEvent.id,
+                    mentioningNostrEventId = nostrEvent.id,
                     relayUrl = taggedUser.relayHint?.url
                 )
             )

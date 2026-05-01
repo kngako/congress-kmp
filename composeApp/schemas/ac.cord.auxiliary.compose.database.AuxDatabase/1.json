@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "296c3251f1f835c144c94c7ff1598939",
+    "identityHash": "2e56a98cfa2734b3c9f8945e5384f7e7",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -389,8 +389,14 @@
       },
       {
         "tableName": "Mention",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mentionedPublicKey` TEXT NOT NULL, `relayUrl` TEXT, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`nostrEventId`, `mentionedPublicKey`), FOREIGN KEY(`mentionedPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mentionedPublicKey` TEXT NOT NULL, `mentioningNostrEventId` TEXT, `relayUrl` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`mentionedPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`mentioningNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
           {
             "fieldPath": "mentionedPublicKey",
             "columnName": "mentionedPublicKey",
@@ -398,15 +404,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "relayUrl",
-            "columnName": "relayUrl",
+            "fieldPath": "mentioningNostrEventId",
+            "columnName": "mentioningNostrEventId",
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "nostrEventId",
-            "columnName": "nostrEventId",
-            "affinity": "TEXT",
-            "notNull": true
+            "fieldPath": "relayUrl",
+            "columnName": "relayUrl",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "createdAt",
@@ -438,10 +443,9 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": false,
+          "autoGenerate": true,
           "columnNames": [
-            "nostrEventId",
-            "mentionedPublicKey"
+            "id"
           ]
         },
         "foreignKeys": [
@@ -461,7 +465,7 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "nostrEventId"
+              "mentioningNostrEventId"
             ],
             "referencedColumns": [
               "id"
@@ -1818,7 +1822,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '296c3251f1f835c144c94c7ff1598939')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2e56a98cfa2734b3c9f8945e5384f7e7')"
     ]
   }
 }
