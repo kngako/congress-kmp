@@ -23,14 +23,12 @@ import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.hints.EventHintBundle
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.hashtags.hashtags
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
-import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip01Core.tags.references.references
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip02FollowList.RelaySet
@@ -39,14 +37,12 @@ import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip10Notes.content.findHashtags
 import com.vitorpamplona.quartz.nip10Notes.content.findNostrUris
 import com.vitorpamplona.quartz.nip10Notes.content.findURLs
-import com.vitorpamplona.quartz.nip10Notes.tags.markedETag
 import com.vitorpamplona.quartz.nip10Notes.tags.markedETags
 import com.vitorpamplona.quartz.nip10Notes.tags.notify
 import com.vitorpamplona.quartz.nip10Notes.tags.prepareETagsAsReplyTo
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
-import com.vitorpamplona.quartz.nip18Reposts.quotes.QTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.quotes
 import com.vitorpamplona.quartz.nip21UriScheme.toNostrUri
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
@@ -58,15 +54,20 @@ import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
-    private val database: AuxDatabase
+    private val database: AuxDatabase,
+    private val scope: CoroutineScope
 ): NostrRepository, RelayRepository {
     companion object {
         const val TAG = "DatabaseNostrRepository"
@@ -398,8 +399,17 @@ class DatabaseNostrRepository(
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>
     ) {
+        val triggerDelay = 5.seconds
+
+        val delayedFlowTriggerNostrEvent = nostrEvent.copy(
+            savedAt = Instant.fromEpochSeconds(
+                Clock.System.now().epochSeconds + triggerDelay.inWholeSeconds
+            )
+        )
+        logger.d("savedAt: ${nostrEvent.savedAt}")
+        logger.d("SavedAt: ${delayedFlowTriggerNostrEvent.savedAt}")
         database.nostrDao().storeNostrEvent(
-            nostrEvent,
+            delayedFlowTriggerNostrEvent,
             synchronizationRelayURLs = synchronizationRelayURLs,
             level = synchronizeNostrEventRequest.level
         )
@@ -409,6 +419,19 @@ class DatabaseNostrRepository(
                 nostrEventId = nostrEvent.id,
                 status = "processed"
             )
+        )
+
+        // Might not even need this delay
+//        scope.launch {
+//            delay(triggerDelay)
+//            database.nostrEventDao().upsert(
+//                nostrEvent
+//            )
+//        }
+        // Trigger the nostrEvent to appear in the feed...
+        delay(triggerDelay)
+        database.nostrEventDao().upsert(
+            nostrEvent
         )
     }
 

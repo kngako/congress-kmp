@@ -202,22 +202,22 @@ private fun TextNoteFeedItem(
                     )
                 }
 
-                item {
-                    SuggestionChip(
-                        label = {
-                            Text(
-                                text = if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
-                                    localNostrEvent.mentionedProfiles.joinToString(",") { it.profile?.humanReadableNameOrPubkey() ?: "Find user information" }
-                                } else {
-                                    ":-("
-                                }
-                            )
-                        },
-                        onClick = {
-
-                        }
-                    )
-                }
+//                item {
+//                    SuggestionChip(
+//                        label = {
+//                            Text(
+//                                text = if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
+//                                    localNostrEvent.mentionedProfiles.joinToString(",") { it?.profile?.humanReadableNameOrPubkey() ?: "Find user information" }
+//                                } else {
+//                                    ":-("
+//                                }
+//                            )
+//                        },
+//                        onClick = {
+//
+//                        }
+//                    )
+//                }
 
                 items(
                     items = nostrEvent.tags,

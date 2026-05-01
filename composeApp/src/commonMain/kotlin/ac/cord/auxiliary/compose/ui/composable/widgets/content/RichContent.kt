@@ -101,14 +101,19 @@ fun RichContent(
                         .filterIsInstance<ContentSegment.NostrProfileSegment>()
                         .map { it.pubkey }
 
+                    Logger.withTag("RichContent").d("profilePubKey: $profilePubkeys")
                     val profileNames = remember(profilePubkeys) {
                         val names = mutableMapOf<String, String>()
-                        for (pubkey in profilePubkeys) {
 
-                            val mentionedProfile = localNostrEvent.mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == pubkey }
-                            names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
-                                ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
+                        if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
+                            Logger.withTag("RichContent").d("mentionedProfiles: ${localNostrEvent.mentionedProfiles}")
+                            for (pubkey in profilePubkeys) {
+                                val mentionedProfile = localNostrEvent.mentionedProfiles.find { mentionedProfile -> mentionedProfile?.profile?.publicKey == pubkey }
+                                names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
+                                    ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
+                            }
                         }
+
                         names
                     }
                     // TODO Queue fetches for any missing profiles

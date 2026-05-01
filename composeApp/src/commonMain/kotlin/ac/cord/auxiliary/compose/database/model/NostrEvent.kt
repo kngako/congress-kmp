@@ -6,6 +6,8 @@ import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.Index
@@ -275,9 +277,22 @@ data class NostrEvent(
             }
         }
 
-        // TODO: Get quoted event from content...
-
         return null
+        // TODO: Bring in quoted text
+//        val quotedNotes = ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
+//            .filterIsInstance<ContentSegment.NostrNoteSegment>()
+//            .firstOrNull()
+//
+//        return quotedNotes?.let { quotedNote ->
+//            QuotedRelation(
+//                quotedNostrEventId = quotedNote.eventId,
+//                quotedProfilePublicKey = null
+//                ,
+//
+//                quotingNostrEventId = id,
+//                createdAt = createdAt
+//            )
+//        }
     } catch (e: Throwable) {
         logger.e("Failed to return Repost: ", e)
         return null

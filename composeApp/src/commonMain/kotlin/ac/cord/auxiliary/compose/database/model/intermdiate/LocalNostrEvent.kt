@@ -80,7 +80,7 @@ data class LocalNostrEvent(
         parentColumn = "id",
         entityColumn = "nostrEventId",
     )
-    val mentionedProfiles: List<LocalMention> = emptyList(),
+    val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {

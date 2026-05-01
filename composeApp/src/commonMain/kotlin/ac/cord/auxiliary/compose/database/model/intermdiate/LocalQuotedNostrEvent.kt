@@ -35,15 +35,11 @@ data class LocalQuotedNostrEvent(
     val profile: Profile?,
 
     @Relation(
+        entity = Mention::class,
         parentColumn = "id",
         entityColumn = "nostrEventId",
-        associateBy = Junction(
-            value = Mention::class,
-            parentColumn = "publicKey",
-            entityColumn = "publicKey"
-        )
     )
-    val mentionedProfiles: List<Profile> = emptyList()
+    val mentionedProfiles: List<LocalMention?> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {

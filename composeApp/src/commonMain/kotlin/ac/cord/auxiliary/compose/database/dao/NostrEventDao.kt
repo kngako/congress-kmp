@@ -16,28 +16,28 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NostrEventDao {
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND savedAt < strftime('%s', 'now')  ORDER BY createdAt DESC")
     fun  observeNostrEvents(kinds: Array<Kind>): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND savedAt < strftime('%s', 'now') ORDER BY createdAt DESC")
     fun  observeFilteredNostrEvents(
         kinds: Array<Kind>,
         search: String
     ): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND savedAt < strftime('%s', 'now') ORDER BY createdAt DESC")
     fun  observeFilteredNostrEvents(
         kinds: Array<Kind>,
         ids: Array<HexKey>,
     ): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors) ORDER BY createdAt DESC LIMIT 50")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors) AND savedAt < strftime('%s', 'now') ORDER BY createdAt DESC LIMIT 50")
     fun  observeAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
     ): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds) AND savedAt < strftime('%s', 'now') ORDER BY createdAt DESC")
     fun  observePublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey
@@ -48,7 +48,7 @@ interface NostrEventDao {
         query: RoomRawQuery
     ): Flow<List<LocalNostrEvent>>
 
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND savedAt < strftime('%s', 'now') ORDER BY savedAt DESC")
     fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")

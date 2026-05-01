@@ -14,6 +14,7 @@ import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import androidx.room.Dao
 import androidx.room.Transaction
+import androidx.room.useWriterConnection
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
@@ -289,6 +290,18 @@ abstract class NostrDao(
         nostrEvent.tags.taggedEvents().take(4).forEach { taggedEvent -> // We only look at the first 3 tagged events...
             val taggedNostrEvent = database.nostrEventDao().getNostrEventById(taggedEvent.eventId)
             if (taggedNostrEvent == null) {
+                database.nostrEventDao().insert(
+                    NostrEvent(
+                        id = taggedEvent.eventId,
+                        content = "Pending Sync... ",
+                        createdAt = GENESIS_AT,
+                        pubKey = nostrEvent.pubKey,
+                        sig = "",
+                        kind = nostrEvent.kind,
+                        tags = emptyArray()
+                    )
+                )
+
                 val recommendRelayUrl = taggedEvent.relay?.url
 
                 val synchronizeNostrEventRequests = if (recommendRelayUrl != null) {

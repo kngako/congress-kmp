@@ -70,16 +70,6 @@ fun AuxNavHost(
     navController: NavHostController
 ) {
     val logger = Logger.withTag("AuxNavHost")
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val databaseManager = DatabaseManager(auxGlobal)
-
-    val databaseNostrRepository = DatabaseNostrRepository(
-        database = databaseManager.auxDatabase
-    )
-    val searchRepository = DatabaseSearchRepository(
-        database = databaseManager.auxDatabase
-    )
 
     val exceptionHandler =
         CoroutineExceptionHandler { _, throwable ->
@@ -88,6 +78,20 @@ fun AuxNavHost(
 
     val applicationIOScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
     val applicationMainScope = CoroutineScope(Dispatchers.Main)
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val databaseManager = DatabaseManager(auxGlobal)
+
+    val databaseNostrRepository = DatabaseNostrRepository(
+        database = databaseManager.auxDatabase,
+        applicationIOScope
+    )
+    val searchRepository = DatabaseSearchRepository(
+        database = databaseManager.auxDatabase
+    )
+
+
 
 
     val navigationViewModel: NavigationViewModel =  viewModel (
