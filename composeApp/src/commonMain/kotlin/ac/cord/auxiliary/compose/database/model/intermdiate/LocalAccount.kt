@@ -6,8 +6,8 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
-import androidx.room.Embedded
-import androidx.room.Relation
+import androidx.room3.Embedded
+import androidx.room3.Relation
 
 data class LocalAccount(
     @Embedded val unsignedNostrEvent: UnsignedNostrEvent?,

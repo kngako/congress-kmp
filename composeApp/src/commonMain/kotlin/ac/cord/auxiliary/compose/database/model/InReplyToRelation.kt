@@ -5,10 +5,10 @@ import ac.cord.auxiliary.compose.database.model.traits.LocalStoreEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant

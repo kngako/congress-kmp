@@ -1,10 +1,10 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.Query
+import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Clock
 import kotlin.time.Instant

@@ -2,8 +2,8 @@ package ac.cord.auxiliary.compose.database.builder
 
 import ac.cord.auxiliary.compose.PlatformContext
 import ac.cord.auxiliary.compose.database.AuxDatabase
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
 
 actual object PlatformDatabaseBuilder {
     actual fun getDatabaseBuilder(platformContext: PlatformContext): RoomDatabase.Builder<AuxDatabase> {

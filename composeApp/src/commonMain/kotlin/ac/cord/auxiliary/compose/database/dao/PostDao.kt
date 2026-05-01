@@ -2,10 +2,10 @@ package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalPost
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.Query
+import androidx.room3.Upsert
 
 @Dao
 interface PostDao {

@@ -12,9 +12,9 @@ import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
-import androidx.room.Dao
-import androidx.room.Transaction
-import androidx.room.useWriterConnection
+import androidx.room3.Dao
+import androidx.room3.Transaction
+import androidx.room3.useWriterConnection
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents

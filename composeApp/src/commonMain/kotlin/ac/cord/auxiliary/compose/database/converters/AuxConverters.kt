@@ -3,7 +3,8 @@ package ac.cord.auxiliary.compose.database.converters
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
 import ac.cord.auxiliary.compose.database.model.typealiases.HexArray
 import ac.cord.auxiliary.compose.database.model.typealiases.KindArray
-import androidx.room.TypeConverter
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import androidx.room3.TypeConverter
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import kotlinx.serialization.json.Json
@@ -23,20 +24,20 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun fromTagArray(value: TagArray?): String? {
+    fun fromTagArray(value: Array<Array<String>>?): String? {
         // Returns null if the value is null, otherwise serializes to JSON string
         return value?.let { Json.encodeToString(it) }
     }
 
     @TypeConverter
-    fun toTagArray(value: String?): TagArray? {
+    fun toTagArray(value: String?): Array<Array<String>>? {
         // Decodes the JSON string back into the nested array structure
-        return value?.let { Json.decodeFromString<TagArray>(it) }
+        return value?.let { Json.decodeFromString<Array<Array<String>>>(it) }
     }
 
 
     @TypeConverter
-    fun fromHexArray(value: HexArray?): String? = try {
+    fun fromHexArray(value: Array<String>?): String? = try {
         return value?.let {
             Json.encodeToString(it).lowercase()
         }
@@ -46,9 +47,9 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun toHexArray(value: String?): HexArray? = try {
+    fun toHexArray(value: String?): Array<String>? = try {
         return value?.let {
-            Json.decodeFromString<HexArray>(it)
+            Json.decodeFromString<Array<String>>(it)
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to HexArray $value", e)
@@ -56,7 +57,7 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun fromKindArray(value: KindArray?): String? = try {
+    fun fromKindArray(value: Array<Int>?): String? = try {
         return value?.let {
             Json.encodeToString(it)
         }
@@ -66,9 +67,9 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun toKindArray(value: String?): KindArray? = try {
+    fun toKindArray(value: String?): Array<Int>? = try {
         return value?.let {
-            Json.decodeFromString<KindArray>(it)
+            Json.decodeFromString<Array<Int>>(it)
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to KindArray $value", e)
@@ -76,7 +77,7 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun fromFilterArray(value: SynchronizationFilterArray?): String? = try {
+    fun fromFilterArray(value: Array<SynchronizationFilter>?): String? = try {
         return value?.let {
             Json.encodeToString(value)
         }
@@ -86,9 +87,9 @@ class AuxConverters {
     }
 
     @TypeConverter
-    fun toFilterArray(value: String?): SynchronizationFilterArray? = try {
+    fun toFilterArray(value: String?): Array<SynchronizationFilter>? = try {
         return value?.let {
-            Json.decodeFromString<SynchronizationFilterArray>(it)
+            Json.decodeFromString<Array<SynchronizationFilter>>(it)
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to FilterArray $value", e)

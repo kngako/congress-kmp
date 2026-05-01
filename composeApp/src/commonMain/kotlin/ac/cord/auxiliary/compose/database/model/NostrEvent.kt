@@ -8,10 +8,10 @@ import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
-import androidx.room.Entity
-import androidx.room.Ignore
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room3.Entity
+import androidx.room3.Ignore
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -52,7 +52,7 @@ data class NostrEvent(
     val id: String,
     val pubKey: HexKey,
     val kind: Kind,
-    val tags: TagArray,
+    val tags: Array<Array<String>>,
     val content: String,
     val sig: HexKey,
 

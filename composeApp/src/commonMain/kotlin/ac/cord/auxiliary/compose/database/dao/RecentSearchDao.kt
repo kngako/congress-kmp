@@ -1,10 +1,10 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.RecentSearch
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Delete
+import androidx.room3.Query
+import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao

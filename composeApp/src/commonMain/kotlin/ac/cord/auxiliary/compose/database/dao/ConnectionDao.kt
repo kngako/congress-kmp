@@ -1,11 +1,11 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.Connection
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Delete
+import androidx.room3.Insert
+import androidx.room3.Query
+import androidx.room3.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 

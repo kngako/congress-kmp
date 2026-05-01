@@ -2,8 +2,9 @@ package ac.cord.auxiliary.compose.database.model
 
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import androidx.room3.Entity
+import androidx.room3.PrimaryKey
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -12,7 +13,7 @@ data class RecentSearch(
     @PrimaryKey
     val query: String,
 
-    val synchronizationFilters: SynchronizationFilterArray? = null,
+    val synchronizationFilters: Array<SynchronizationFilter>? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,

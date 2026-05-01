@@ -1,6 +1,6 @@
 package ac.cord.auxiliary.compose.database.model
 
-import androidx.room.Entity
+import androidx.room3.Entity
 
 @Entity(
     primaryKeys = ["publicKey", "type", "url"]

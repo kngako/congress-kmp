@@ -4,10 +4,11 @@ import ac.cord.auxiliary.compose.database.model.traits.OptionalNostrEventEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
 import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilterArray
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -45,7 +46,7 @@ data class SynchronizeNostrEventRequest(
 
     val level: Int,
 
-    val synchronizationFilters: SynchronizationFilterArray,
+    val synchronizationFilters: Array<SynchronizationFilter>,
 
     override val nostrEventId: HexKey? = null,
     override val unsignedNostrEventId: Long? = null,

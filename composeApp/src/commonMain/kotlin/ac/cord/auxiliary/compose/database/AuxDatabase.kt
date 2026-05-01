@@ -36,11 +36,11 @@ import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventResult
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.Zap
-import androidx.room.Database
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
-import androidx.room.immediateTransaction
-import androidx.room.useWriterConnection
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
+import androidx.room3.TypeConverters
+import androidx.room3.immediateTransaction
+import androidx.room3.useWriterConnection
 import kotlin.time.Instant
 
 val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)

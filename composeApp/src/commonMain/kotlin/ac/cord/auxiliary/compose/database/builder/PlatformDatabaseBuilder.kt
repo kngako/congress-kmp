@@ -2,7 +2,7 @@ package ac.cord.auxiliary.compose.database.builder
 
 import ac.cord.auxiliary.compose.PlatformContext
 import ac.cord.auxiliary.compose.database.AuxDatabase
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO

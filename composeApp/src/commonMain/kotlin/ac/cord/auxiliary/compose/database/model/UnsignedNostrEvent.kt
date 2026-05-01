@@ -4,9 +4,9 @@ import ac.cord.auxiliary.compose.database.model.traits.BroadcastableEntity
 import ac.cord.auxiliary.compose.database.model.traits.LocalStoreEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
@@ -26,8 +26,8 @@ data class UnsignedNostrEvent(
 
     val pubKey: HexKey,
     val kind: Kind,
-    val tags: TagArray,
-    val privateTags: TagArray? = null,
+    val tags: Array<Array<String>>,
+    val privateTags: Array<Array<String>>? = null,
     val content: String,
 
     val signedAt: Instant? = null,

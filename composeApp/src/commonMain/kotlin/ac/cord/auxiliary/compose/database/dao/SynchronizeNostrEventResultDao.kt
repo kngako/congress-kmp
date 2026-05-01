@@ -1,8 +1,8 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventResult
-import androidx.room.Dao
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Upsert
 
 @Dao
 interface SynchronizeNostrEventResultDao {

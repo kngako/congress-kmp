@@ -3,7 +3,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.androidx.room)
+//    alias(libs.plugins.androidx.room)
+    alias(libs.plugins.androidx.room3)
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
@@ -38,7 +39,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.room.sqlite.wrapper)
+//            implementation(libs.androidx.room.sqlite.wrapper)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.okhttp.coroutines)
         }
@@ -54,7 +55,8 @@ kotlin {
             implementation(libs.androidx.paging.common)
             implementation(libs.androidx.paging.compose)
 
-            implementation(libs.androidx.room.runtime)
+//            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.room3.runtime)
             implementation(libs.androidx.sqlite.bundled)
 
             implementation(libs.coil.compose)
@@ -132,15 +134,16 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
-    add("kspAndroid", libs.androidx.room.compiler)
-    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+//    ksp(libs.androidx.room3.compiler)
+    add("kspAndroid", libs.androidx.room3.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
 //    add("kspIosX64", libs.androidx.room.compiler)
-    add("kspIosArm64", libs.androidx.room.compiler)
-    add("kspJvm", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room3.compiler)
+    add("kspJvm", libs.androidx.room3.compiler)
     // Add any other platform target you use in your project, for example kspDesktop
 }
 
-room {
+room3 {
     schemaDirectory("$projectDir/schemas")
 }
 

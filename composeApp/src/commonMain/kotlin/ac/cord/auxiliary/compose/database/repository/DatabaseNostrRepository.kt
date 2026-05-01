@@ -58,6 +58,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
 import kotlin.time.Clock
@@ -74,6 +76,8 @@ class DatabaseNostrRepository(
     }
 
     val logger = Logger.withTag(TAG)
+
+    private val storeNostrEventMutex = Mutex()
 
     override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)
@@ -399,40 +403,20 @@ class DatabaseNostrRepository(
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>
     ) {
-        val triggerDelay = 5.seconds
-
-        val delayedFlowTriggerNostrEvent = nostrEvent.copy(
-            savedAt = Instant.fromEpochSeconds(
-                Clock.System.now().epochSeconds + triggerDelay.inWholeSeconds
+        storeNostrEventMutex.withLock {
+            database.nostrDao().storeNostrEvent(
+                nostrEvent,
+                synchronizationRelayURLs = synchronizationRelayURLs,
+                level = synchronizeNostrEventRequest.level
             )
-        )
-        logger.d("savedAt: ${nostrEvent.savedAt}")
-        logger.d("SavedAt: ${delayedFlowTriggerNostrEvent.savedAt}")
-        database.nostrDao().storeNostrEvent(
-            delayedFlowTriggerNostrEvent,
-            synchronizationRelayURLs = synchronizationRelayURLs,
-            level = synchronizeNostrEventRequest.level
-        )
 
-        database.synchronizeNostrEventRequestDao().upsert(
-            synchronizeNostrEventRequest.copy(
-                nostrEventId = nostrEvent.id,
-                status = "processed"
+            database.synchronizeNostrEventRequestDao().upsert(
+                synchronizeNostrEventRequest.copy(
+                    nostrEventId = nostrEvent.id,
+                    status = "processed"
+                )
             )
-        )
-
-        // Might not even need this delay
-//        scope.launch {
-//            delay(triggerDelay)
-//            database.nostrEventDao().upsert(
-//                nostrEvent
-//            )
-//        }
-        // Trigger the nostrEvent to appear in the feed...
-        delay(triggerDelay)
-        database.nostrEventDao().upsert(
-            nostrEvent
-        )
+        }
     }
 
     override suspend fun queueSynchronizeNostrEvent(

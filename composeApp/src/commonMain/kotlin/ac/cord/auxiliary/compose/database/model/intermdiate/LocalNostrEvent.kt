@@ -21,10 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.room.Embedded
-import androidx.room.Ignore
-import androidx.room.Junction
-import androidx.room.Relation
+import androidx.room3.Embedded
+import androidx.room3.Ignore
+import androidx.room3.Junction
+import androidx.room3.Relation
 
 data class LocalNostrEvent(
     @Embedded val nostrEvent: NostrEvent,
