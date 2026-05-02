@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetai
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.SearchResultRoute
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.SearchViewModel
 import ac.cord.auxiliary.compose.ui.view.state.SearchUIState
@@ -230,13 +231,14 @@ fun SearchScreen(
                                 ListItem(
                                     headlineContent = {
                                         Text(
-                                            profile.humanReadableNameOrPubkey(),
+                                            text = profile.humanReadableNameOrPubkey(),
                                             maxLines = 1,
                                         )
                                     },
                                     supportingContent = {
                                         Text(
                                             text = profile.staticIdentifier() ?: "",
+                                            color = ProfileColor.fromPublicKey(profile.publicKey),
                                             maxLines = 1,
                                         )
                                     },
@@ -279,7 +281,6 @@ fun SearchScreen(
 
                                             LazyRow {
                                                 items(searchViewModel.searchableProfiles) { profile ->
-                                                    val profileName = profile.humanReadableNameOrPubkey()
                                                     Column(
                                                         modifier = Modifier.padding(10.dp).width(70.dp),
                                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -304,7 +305,8 @@ fun SearchScreen(
                                                         }
 
                                                         Text(
-                                                            text = profileName,
+                                                            text = profile.humanReadableNameOrPubkey(),
+                                                            color = ProfileColor.fromPublicKey(profile.publicKey),
                                                             overflow = TextOverflow.Ellipsis,
                                                             maxLines = 1,
                                                             style = MaterialTheme.typography.labelSmall
