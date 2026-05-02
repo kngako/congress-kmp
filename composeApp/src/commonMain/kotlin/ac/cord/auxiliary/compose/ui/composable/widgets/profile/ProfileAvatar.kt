@@ -49,12 +49,8 @@ fun ProfileAvatar(
 ) {
     val modifier = Modifier.size(size).clip(shape = shape)
 
-    val tintColor = Color.hsl(
-        hue = abs(
-            publicKey.hashCode()
-        ).mod(360).toFloat(),
-        saturation = 0.55f,
-        lightness = 0.45f
+    val tintColor = ProfileColor.fromPublicKey(
+        publicKey
     )
 
     if (profile?.picture == null) {

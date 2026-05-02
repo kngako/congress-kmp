@@ -1,10 +1,12 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
 import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.Constants.INLINE_CONTENT_TAG
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
@@ -195,12 +197,13 @@ fun RichContent(
                                     Logger.withTag("RichContent").d("NostrProfileSegment: $seg")
                                     val pubkey = seg.pubkey
                                     val displayName = profileNames[seg.pubkey] ?: seg.pubkey.take(8)
+                                    
                                     withLink(
                                         LinkAnnotation.Clickable("profile") {
                                             onProfileClick?.invoke(pubkey)
                                         }
                                     ) {
-                                        withStyle(SpanStyle(color = effectiveLinkColor, textDecoration = linkDecoration)) {
+                                        withStyle(SpanStyle(color = ProfileColor.fromPublicKey(seg.pubkey), textDecoration = linkDecoration)) {
                                             append("@${displayName.trimEnd()}")
                                         }
                                     }
