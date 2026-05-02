@@ -131,7 +131,8 @@ private fun EventListViewPreview() {
                 profile = Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
-                    displayName = "Frank Talk"
+                    displayName = "Frank Talk",
+                    nip05 = "frank@talk.at"
                 ),
             ).ListView(
                 onNavigateToEvent = {}

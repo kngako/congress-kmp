@@ -8,6 +8,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEven
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -92,11 +93,22 @@ internal fun TextNoteFeedItem(
                         profile = profile
                     )
 
-                    Text(
-                        modifier = Modifier.weight(1f),
-                        text = profile.displayName ?: profile.userName ?: nostrEvent.pubKey,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ){
+                        Text(
+                            text = profile.humanReadableNameOrPubkey(),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        profile.staticIdentifier()?.let { staticIdentifier ->
+                            Text(
+                                text = staticIdentifier,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ProfileColor.fromProfile(profile)
+                            )
+                        }
+                    }
                 }
             } else {
                 Text(
