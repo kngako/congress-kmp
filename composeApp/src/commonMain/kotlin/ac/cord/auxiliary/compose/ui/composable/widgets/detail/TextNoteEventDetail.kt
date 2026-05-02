@@ -143,6 +143,7 @@ fun TextNoteEventDetail(
                             ),
                             nostrEvent = localNostrEvent.nostrEvent,
                             localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
+                            mentionedProfiles = localNostrEvent.mentionedProfiles
                         )
 
                         Row(

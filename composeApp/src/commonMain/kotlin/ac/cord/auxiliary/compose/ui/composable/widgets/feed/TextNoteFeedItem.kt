@@ -36,6 +36,7 @@ internal fun TextNoteFeedItem(
     profile: Profile?,
     localInReplyToNostrEvent: LocalInReplyToNostrEvent?,
     localQuotedNostrEvent: LocalQuotedNostrEvent?,
+    mentionedProfiles: List<LocalMention?>?,
     onNavigateToEvent: (HexKey) -> Unit
 ) {
     if (localInReplyToNostrEvent != null) {
@@ -107,6 +108,7 @@ internal fun TextNoteFeedItem(
                 modifier = Modifier.fillMaxWidth(),
                 nostrEvent = nostrEvent,
                 localQuotedNostrEvent = localQuotedNostrEvent,
+                mentionedProfiles = mentionedProfiles
             )
 
             LazyRow(
