@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class FeedListViewModel(
@@ -60,9 +61,9 @@ class FeedListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.observeNostrFeed(
                 synchronizationFilter
-            ).collect { localNostrEvents ->
+            ).distinctUntilChanged().collect { localNostrEvents ->
                 feedListUIState = FeedListUIState.Loaded(
-                    localNostrEvents = localNostrEvents?.filterNotNull() ?: emptyList()
+                    localNostrEvents = localNostrEvents
                 )
             }
         }

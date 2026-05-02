@@ -26,6 +26,7 @@ import com.vitorpamplona.quartz.nip71Video.VideoNormalEvent
 import com.vitorpamplona.quartz.nip71Video.VideoShortEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 enum class SearchResultType {
@@ -159,9 +160,9 @@ class SearchResultViewModel(
         logger.d("loadSearchResultFeed: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             // This is something not taking into consideration the results we are actually looking for...
-            nostrRepository.observeNostrFeed(synchronizationFilter).collect { localNostrEvents ->
+            nostrRepository.observeNostrFeed(synchronizationFilter).distinctUntilChanged().collect { localNostrEvents ->
                 searchResultListUIState = SearchResultListUIState.Loaded(
-                    localNostrEvents = localNostrEvents?.filterNotNull() ?: emptyList()
+                    localNostrEvents = localNostrEvents
                 )
             }
         }
