@@ -423,7 +423,7 @@ private fun RichContentPreview() {
                     modifier = Modifier.padding(10.dp),
                     nostrEvent = NostrEvent(
                         id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
-                        content = "Something something seomthing nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:note1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh955s53z8ee",
+                        content = "Something something something nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:note1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh955s53z8ee",
                         pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         kind = 0,
                         sig = "hexsig",
