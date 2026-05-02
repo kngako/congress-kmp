@@ -110,7 +110,7 @@ class WriteNewNoteViewModel(
                         localProfile = localProfile,
                         inReplyToNostrEvent = inReplyToNostrEvent,
                         quotedNostrEvent = quotedNostrEvent,
-                        text = writeNewNoteFormState.textField.text.value,
+                        text = writeNewNoteFormState.textField.textFieldState.text.toString(),
                     )
             }
         }
@@ -118,7 +118,7 @@ class WriteNewNoteViewModel(
     }
 
     fun validateInput(): Boolean {
-        if (writeNewNoteFormState.textField.text.value.isBlank()) {
+        if (writeNewNoteFormState.textField.textFieldState.text.isBlank()) {
             writeNewNoteFormState.textField.errorMessage.value = "Please input a note"
             return false
         } else {
@@ -138,7 +138,7 @@ class WriteNewNoteViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.createNewTextNote(
                 publicKey = SeedManager.activePublicKey().toHexKey(),
-                textInput = writeNewNoteFormState.textField.text.value,
+                textInput = writeNewNoteFormState.textField.textFieldState.text.toString(),
                 inReplyToNostrEvent = inReplyToNostrEvent,
                 quotedNostrEvent = quotedNostrEvent,
                 onError = {

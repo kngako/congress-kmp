@@ -50,7 +50,7 @@ class SignInToProfileViewModel(
     )
 
     fun validateCredential(): Entity? {
-        return signInToProfileFormState.textField.text.value.let { credentialText ->
+        return signInToProfileFormState.textField.textFieldState.text.toString().let { credentialText ->
             if (credentialText.isBlank()) {
                 signInToProfileFormState.textField.errorMessage.value = "Please input a credential"
                 return null
@@ -58,7 +58,7 @@ class SignInToProfileViewModel(
                 signInToProfileFormState.textField.errorMessage.value = null
             }
 
-            Nip19Parser.uriToRoute(signInToProfileFormState.textField.text.value)?.entity
+            Nip19Parser.uriToRoute(signInToProfileFormState.textField.textFieldState.text.toString())?.entity
         }
     }
 

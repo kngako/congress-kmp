@@ -69,10 +69,7 @@ fun SignInToProfileScreen(
 
                         TextField(
                             modifier = Modifier.fillMaxWidth(),
-                            value = signInToProfileViewModel.signInToProfileFormState.textField.text.value,
-                            onValueChange = {
-                                signInToProfileViewModel.signInToProfileFormState.textField.text.value = it
-                            },
+                            state = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState,
                             isError = signInToProfileViewModel.signInToProfileFormState.textField.errorMessage.value != null,
                             supportingText = signInToProfileViewModel.signInToProfileFormState.textField.errorMessage.value?.let {
                                 {
@@ -114,13 +111,13 @@ fun SignInToProfileScreen(
                                     when (credentialEntity) {
                                         is NSec -> {
                                             SignInToProfileUIState.ConfirmNsecSignIn(
-                                                nsec = signInToProfileViewModel.signInToProfileFormState.textField.text.value,
+                                                nsec = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }
                                         is NPub -> {
                                             SignInToProfileUIState.ConfirmNpubSignIn(
-                                                npub = signInToProfileViewModel.signInToProfileFormState.textField.text.value,
+                                                npub = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }

@@ -128,10 +128,7 @@ fun WriteNewNoteScreen(
 
                                     TextField(
                                         modifier = Modifier.fillMaxWidth(),
-                                        value = writeNewNoteViewModel.writeNewNoteFormState.textField.text.value,
-                                        onValueChange = {
-                                            writeNewNoteViewModel.writeNewNoteFormState.textField.text.value = it
-                                        },
+                                        state = writeNewNoteViewModel.writeNewNoteFormState.textField.textFieldState,
                                         isError = writeNewNoteViewModel.writeNewNoteFormState.textField.errorMessage.value != null,
                                         supportingText = writeNewNoteViewModel.writeNewNoteFormState.textField.errorMessage.value?.let {
                                             {

@@ -48,14 +48,14 @@ class CreateProfileViewModel(
     )
 
     fun validateInput(): Boolean {
-        if (createProfileFormState.nameField.text.value.isBlank()) {
+        if (createProfileFormState.nameField.textFieldState.text.isBlank()) {
             createProfileFormState.nameField.errorMessage.value = "Please input a display name"
             return false
         } else {
             createProfileFormState.nameField.errorMessage.value = null
         }
 
-        if (createProfileFormState.biographyField.text.value.isBlank()) {
+        if (createProfileFormState.biographyField.textFieldState.text.isBlank()) {
             createProfileFormState.biographyField.errorMessage.value = "Please input a biography"
             return false
         } else {
@@ -77,8 +77,8 @@ class CreateProfileViewModel(
 
             nostrRepository.createNewProfile(
                 publicKey,
-                name = createProfileFormState.nameField.text.value,
-                biography = createProfileFormState.biographyField.text.value,
+                name = createProfileFormState.nameField.textFieldState.text.toString(),
+                biography = createProfileFormState.biographyField.textFieldState.text.toString(),
                 onError = {
                     createProfileUIState.value = CreateProfileUIState.Error
                 },

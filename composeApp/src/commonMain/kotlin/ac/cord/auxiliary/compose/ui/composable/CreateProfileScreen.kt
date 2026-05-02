@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Description
@@ -108,10 +109,11 @@ fun CreateProfileScreen(
 
                         TextField(
                             modifier = Modifier.fillMaxWidth(),
-                            value = createProfileViewModel.createProfileFormState.nameField.text.value,
-                            onValueChange = {
-                                createProfileViewModel.createProfileFormState.nameField.text.value = it
-                            },
+                            state = createProfileViewModel.createProfileFormState.nameField.textFieldState,
+//                            value = createProfileViewModel.createProfileFormState.nameField.text.value,
+//                            onValueChange = {
+//                                createProfileViewModel.createProfileFormState.nameField.text.value = it
+//                            },
                             isError = createProfileViewModel.createProfileFormState.nameField.errorMessage.value != null,
                             supportingText = createProfileViewModel.createProfileFormState.nameField.errorMessage.value?.let {
                                 {
@@ -123,7 +125,7 @@ fun CreateProfileScreen(
                                     )
                                 }
                             },
-                            maxLines = 1,
+                            lineLimits = TextFieldLineLimits.SingleLine,
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
                             ),
@@ -155,10 +157,7 @@ fun CreateProfileScreen(
 
                         TextField(
                             modifier = Modifier.fillMaxWidth(),
-                            value = createProfileViewModel.createProfileFormState.biographyField.text.value,
-                            onValueChange = {
-                                createProfileViewModel.createProfileFormState.biographyField.text.value = it
-                            },
+                            state = createProfileViewModel.createProfileFormState.biographyField.textFieldState,
                             isError = createProfileViewModel.createProfileFormState.biographyField.errorMessage.value != null,
                             supportingText = createProfileViewModel.createProfileFormState.biographyField.errorMessage.value?.let {
                                 {
@@ -170,7 +169,7 @@ fun CreateProfileScreen(
                                     )
                                 }
                             },
-                            maxLines = 1,
+                            lineLimits = TextFieldLineLimits.MultiLine(4),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
                             ),
@@ -208,8 +207,8 @@ fun CreateProfileScreen(
                                     if (isInputValid) {
                                         createProfileViewModel.createProfileUIState.value =
                                             CreateProfileUIState.ConfirmInput(
-                                                name = createProfileViewModel.createProfileFormState.nameField.text.value,
-                                                bio = createProfileViewModel.createProfileFormState.biographyField.text.value
+                                                name = createProfileViewModel.createProfileFormState.nameField.textFieldState.text.toString(),
+                                                bio = createProfileViewModel.createProfileFormState.biographyField.textFieldState.text.toString()
                                             )
                                     }
                                 }
