@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,8 +55,9 @@ fun LocalNostrEvent.ListView(
                 ) {
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = profile?.displayName ?: profile?.userName ?: nostrEvent.pubKey,
-                        style = MaterialTheme.typography.labelSmall
+                        text = profile?.humanReadableNameOrPubkey() ?: nostrEvent.pubKey,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
                     )
                     Text(
                         text = "reposted",
