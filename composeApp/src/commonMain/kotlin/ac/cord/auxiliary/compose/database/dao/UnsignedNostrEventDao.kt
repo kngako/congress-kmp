@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
 import androidx.room3.Dao
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -21,6 +22,7 @@ interface UnsignedNostrEventDao {
     @Upsert
     suspend fun upsert(unsignedNostrEvent: UnsignedNostrEvent): Long
 
+    @Transaction
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfile(publicKey: String): Flow<LocalAccount?>
 
