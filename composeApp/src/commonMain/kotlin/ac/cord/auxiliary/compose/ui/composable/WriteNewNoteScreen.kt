@@ -11,6 +11,7 @@ import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.WriteNewNoteViewModel
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
@@ -43,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -123,7 +125,7 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
-                                    val mentionedProfiles: List<LocalMention> = emptyList()
+                                    val mentionedProfiles: List<Profile> = emptyList()
 
                                     TextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -174,13 +176,21 @@ fun WriteNewNoteScreen(
 
                                             if (mentionedProfiles.isNotEmpty()) {
                                                 for (nostrProfile in nostrProfiles) {
-                                                    mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == nostrProfile.pubkey }?.let { mentionedProfile ->
-                                                        val profileMention = mentionedProfile.profile?.humanReadableNameOrPubkey() ?: "${nostrProfile.pubkey.take(8)}...${nostrProfile.pubkey.takeLast(4)}"
+                                                    mentionedProfiles.find { mentionedProfile -> mentionedProfile.publicKey == nostrProfile.pubkey }?.let { mentionedProfile ->
+                                                        val profileMention = "@${mentionedProfile.humanReadableNameOrPubkey()}"
 
                                                         replace(
                                                             start = nostrProfile.startIndex,
                                                             end = nostrProfile.endIndex,
-                                                            text = "@$profileMention"
+                                                            text = profileMention
+                                                        )
+
+                                                        addStyle(
+                                                            SpanStyle(
+                                                                color = ProfileColor.fromPublicKey(mentionedProfile.publicKey)
+                                                            ),
+                                                            nostrProfile.startIndex,
+                                                            profileMention.length
                                                         )
                                                     }
                                                 }
