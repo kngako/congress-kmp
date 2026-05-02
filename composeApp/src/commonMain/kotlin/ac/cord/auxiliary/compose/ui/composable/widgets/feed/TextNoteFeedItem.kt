@@ -4,11 +4,13 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalInReplyToNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
+import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,11 +24,13 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
@@ -182,6 +186,37 @@ internal fun TextNoteFeedItem(
                 style = MaterialTheme.typography.labelLarge,
                 textAlign = TextAlign.End,
                 text = nostrEvent.createdAt.toFormattedTimeAndDateString()
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun EventListViewPreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            TextNoteFeedItem(
+                nostrEvent = NostrEvent(
+                    id = "hex",
+                    content = "Something something something",
+                    pubKey = "hexpubkeypubkeypubkeypubkey",
+                    kind = 0,
+                    sig = "hexsig",
+                    tags = emptyArray()
+                ),
+                profile = Profile(
+                    publicKey = "",
+                    nostrEventId = "referenced",
+                    displayName = "Frank Talk",
+                    nip05 = "frank@talk.at"
+                ),
+                localQuotedNostrEvent = null,
+                localInReplyToNostrEvent = null,
+                mentionedProfiles = emptyList(),
+                onNavigateToEvent = {}
             )
         }
     }

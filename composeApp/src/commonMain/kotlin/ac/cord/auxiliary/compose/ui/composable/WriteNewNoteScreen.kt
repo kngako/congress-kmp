@@ -461,7 +461,7 @@ private fun WriteNewNoteScreenPreview() {
                 initialWriteNewNoteUIState =
                     WriteNewNoteUIState.InputPrompt(
 //                        text = "Yes, I did it. So WHAT?!",
-                        quotedNostrEvent = LocalNostrEvent(
+                        inReplyToNostrEvent = LocalNostrEvent(
                             nostrEvent = NostrEvent(
                                 id = "eventId",
                                 pubKey = "publicKey",
