@@ -35,7 +35,7 @@ import coil3.compose.AsyncImage
 fun RichContent(
     nostrEvent: NostrEvent,
     localQuotedNostrEvent: LocalQuotedNostrEvent?,
-    mentionedProfiles: List<LocalMention?>?,
+    mentionedProfiles: List<LocalMention>,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     color: Color = MaterialTheme.colorScheme.onSurface,
     linkColor: Color = Color.Unspecified,
@@ -110,10 +110,10 @@ fun RichContent(
                     val profileNames = remember(profilePubkeys) {
                         val names = mutableMapOf<String, String>()
 
-                        if (mentionedProfiles?.isNotEmpty() == true) {
+                        if (mentionedProfiles.isNotEmpty()) {
                             Logger.withTag("RichContent").d("mentionedProfiles: ${mentionedProfiles}")
                             for (pubkey in profilePubkeys) {
-                                val mentionedProfile = mentionedProfiles?.find { mentionedProfile -> mentionedProfile?.profile?.publicKey == pubkey }
+                                val mentionedProfile = mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == pubkey }
                                 names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
                                     ?: "${pubkey.take(8)}...${pubkey.takeLast(4)}"
                             }

@@ -38,6 +38,12 @@ data class LocalInReplyToNostrEvent(
     )
     val profile: Profile?,
 
+    @Relation(
+        entity = Mention::class,
+        parentColumn = "inReplyToNostrEventId",
+        entityColumn = "mentioningNostrEventId",
+    )
+    val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {
     @Composable
     fun RenderNotePreview() {
