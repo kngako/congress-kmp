@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -106,24 +107,27 @@ fun TextNoteEventDetail(
                                     style = MaterialTheme.typography.bodyLarge
                                 )
 
-                                profile?.nip05?.let {
+                                profile?.staticIdentifier()?.let { staticIdentifier ->
                                     Text(
-                                        text = profile.nip05 ?: "",
-                                        style = MaterialTheme.typography.labelMedium
+                                        text = staticIdentifier,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = ProfileColor.fromProfile(
+                                            profile
+                                        )
                                     )
                                 }
                             }
 
 
-                            Button(
-                                onClick = {
-
-                                }
-                            ) {
-                                Text(
-                                    "Follow"
-                                )
-                            }
+//                            Button(
+//                                onClick = {
+//
+//                                }
+//                            ) {
+//                                Text(
+//                                    "Follow"
+//                                )
+//                            }
 
                             IconButton(
                                 onClick = {
@@ -253,6 +257,7 @@ It has survived not only five centuries, but also the leap into electronic types
                     profile = Profile(
                         publicKey = "pubKey",
                         displayName = "John Doe",
+                        nip05 = "john@doe.me",
                         nostrEventId = "nostrEventId"
                     )
                 ),
