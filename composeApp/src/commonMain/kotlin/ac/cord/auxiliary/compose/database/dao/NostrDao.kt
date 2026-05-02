@@ -526,7 +526,7 @@ abstract class NostrDao(
 
                 repostedRelation.repostedProfilePublicKey
             } else {
-                repostedNostrEvent.pubKey
+                repostedRelation.repostedProfilePublicKey ?: repostedNostrEvent.pubKey
             }
 
             val repostedProfile = repostedProfilePublicKey?.let { database.profileDao().getProfileByPublicKey(it) }
