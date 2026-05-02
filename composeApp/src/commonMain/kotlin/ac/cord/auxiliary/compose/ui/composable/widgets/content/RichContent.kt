@@ -1,17 +1,24 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.Constants.INLINE_CONTENT_TAG
+import ac.cord.auxiliary.compose.ui.composable.widgets.feed.ListView
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
+import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +37,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
 
@@ -113,7 +122,7 @@ fun RichContent(
                         val names = mutableMapOf<String, String>()
 
                         if (mentionedProfiles.isNotEmpty()) {
-                            Logger.withTag("RichContent").d("mentionedProfiles: ${mentionedProfiles}")
+                            Logger.withTag("RichContent").d("mentionedProfiles: $mentionedProfiles")
                             for (pubkey in profilePubkeys) {
                                 val mentionedProfile = mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == pubkey }
                                 names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
@@ -250,7 +259,6 @@ fun RichContent(
 
                     Text(text = annotated, style = style, inlineContent = emojiInlineContent)
                 } else {
-                    Logger.w("Doing the else: $group")
                     val segment = group as ContentSegment
                     when (segment) {
                         is ContentSegment.ImageSegment -> {
@@ -291,7 +299,7 @@ fun RichContent(
                                 )
                             } else {
                                 Text(
-                                    text = "nostr:${segment.eventId.take(8)}...",
+                                    text = "nostr:${segment.eventId.take(8)}..",
                                     style = style,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -391,12 +399,69 @@ fun RichContent(
                             Text(
                                 text = segment.toString(),
                                 style = style,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun RichContentPreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Card {
+                RichContent(
+                    nostrEvent = NostrEvent(
+                        id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
+                        content = "Something something seomthing nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:note1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh955s53z8ee",
+                        pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    localQuotedNostrEvent = LocalQuotedNostrEvent(
+                        nostrEvent = NostrEvent(
+                            id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a521",
+                            content = "Quote me on this!",
+                            pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                            kind = 0,
+                            sig = "hexsig",
+                            tags = emptyArray()
+                        ),
+                        quotedRelation = QuotedRelation(
+                            quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
+                            quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                            quotedNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a521"
+                        ),
+                        profile = Profile(
+                            publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                            nostrEventId = "referenced",
+                            displayName = "Frank Talk"
+                        ),
+                    ),
+                    mentionedProfiles = listOf(
+                        LocalMention(
+                            mention = Mention(
+                                id = 1,
+                                mentionedPublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                            ),
+                            profile = Profile(
+                                publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                                nostrEventId = "referenced",
+                                displayName = "Frank Talk"
+                            ),
+                        )
+                    ),
+                )
+            }
+
         }
     }
 }
