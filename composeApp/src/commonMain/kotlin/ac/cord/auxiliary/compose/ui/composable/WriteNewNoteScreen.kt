@@ -1,5 +1,6 @@
 package ac.cord.auxiliary.compose.ui.composable
 
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
@@ -10,11 +11,13 @@ import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.WriteNewNoteViewModel
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,11 +28,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,7 +47,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -50,11 +60,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.time.Clock
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun WriteNewNoteScreen(
     initialWriteNewNoteUIState: WriteNewNoteUIState = WriteNewNoteUIState.Loading,
@@ -125,7 +136,7 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
-                                    val mentionedProfiles: List<Profile> = emptyList()
+
 
                                     TextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -168,20 +179,30 @@ fun WriteNewNoteScreen(
                                                 size = 35.dp
                                             )
                                         },
+                                        inputTransformation = InputTransformation {
+                                            if (changes.changeCount > 0) {
+                                                val range = changes.getRange(changes.changeCount-1)
+                                                val newInput = asCharSequence().substring(range.start, range.end)
+
+                                                if (newInput == "@") {
+                                                    writeNewNoteViewModel.atSymbolRange.value = range
+                                                }
+                                            }
+                                        },
                                         outputTransformation = OutputTransformation {
                                             val content = originalText.toString()
                                             val nostrProfiles = ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
                                                 .filterIsInstance<ContentSegment.NostrProfileSegment>()
                                                 // TODO: We might want to order these profiles by the startIndex so that we can replace the better
 
-                                            if (mentionedProfiles.isNotEmpty()) {
+                                            if (writeNewNoteViewModel.mentionedProfiles.isNotEmpty()) {
                                                 for (nostrProfile in nostrProfiles) {
-                                                    mentionedProfiles.find { mentionedProfile -> mentionedProfile.publicKey == nostrProfile.pubkey }?.let { mentionedProfile ->
+                                                    writeNewNoteViewModel.mentionedProfiles.find { mentionedProfile -> mentionedProfile.publicKey == nostrProfile.pubkey }?.let { mentionedProfile ->
                                                         val profileMention = "@${mentionedProfile.humanReadableNameOrPubkey()}"
 
                                                         replace(
                                                             start = nostrProfile.startIndex,
-                                                            end = nostrProfile.endIndex,
+                                                            end = nostrProfile.endIndex + 1,
                                                             text = profileMention
                                                         )
 
@@ -190,7 +211,7 @@ fun WriteNewNoteScreen(
                                                                 color = ProfileColor.fromPublicKey(mentionedProfile.publicKey)
                                                             ),
                                                             nostrProfile.startIndex,
-                                                            profileMention.length
+                                                            nostrProfile.startIndex + profileMention.length
                                                         )
                                                     }
                                                 }
@@ -198,6 +219,33 @@ fun WriteNewNoteScreen(
                                         }
                                     )
 
+                                    // TODO: Dropdown for the mentioned users
+
+                                    DropdownMenu(
+                                        expanded = writeNewNoteViewModel.atSymbolRange.value != null,
+                                        onDismissRequest = {
+                                            writeNewNoteViewModel.atSymbolRange.value = null
+                                        }
+                                    ) {
+                                        writeNewNoteViewModel.mentionableProfiles.forEach { profile ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        text = profile.humanReadableNameOrPubkey()
+                                                    )
+                                                },
+                                                leadingIcon = {
+                                                    ProfileAvatar(
+                                                        profile = profile
+                                                    )
+                                                },
+                                                onClick = {
+                                                    writeNewNoteViewModel.addProfileToMentionedProfiles(profile)
+                                                    writeNewNoteViewModel.atSymbolRange.value = null
+                                                }
+                                            )
+                                        }
+                                    }
                                     if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
                                         Card(
                                             modifier = Modifier.padding(
@@ -298,11 +346,36 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
-                                    Text(
-                                        text = writeNewNoteUIState.text,
+                                    RichContent(
+                                        // Hack to have the thing rendered for a preview...
+                                        nostrEvent = NostrEvent(
+                                            id = "",
+                                            content = writeNewNoteUIState.text,
+                                            sig = "",
+                                            tags = emptyArray(),
+                                            kind = 1,
+                                            createdAt = Clock.System.now(),
+                                            pubKey = ""
+                                        ),
+                                        localQuotedNostrEvent = null,
+                                        mentionedProfiles = writeNewNoteViewModel.mentionableProfiles.map {
+                                            LocalMention(
+                                                mention = Mention(
+                                                    mentionedPublicKey = it.publicKey,
+                                                    mentioningNostrEventId = ""
+                                                ),
+                                                profile = it
+                                            )
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
-                                        textAlign = TextAlign.Center
+                                        // TODO: Add TextAlign.Center
                                     )
+
+//                                    Text(
+//                                        text = writeNewNoteUIState.text,
+//                                        style = MaterialTheme.typography.bodySmall,
+//                                        textAlign = TextAlign.Center
+//                                    )
 
                                     if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
                                         Card {

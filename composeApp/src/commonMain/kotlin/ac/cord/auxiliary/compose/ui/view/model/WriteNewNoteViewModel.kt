@@ -1,9 +1,12 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -13,11 +16,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import ac.cord.auxiliary.compose.ui.view.state.form.WriteNewNoteFormState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip19Bech32.entities.NProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.firstOrNull
@@ -58,8 +64,45 @@ class WriteNewNoteViewModel(
     var writeNewNoteUIState: WriteNewNoteUIState by mutableStateOf(initialWriteNewNoteUIState)
         private set
 
+    var mentionableProfiles = mutableStateListOf<Profile>()
+        private set
+
+    var mentionedProfiles = mutableStateListOf<Profile>()
+        private set
+
+    var atSymbolRange = mutableStateOf<TextRange?>(null)
+
     fun initiate() {
         observeActiveUserProfileWithFollowing()
+        loadSearchableProfiles()
+    }
+
+    fun loadSearchableProfiles() {
+        viewModelScope.launch(Dispatchers.IO) {
+            mentionableProfiles.addAll(
+                nostrRepository.searchableProfiles()
+            )
+        }
+    }
+
+    fun addProfileToMentionedProfiles(profile: Profile) {
+        atSymbolRange.value?.let { range ->
+            mentionedProfiles.add(profile)
+            writeNewNoteFormState.textField.textFieldState.edit {
+                val mentionProfile = "nostr:${
+                    NProfile.create(
+                        profile.publicKey,
+                        null // TODO: Get the relay this profile was seen from...
+                    )
+                }"
+
+                replace(
+                    range.start,
+                    range.end,
+                    mentionProfile
+                )
+            }
+        }
     }
 
     fun observeActiveUserProfileWithFollowing() {
@@ -80,7 +123,6 @@ class WriteNewNoteViewModel(
             val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
             // TODO: Get note being replied too...
-            // TODO: Get note being quoted...
             // TODO: Get users being mentioned...
             nostrRepository.observeProfileWithFollowing(
                 activePublicKey
@@ -136,8 +178,13 @@ class WriteNewNoteViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
+            val mentionedPublicKeys = ContentParser.parse(
+                writeNewNoteFormState.textField.textFieldState.text.toString(),
+            ).filterIsInstance<ContentSegment.NostrProfileSegment>().map { it.pubkey }
+
             nostrRepository.createNewTextNote(
                 publicKey = SeedManager.activePublicKey().toHexKey(),
+                mentionedPublicKeys = mentionedPublicKeys,
                 textInput = writeNewNoteFormState.textField.textFieldState.text.toString(),
                 inReplyToNostrEvent = inReplyToNostrEvent,
                 quotedNostrEvent = quotedNostrEvent,

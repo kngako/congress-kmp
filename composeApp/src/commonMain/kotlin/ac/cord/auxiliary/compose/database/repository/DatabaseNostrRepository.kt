@@ -237,6 +237,7 @@ class DatabaseNostrRepository(
 
     override suspend fun createNewTextNote(
         publicKey: HexKey,
+        mentionedPublicKeys: List<HexKey>,
         textInput: String,
         inReplyToNostrEvent: LocalNostrEvent?,
         quotedNostrEvent: LocalNostrEvent?,
@@ -271,18 +272,32 @@ class DatabaseNostrRepository(
                 )
 
                 it.profile?.let { profile ->
-                    val ptags = arrayOf(
-                        profile,
-                        // Other profiles tagged in the event...
-                    ).map { notifyProfile ->
+                    val publicKeys = mutableSetOf<HexKey>()
+                    publicKeys.addAll(
+                        mentionedPublicKeys.toSet()
+                    )
+
+                    publicKeys.add(profile.publicKey)
+
+                    val ptags = publicKeys.map { publicKey ->
                         PTag(
-                            notifyProfile.publicKey,
+                            publicKey,
                             // TODO: Add relayHints...
                         )
                     }
 
                     notify(ptags)
                 }
+            }
+
+            if (inReplyToNostrEvent == null || inReplyToNostrEvent.profile == null) {
+                val pTags = mentionedPublicKeys.toSet().map {
+                    PTag(
+                        pubKey = it
+                    )
+                }
+
+                notify(pTags)
             }
 
             quotedNostrEvent?.let {

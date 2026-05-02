@@ -18,6 +18,7 @@ import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilte
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import fr.acinq.secp256k1.Hex
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
@@ -46,6 +47,7 @@ interface NostrRepository {
 
     suspend fun createNewTextNote(
         publicKey: HexKey,
+        mentionedPublicKeys: List<HexKey>,
         textInput: String,
         inReplyToNostrEvent: LocalNostrEvent?,
         quotedNostrEvent: LocalNostrEvent?,
@@ -145,6 +147,7 @@ interface NostrRepository {
 
             override suspend fun createNewTextNote(
                 publicKey: HexKey,
+                mentionedPublicKeys: List<HexKey>,
                 textInput: String,
                 inReplyToNostrEvent: LocalNostrEvent?,
                 quotedNostrEvent: LocalNostrEvent?,
