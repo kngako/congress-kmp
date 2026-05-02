@@ -55,16 +55,30 @@ internal object ContentParser {
                     else -> segments.add(ContentSegment.InlineLinkSegment(url))
                 }
             }else if (nip19ParseResult.isNotEmpty()) {
+                Logger.d("Range: ${match.range}")
                 Logger.d("Nip19Result: $nip19ParseResult")
                 when (val entity = nip19ParseResult.first()) {
                     is NAddress -> {
                         segments.add(ContentSegment.NostrAddressableSegment(entity.dTag, entity.relay.map { it.url }, entity.author, entity.kind))
                     }
                     is NProfile -> {
-                        segments.add(ContentSegment.NostrProfileSegment(entity.hex, entity.relay.map { it.url }))
+                        segments.add(
+                            ContentSegment.NostrProfileSegment(
+                                pubkey = entity.hex,
+                                relayHints = entity.relay.map { it.url },
+                                startIndex = match.range.first,
+                                endIndex = match.range.last
+                            )
+                        )
                     }
                     is NPub -> {
-                        segments.add(ContentSegment.NostrProfileSegment(pubkey = entity.hex))
+                        segments.add(
+                            ContentSegment.NostrProfileSegment(
+                                pubkey = entity.hex,
+                                startIndex = match.range.first,
+                                endIndex = match.range.last
+                            )
+                        )
                     }
                     is NNote -> {
                         segments.add(ContentSegment.NostrNoteSegment(entity.hex))

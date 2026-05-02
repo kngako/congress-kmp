@@ -2,19 +2,20 @@ package ac.cord.auxiliary.compose.ui.composable
 
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
-import ac.cord.auxiliary.compose.ui.composable.widgets.detail.TextNoteEventDetail
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.WriteNewNoteViewModel
 import ac.cord.auxiliary.compose.ui.view.state.WriteNewNoteUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,16 +24,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,14 +45,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -126,6 +123,8 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
+                                    val mentionedProfiles: List<LocalMention> = emptyList()
+
                                     TextField(
                                         modifier = Modifier.fillMaxWidth(),
                                         state = writeNewNoteViewModel.writeNewNoteFormState.textField.textFieldState,
@@ -166,6 +165,26 @@ fun WriteNewNoteScreen(
                                                 profile = writeNewNoteUIState.localProfile.profile,
                                                 size = 35.dp
                                             )
+                                        },
+                                        outputTransformation = OutputTransformation {
+                                            val content = originalText.toString()
+                                            val nostrProfiles = ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
+                                                .filterIsInstance<ContentSegment.NostrProfileSegment>()
+                                                // TODO: We might want to order these profiles by the startIndex so that we can replace the better
+
+                                            if (mentionedProfiles.isNotEmpty()) {
+                                                for (nostrProfile in nostrProfiles) {
+                                                    mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == nostrProfile.pubkey }?.let { mentionedProfile ->
+                                                        val profileMention = mentionedProfile.profile?.humanReadableNameOrPubkey() ?: "${nostrProfile.pubkey.take(8)}...${nostrProfile.pubkey.takeLast(4)}"
+
+                                                        replace(
+                                                            start = nostrProfile.startIndex,
+                                                            end = nostrProfile.endIndex,
+                                                            text = "@$profileMention"
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     )
 

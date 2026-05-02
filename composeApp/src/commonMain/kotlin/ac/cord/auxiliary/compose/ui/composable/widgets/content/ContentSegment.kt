@@ -53,7 +53,12 @@ internal sealed interface ContentSegment {
             )
         }
     }
-    data class NostrProfileSegment(val pubkey: String, val relayHints: List<String> = emptyList()) : ContentSegment {
+    data class NostrProfileSegment(
+        val pubkey: String,
+        val relayHints: List<String> = emptyList(),
+        val startIndex: Int,
+        val endIndex: Int
+    ) : ContentSegment {
         override fun toString(): String {
             return NProfile.create(
                 authorPubKeyHex = pubkey,
