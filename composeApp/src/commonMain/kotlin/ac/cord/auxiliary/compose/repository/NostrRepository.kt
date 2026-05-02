@@ -84,9 +84,9 @@ interface NostrRepository {
 
     suspend fun getNostrEvent(publicKey: HexKey, kind: Kind): NostrEvent?
 
-    suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>?>
+    suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
 
-    suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>?>
+    suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>>
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
@@ -207,11 +207,11 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>?> {
+            override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>?> {
+            override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
                 TODO("Not yet implemented")
             }
 
