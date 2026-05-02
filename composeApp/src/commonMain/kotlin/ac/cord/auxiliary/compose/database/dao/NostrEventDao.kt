@@ -65,7 +65,7 @@ interface NostrEventDao {
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
     fun getNostrEventById(id: String): NostrEvent?
 
-    @Query("SELECT * FROM NostrEvent WHERE pubKey = :publicKey AND kind = :kind")
+    @Query("SELECT * FROM NostrEvent WHERE pubKey = :publicKey AND kind = :kind ORDER BY createdAt DESC")
     fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): NostrEvent?
 
     @Upsert

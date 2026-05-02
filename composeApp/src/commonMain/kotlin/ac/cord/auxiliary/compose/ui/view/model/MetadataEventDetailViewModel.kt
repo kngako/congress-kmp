@@ -240,6 +240,7 @@ class MetadataEventDetailViewModel(
                 kind = ContactListEvent.KIND
             )
 
+            logger.d("ContactListEvent: $contactListEvent")
 
             val followUsers: TagArray = if (contactListEvent != null) {
                 if (contactListEvent.tags.isTaggedUser(publicKey)) {

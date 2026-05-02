@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class FollowingListViewModel(
@@ -90,7 +91,7 @@ class FollowingListViewModel(
     fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount() {
         logger.d("observeSynchronizeNostrEventRequestByPurposeAndStatusCount")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
+            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").distinctUntilChanged().collect { count ->
                 logger.d("Pending/Processing Synchronization Request: $count")
                 isSynchronizationPending.value = count > 0
             }

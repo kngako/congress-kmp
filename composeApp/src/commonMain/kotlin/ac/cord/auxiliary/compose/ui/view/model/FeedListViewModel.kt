@@ -91,7 +91,7 @@ class FeedListViewModel(
     fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount() {
         logger.d("observeSynchronizeNostrEventRequestByPurposeAndStatusCount")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").collect { count ->
+            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").distinctUntilChanged().collect { count ->
                 logger.d("Pending/Processing Synchronization Request: $count")
                 isSynchronizationPending.value = count > 0
             }
