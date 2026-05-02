@@ -9,6 +9,7 @@ import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,11 +75,29 @@ data class Profile(
     override val broadcastedAt: Instant? = null,
 ): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, BroadcastableEntity, SoftDeletableEntity {
     fun humanReadableNameOrPubkey(): String {
-        return displayName ?: userName ?: lud16 ?: nip05 ?: twitter ?: publicKey
+        return if (!displayName.isNullOrBlank()) {
+            displayName
+        } else if (!userName.isNullOrBlank()) {
+            userName
+        } else if (!nip05.isNullOrBlank()) {
+            nip05
+        } else if (!lud16.isNullOrBlank()) {
+            lud16
+        } else if (!twitter.isNullOrBlank()) {
+            twitter
+        } else {
+            publicKey.take(8)
+        }
     }
 
     fun staticIdentifier(): String? {
-        return  lud16 ?: nip05
+        return  if (!nip05.isNullOrBlank()) {
+            nip05
+        } else if (!lud16.isNullOrBlank()) {
+            lud16
+        } else {
+            null
+        }
     }
 
     @Composable
@@ -127,10 +146,14 @@ data class Profile(
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    Text(
-                        text = nip05 ?: "",
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    staticIdentifier()?.let { staticIdentifier ->
+                        Text(
+                            text = staticIdentifier,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = ProfileColor.fromPublicKey(publicKey)
+                        )
+                    }
+
                 }
             }
         }
