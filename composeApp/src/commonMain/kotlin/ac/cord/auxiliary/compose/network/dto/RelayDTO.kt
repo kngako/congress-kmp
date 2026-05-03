@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.network.dto
 
 import ac.cord.auxiliary.compose.database.model.Relay
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -9,7 +10,6 @@ data class RelayDTO(
     val read: Boolean,
     val write: Boolean,
 ) {
-
 }
 
 fun Relay.mapToRelayDTO() =

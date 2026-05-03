@@ -117,10 +117,13 @@ class RelayPool(
     }
 
     fun addRelaysIfMissing(relays: Set<RelayDTO>) {
-        val existingRelayUrls = socketClients.map { it.socketUrl }
+        logger.d("addRelaysIfMissing: ${relays.map { it.url }}")
+        val existingRelayUrls = socketClients.map { NormalizedRelayUrl(it.socketUrl).displayUrl() }
+        logger.d("Existing Relays: $existingRelayUrls")
         val newRelayUrls = relays.map { it.url }
 
-        val toAddRelayUrls = newRelayUrls.filter { it !in existingRelayUrls }.toSet()
+        val toAddRelayUrls = newRelayUrls.filter { NormalizedRelayUrl(it).displayUrl() !in existingRelayUrls }.toSet()
+        logger.d("toAddRelayUrls: $toAddRelayUrls")
         val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
         logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
         val newSocketClients = socketClients.toMutableSet().apply {

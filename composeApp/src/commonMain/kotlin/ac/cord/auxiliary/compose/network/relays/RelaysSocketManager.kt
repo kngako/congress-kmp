@@ -134,7 +134,7 @@ class RelaysSocketManager constructor(
         }
     }
 
-    suspend fun tryConnectingToUserRelay(url: String) = relayPool.tryConnectingToRelay(url)
+//    suspend fun tryConnectingToUserRelay(url: String) = relayPool.tryConnectingToRelay(url)
 
     suspend fun query(reqCommand: ReqCmd, relayUrl: String): Flow<NostrIncomingMessage> {
         return relayPool.query(

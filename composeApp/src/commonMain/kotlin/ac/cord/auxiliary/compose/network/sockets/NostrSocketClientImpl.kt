@@ -2,6 +2,8 @@ package ac.cord.auxiliary.compose.network.sockets
 
 import ac.cord.auxiliary.compose.exceptions.NetworkException
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import fr.acinq.lightning.channel.states.Normal
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.CloseReason
@@ -61,7 +63,7 @@ internal class NostrSocketClientImpl(
 
         wsMutex.withLock {
             if (wsSession == null || wsSession?.isActive == false) {
-                wsSession = acquireWebSocketSession(url = socketUrl)
+                wsSession = acquireWebSocketSession(socketUrl)
             }
         }
     }
