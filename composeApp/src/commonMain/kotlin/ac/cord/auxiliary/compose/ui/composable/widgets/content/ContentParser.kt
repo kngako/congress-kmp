@@ -33,7 +33,6 @@ internal object ContentParser {
                 segments.add(ContentSegment.TextSegment(content.substring(lastEnd, match.range.first)))
             }
             val token = match.value
-            val nip19ParseResult = Nip19Parser.parseAll(token)
             val bareDomainCapture = match.groupValues.getOrNull(3)
             val hashtagCapture = match.groupValues.getOrNull(4)
             if (!hashtagCapture.isNullOrEmpty() && token.startsWith("#")) {
@@ -54,10 +53,9 @@ internal object ContentParser {
                     isStandaloneUrl(content, match.range) -> segments.add(ContentSegment.LinkSegment(url))
                     else -> segments.add(ContentSegment.InlineLinkSegment(url))
                 }
-            }else if (nip19ParseResult.isNotEmpty()) {
-                Logger.d("Range: ${match.range}")
-                Logger.d("Nip19Result: $nip19ParseResult")
-                when (val entity = nip19ParseResult.first()) {
+            }else if (token.startsWith("nostr:")) {
+                val nip19ParseResult = Nip19Parser.parseAll(token)
+                when (val entity = nip19ParseResult.firstOrNull()) {
                     is NAddress -> {
                         segments.add(ContentSegment.NostrAddressableSegment(entity.dTag, entity.relay.map { it.url }, entity.author, entity.kind))
                     }
