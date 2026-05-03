@@ -14,11 +14,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -40,28 +46,41 @@ fun LocalNostrEvent.ListView(
     when (nostrEvent.kind) {
         RepostEvent.KIND -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(
-                        enabled = true,
-                        onClick = {
-                            onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
-                            // TODO: Show error
-                        }
-                    )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = 10.dp
+                        ).clickable(
+                            enabled = true,
+                            onClick = {
+                                onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
+                            }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Icon(
+                        modifier = Modifier.size(
+                            22.dp
+                        ),
+                        imageVector = Icons.Default.Repeat,
+                        contentDescription = "repost icon",
+
+                    )
                     Text(
-                        modifier = Modifier.weight(1f),
                         text = profile?.humanReadableNameOrPubkey() ?: nostrEvent.pubKey,
                         style = MaterialTheme.typography.labelSmall,
                         color = ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
                     )
                     Text(
                         text = "reposted",
-                        style = MaterialTheme.typography.labelSmall)
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
                 if (localRepostedNostrEvent != null) {
