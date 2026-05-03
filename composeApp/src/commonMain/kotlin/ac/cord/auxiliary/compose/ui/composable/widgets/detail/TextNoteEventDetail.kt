@@ -364,7 +364,9 @@ fun TextNoteEventDetail(
                                 items = inReplyToFeedListUIState.localNostrEvents,
                                 key = { e -> "reply-${e.nostrEvent.id}" }
                             ) { localNostrEvent ->
-                                localNostrEvent.RenderNotePreview()
+                                localNostrEvent.RenderNotePreview(
+                                    onNavigateToEvent = onNavigateToNostrEvent
+                                )
                             }
                         }
                     }

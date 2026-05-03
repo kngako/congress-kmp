@@ -251,6 +251,13 @@ fun AuxNavHost(
                         navController.popBackStack()
                     }
                 },
+                onNavigateToNostrEvent = { hexKey ->
+                    navController.navigate(
+                        route = NostrEventDetailRoute(
+                            nostrEventId = hexKey
+                        )
+                    )
+                },
                 nostrRepository = databaseNostrRepository
             )
         }

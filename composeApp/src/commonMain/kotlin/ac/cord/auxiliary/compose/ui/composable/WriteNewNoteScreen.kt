@@ -67,6 +67,7 @@ fun WriteNewNoteScreen(
     replyToNostrEventId: HexKey?,
     quotedNostrEventId: HexKey?,
     onNostrEventPublished: () -> Unit,
+    onNavigateToNostrEvent: (HexKey) -> Unit,
     nostrRepository: NostrRepository
 ) {
     val writeNewNoteViewModel: WriteNewNoteViewModel =  viewModel (
@@ -106,7 +107,9 @@ fun WriteNewNoteScreen(
 
                             item {
                                 if (writeNewNoteUIState.inReplyToNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
-                                    writeNewNoteUIState.inReplyToNostrEvent.RenderNotePreview()
+                                    writeNewNoteUIState.inReplyToNostrEvent.RenderNotePreview(
+                                        onNavigateToEvent = onNavigateToNostrEvent
+                                    )
                                 } else {
                                     Spacer(
                                         modifier = Modifier.height(1.dp)
@@ -248,7 +251,9 @@ fun WriteNewNoteScreen(
                                                 top = 10.dp
                                             )
                                         ) {
-                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview()
+                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview(
+                                                onNavigateToEvent = onNavigateToNostrEvent
+                                            )
                                         }
                                     }
                                 }
@@ -295,7 +300,9 @@ fun WriteNewNoteScreen(
                                 if (writeNewNoteUIState.inReplyToNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
 
                                     Card {
-                                        writeNewNoteUIState.inReplyToNostrEvent.RenderNotePreview()
+                                        writeNewNoteUIState.inReplyToNostrEvent.RenderNotePreview(
+                                            onNavigateToEvent = onNavigateToNostrEvent
+                                        )
                                     }
 
 
@@ -375,7 +382,9 @@ fun WriteNewNoteScreen(
 
                                     if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
                                         Card {
-                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview()
+                                            writeNewNoteUIState.quotedNostrEvent.RenderNotePreview(
+                                                onNavigateToEvent = onNavigateToNostrEvent
+                                            )
                                         }
 
                                     }
@@ -499,6 +508,7 @@ It has survived not only five centuries, but also the leap into electronic types
                         )
                     ),
                 onNostrEventPublished = {},
+                onNavigateToNostrEvent = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY)
         }
     }

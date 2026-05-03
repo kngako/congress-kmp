@@ -7,6 +7,7 @@ import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.database.model.RepostedRelation
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.room3.Embedded
 import androidx.room3.Ignore
 import androidx.room3.Junction
 import androidx.room3.Relation
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 data class LocalNostrEvent(
     @Embedded val nostrEvent: NostrEvent,
@@ -64,7 +66,9 @@ data class LocalNostrEvent(
     val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {
     @Composable
-    fun RenderNotePreview() {
+    fun RenderNotePreview(
+        onNavigateToEvent: (HexKey) -> Unit
+    ) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -94,14 +98,15 @@ data class LocalNostrEvent(
                     }
                 }
             }
-            Text(
+            RichContent(
                 modifier = Modifier.fillMaxWidth().padding(
                     horizontal = 20.dp
                 ),
                 style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Start,
-                overflow = TextOverflow.Ellipsis,
-                text = nostrEvent.content
+                nostrEvent = nostrEvent,
+                localQuotedNostrEvent = localQuotedNostrEvent,
+                mentionedProfiles = mentionedProfiles,
+                onNavigateToEvent = onNavigateToEvent
             )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
