@@ -3,11 +3,15 @@ package ac.cord.auxiliary.compose.ui.composable.widgets.detail
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
+import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
+import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 
@@ -54,9 +59,22 @@ import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 fun TextNoteEventDetail(
     localNostrEvent: LocalNostrEvent,
     onNavigateBack: () -> Unit,
+    nostrRepository: NostrRepository,
     onNavigateToWriteAReply: (String) -> Unit,
     onNavigateToNostrEvent: (HexKey) -> Unit,
 ) {
+    val inReplyToNostrEventFeedListViewModel: FeedListViewModel = viewModel(
+        key = "replies",
+        factory = FeedListViewModel.factory(
+            initialFeedListUIState = FeedListUIState.Loading,
+            synchronizationFilter = SynchronizationFilter(
+                ids = arrayOf(localNostrEvent.nostrEvent.id)
+                // TODO: Marked Root In Reply...
+            ),
+            nostrRepository = nostrRepository
+        ),
+    )
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -173,6 +191,7 @@ fun TextNoteEventDetail(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
+                // TODO: get all the notes inReplyToRoot before this note
                 item {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -315,8 +334,17 @@ fun TextNoteEventDetail(
                             windowInsets = WindowInsets.navigationBars
                         )
 
-                        Text("Replies coming soon...")
+
                     }
+                }
+
+                item {
+                    inReplyToNostrEventFeedListViewModel.RenderFeed(
+                        onNavigateToEvent = {
+                            // TODO: NavigateToEvent...
+                        }
+                    )
+
                 }
             }
         }
@@ -354,7 +382,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 ),
                 onNavigateBack = {},
                 onNavigateToWriteAReply = {},
-                onNavigateToNostrEvent = {}
+                onNavigateToNostrEvent = {},
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

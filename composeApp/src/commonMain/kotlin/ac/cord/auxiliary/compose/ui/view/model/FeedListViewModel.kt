@@ -33,6 +33,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged

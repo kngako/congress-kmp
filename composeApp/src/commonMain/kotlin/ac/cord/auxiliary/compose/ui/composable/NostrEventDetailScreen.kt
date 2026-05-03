@@ -78,7 +78,8 @@ fun NostrEventDetailScreen(
                         feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToWriteAReply = onNavigateToWriteAReply,
-                        onNavigateToNostrEvent = onNavigateToQuoteNostrEvent
+                        onNavigateToNostrEvent = onNavigateToQuoteNostrEvent,
+                        nostrRepository = nostrRepository
                     )
                 }
                 RepostEvent.KIND -> {
