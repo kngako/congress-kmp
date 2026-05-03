@@ -67,8 +67,6 @@ fun RichContent(
 //    val profileVer = eventRepo?.profileVersion?.collectAsState()?.value ?: 0
     var fullScreenImageUrl by remember { mutableStateOf<String?>(null) }
 
-    Logger.withTag("RichContent").d("Segments: $segments")
-
     if (fullScreenImageUrl != null) {
         FullScreenImageViewer(
             imageUrl = fullScreenImageUrl!!,
@@ -118,12 +116,10 @@ fun RichContent(
                         .filterIsInstance<ContentSegment.NostrProfileSegment>()
                         .map { it.pubkey }
 
-                    Logger.withTag("RichContent").d("profilePubKey: $profilePubkeys")
                     val profileNames = remember(profilePubkeys) {
                         val names = mutableMapOf<String, String>()
 
                         if (mentionedProfiles.isNotEmpty()) {
-                            Logger.withTag("RichContent").d("mentionedProfiles: $mentionedProfiles")
                             for (pubkey in profilePubkeys) {
                                 val mentionedProfile = mentionedProfiles.find { mentionedProfile -> mentionedProfile.profile?.publicKey == pubkey }
                                 names[pubkey] = mentionedProfile?.profile?.humanReadableNameOrPubkey()
@@ -204,7 +200,6 @@ fun RichContent(
                                     }
                                 }
                                 is ContentSegment.NostrProfileSegment -> {
-                                    Logger.withTag("RichContent").d("NostrProfileSegment: $seg")
                                     val pubkey = seg.pubkey
                                     val displayName = profileNames[seg.pubkey] ?: seg.pubkey.take(8)
                                     
