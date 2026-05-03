@@ -14,6 +14,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import fr.acinq.bitcoin.PublicKey
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 @Dao
 interface NostrEventDao {
@@ -47,6 +48,14 @@ interface NostrEventDao {
     fun  observePublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey
+    ): Flow<List<LocalNostrEvent>>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    fun  observeNostrEventReplies(
+        kinds: Array<Kind>,
+        eventId: HexKey,
+        since: Instant
     ): Flow<List<LocalNostrEvent>>
 
     @Transaction

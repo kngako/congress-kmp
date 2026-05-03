@@ -491,12 +491,18 @@ class DatabaseNostrRepository(
                     authors = synchronizationFilter.authors
                 )
             }
+            synchronizationFilter.kinds != null && synchronizationFilter.since != null &&  synchronizationFilter.tags?.contains("e") == true && synchronizationFilter.tags["e"]?.first()?.isNotEmpty() == true -> {
+                logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                database.nostrEventDao().observeNostrEventReplies(
+                    kinds = synchronizationFilter.kinds,
+                    eventId = synchronizationFilter.tags["e"]?.first()!!,
+                    since = synchronizationFilter.since
+                )
+            }
             synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
                 logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
                 database.nostrEventDao().observePublicKeyMentionedNostrEvents(
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                    ),
+                    kinds = synchronizationFilter.kinds,
                     publicKey = synchronizationFilter.tags["p"]?.first()!!
                 )
             }

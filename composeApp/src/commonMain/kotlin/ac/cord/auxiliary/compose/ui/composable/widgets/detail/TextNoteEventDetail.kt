@@ -11,6 +11,7 @@ import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
+import ac.cord.auxiliary.compose.ui.view.model.InReplyToViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddReaction
@@ -33,26 +35,35 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -63,20 +74,20 @@ fun TextNoteEventDetail(
     onNavigateToWriteAReply: (String) -> Unit,
     onNavigateToNostrEvent: (HexKey) -> Unit,
 ) {
-    val inReplyToNostrEventFeedListViewModel: FeedListViewModel = viewModel(
-        key = "replies",
-        factory = FeedListViewModel.factory(
+    val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+
+    val inReplyToNostrEventFeedListViewModel: InReplyToViewModel = viewModel(
+        key = "replies-${localNostrEvent.nostrEvent.id}",
+        factory = InReplyToViewModel.factory(
+            nostrEventId = localNostrEvent.nostrEvent.id,
             initialFeedListUIState = FeedListUIState.Loading,
-            synchronizationFilter = SynchronizationFilter(
-                ids = arrayOf(localNostrEvent.nostrEvent.id)
-                // TODO: Marked Root In Reply...
-            ),
-            nostrRepository = nostrRepository
+            nostrRepository = nostrRepository,
+            createdAt = localNostrEvent.nostrEvent.createdAt
         ),
     )
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -100,7 +111,8 @@ fun TextNoteEventDetail(
                 contentPadding = PaddingValues(
                     start = 10.dp,
                     end = 10.dp
-                )
+                ),
+                scrollBehavior = scrollBehavior
             ) {
 
                 Surface(
@@ -189,7 +201,8 @@ fun TextNoteEventDetail(
         ) {
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // TODO: get all the notes inReplyToRoot before this note
                 item {
@@ -338,14 +351,40 @@ fun TextNoteEventDetail(
                     }
                 }
 
-                item {
-                    inReplyToNostrEventFeedListViewModel.RenderFeed(
-                        onNavigateToEvent = {
-                            // TODO: NavigateToEvent...
+                when (val inReplyToFeedListUIState = inReplyToNostrEventFeedListViewModel.inReplyToFeedListUIState) {
+                    is FeedListUIState.Loaded -> {
+                        if (inReplyToFeedListUIState.localNostrEvents.isEmpty()) {
+                            item {
+                                Text(
+                                    "Be the first to comment."
+                                )
+                            }
+                        } else {
+                            items(
+                                items = inReplyToFeedListUIState.localNostrEvents,
+                                key = { e -> "reply-${e.nostrEvent.id}" }
+                            ) { localNostrEvent ->
+                                localNostrEvent.RenderNotePreview()
+                            }
                         }
-                    )
-
+                    }
+                    FeedListUIState.Error -> {
+                        item {
+                            Text(
+                                text = "Something went wrong"
+                            )
+                        }
+                    }
+                    FeedListUIState.Loading -> {
+                        item {
+                            LoadingIndicator()
+                        }
+                    }
                 }
+            }
+
+            LaunchedEffect(true) {
+                inReplyToNostrEventFeedListViewModel.initiate()
             }
         }
     }
