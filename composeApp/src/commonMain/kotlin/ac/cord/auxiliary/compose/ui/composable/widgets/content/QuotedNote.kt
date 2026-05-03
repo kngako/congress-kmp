@@ -1,8 +1,10 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
+import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
+import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -19,12 +21,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @Composable
 fun QuotedNote(
     localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
-    onNoteClick: ((String) -> Unit)? = null,
+    onNavigateToEvent:(HexKey) -> Unit,
     noteActions: NoteActions? = null
 ) {
     // Observe versions so we recompose when data arrives from relays
@@ -36,7 +40,7 @@ fun QuotedNote(
 //        }
 //    }
 
-    val effectiveNoteClick = noteActions?.onNoteClick ?: onNoteClick
+    val effectiveNoteClick = noteActions?.onNoteClick ?: onNavigateToEvent
 
     // Fetch poll votes when quoted event is a poll
 //    LaunchedEffect(event?.id, event?.kind) {
@@ -59,7 +63,9 @@ fun QuotedNote(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
         ) {
-            localQuotedNostrEvent.RenderNotePreview()
+            localQuotedNostrEvent.RenderNotePreview(
+                onNavigateToEvent = onNavigateToEvent
+            )
 //            quotedNostrEvent.RenderNotePreview()
         }
     } else if (localQuotedNostrEvent != null) {
@@ -70,13 +76,13 @@ fun QuotedNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
                 .then(
-                    if (effectiveNoteClick != null) Modifier.clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
-                    else Modifier
+                    Modifier.clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
                 )
         ) {
-            localQuotedNostrEvent.RenderNotePreview()
+            localQuotedNostrEvent.RenderNotePreview(
+                onNavigateToEvent = onNavigateToEvent
+            )
         }
     } else {
         // Loading state
@@ -108,4 +114,41 @@ fun QuotedNote(
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun QuotedNotePreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+
+            QuotedNote(
+                localQuotedNostrEvent = LocalQuotedNostrEvent(
+                    nostrEvent = NostrEvent(
+                        id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
+                        content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
+                        pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    quotedRelation = QuotedRelation(
+                        quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
+                        quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
+                    ),
+                    profile = Profile(
+                        publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        nostrEventId = "referenced",
+                        displayName = "Steve Biko"
+                    ),
+                ),
+                onNavigateToEvent = {  },
+                noteActions = null
+            )
+        }
+    }
+
 }

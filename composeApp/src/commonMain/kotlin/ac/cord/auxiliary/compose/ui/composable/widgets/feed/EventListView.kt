@@ -1,8 +1,12 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.feed
 
+import ac.cord.auxiliary.compose.database.model.InReplyToRelation
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.RepostedRelation
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalInReplyToNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalRepostedNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -36,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import kotlin.time.Instant
 
@@ -135,7 +140,7 @@ fun LocalNostrEvent.ListView(
 
 @Preview
 @Composable
-private fun EventListViewPreview() {
+private fun EventListViewRepostedPreview() {
     AuxTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
@@ -143,17 +148,92 @@ private fun EventListViewPreview() {
             LocalNostrEvent(
                 nostrEvent = NostrEvent(
                     id = "hex",
-                    content = "Something something seomthing",
+                    content = "Reposting",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
-                    kind = 0,
+                    kind = RepostEvent.KIND,
                     sig = "hexsig",
                     tags = emptyArray()
+                ),
+                localRepostedNostrEvent = LocalRepostedNostrEvent(
+                    repostedRelation = RepostedRelation(
+                        repostingNostrEventId = "hex",
+                        repostedNostrEventId = "repostedhex",
+                        repostedProfilePublicKey = "reposterHex"
+                    ),
+                    nostrEvent = NostrEvent(
+                        id = "hex",
+                        content = "Something something something",
+                        pubKey = "hexpubkeypubkeypubkeypubkey",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    profile = Profile(
+                        publicKey = "hesd",
+                        nostrEventId = "referenced",
+                        displayName = "Frank Talk",
+                        nip05 = "frank@talk.at"
+                    ),
+                    mentionedProfiles = emptyList()
                 ),
                 profile = Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
-                    displayName = "Frank Talk",
-                    nip05 = "frank@talk.at"
+                    displayName = "Steve Biko",
+                    nip05 = "steve@bck.co.za"
+                ),
+            ).ListView(
+                onNavigateToEvent = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun EventListViewInReplyPreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            LocalNostrEvent(
+                nostrEvent = NostrEvent(
+                    id = "hex",
+                    content = "Reposting",
+                    pubKey = "hexpubkeypubkeypubkeypubkey",
+                    kind = TextNoteEvent.KIND,
+                    sig = "hexsig",
+                    tags = emptyArray()
+                ),
+                localInReplyToNostrEvent = LocalInReplyToNostrEvent(
+                    inReplyToRelation = InReplyToRelation(
+                        inReplyToNostrEventId = "nostrEvent",
+                        inReplyToRootNostrEventId = "rootId",
+                        inReplyToProfilePublicKey = "inReplyToProfileKey",
+                        inReplyToRootProfilePublicKey = "rootPubKey",
+                        replyingNostrEventId = "hex"
+                    ),
+                    nostrEvent = NostrEvent(
+                        id = "hex",
+                        content = "Something something something",
+                        pubKey = "hexpubkeypubkeypubkeypubkey",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    profile = Profile(
+                        publicKey = "hesd",
+                        nostrEventId = "referenced",
+                        displayName = "Frank Talk",
+                        nip05 = "frank@talk.at"
+                    ),
+                    mentionedProfiles = emptyList()
+                ),
+                profile = Profile(
+                    publicKey = "",
+                    nostrEventId = "referenced",
+                    displayName = "Steve Biko",
+                    nip05 = "steve@bck.co.za"
                 ),
             ).ListView(
                 onNavigateToEvent = {}

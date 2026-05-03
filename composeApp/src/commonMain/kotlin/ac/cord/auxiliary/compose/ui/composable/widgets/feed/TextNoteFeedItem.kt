@@ -1,10 +1,12 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.feed
 
+import ac.cord.auxiliary.compose.database.model.InReplyToRelation
+import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
+import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalInReplyToNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
@@ -27,6 +29,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -44,156 +47,150 @@ internal fun TextNoteFeedItem(
     mentionedProfiles: List<LocalMention>,
     onNavigateToEvent: (HexKey) -> Unit
 ) {
-    if (localInReplyToNostrEvent != null) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(
-                horizontal = 20.dp
-            ),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "In reply to ",
-                style = MaterialTheme.typography.labelSmall
-            )
+    val expended = mutableStateOf(false)
 
-            Text(
-                modifier = Modifier.clickable(
-                    onClick = {
-                        onNavigateToEvent.invoke(localInReplyToNostrEvent.inReplyToRelation.inReplyToNostrEventId)
-                    }
+    Column {
+
+        if (localInReplyToNostrEvent != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(
+                    horizontal = 20.dp
                 ),
-                style = MaterialTheme.typography.labelLargeEmphasized,
-                text = localInReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "loading information..."
-            )
-        }
-    }
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "In reply to ",
+                    style = MaterialTheme.typography.labelSmall
+                )
 
-    ElevatedCard(
-        modifier = Modifier.padding(
-            horizontal = 10.dp
-        ),
-        onClick = {
-            onNavigateToEvent.invoke(nostrEvent.id)
-        }
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (profile != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable(
+                Text(
+                    modifier = Modifier.clickable(
                         onClick = {
-                            onNavigateToEvent.invoke(profile.nostrEventId)
+                            onNavigateToEvent.invoke(localInReplyToNostrEvent.inReplyToRelation.inReplyToNostrEventId)
                         }
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ProfileAvatar(
-                        publicKey = nostrEvent.pubKey,
-                        profile = profile
-                    )
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = ProfileColor.fromPublicKey(localInReplyToNostrEvent.nostrEvent.pubKey),
+                    text = localInReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "loading information..."
+                )
+            }
+        }
 
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ){
-                        Text(
-                            text = profile.humanReadableNameOrPubkey(),
-                            style = MaterialTheme.typography.bodyMedium
+        ElevatedCard(
+            modifier = Modifier.padding(
+                horizontal = 10.dp
+            ),
+            onClick = {
+                onNavigateToEvent.invoke(nostrEvent.id)
+            }
+        ) {
+            Column(
+                modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (profile != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable(
+                            onClick = {
+                                onNavigateToEvent.invoke(profile.nostrEventId)
+                            }
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ProfileAvatar(
+                            publicKey = nostrEvent.pubKey,
+                            profile = profile
                         )
 
-                        profile.staticIdentifier()?.let { staticIdentifier ->
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ){
                             Text(
-                                text = staticIdentifier,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = ProfileColor.fromProfile(profile)
+                                text = profile.humanReadableNameOrPubkey(),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            profile.staticIdentifier()?.let { staticIdentifier ->
+                                Text(
+                                    text = staticIdentifier,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ProfileColor.fromProfile(profile)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Loading author information"
+                    )
+                }
+
+                RichContent(
+                    modifier = Modifier.fillMaxWidth(),
+                    nostrEvent = nostrEvent,
+                    localQuotedNostrEvent = localQuotedNostrEvent,
+                    mentionedProfiles = mentionedProfiles,
+                    onNavigateToEvent = onNavigateToEvent
+                )
+
+                if (expended.value) {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            10.dp,
+                            alignment = Alignment.Start
+                        )
+                    ) {
+                        item {
+                            AssistChip(
+                                label = {
+                                    Text(
+                                        text = nostrEvent.kind.toString() // TODO: Kind by name...
+                                    )
+                                },
+                                onClick = {
+
+                                }
+                            )
+                        }
+
+                        items(
+                            items = nostrEvent.tags,
+                        ) { tag ->
+                            SuggestionChip(
+                                label = {
+                                    Text(
+                                        text = tag.joinToString(":"),
+                                        maxLines = 1
+                                    )
+                                },
+                                onClick = {
+
+                                }
                             )
                         }
                     }
                 }
-            } else {
+
+
                 Text(
-                    text = "Loading author information"
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.End,
+                    text = nostrEvent.createdAt.toFormattedTimeAndDateString()
                 )
             }
-
-            RichContent(
-                modifier = Modifier.fillMaxWidth(),
-                nostrEvent = nostrEvent,
-                localQuotedNostrEvent = localQuotedNostrEvent,
-                mentionedProfiles = mentionedProfiles
-            )
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    10.dp,
-                    alignment = Alignment.Start
-                )
-            ) {
-                item {
-                    AssistChip(
-                        label = {
-                            Text(
-                                text = nostrEvent.kind.toString() // TODO: Kind by name...
-                            )
-                        },
-                        onClick = {
-
-                        }
-                    )
-                }
-
-//                item {
-//                    SuggestionChip(
-//                        label = {
-//                            Text(
-//                                text = if (localNostrEvent.mentionedProfiles.isNotEmpty()) {
-//                                    localNostrEvent.mentionedProfiles.joinToString(",") { it?.profile?.humanReadableNameOrPubkey() ?: "Find user information" }
-//                                } else {
-//                                    ":-("
-//                                }
-//                            )
-//                        },
-//                        onClick = {
-//
-//                        }
-//                    )
-//                }
-
-                items(
-                    items = nostrEvent.tags,
-                ) { tag ->
-                    SuggestionChip(
-                        label = {
-                            Text(
-                                text = tag.joinToString(":"),
-                                maxLines = 1
-                            )
-                        },
-                        onClick = {
-
-                        }
-                    )
-                }
-            }
-
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.End,
-                text = nostrEvent.createdAt.toFormattedTimeAndDateString()
-            )
         }
     }
+
 }
 
 @Preview
 @Composable
-private fun EventListViewPreview() {
+private fun TextNoteFeedItemPreview() {
     AuxTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
@@ -201,7 +198,7 @@ private fun EventListViewPreview() {
             TextNoteFeedItem(
                 nostrEvent = NostrEvent(
                     id = "hex",
-                    content = "Something something something",
+                    content = "You are either alive and proud or you are dead, and when you are dead, you can't care anyway. https://www.brainyquote.com/authors/steven-biko-quotes",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
                     kind = 0,
                     sig = "hexsig",
@@ -216,6 +213,147 @@ private fun EventListViewPreview() {
                 localQuotedNostrEvent = null,
                 localInReplyToNostrEvent = null,
                 mentionedProfiles = emptyList(),
+                onNavigateToEvent = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun TextNoteFeedItemInReplyToPreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            TextNoteFeedItem(
+                nostrEvent = NostrEvent(
+                    id = "hex",
+                    content = "It is better to die for an idea that will live, than to live for an idea that will die",
+                    pubKey = "hexpubkeypubkeypubkeypubkey",
+                    kind = 0,
+                    sig = "hexsig",
+                    tags = emptyArray()
+                ),
+                profile = Profile(
+                    publicKey = "",
+                    nostrEventId = "referenced",
+                    displayName = "Frank Talk",
+                    nip05 = "frank@talk.at"
+                ),
+                localQuotedNostrEvent = null,
+                localInReplyToNostrEvent = LocalInReplyToNostrEvent(
+                    inReplyToRelation = InReplyToRelation(
+                        inReplyToNostrEventId = "nostrEvent",
+                        inReplyToRootNostrEventId = "rootId",
+                        inReplyToProfilePublicKey = "inReplyToProfileKey",
+                        inReplyToRootProfilePublicKey = "rootPubKey",
+                        replyingNostrEventId = "hex"
+                    ),
+                    nostrEvent = NostrEvent(
+                        id = "hex",
+                        content = "Something something something",
+                        pubKey = "hexie",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    profile = Profile(
+                        publicKey = "hesd",
+                        nostrEventId = "referenced",
+                        displayName = "Steve Biko",
+                        nip05 = "steve@bcm.co.za"
+                    ),
+                    mentionedProfiles = emptyList()
+                ),
+                mentionedProfiles = emptyList(),
+                onNavigateToEvent = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun TextNoteFeedItemQuoteNostrEventPreview() {
+    AuxTheme {
+        Surface(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            TextNoteFeedItem(
+                nostrEvent = NostrEvent(
+                    id = "hex",
+                    content = "The revolutionary sees his task as liberation not only of the oppressed but also of the oppressor. Happiness can never truly exist in a state of tension.\n" +
+                            "Read more at nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:nevent1qqspcusnzxx5u97xht2udvg3yhcq2cvmc0jrxa90lwwdvjplve0atespzpmhxue69uhkummnw3ezuamfdejsyg8h5g639qhuv803hzwexfwhyud6t6suxfu364anddqvrmn9j4cahvxksr8q",
+                    pubKey = "hexpubkeypubkeypubkeypubkey",
+                    kind = 0,
+                    sig = "hexsig",
+                    tags = emptyArray()
+                ),
+                profile = Profile(
+                    publicKey = "",
+                    nostrEventId = "referenced",
+                    displayName = "Frank Talk",
+                    nip05 = "frank@talk.at"
+                ),
+                localQuotedNostrEvent = LocalQuotedNostrEvent(
+                    nostrEvent = NostrEvent(
+                        id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
+                        content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
+                        pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    quotedRelation = QuotedRelation(
+                        quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
+                        quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
+                    ),
+                    profile = Profile(
+                        publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                        nostrEventId = "referenced",
+                        displayName = "Steve Biko"
+                    ),
+                ),
+                localInReplyToNostrEvent = LocalInReplyToNostrEvent(
+                    inReplyToRelation = InReplyToRelation(
+                        inReplyToNostrEventId = "nostrEvent",
+                        inReplyToRootNostrEventId = "rootId",
+                        inReplyToProfilePublicKey = "inReplyToProfileKey",
+                        inReplyToRootProfilePublicKey = "rootPubKey",
+                        replyingNostrEventId = "hex"
+                    ),
+                    nostrEvent = NostrEvent(
+                        id = "hex",
+                        content = "Something something something",
+                        pubKey = "hexie",
+                        kind = 0,
+                        sig = "hexsig",
+                        tags = emptyArray()
+                    ),
+                    profile = Profile(
+                        publicKey = "hesd",
+                        nostrEventId = "referenced",
+                        displayName = "Steve Biko",
+                        nip05 = "steve@bcm.co.za"
+                    ),
+                    mentionedProfiles = emptyList()
+                ),
+                mentionedProfiles = listOf(
+                    LocalMention(
+                        mention = Mention(
+                            mentioningNostrEventId = "000067b3f15cac88ba066b28c370083a4fc80dacc054e554ab1dc0def974c89c",
+                            mentionedPublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522"
+                        ),
+                        profile = Profile(
+                            publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
+                            nostrEventId = "referenced",
+                            displayName = "Steve Biko",
+                            nip05 = "steve@bcm.co.za"
+                        ),
+                    )
+                ),
                 onNavigateToEvent = {}
             )
         }

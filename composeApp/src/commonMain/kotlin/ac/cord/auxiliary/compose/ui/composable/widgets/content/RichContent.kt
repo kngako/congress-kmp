@@ -5,14 +5,14 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalMention
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.Constants.INLINE_CONTENT_TAG
-import ac.cord.auxiliary.compose.ui.composable.widgets.feed.ListView
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @Composable
 fun RichContent(
@@ -54,7 +55,7 @@ fun RichContent(
     imetaMap: Map<String, MediaMeta> = emptyMap(),
     plainLinks: Boolean = false,
     onProfileClick: ((String) -> Unit)? = null,
-    onNoteClick: ((String) -> Unit)? = null,
+    onNavigateToEvent: (HexKey) -> Unit,
     onHashtagClick: ((String) -> Unit)? = null,
     onLiveStreamClick: ((String, String, String?) -> Unit)? = null,
     noteActions: NoteActions? = null,
@@ -294,7 +295,7 @@ fun RichContent(
                             if (localQuotedNostrEvent != null) {
                                 QuotedNote(
                                     localQuotedNostrEvent = localQuotedNostrEvent,
-                                    onNoteClick = onNoteClick,
+                                    onNavigateToEvent = onNavigateToEvent,
                                     noteActions = noteActions
                                 )
                             } else {
@@ -316,7 +317,7 @@ fun RichContent(
                                             dTag = segment.dTag,
                                             author = segment.author,
                                             relayHints = segment.relays,
-                                            onNoteClick = onNoteClick,
+                                            onNoteClick = onNavigateToEvent,
                                             onProfileClick = onProfileClick,
                                             noteActions = noteActions,
                                             style = style
@@ -423,7 +424,7 @@ private fun RichContentPreview() {
                     modifier = Modifier.padding(10.dp),
                     nostrEvent = NostrEvent(
                         id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
-                        content = "Something something something nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:note1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh955s53z8ee",
+                        content = "Something something something nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nhttps://www.brainyquote.com/authors/steven-biko-quotes\nnostr:nevent1qqspcusnzxx5u97xht2udvg3yhcq2cvmc0jrxa90lwwdvjplve0atespzpmhxue69uhkummnw3ezuamfdejsyg8h5g639qhuv803hzwexfwhyud6t6suxfu364anddqvrmn9j4cahvxksr8q",
                         pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         kind = 0,
                         sig = "hexsig",
@@ -431,8 +432,8 @@ private fun RichContentPreview() {
                     ),
                     localQuotedNostrEvent = LocalQuotedNostrEvent(
                         nostrEvent = NostrEvent(
-                            id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a521",
-                            content = "Quote me on this!",
+                            id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
+                            content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
                             pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             kind = 0,
                             sig = "hexsig",
@@ -441,12 +442,12 @@ private fun RichContentPreview() {
                         quotedRelation = QuotedRelation(
                             quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                             quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
-                            quotedNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a521"
+                            quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
                         ),
                         profile = Profile(
                             publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             nostrEventId = "referenced",
-                            displayName = "Frank Talk"
+                            displayName = "Steve Biko"
                         ),
                     ),
                     mentionedProfiles = listOf(
@@ -462,6 +463,7 @@ private fun RichContentPreview() {
                             ),
                         )
                     ),
+                    onNavigateToEvent = {}
                 )
             }
 

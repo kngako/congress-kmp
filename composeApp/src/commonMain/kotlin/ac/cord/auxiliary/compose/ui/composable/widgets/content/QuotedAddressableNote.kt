@@ -1,6 +1,5 @@
 package ac.cord.auxiliary.compose.ui.composable.widgets.content
 
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
@@ -28,7 +27,7 @@ internal fun QuotedAddressableNote(
     dTag: String,
     author: String,
     relayHints: List<String>,
-    onNoteClick: ((String) -> Unit)?,
+    onNoteClick: (String) -> Unit,
     onProfileClick: ((String) -> Unit)?,
     noteActions: NoteActions?,
     style: TextStyle
@@ -39,7 +38,7 @@ internal fun QuotedAddressableNote(
     if (localQuotedNostrEvent != null) {
         QuotedNote(
             localQuotedNostrEvent = localQuotedNostrEvent,
-            onNoteClick = onNoteClick,
+            onNavigateToEvent = onNoteClick,
             noteActions = noteActions
         )
     } else {

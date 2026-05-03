@@ -4,13 +4,10 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
-import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
-import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.RichContent
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,14 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.InputTransformation
-import androidx.compose.foundation.text.input.OutputTransformation
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -37,36 +28,25 @@ import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Reply
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FlexibleBottomAppBar
-import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.graphics.shapes.CornerRounding
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -75,7 +55,7 @@ fun TextNoteEventDetail(
     localNostrEvent: LocalNostrEvent,
     onNavigateBack: () -> Unit,
     onNavigateToWriteAReply: (String) -> Unit,
-    onNavigateToQuoteNostrEvent: (String) -> Unit,
+    onNavigateToNostrEvent: (HexKey) -> Unit,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -259,7 +239,8 @@ fun TextNoteEventDetail(
                             ),
                             nostrEvent = localNostrEvent.nostrEvent,
                             localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
-                            mentionedProfiles = localNostrEvent.mentionedProfiles
+                            mentionedProfiles = localNostrEvent.mentionedProfiles,
+                            onNavigateToEvent = onNavigateToNostrEvent
                         )
 
                         Row(
@@ -302,7 +283,7 @@ fun TextNoteEventDetail(
 
                                 IconButton(
                                     onClick = {
-                                        onNavigateToQuoteNostrEvent.invoke(
+                                        onNavigateToNostrEvent.invoke(
                                             localNostrEvent.nostrEvent.id
                                         )
                                     }
@@ -373,7 +354,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 ),
                 onNavigateBack = {},
                 onNavigateToWriteAReply = {},
-                onNavigateToQuoteNostrEvent = {}
+                onNavigateToNostrEvent = {}
             )
         }
     }
