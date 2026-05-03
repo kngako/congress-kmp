@@ -237,7 +237,9 @@ fun MetadataEventDetail(
 
                 stickyHeader {
                     PrimaryScrollableTabRow(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(
+                            horizontal = 10.dp
+                        ),
                         edgePadding = 10.dp,
                         selectedTabIndex = metadataEventDetailViewModel.pagerState.currentPage,
                     ) {
