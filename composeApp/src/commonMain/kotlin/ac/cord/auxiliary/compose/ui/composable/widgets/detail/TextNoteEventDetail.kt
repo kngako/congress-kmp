@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.OutputTransformation
@@ -39,12 +42,17 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FlexibleBottomAppBar
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -52,14 +60,16 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.CornerRounding
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TextNoteEventDetail(
     localNostrEvent: LocalNostrEvent,
@@ -85,6 +95,95 @@ fun TextNoteEventDetail(
                     Text("Post")
                 },
             )
+        },
+        bottomBar = {
+            FlexibleBottomAppBar(
+                containerColor = Color.Transparent,
+                contentPadding = PaddingValues(
+                    start = 10.dp,
+                    end = 10.dp
+                )
+            ) {
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onNavigateToWriteAReply.invoke(
+                                localNostrEvent.nostrEvent.id
+                            )
+                        },
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // TODO: Load user profile...
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "User profile",
+                            tint = ProfileColor.fromPublicKey("profile")
+                        )
+//                                    ProfileAvatar(
+//                                        profile = localProfile.profile,
+//                                        size = 35.dp
+//                                    )
+
+                        Text(
+                            modifier = Modifier.weight(1f),
+                            text = "Reply to ${localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"}",
+                            maxLines = 1,
+                        )
+
+                        Icon(
+                            Icons.Default.ChatBubble,
+                            contentDescription = "User profile",
+                        )
+                    }
+
+                }
+            }
+//            HorizontalFloatingToolbar(
+//                expanded = true,
+//
+//            ) {
+//
+//                Row(
+//                    modifier = Modifier
+//                        .padding(10.dp)
+//                        .fillMaxWidth().clickable {
+//                            onNavigateToWriteAReply.invoke(
+//                                localNostrEvent.nostrEvent.id
+//                            )
+//                        },
+//                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+//                ) {
+//                    // TODO: Load user profile...
+//                    Icon(
+//                        Icons.Default.Person,
+//                        contentDescription = "User profile",
+//                        tint = ProfileColor.fromPublicKey("profile")
+//                    )
+////                                    ProfileAvatar(
+////                                        profile = localProfile.profile,
+////                                        size = 35.dp
+////                                    )
+//
+//                    Text(
+//                        modifier = Modifier.weight(1f),
+//                        text = "Reply to ${localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"}",
+//                        maxLines = 1,
+//                    )
+//
+//                    Icon(
+//                        Icons.Default.ChatBubble,
+//                        contentDescription = "User profile",
+//                    )
+//                }
+//            }
+
         }
     ) { innerPadding ->
         Column(
@@ -234,46 +333,6 @@ fun TextNoteEventDetail(
 //                            },
                             windowInsets = WindowInsets.navigationBars
                         )
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onNavigateToWriteAReply.invoke(
-                                        localNostrEvent.nostrEvent.id
-                                    )
-                                },
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(20.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                // TODO: Load user profile...
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = "User profile",
-                                    tint = ProfileColor.fromPublicKey("profile")
-                                )
-//                                    ProfileAvatar(
-//                                        profile = localProfile.profile,
-//                                        size = 35.dp
-//                                    )
-
-                                Text(
-                                    modifier = Modifier.weight(1f),
-                                    text = "Reply to ${localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"}",
-                                    maxLines = 1,
-                                )
-
-                                Icon(
-                                    Icons.Default.ChatBubble,
-                                    contentDescription = "User profile",
-                                )
-                            }
-
-                        }
-
 
                         Text("Replies coming soon...")
                     }
