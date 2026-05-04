@@ -75,6 +75,9 @@ interface NostrRepository {
 
     suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt)
 
+    /**
+     * Save nostrEvent from relays (and index for local viewing)...
+     */
     suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,

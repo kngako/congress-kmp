@@ -432,7 +432,9 @@ class DatabaseNostrRepository(
         storeNostrEventMutex.withLock {
             logger.d("saveNostrEvent: $nostrEvent")
             database.nostrDao().storeNostrEvent(
-                nostrEvent,
+                nostrEvent.copy(
+                    broadcastedAt = nostrEvent.createdAt
+                ),
                 synchronizationRelayURLs = synchronizationRelayURLs,
                 level = synchronizeNostrEventRequest.level
             )
