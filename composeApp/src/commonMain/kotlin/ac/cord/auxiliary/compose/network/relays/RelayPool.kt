@@ -34,6 +34,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
+import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.transformWhile
@@ -126,14 +127,17 @@ class RelayPool(
         logger.d("toAddRelayUrls: $toAddRelayUrls")
         val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
         logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
-        val newSocketClients = socketClients.toMutableSet().apply {
-            addAll(toAddSocketClients)
+        if (toAddSocketClients.isNotEmpty()) {
+            val newSocketClients = socketClients.toMutableSet().apply {
+                addAll(toAddSocketClients)
+            }
+            logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
+
+            socketClients = newSocketClients
+
+            this.relays.addAll(relays)
         }
-        logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
 
-        socketClients = newSocketClients
-
-        this.relays.addAll(relays)
     }
 
     fun closePool() {
@@ -196,6 +200,30 @@ class RelayPool(
             val eventFlow =  nostrSocketClient.queryAsFlow(reqCommand.subId)
             with(nostrSocketClient) {
                 sendMESSAGE(filterRequest)
+            }
+            eventFlow
+        }
+    }
+
+    suspend fun sync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<NostrIncomingMessage> {
+        addRelaysIfMissing(
+            setOf(
+                NormalizedRelayUrl(relayUrl).url.toRelayDTO()
+            )
+        )
+
+        logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
+        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+
+        val negentropySyncRequest = OptimizedJsonMapper.toJson(negOpenCmd)
+
+        if (nostrSocketClient == null) {
+            throw NetworkException("$relayUrl is not connected")
+        }
+        return coroutineScope {
+            val eventFlow =  nostrSocketClient.queryAsFlow(negOpenCmd.subId)
+            with(nostrSocketClient) {
+                sendMESSAGE(negentropySyncRequest)
             }
             eventFlow
         }

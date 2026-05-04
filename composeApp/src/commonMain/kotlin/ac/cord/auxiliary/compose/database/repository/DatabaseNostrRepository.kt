@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
+import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
@@ -104,6 +105,10 @@ class DatabaseNostrRepository(
 
     override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?> {
         return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestsByStatus("pending")
+    }
+
+    override suspend fun observePendingNegentropySynchronizeRequests(): Flow<NegentropySynchronizeRequest?> {
+        return database.negentropySynchronizeRequestDao().observeNegentropySynchronizeRequestsByStatus("pending")
     }
 
     override suspend fun createNewProfile(
@@ -404,6 +409,15 @@ class DatabaseNostrRepository(
         )
     }
 
+    override suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest) {
+        database.negentropySynchronizeRequestDao().upsert(
+            negentropySynchronizeRequest.copy(
+                status = "sent",
+                updatedAt = Clock.System.now()
+            )
+        )
+    }
+
     override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
         database.broadcastNostrEventReceiptDao().upsert(
             broadcastNostrEventReceipt
@@ -430,7 +444,25 @@ class DatabaseNostrRepository(
                 )
             )
         }
-        logger.d("done: ${nostrEvent.id}")
+    }
+
+    override suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        negentropySynchronizeRequest: NegentropySynchronizeRequest,
+        synchronizationRelayURLs: List<String>
+    ) {
+        logger.d("saveNostrEvent: $nostrEvent")
+        database.nostrDao().storeNostrEvent(
+            nostrEvent,
+            synchronizationRelayURLs = synchronizationRelayURLs,
+            level = negentropySynchronizeRequest.level
+        )
+
+        database.negentropySynchronizeRequestDao().upsert(
+            negentropySynchronizeRequest.copy(
+                status = "processed"
+            )
+        )
     }
 
     override suspend fun queueSynchronizeNostrEvent(
@@ -468,7 +500,6 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
-
         return when {
             synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
                 logger.d("observeFilteredNostrEvents: $synchronizationFilter")
@@ -514,6 +545,62 @@ class DatabaseNostrRepository(
                     )
                 )
             }
+        }
+    }
+
+    override suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent> {
+        if (synchronizationFilters.size == 1) {
+            val synchronizationFilter = synchronizationFilters.first()
+
+            return when {
+                synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
+                    logger.d("observeFilteredNostrEvents: $synchronizationFilter")
+                    database.nostrEventDao().getFilteredNostrEvents(
+                        kinds = synchronizationFilter.kinds,
+                        search = synchronizationFilter.search
+                    )
+                }
+                synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
+                    logger.d("observeFilteredNostrEvents: $synchronizationFilter")
+                    database.nostrEventDao().getFilteredNostrEvents(
+                        kinds = synchronizationFilter.kinds,
+                        ids = synchronizationFilter.ids
+                    )
+                }
+                synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
+                    logger.d("observeAuthoredNostrEvents: $synchronizationFilter")
+                    database.nostrEventDao().getAuthoredNostrEvents(
+                        kinds = synchronizationFilter.kinds,
+                        authors = synchronizationFilter.authors
+                    )
+                }
+                synchronizationFilter.kinds != null && synchronizationFilter.since != null &&  synchronizationFilter.tags?.contains("e") == true && synchronizationFilter.tags["e"]?.first()?.isNotEmpty() == true -> {
+                    logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                    database.nostrEventDao().getNostrEventReplies(
+                        kinds = synchronizationFilter.kinds,
+                        eventId = synchronizationFilter.tags["e"]?.first()!!,
+                        since = synchronizationFilter.since
+                    )
+                }
+                synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
+                    logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                    database.nostrEventDao().getPublicKeyMentionedNostrEvents(
+                        kinds = synchronizationFilter.kinds,
+                        publicKey = synchronizationFilter.tags["p"]?.first()!!
+                    )
+                }
+                else -> {
+                    logger.d("NostrEvent: $synchronizationFilter")
+                    database.nostrEventDao().getNostrEvents(
+                        kinds = arrayOf(
+                            TextNoteEvent.KIND,
+                        )
+                    )
+                }
+            }
+        } else {
+            logger.w("Multi synchronizationFilters not yet supported")
+            return emptyList()
         }
     }
 

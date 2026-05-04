@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.repository
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
+import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
@@ -18,7 +19,6 @@ import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilte
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import fr.acinq.secp256k1.Hex
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
@@ -33,6 +33,8 @@ interface NostrRepository {
     suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<LocalBroadcastNostrEventRequest>>
 
     suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?>
+
+    suspend fun observePendingNegentropySynchronizeRequests(): Flow<NegentropySynchronizeRequest?>
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -69,11 +71,19 @@ interface NostrRepository {
 
     suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 
+    suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest)
+
     suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt)
 
     suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+        synchronizationRelayURLs: List<String>
+    )
+
+    suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        negentropySynchronizeRequest: NegentropySynchronizeRequest,
         synchronizationRelayURLs: List<String>
     )
 
@@ -89,6 +99,8 @@ interface NostrRepository {
     suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>>
 
     suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>>
+
+    suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent>
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
@@ -132,6 +144,10 @@ interface NostrRepository {
             }
 
             override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observePendingNegentropySynchronizeRequests(): Flow<NegentropySynchronizeRequest?> {
                 TODO("Not yet implemented")
             }
 
@@ -183,6 +199,10 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
+            override suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest) {
+                TODO("Not yet implemented")
+            }
+
             override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
                 TODO("Not yet implemented")
             }
@@ -190,6 +210,14 @@ interface NostrRepository {
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
                 synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
+                synchronizationRelayURLs: List<String>
+            ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun saveNostrEvent(
+                nostrEvent: NostrEvent,
+                negentropySynchronizeRequest: NegentropySynchronizeRequest,
                 synchronizationRelayURLs: List<String>
             ) {
                 TODO("Not yet implemented")
@@ -215,6 +243,10 @@ interface NostrRepository {
             }
 
             override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent> {
                 TODO("Not yet implemented")
             }
 

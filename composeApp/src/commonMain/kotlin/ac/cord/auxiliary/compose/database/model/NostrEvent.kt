@@ -296,7 +296,7 @@ data class NostrEvent(
     }
 
     fun toInReplyToRelation(): InReplyToRelation? = try {
-        if (kind == RepostEvent.KIND) {
+        if (kind == TextNoteEvent.KIND) {
             val textNoteEvent = EventFactory.create<TextNoteEvent>(
                 id = id,
                 pubKey = pubKey,

@@ -17,6 +17,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.negentropy.Negentropy
+import com.vitorpamplona.negentropy.storage.StorageVector
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
@@ -24,6 +26,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
+import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -84,6 +87,7 @@ class NavigationViewModel(
         observePendingBroadcastNostrEventRequests()
         observeProfile()
         observePendingSyncNostrEventRequests()
+        observePendingNegentropySynchronizeRequests()
     }
 
 
@@ -202,8 +206,114 @@ class NavigationViewModel(
                             logger.e("Failed to sync", e)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private fun observePendingNegentropySynchronizeRequests() {
+        logger.i { "observePendingNegentropySynchronizeRequests" }
+
+        scope.launch(Dispatchers.IO) {
+            nostrRepository.observePendingNegentropySynchronizeRequests().distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
+                negentropySynchronizeRequestOrNull?.let { negentropySynchronizeRequest ->
+                    logger.i("synchronizeNostrEventRequest: $negentropySynchronizeRequest")
+                    // TODO: Negentropy...
+
+                    val events = nostrRepository.getNostrFeedIds(
+                        arrayOf(
+                            negentropySynchronizeRequest.synchronizationFilter
+                        )
+                    )
+                    logger.d("Events: ${events.size}")
+                    val storage = StorageVector().apply {
+                        events.forEach { event ->
+                            insert(
+                                event.createdAt.toEpochMilliseconds(),
+                                event.id
+                            )
+                        }
+
+                        seal()
+                    }
+                    logger.d("Negentropy Storage: $storage")
+                    val negentropy = Negentropy(
+                        storage,
+                    )
 
 
+                    val negOpenCmd = NegOpenCmd(
+                        subId = negentropySynchronizeRequest.id,
+                        filter = Filter(
+                            ids = negentropySynchronizeRequest.synchronizationFilter.ids?.toList(),
+                            authors = negentropySynchronizeRequest.synchronizationFilter.authors?.toList(),
+                            kinds = negentropySynchronizeRequest.synchronizationFilter.kinds?.toList(),
+                            tags = negentropySynchronizeRequest.synchronizationFilter.tags,
+                            tagsAll = negentropySynchronizeRequest.synchronizationFilter.tagsAll,
+                            since = negentropySynchronizeRequest.synchronizationFilter.since?.epochSeconds,
+                            until = negentropySynchronizeRequest.synchronizationFilter.until?.epochSeconds,
+                            limit = negentropySynchronizeRequest.synchronizationFilter.limit,
+                            search = negentropySynchronizeRequest.synchronizationFilter.search
+                        ),
+                        initialMessage = negentropy.initiate().toHexString()
+                    )
+                    logger.d("negOpenCmd: $negOpenCmd")
+
+
+                    nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
+
+                    scope.launch(Dispatchers.IO) {
+                        try {
+
+                            relaysSocketManager.sync(
+                                negOpenCmd,
+                                negentropySynchronizeRequest.relayURL
+                            ).collect { nostrIncomingMessage ->
+                                when (nostrIncomingMessage) {
+                                    is NostrIncomingMessage.EventMessage -> {
+                                        scope.launch(Dispatchers.IO) {
+                                            logger.d("Import message: $nostrIncomingMessage")
+                                            nostrIncomingMessage.nostrEvent?.let {
+                                                nostrRepository.saveNostrEvent(
+                                                    nostrEvent = it,
+                                                    negentropySynchronizeRequest,
+                                                    synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    is NostrIncomingMessage.EventsMessage -> {
+                                        logger.d("Import messages: $nostrIncomingMessage")
+
+                                        nostrIncomingMessage.nostrEvents.forEach { nostrEvent ->
+                                            nostrRepository.saveNostrEvent(
+                                                nostrEvent = nostrEvent,
+                                                negentropySynchronizeRequest,
+                                                synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                            )
+                                        }
+                                    }
+                                    is NostrIncomingMessage.EoseMessage -> {
+                                        logger.d("Sync request has been successfully processed (${negentropySynchronizeRequest.relayURL}): $nostrIncomingMessage")
+                                        val closeCommand = CloseCmd(
+                                            subId = negentropySynchronizeRequest.id,
+                                        )
+
+                                        relaysSocketManager.closeQuery(
+                                            closeCommand,
+                                            negentropySynchronizeRequest.relayURL
+                                        )
+                                    }
+                                    else -> {
+                                        logger.d("Unhandled message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
+                                    }
+                                }
+                            }
+
+                        } catch (e: Throwable) {
+                            logger.e("Failed to sync", e)
+                        }
+                    }
                 }
             }
         }

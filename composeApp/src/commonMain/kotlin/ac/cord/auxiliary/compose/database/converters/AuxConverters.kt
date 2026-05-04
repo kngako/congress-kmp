@@ -95,4 +95,25 @@ class AuxConverters {
         logger.e("Failed to convert to FilterArray $value", e)
         return null
     }
+
+    @TypeConverter
+    fun fromSynchronizationFilter(value: SynchronizationFilter?): String? = try {
+        return value?.let {
+            Json.encodeToString(value)
+        }
+    } catch (e: Throwable) {
+        logger.e("Failed to convert from SynchronizationFilter $value", e)
+        return null
+    }
+
+    @TypeConverter
+    fun toSynchronizationFilter(value: String?): SynchronizationFilter? = try {
+        return value?.let {
+            Json.decodeFromString<SynchronizationFilter>(it)
+        }
+    } catch (e: Throwable) {
+        logger.e("Failed to convert to SynchronizationFilter $value", e)
+        return null
+    }
+
 }

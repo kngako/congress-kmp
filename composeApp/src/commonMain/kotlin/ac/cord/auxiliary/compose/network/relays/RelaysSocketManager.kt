@@ -21,6 +21,7 @@ import ac.cord.auxiliary.compose.managers.toHex
 import ac.cord.auxiliary.compose.network.sockets.NostrIncomingMessage
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
+import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.flow.Flow
 
 
@@ -139,6 +140,13 @@ class RelaysSocketManager constructor(
     suspend fun query(reqCommand: ReqCmd, relayUrl: String): Flow<NostrIncomingMessage> {
         return relayPool.query(
             reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    suspend fun sync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<NostrIncomingMessage> {
+        return relayPool.sync(
+            negOpenCmd = negOpenCmd,
             relayUrl = relayUrl
         )
     }

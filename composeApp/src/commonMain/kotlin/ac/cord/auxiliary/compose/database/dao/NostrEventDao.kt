@@ -1,5 +1,6 @@
 package ac.cord.auxiliary.compose.database.dao
 
+import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import androidx.room3.Dao
@@ -63,6 +64,50 @@ interface NostrEventDao {
     fun  observePublicKeyFollowingNostrEvents(
         query: RoomRawQuery
     ): Flow<List<LocalNostrEvent>>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    fun  getNostrEvents(kinds: Array<Kind>, since: Instant = GENESIS_AT): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    fun  getFilteredNostrEvents(
+        kinds: Array<Kind>,
+        search: String,
+        since: Instant = GENESIS_AT
+    ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt DESC")
+    fun  getFilteredNostrEvents(
+        kinds: Array<Kind>,
+        ids: Array<HexKey>,
+        since: Instant = GENESIS_AT
+    ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt DESC LIMIT 50")
+    fun  getAuthoredNostrEvents(
+        kinds: Array<Kind>,
+        authors: Array<HexKey>,
+        since: Instant = GENESIS_AT
+    ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt DESC")
+    fun  getPublicKeyMentionedNostrEvents(
+        kinds: Array<Kind>,
+        publicKey: HexKey,
+        since: Instant = GENESIS_AT
+    ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    fun  getNostrEventReplies(
+        kinds: Array<Kind>,
+        eventId: HexKey,
+        since: Instant
+    ): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
     fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
