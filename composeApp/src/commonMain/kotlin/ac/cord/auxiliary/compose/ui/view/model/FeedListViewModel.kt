@@ -53,7 +53,7 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
-    val negentropySynchronizeRequests = Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
+    val negentropySynchronizeRequests = Relays.negentropicRelaySet.shuffled().take(1).map { normalizedRelayUrl ->
         NegentropySynchronizeRequest(
             purpose = "feed",
             synchronizationFilter = synchronizationFilter,
