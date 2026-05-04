@@ -34,6 +34,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
+import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -210,7 +211,7 @@ class RelayPool(
         }
     }
 
-    suspend fun sync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<NostrIncomingMessage> {
+    suspend fun negentropySync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<NostrIncomingMessage> {
         addRelaysIfMissing(
             setOf(
                 NormalizedRelayUrl(relayUrl).url.toRelayDTO()
@@ -252,6 +253,28 @@ class RelayPool(
         coroutineScope {
             with(nostrSocketClient) {
                 sendMESSAGE(closeSubscription)
+            }
+        }
+    }
+
+    suspend fun closeNegentropySync(negCloseCmd: NegCloseCmd, relayUrl: String) {
+        addRelaysIfMissing(
+            setOf(
+                NormalizedRelayUrl(relayUrl).url.toRelayDTO()
+            )
+        )
+
+        logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
+        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+
+        val closeNegentropySubscription = OptimizedJsonMapper.toJson(negCloseCmd)
+
+        if (nostrSocketClient == null) {
+            throw NetworkException("$relayUrl is not connected")
+        }
+        coroutineScope {
+            with(nostrSocketClient) {
+                sendMESSAGE(closeNegentropySubscription)
             }
         }
     }

@@ -28,6 +28,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
+import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
@@ -263,7 +263,11 @@ class NavigationViewModel(
 
                     scope.launch(Dispatchers.IO) {
                         try {
-                            relaysSocketManager.sync(
+                            val negCloseCmd = NegCloseCmd(
+                                subId = negentropySynchronizeRequest.id,
+                            )
+
+                            relaysSocketManager.negentropySync(
                                 negOpenCmd,
                                 negentropySynchronizeRequest.relayURL
                             ).collect { nostrIncomingMessage ->
@@ -293,17 +297,14 @@ class NavigationViewModel(
                                     }
                                     is NostrIncomingMessage.EoseMessage -> {
                                         logger.d("Sync request has been successfully processed (${negentropySynchronizeRequest.relayURL}): $nostrIncomingMessage")
-                                        val closeCommand = CloseCmd(
-                                            subId = negentropySynchronizeRequest.id,
-                                        )
 
-                                        relaysSocketManager.closeQuery(
-                                            closeCommand,
+                                        relaysSocketManager.closeNegentropySync(
+                                            negCloseCmd,
                                             negentropySynchronizeRequest.relayURL
                                         )
                                     }
                                     is NostrIncomingMessage.NegentropyError -> {
-                                        logger.d("Negentropy Erroy (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
+                                        logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
                                         val since = negentropySynchronizeRequest.synchronizationFilter.since // TODO: Update since -> until based on what we have in the local db...
                                         val until = negentropySynchronizeRequest.synchronizationFilter.until
@@ -345,6 +346,11 @@ class NavigationViewModel(
                                         }
                                         nostrRepository.scheduleBroadcastNostrEventRequests(
                                             broadcastNostrEventRequests
+                                        )
+
+                                        relaysSocketManager.closeNegentropySync(
+                                            negCloseCmd,
+                                            negentropySynchronizeRequest.relayURL
                                         )
                                     }
                                     else -> {
