@@ -107,7 +107,10 @@ interface NostrRepository {
 
     suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>>
 
-    suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent>
+    suspend fun getNostrFeedIds(
+        synchronizationFilters: Array<SynchronizationFilter>,
+        applyLimits: Boolean = true
+    ): List<NostrEvent>
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
@@ -259,7 +262,10 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent> {
+            override suspend fun getNostrFeedIds(
+                synchronizationFilters: Array<SynchronizationFilter>,
+                applyLimits: Boolean
+            ): List<NostrEvent> {
                 TODO("Not yet implemented")
             }
 

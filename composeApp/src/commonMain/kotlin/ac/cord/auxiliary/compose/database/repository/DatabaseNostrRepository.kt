@@ -7,7 +7,6 @@ import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
-import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
 import ac.cord.auxiliary.compose.database.model.Relay
@@ -558,7 +557,10 @@ class DatabaseNostrRepository(
         }
     }
 
-    override suspend fun getNostrFeedIds(synchronizationFilters: Array<SynchronizationFilter>): List<NostrEvent> {
+    override suspend fun getNostrFeedIds(
+        synchronizationFilters: Array<SynchronizationFilter>,
+        applyLimits: Boolean
+    ): List<NostrEvent> {
         if (synchronizationFilters.size == 1) {
             val synchronizationFilter = synchronizationFilters.first()
 
@@ -567,21 +569,36 @@ class DatabaseNostrRepository(
                     logger.d("observeFilteredNostrEvents: $synchronizationFilter")
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
-                        search = synchronizationFilter.search
+                        search = synchronizationFilter.search,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
                     logger.d("observeFilteredNostrEvents: $synchronizationFilter")
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
-                        ids = synchronizationFilter.ids
+                        ids = synchronizationFilter.ids,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
                     logger.d("observeAuthoredNostrEvents: $synchronizationFilter")
                     database.nostrEventDao().getAuthoredNostrEvents(
                         kinds = synchronizationFilter.kinds,
-                        authors = synchronizationFilter.authors
+                        authors = synchronizationFilter.authors,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.since != null &&  synchronizationFilter.tags?.contains("e") == true && synchronizationFilter.tags["e"]?.first()?.isNotEmpty() == true -> {
@@ -589,14 +606,24 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getNostrEventReplies(
                         kinds = synchronizationFilter.kinds,
                         eventId = synchronizationFilter.tags["e"]?.first()!!,
-                        since = synchronizationFilter.since
+                        since = synchronizationFilter.since,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
                     logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
                     database.nostrEventDao().getPublicKeyMentionedNostrEvents(
                         kinds = synchronizationFilter.kinds,
-                        publicKey = synchronizationFilter.tags["p"]?.first()!!
+                        publicKey = synchronizationFilter.tags["p"]?.first()!!,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
                 else -> {
@@ -604,7 +631,12 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getNostrEvents(
                         kinds = arrayOf(
                             TextNoteEvent.KIND,
-                        )
+                        ),
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
                     )
                 }
             }

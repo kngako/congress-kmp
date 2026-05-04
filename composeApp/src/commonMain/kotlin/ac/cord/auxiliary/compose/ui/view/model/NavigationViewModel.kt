@@ -226,7 +226,8 @@ class NavigationViewModel(
                     val events = nostrRepository.getNostrFeedIds(
                         arrayOf(
                             negentropySynchronizeRequest.synchronizationFilter
-                        )
+                        ),
+                        applyLimits = false
                     )
                     logger.d("Events: ${events.size}")
                     val storage = StorageVector().apply {
@@ -253,7 +254,7 @@ class NavigationViewModel(
                             tagsAll = negentropySynchronizeRequest.synchronizationFilter.tagsAll,
                             since = negentropySynchronizeRequest.synchronizationFilter.since?.epochSeconds,
                             until = negentropySynchronizeRequest.synchronizationFilter.until?.epochSeconds,
-                            limit = negentropySynchronizeRequest.synchronizationFilter.limit,
+                            limit = null, // We don't do limits when performing negentropy...
                             search = negentropySynchronizeRequest.synchronizationFilter.search
                         ),
                         initialMessage = negentropy.initiate().toHexString()

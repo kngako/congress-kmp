@@ -66,47 +66,56 @@ interface NostrEventDao {
     ): Flow<List<LocalNostrEvent>>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
-    fun  getNostrEvents(kinds: Array<Kind>, since: Instant = GENESIS_AT): List<NostrEvent>
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
+    fun  getNostrEvents(
+        kinds: Array<Kind>,
+        since: Instant = GENESIS_AT,
+        limit: Int
+    ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
+    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         search: String,
-        since: Instant = GENESIS_AT
+        since: Instant = GENESIS_AT,
+        limit: Int
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt ASC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         ids: Array<HexKey>,
-        since: Instant = GENESIS_AT
+        since: Instant = GENESIS_AT,
+        limit: Int
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
-        since: Instant = GENESIS_AT
+        since: Instant = GENESIS_AT,
+        limit: Int
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt ASC")
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getPublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey,
-        since: Instant = GENESIS_AT
+        since: Instant = GENESIS_AT,
+        limit: Int
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getNostrEventReplies(
         kinds: Array<Kind>,
         eventId: HexKey,
-        since: Instant
+        since: Instant,
+        limit: Int
     ): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
