@@ -10,6 +10,7 @@ import ac.cord.auxiliary.compose.database.dao.NegentropySynchronizeRequestDao
 import ac.cord.auxiliary.compose.database.dao.NegentropySynchronizeResultDao
 import ac.cord.auxiliary.compose.database.dao.NostrDao
 import ac.cord.auxiliary.compose.database.dao.NostrEventDao
+import ac.cord.auxiliary.compose.database.dao.NostrEventRelayDao
 import ac.cord.auxiliary.compose.database.dao.PostDao
 import ac.cord.auxiliary.compose.database.dao.ProfileDao
 import ac.cord.auxiliary.compose.database.dao.QuotedRelationDao
@@ -29,6 +30,7 @@ import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeResult
 import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.QuotedRelation
@@ -59,6 +61,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         NegentropySynchronizeRequest::class,
         NegentropySynchronizeResult::class,
         NostrEvent::class,
+        NostrEventRelay::class,
         Post::class,
         Profile::class,
         QuotedRelation::class,
@@ -90,7 +93,11 @@ abstract class AuxDatabase: RoomDatabase() {
     abstract fun nostrDao(): NostrDao
 
     abstract fun nostrEventDao(): NostrEventDao
+
+    abstract fun nostrEventRelayDao(): NostrEventRelayDao
+
     abstract fun postDao(): PostDao
+
     abstract fun profileDao(): ProfileDao
 
     abstract fun quotedRelationDao(): QuotedRelationDao

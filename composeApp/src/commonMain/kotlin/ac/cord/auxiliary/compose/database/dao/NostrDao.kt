@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
@@ -100,17 +101,18 @@ abstract class NostrDao(
     @Transaction
     open suspend fun storeNostrEvent(
         nostrEvent: NostrEvent,
+        relayURL: String,
         synchronizationRelayURLs: List<String>,
         level: Int
     ) {
-
-
         val storedNostrEvent = database.nostrEventDao().getNostrEventById(nostrEvent.id)
 
         if (storedNostrEvent == null) {
             // Add new nostr event
             logger.i("Store Nostr Event: $nostrEvent")
             database.nostrEventDao().insert(nostrEvent)
+
+
         } else if (nostrEvent.createdAt > storedNostrEvent.createdAt) {
             // Update nostr event`
             logger.i("Update Nostr Event: $nostrEvent")
@@ -125,6 +127,13 @@ abstract class NostrDao(
                 return
             }
         }
+
+        database.nostrEventRelayDao().upsert(
+            NostrEventRelay(
+                relayURL = relayURL,
+                nostrEventId = nostrEvent.id
+            )
+        )
 
         // Index nostrEvent
         logger.i("Index Nostr Event: ${nostrEvent.id}")

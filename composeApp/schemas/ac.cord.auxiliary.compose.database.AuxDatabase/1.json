@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "52ac6d568351e25cbde397f09d3fecd5",
+    "identityHash": "5df12f022a01cc28ca4f7e06383826a4",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -803,6 +803,67 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEvent_inReplyToRootNostrEventId` ON `${TABLE_NAME}` (`inReplyToRootNostrEventId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "NostrEventRelay",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`relayURL` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`nostrEventId`, `relayURL`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "relayURL",
+            "columnName": "relayURL",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nostrEventId",
+            "columnName": "nostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "nostrEventId",
+            "relayURL"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_NostrEventRelay_relayURL",
+            "unique": false,
+            "columnNames": [
+              "relayURL"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NostrEventRelay_relayURL` ON `${TABLE_NAME}` (`relayURL`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "nostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
@@ -1987,7 +2048,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52ac6d568351e25cbde397f09d3fecd5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5df12f022a01cc28ca4f7e06383826a4')"
     ]
   }
 }

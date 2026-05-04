@@ -7,6 +7,7 @@ import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.RecentSearch
 import ac.cord.auxiliary.compose.database.model.Relay
@@ -433,9 +434,10 @@ class DatabaseNostrRepository(
             logger.d("saveNostrEvent: $nostrEvent")
             database.nostrDao().storeNostrEvent(
                 nostrEvent.copy(
-                    broadcastedAt = nostrEvent.createdAt
+                    broadcastedAt = nostrEvent.createdAt,
                 ),
                 synchronizationRelayURLs = synchronizationRelayURLs,
+                relayURL = synchronizeNostrEventRequest.relayURL,
                 level = synchronizeNostrEventRequest.level
             )
 
@@ -456,6 +458,7 @@ class DatabaseNostrRepository(
         logger.d("saveNostrEvent: $nostrEvent")
         database.nostrDao().storeNostrEvent(
             nostrEvent,
+            relayURL = negentropySynchronizeRequest.relayURL,
             synchronizationRelayURLs = synchronizationRelayURLs,
             level = negentropySynchronizeRequest.level
         )
