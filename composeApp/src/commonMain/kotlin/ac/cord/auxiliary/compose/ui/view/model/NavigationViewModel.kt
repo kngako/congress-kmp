@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.ui.view.model
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.network.dto.RelayDTO
 import ac.cord.auxiliary.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
@@ -338,6 +339,23 @@ class NavigationViewModel(
                                         logger.d("EventsIds: ${events.map { it.id }}")
                                         logger.d("Timestamp: ${events.map { it.createdAt.epochSeconds }}")
 
+                                        if (result.needIds.isNotEmpty()) {
+                                            // Schedule a sync from this relay...
+                                            nostrRepository.queueSynchronizeNostrEvent(
+                                                listOf(
+                                                    SynchronizeNostrEventRequest(
+                                                        purpose = negentropySynchronizeRequest.purpose,
+                                                        synchronizationFilters = arrayOf(
+                                                            SynchronizationFilter(
+                                                                ids = result.needIds.map { it.toHexString() }.toTypedArray()
+                                                            )
+                                                        ),
+                                                        relayURL = negentropySynchronizeRequest.relayURL,
+                                                        level = negentropySynchronizeRequest.level,
+                                                    )
+                                                )
+                                            )
+                                        }
                                         val broadcastNostrEventRequests = result.sendIds.map { nostrEventId ->
                                             BroadcastNostrEventRequest(
                                                 nostrEventId = nostrEventId.toHexString(),
