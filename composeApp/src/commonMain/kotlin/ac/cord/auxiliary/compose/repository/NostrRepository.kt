@@ -91,6 +91,10 @@ interface NostrRepository {
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     )
 
+    suspend fun queueNegentropySynchronizeRequest(
+        negentropySynchronizeRequests: List<NegentropySynchronizeRequest>
+    )
+
     suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int>
 
 
@@ -224,6 +228,10 @@ interface NostrRepository {
             }
 
             override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun queueNegentropySynchronizeRequest(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>) {
                 TODO("Not yet implemented")
             }
 

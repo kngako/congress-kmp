@@ -468,9 +468,14 @@ class DatabaseNostrRepository(
     override suspend fun queueSynchronizeNostrEvent(
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     ) {
-        // Save synchronizationResult
         database.synchronizeNostrEventRequestDao().insert(
             synchronizeNostrEventRequests
+        )
+    }
+
+    override suspend fun queueNegentropySynchronizeRequest(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>) {
+        database.negentropySynchronizeRequestDao().insert(
+            negentropySynchronizeRequests
         )
     }
 

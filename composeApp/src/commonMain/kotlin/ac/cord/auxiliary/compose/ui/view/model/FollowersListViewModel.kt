@@ -1,5 +1,6 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
@@ -74,14 +75,12 @@ class FollowersListViewModel(
         logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
-            nostrRepository.queueSynchronizeNostrEvent(
-                Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all the publish relays...
-                    SynchronizeNostrEventRequest(
-                        purpose = "feed",
-                        synchronizationFilters = arrayOf(
-                            synchronizationFilter
-                        ),
-                        relayURL = normalizedRelay.url,
+            nostrRepository.queueNegentropySynchronizeRequest(
+                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
+                    NegentropySynchronizeRequest(
+                        purpose = "followers",
+                        synchronizationFilter = synchronizationFilter,
+                        relayURL = normalizedRelayUrl.url,
                         level = 0
                     )
                 }

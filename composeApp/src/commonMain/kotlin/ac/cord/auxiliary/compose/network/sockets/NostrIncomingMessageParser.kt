@@ -28,6 +28,7 @@ fun String.parseIncomingMessage(): NostrIncomingMessage? {
             NostrVerb.Incoming.AUTH -> jsonArray.takeAsAuthIncomingMessage()
             NostrVerb.Incoming.COUNT -> jsonArray.takeAsCountIncomingMessage()
             NostrVerb.Incoming.EVENTS -> jsonArray.takeAsEventsIncomingMessage()
+            else -> null
         }
     } catch (error: Exception) {
         Logger.withTag("String.parseIncomingMessage").w(error) { "Unable to parse incoming message." }
@@ -136,7 +137,7 @@ private fun JsonArray.takeAsOkIncomingMessage(): NostrIncomingMessage? {
     }
 }
 
-private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming {
+private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming? {
     return when (this.jsonPrimitive.content) {
         "EVENT" -> NostrVerb.Incoming.EVENT
         "EOSE" -> NostrVerb.Incoming.EOSE
@@ -144,7 +145,11 @@ private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming {
         "AUTH" -> NostrVerb.Incoming.AUTH
         "COUNT" -> NostrVerb.Incoming.COUNT
         "EVENTS" -> NostrVerb.Incoming.EVENTS
-        else -> NostrVerb.Incoming.NOTICE
+        "NOTICE" -> NostrVerb.Incoming.NOTICE
+        else -> {
+            Logger.d("Unsupported incomingMessageType: ${this.jsonPrimitive.content}")
+            null
+        }
     }
 }
 
