@@ -29,7 +29,6 @@ fun String.parseIncomingMessage(): NostrIncomingMessage? {
             NostrVerb.Incoming.COUNT -> jsonArray.takeAsCountIncomingMessage()
             NostrVerb.Incoming.EVENTS -> jsonArray.takeAsEventsIncomingMessage()
             NostrVerb.Incoming.NEGENTROPY_MESSAGE -> jsonArray.takeAsNegentropyMessageIncomingMessage()
-            NostrVerb.Incoming.NEGENTROPY_CLOSE -> jsonArray.takeAsNegentropyCloseIncomingMessage()
             NostrVerb.Incoming.NEGENTROPY_ERROR -> jsonArray.takeAsNegentropyErrorIncomingMessage()
             null -> null
         }
@@ -157,19 +156,6 @@ private fun JsonArray.takeAsNegentropyMessageIncomingMessage(): NostrIncomingMes
     }
 }
 
-private fun JsonArray.takeAsNegentropyCloseIncomingMessage(): NostrIncomingMessage? {
-    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
-
-    return if (subscriptionId != null) {
-        NostrIncomingMessage.NegentropyClose(
-            subscriptionId = subscriptionId,
-        )
-    } else {
-        null
-    }
-}
-
-
 private fun JsonArray.takeAsNegentropyErrorIncomingMessage(): NostrIncomingMessage? {
     val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
     val negentropyReason = elementAtOrNull(2)?.jsonPrimitive?.content
@@ -194,7 +180,6 @@ private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming? {
         "EVENTS" -> NostrVerb.Incoming.EVENTS
         "NOTICE" -> NostrVerb.Incoming.NOTICE
         "NEG-MSG" -> NostrVerb.Incoming.NEGENTROPY_MESSAGE
-        "NEG-CLOSE" -> NostrVerb.Incoming.NEGENTROPY_CLOSE
         "NEG-ERR" -> NostrVerb.Incoming.NEGENTROPY_ERROR
         else -> {
             Logger.d("Unsupported incomingMessageType: ${this.jsonPrimitive.content}")

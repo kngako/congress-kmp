@@ -7,7 +7,6 @@ fun Flow<NostrIncomingMessage>.filterBySubscriptionId(id: String) =
     filter {
         // Negentropy...
         (it is NostrIncomingMessage.NegentropyMessage && it.subscriptionId == id) ||
-        (it is NostrIncomingMessage.NegentropyClose && it.subscriptionId == id) ||
         (it is NostrIncomingMessage.NegentropyError && it.subscriptionId == id) ||
         // Events
         (it is NostrIncomingMessage.EventMessage && it.subscriptionId == id) ||

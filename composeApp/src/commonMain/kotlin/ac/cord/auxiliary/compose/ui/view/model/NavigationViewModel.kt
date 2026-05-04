@@ -220,8 +220,7 @@ class NavigationViewModel(
         scope.launch(Dispatchers.IO) {
             nostrRepository.observePendingNegentropySynchronizeRequests().distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
                 negentropySynchronizeRequestOrNull?.let { negentropySynchronizeRequest ->
-                    logger.i("synchronizeNostrEventRequest: $negentropySynchronizeRequest")
-                    // TODO: Negentropy...
+                    logger.i("negentropySynchronizeRequest: $negentropySynchronizeRequest")
 
                     val events = nostrRepository.getNostrFeedIds(
                         arrayOf(
@@ -239,7 +238,6 @@ class NavigationViewModel(
 
                         seal()
                     }
-                    logger.d("Negentropy Storage: $storage")
                     val negentropy = Negentropy(
                         storage,
                     )
@@ -349,7 +347,6 @@ class NavigationViewModel(
                                             broadcastNostrEventRequests
                                         )
                                     }
-
                                     else -> {
                                         logger.d("Unhandled message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
                                     }

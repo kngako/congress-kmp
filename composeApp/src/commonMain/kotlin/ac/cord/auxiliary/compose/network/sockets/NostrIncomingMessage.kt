@@ -45,10 +45,6 @@ sealed class NostrIncomingMessage {
         val negentropyMessage: String,
     ) : NostrIncomingMessage()
 
-    data class NegentropyClose(
-        val subscriptionId: String
-    ) : NostrIncomingMessage()
-
     data class NegentropyError(
         val subscriptionId: String,
         val negentropyReason: String,

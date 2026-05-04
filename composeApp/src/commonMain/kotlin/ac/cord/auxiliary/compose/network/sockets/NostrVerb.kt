@@ -49,9 +49,6 @@ internal sealed class NostrVerb {
         @SerialName("NEG-MSG")
         NEGENTROPY_MESSAGE,
 
-        @SerialName("NEG-CLOSE")
-        NEGENTROPY_CLOSE,
-
         @SerialName("NEG-ERR")
         NEGENTROPY_ERROR,
     }
