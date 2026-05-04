@@ -398,29 +398,29 @@ class NavigationViewModel(
                         localBroadcastNostrEventRequest.broadcastNostrEventRequest
                     )
 
-//                    if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
-//                        scope.launch(Dispatchers.IO) {
-//                            relaysSocketManager.publishEvent(
-//                                localBroadcastNostrEventRequest.nostrEvent
-//                            ).timeout(PUBLISH_TIMEOUT.milliseconds).catch {
-//                                // Timeout...
-//                            }.collect { nostrPublishResult ->
-//                                if (nostrPublishResult.error != null) {
-//                                    logger.e("Error publishing note: $nostrPublishResult")
-//                                    nostrRepository.broadcastProcessed(
-//                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
-//                                        "failed"
-//                                    )
-//                                } else {
-//                                    logger.d("Nostr Publish Result: $nostrPublishResult")
-//                                    nostrRepository.broadcastProcessed(
-//                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
-//                                        "published"
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
+                    if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
+                        scope.launch(Dispatchers.IO) {
+                            relaysSocketManager.publishEvent(
+                                localBroadcastNostrEventRequest.nostrEvent
+                            ).timeout(PUBLISH_TIMEOUT.milliseconds).catch {
+                                // Timeout...
+                            }.collect { nostrPublishResult ->
+                                if (nostrPublishResult.error != null) {
+                                    logger.e("Error publishing note: $nostrPublishResult")
+                                    nostrRepository.broadcastProcessed(
+                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                        "failed"
+                                    )
+                                } else {
+                                    logger.d("Nostr Publish Result: $nostrPublishResult")
+                                    nostrRepository.broadcastProcessed(
+                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                        "published"
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     scope.launch(Dispatchers.IO) {
                         // Broadcast to the intended relay...
