@@ -1,7 +1,7 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
-import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.network.dto.RelayDTO
 import ac.cord.auxiliary.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
@@ -242,7 +242,6 @@ class NavigationViewModel(
                         storage,
                     )
 
-
                     val negOpenCmd = NegOpenCmd(
                         subId = negentropySynchronizeRequest.id,
                         filter = Filter(
@@ -258,14 +257,12 @@ class NavigationViewModel(
                         ),
                         initialMessage = negentropy.initiate().toHexString()
                     )
-                    logger.d("negOpenCmd: $negOpenCmd")
-
+                    logger.d("negOpenCmd: ${negOpenCmd.initialMessage}")
 
                     nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
 
                     scope.launch(Dispatchers.IO) {
                         try {
-
                             relaysSocketManager.sync(
                                 negOpenCmd,
                                 negentropySynchronizeRequest.relayURL
@@ -305,19 +302,42 @@ class NavigationViewModel(
                                             negentropySynchronizeRequest.relayURL
                                         )
                                     }
-                                    // TODO: Handle negentropy error...
-//                                    nostrRepository.queueSynchronizeNostrEvent(
-//                                        Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all the publish relays...
-//                                            SynchronizeNostrEventRequest(
-//                                                purpose = "feed",
-//                                                synchronizationFilters = arrayOf(
-//                                                    synchronizationFilter
-//                                                ),
-//                                                relayURL = normalizedRelay.url,
-//                                                level = 0,
-//                                            )
-//                                        }
-//                                    )
+                                    is NostrIncomingMessage.NegentropyError -> {
+                                        // TODO: Handle negentropy error...
+//                                        nostrRepository.queueSynchronizeNostrEvent(
+//                                            Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all the publish relays...
+//                                                SynchronizeNostrEventRequest(
+//                                                    purpose = "feed",
+//                                                    synchronizationFilters = arrayOf(
+//                                                        synchronizationFilter
+//                                                    ),
+//                                                    relayURL = normalizedRelay.url,
+//                                                    level = 0,
+//                                                )
+//                                            }
+//                                        )
+                                    }
+                                    is NostrIncomingMessage.NegentropyMessage -> {
+                                        logger.d("NegentropyMessage: ${nostrIncomingMessage.negentropyMessage}")
+
+                                        val result = negentropy.reconcile(
+                                            nostrIncomingMessage.negentropyMessage.hexToByteArray()
+                                        )
+                                        logger.d("NeedIds: ${result.needIds.map { it.toHexString() }}")
+                                        logger.d("SendIds: ${result.sendIds.map { it.toHexString() }}")
+                                        logger.d("EventsIds: ${events.map { it.id }}")
+
+                                        val broadcastNostrEventRequests = result.sendIds.map { nostrEventId ->
+                                            BroadcastNostrEventRequest(
+                                                nostrEventId = nostrEventId.toHexString(),
+                                                relayURL = negentropySynchronizeRequest.relayURL
+                                            )
+                                        }
+                                        nostrRepository.scheduleBroadcastNostrEventRequests(
+                                            broadcastNostrEventRequests
+                                        )
+                                    }
+
                                     else -> {
                                         logger.d("Unhandled message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
                                     }

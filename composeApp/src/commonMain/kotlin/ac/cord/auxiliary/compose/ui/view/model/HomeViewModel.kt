@@ -29,6 +29,8 @@ import com.vitorpamplona.quartz.nipB7Blossom.BlossomServersEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 enum class HomeScreenType {
     Following, Mentions, Messages
@@ -75,6 +77,9 @@ class HomeViewModel(
     ): SynchronizationFilter {
         val publicKey = SeedManager.activePublicKey().toHexKey()
 
+        val threeDaysAgo = Clock.System.now().minus(3.days)
+        val now = Clock.System.now()
+
         return when (homeScreenType) {
             HomeScreenType.Following -> {
                 SynchronizationFilter(
@@ -83,7 +88,8 @@ class HomeViewModel(
                         TextNoteEvent.KIND,
                         RepostEvent.KIND,
                     ),
-                    limit = 50
+                    since = threeDaysAgo,
+                    until = now
                 )
             }
             HomeScreenType.Mentions -> {
@@ -102,7 +108,8 @@ class HomeViewModel(
                     tags = mapOf(
                         Pair("p", listOf(publicKey))
                     ),
-                    limit = 50
+                    since = threeDaysAgo,
+                    until = now
                 )
             }
             HomeScreenType.Messages -> {
@@ -113,7 +120,8 @@ class HomeViewModel(
                     kinds = arrayOf(
                         LongTextNoteEvent.KIND,
                     ),
-                    limit = 50
+                    since = threeDaysAgo,
+                    until = now
                 )
             }
         }

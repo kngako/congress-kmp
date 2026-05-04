@@ -122,6 +122,8 @@ interface NostrRepository {
 
     suspend fun saveSearchQuery(query: String, synchronizationFilterArray: SynchronizationFilterArray? = null)
 
+    suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>)
+
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
             override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
@@ -290,6 +292,10 @@ interface NostrRepository {
                 query: String,
                 synchronizationFilterArray: SynchronizationFilterArray?
             ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
                 TODO("Not yet implemented")
             }
         }

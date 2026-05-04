@@ -653,4 +653,10 @@ class DatabaseNostrRepository(
     override suspend fun observePublicKeyRelays(publicKey: String): Flow<List<Relay>> {
         return database.relayDao().observePublicKeyRelays(publicKey)
     }
+
+    override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
+        return database.broadcastNostrEventRequestDao().insert(
+            broadcastNostrEventRequests
+        )
+    }
 }

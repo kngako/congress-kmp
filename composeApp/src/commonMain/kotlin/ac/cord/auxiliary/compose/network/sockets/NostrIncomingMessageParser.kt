@@ -28,7 +28,10 @@ fun String.parseIncomingMessage(): NostrIncomingMessage? {
             NostrVerb.Incoming.AUTH -> jsonArray.takeAsAuthIncomingMessage()
             NostrVerb.Incoming.COUNT -> jsonArray.takeAsCountIncomingMessage()
             NostrVerb.Incoming.EVENTS -> jsonArray.takeAsEventsIncomingMessage()
-            else -> null
+            NostrVerb.Incoming.NEGENTROPY_MESSAGE -> jsonArray.takeAsNegentropyMessageIncomingMessage()
+            NostrVerb.Incoming.NEGENTROPY_CLOSE -> jsonArray.takeAsNegentropyCloseIncomingMessage()
+            NostrVerb.Incoming.NEGENTROPY_ERROR -> jsonArray.takeAsNegentropyErrorIncomingMessage()
+            null -> null
         }
     } catch (error: Exception) {
         Logger.withTag("String.parseIncomingMessage").w(error) { "Unable to parse incoming message." }
@@ -137,6 +140,50 @@ private fun JsonArray.takeAsOkIncomingMessage(): NostrIncomingMessage? {
     }
 }
 
+private fun JsonArray.takeAsNegentropyMessageIncomingMessage(): NostrIncomingMessage? {
+    Logger.withTag("NostrIncomingMessageParser").d("takeAsNegentropyMessageIncomingMessage")
+    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
+    val negentropyMessage = elementAtOrNull(2)?.jsonPrimitive?.content
+
+    return if (subscriptionId != null && negentropyMessage != null) {
+        Logger.withTag("NostrIncomingMessageParser").d("negentropyMessage: $negentropyMessage")
+        NostrIncomingMessage.NegentropyMessage(
+            subscriptionId = subscriptionId,
+            negentropyMessage = negentropyMessage
+        )
+    } else {
+        Logger.withTag("NostrIncomingMessageParser").d("Couldn't consume message: $this")
+        null
+    }
+}
+
+private fun JsonArray.takeAsNegentropyCloseIncomingMessage(): NostrIncomingMessage? {
+    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
+
+    return if (subscriptionId != null) {
+        NostrIncomingMessage.NegentropyClose(
+            subscriptionId = subscriptionId,
+        )
+    } else {
+        null
+    }
+}
+
+
+private fun JsonArray.takeAsNegentropyErrorIncomingMessage(): NostrIncomingMessage? {
+    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
+    val negentropyReason = elementAtOrNull(2)?.jsonPrimitive?.content
+
+    return if (subscriptionId != null && negentropyReason != null) {
+        NostrIncomingMessage.NegentropyError(
+            subscriptionId = subscriptionId,
+            negentropyReason = negentropyReason
+        )
+    } else {
+        null
+    }
+}
+
 private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming? {
     return when (this.jsonPrimitive.content) {
         "EVENT" -> NostrVerb.Incoming.EVENT
@@ -146,6 +193,9 @@ private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming? {
         "COUNT" -> NostrVerb.Incoming.COUNT
         "EVENTS" -> NostrVerb.Incoming.EVENTS
         "NOTICE" -> NostrVerb.Incoming.NOTICE
+        "NEG-MSG" -> NostrVerb.Incoming.NEGENTROPY_MESSAGE
+        "NEG-CLOSE" -> NostrVerb.Incoming.NEGENTROPY_CLOSE
+        "NEG-ERR" -> NostrVerb.Incoming.NEGENTROPY_ERROR
         else -> {
             Logger.d("Unsupported incomingMessageType: ${this.jsonPrimitive.content}")
             null

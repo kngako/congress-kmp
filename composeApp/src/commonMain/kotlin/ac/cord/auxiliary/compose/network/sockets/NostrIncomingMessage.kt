@@ -39,6 +39,20 @@ sealed class NostrIncomingMessage {
         val subscriptionId: String,
         val nostrEvents: List<NostrEvent> = emptyList(),
     ) : NostrIncomingMessage()
+
+    data class NegentropyMessage(
+        val subscriptionId: String,
+        val negentropyMessage: String,
+    ) : NostrIncomingMessage()
+
+    data class NegentropyClose(
+        val subscriptionId: String
+    ) : NostrIncomingMessage()
+
+    data class NegentropyError(
+        val subscriptionId: String,
+        val negentropyReason: String,
+    ) : NostrIncomingMessage()
 }
 
 fun NostrIncomingMessage?.verifyOrThrow(subscriptionId: String) {

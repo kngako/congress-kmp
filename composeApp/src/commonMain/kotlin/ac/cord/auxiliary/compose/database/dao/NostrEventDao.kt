@@ -66,11 +66,11 @@ interface NostrEventDao {
     ): Flow<List<LocalNostrEvent>>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
     fun  getNostrEvents(kinds: Array<Kind>, since: Instant = GENESIS_AT): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         search: String,
@@ -78,7 +78,7 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt ASC")
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         ids: Array<HexKey>,
@@ -86,7 +86,7 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt DESC LIMIT 50")
+    @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC")
     fun  getAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
@@ -94,7 +94,7 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt ASC")
     fun  getPublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey,
@@ -102,7 +102,7 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt DESC")
+    @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC")
     fun  getNostrEventReplies(
         kinds: Array<Kind>,
         eventId: HexKey,
