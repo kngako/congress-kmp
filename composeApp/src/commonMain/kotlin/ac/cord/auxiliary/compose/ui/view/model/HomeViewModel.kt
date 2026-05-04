@@ -89,7 +89,8 @@ class HomeViewModel(
                         RepostEvent.KIND,
                     ),
                     since = threeDaysAgo,
-                    until = now
+                    until = now,
+                    limit = 50
                 )
             }
             HomeScreenType.Mentions -> {
@@ -109,7 +110,8 @@ class HomeViewModel(
                         Pair("p", listOf(publicKey))
                     ),
                     since = threeDaysAgo,
-                    until = now
+                    until = now,
+                    limit = 50
                 )
             }
             HomeScreenType.Messages -> {
@@ -121,7 +123,8 @@ class HomeViewModel(
                         LongTextNoteEvent.KIND,
                     ),
                     since = threeDaysAgo,
-                    until = now
+                    until = now,
+                    limit = 50
                 )
             }
         }
