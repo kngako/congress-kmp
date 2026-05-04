@@ -51,6 +51,16 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
+    val negentropySynchronizeRequests = Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
+        NegentropySynchronizeRequest(
+            purpose = "feed",
+            synchronizationFilter = synchronizationFilter,
+            relayURL = normalizedRelayUrl.url,
+            level = 0
+        )
+    }
+
+
     fun initiate() {
         logger.d("init")
         scheduleSynchronization()
@@ -76,14 +86,7 @@ class FeedListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
-                    NegentropySynchronizeRequest(
-                        purpose = "feed",
-                        synchronizationFilter = synchronizationFilter,
-                        relayURL = normalizedRelayUrl.url,
-                        level = 0
-                    )
-                }
+                negentropySynchronizeRequests
             )
         }
     }

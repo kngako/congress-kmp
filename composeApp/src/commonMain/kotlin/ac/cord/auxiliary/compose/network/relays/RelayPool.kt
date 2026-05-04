@@ -38,6 +38,8 @@ import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.transformWhile
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * As seen in Primal
@@ -57,6 +59,8 @@ class RelayPool(
     private val scope = CoroutineScope(Dispatchers.IO)
 
     val relays: MutableSet<RelayDTO> = mutableSetOf()
+
+    private val relayMutex = Mutex()
 
     @VisibleForTesting
     var socketClients = setOf<NostrSocketClient>()
@@ -117,27 +121,28 @@ class RelayPool(
         this.relays.removeAll(relays)
     }
 
-    fun addRelaysIfMissing(relays: Set<RelayDTO>) {
-        logger.d("addRelaysIfMissing: ${relays.map { it.url }}")
-        val existingRelayUrls = socketClients.map { NormalizedRelayUrl(it.socketUrl).displayUrl() }
-        logger.d("Existing Relays: $existingRelayUrls")
-        val newRelayUrls = relays.map { it.url }
+    suspend fun addRelaysIfMissing(relays: Set<RelayDTO>) {
+        relayMutex.withLock {
+            logger.d("addRelaysIfMissing: ${relays.map { it.url }}")
+            val existingRelayUrls = socketClients.map { NormalizedRelayUrl(it.socketUrl).displayUrl() }
+            logger.d("Existing Relays: $existingRelayUrls")
+            val newRelayUrls = relays.map { it.url }
 
-        val toAddRelayUrls = newRelayUrls.filter { NormalizedRelayUrl(it).displayUrl() !in existingRelayUrls }.toSet()
-        logger.d("toAddRelayUrls: $toAddRelayUrls")
-        val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
-        logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
-        if (toAddSocketClients.isNotEmpty()) {
-            val newSocketClients = socketClients.toMutableSet().apply {
-                addAll(toAddSocketClients)
+            val toAddRelayUrls = newRelayUrls.filter { NormalizedRelayUrl(it).displayUrl() !in existingRelayUrls }.toSet()
+            logger.d("toAddRelayUrls: $toAddRelayUrls")
+            val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
+            logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
+            if (toAddSocketClients.isNotEmpty()) {
+                val newSocketClients = socketClients.toMutableSet().apply {
+                    addAll(toAddSocketClients)
+                }
+                logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
+
+                socketClients = newSocketClients
+
+                this.relays.addAll(relays)
             }
-            logger.d("newSocketClients: ${newSocketClients.map { it.socketUrl }}")
-
-            socketClients = newSocketClients
-
-            this.relays.addAll(relays)
         }
-
     }
 
     fun closePool() {

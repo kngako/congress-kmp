@@ -35,10 +35,12 @@ object Relays {
 
     val bootstrapInboxRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr, yabu)
     val eventFinderRelaySet = setOf(wine, damus, mom, primal, nos, bitcoiner, oxtr)
-    val eventPublishRelaySet = setOf(damus, mom, nos, primal, bitcoiner, oxtr)
+    val eventPublishRelaySet = setOf(oxtr, damus, wine, mom, primal, nos, bitcoiner)
 
+    val negentropicRelaySet = setOf(damus, yabu, oxtr, bitcoiner, nos)
+    val searchQuerableRelaySet = setOf(primal)
 
-    val DefaultNIP65RelaySet = setOf(mom, nos, bitcoiner)
+    val DefaultNIP65RelaySet = setOf(mom, nos, bitcoiner, wine)
 
     val DefaultNIP65List =
         listOf(
