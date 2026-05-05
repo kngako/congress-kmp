@@ -79,7 +79,8 @@ fun TextNoteEventDetail(
     val inReplyToNostrEventFeedListViewModel: InReplyToViewModel = viewModel(
         key = "replies-${localNostrEvent.nostrEvent.id}",
         factory = InReplyToViewModel.factory(
-            nostrEventId = localNostrEvent.nostrEvent.id,
+            nostrEvent = localNostrEvent.nostrEvent,
+            profile = localNostrEvent.profile,
             initialFeedListUIState = FeedListUIState.Loading,
             nostrRepository = nostrRepository,
             createdAt = localNostrEvent.nostrEvent.createdAt

@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.traits.NostrEventEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
+import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -31,6 +32,8 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -98,6 +101,32 @@ data class Profile(
         } else {
             null
         }
+    }
+
+    suspend fun profilePublicRelays(
+        nostrRepository: NostrRepository
+    ): List<NormalizedRelayUrl>? {
+        val relays = nostrRepository.getNostrEvent(
+            publicKey,
+            kind = RelayFeedsListEvent.KIND
+        )?.let { relayFeedNostrEvent ->
+            val relayFeedEvent = RelayFeedsListEvent(
+                id = relayFeedNostrEvent.id,
+                pubKey = relayFeedNostrEvent.pubKey,
+                content = relayFeedNostrEvent.content,
+                tags = relayFeedNostrEvent.tags,
+                sig = relayFeedNostrEvent.sig,
+                createdAt = relayFeedNostrEvent.createdAt.epochSeconds
+            )
+
+            relayFeedEvent.publicRelays()
+        }
+
+        if (relays?.isNotEmpty() == true) {
+            return relays
+        }
+
+        return null
     }
 
     @Composable

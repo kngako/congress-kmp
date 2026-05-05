@@ -124,15 +124,11 @@ class RelayPool(
 
     suspend fun addRelaysIfMissing(relays: Set<RelayDTO>) {
         relayMutex.withLock {
-            logger.d("addRelaysIfMissing: ${relays.map { it.url }}")
             val existingRelayUrls = socketClients.map { NormalizedRelayUrl(it.socketUrl).displayUrl() }
-            logger.d("Existing Relays: $existingRelayUrls")
             val newRelayUrls = relays.map { it.url }
 
             val toAddRelayUrls = newRelayUrls.filter { NormalizedRelayUrl(it).displayUrl() !in existingRelayUrls }.toSet()
-            logger.d("toAddRelayUrls: $toAddRelayUrls")
             val toAddSocketClients = relays.filter { it.url in toAddRelayUrls }.mapAsNostrSocketClient()
-            logger.d("toAddSocketClients: ${toAddSocketClients.map { it.socketUrl }}" )
             if (toAddSocketClients.isNotEmpty()) {
                 val newSocketClients = socketClients.toMutableSet().apply {
                     addAll(toAddSocketClients)
@@ -242,7 +238,6 @@ class RelayPool(
             )
         )
 
-        logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
         val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
 
         val closeSubscription = OptimizedJsonMapper.toJson(closeCmd)

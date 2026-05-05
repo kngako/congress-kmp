@@ -1,6 +1,9 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
+import ac.cord.auxiliary.compose.database.model.NostrEvent
+import ac.cord.auxiliary.compose.database.model.NostrEventRelay
+import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
@@ -37,6 +40,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
+import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,7 +48,8 @@ import kotlinx.coroutines.launch
 import kotlin.time.Instant
 
 class InReplyToViewModel(
-    nostrEventId: String,
+    val nostrEvent: NostrEvent,
+    val profile: Profile?,
     initialFeedListUIState: FeedListUIState,
     val synchronizationFilter: SynchronizationFilter,
     val nostrRepository: NostrRepository
@@ -79,8 +84,12 @@ class InReplyToViewModel(
         logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
+            val publicRelays = profile?.profilePublicRelays(
+                nostrRepository
+            ) ?: Relays.negentropicRelaySet
+
             nostrRepository.queueNegentropySynchronizeRequest(
-                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
+                publicRelays.take(3).map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
                         id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
@@ -193,7 +202,8 @@ class InReplyToViewModel(
         const val TAG = "InReplyToViewModel"
 
         fun factory(
-            nostrEventId: String,
+            nostrEvent: NostrEvent,
+            profile: Profile?,
             createdAt: Instant,
             initialFeedListUIState: FeedListUIState = FeedListUIState.Loading,
             synchronizationFilter: SynchronizationFilter = SynchronizationFilter(
@@ -204,7 +214,7 @@ class InReplyToViewModel(
                 ),
                 tags = mapOf(
                     "e" to listOf(
-                        nostrEventId
+                        nostrEvent.id
                     )
                 ),
                 since = createdAt
@@ -214,7 +224,8 @@ class InReplyToViewModel(
             initializer {
                 InReplyToViewModel(
                     initialFeedListUIState = initialFeedListUIState,
-                    nostrEventId = nostrEventId,
+                    nostrEvent = nostrEvent,
+                    profile = profile,
                     synchronizationFilter = synchronizationFilter,
                     nostrRepository = nostrRepository
                 )

@@ -76,7 +76,7 @@ class FollowersListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
+                Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
                         id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
