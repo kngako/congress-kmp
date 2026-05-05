@@ -5,6 +5,7 @@ import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.Mention
+import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Post
@@ -12,6 +13,7 @@ import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.network.serialization.encodeToJsonString
 import ac.cord.auxiliary.compose.nostr.Relays
 import androidx.room3.Dao
 import androidx.room3.Transaction
@@ -24,6 +26,7 @@ import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip18Reposts.quotes.QAddressableTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.firstTaggedQuote
+import kotlin.math.ceil
 import kotlin.time.Clock
 
 @Dao
@@ -83,6 +86,7 @@ abstract class NostrDao(
 
         indexNostrEvent(
             nostrEvent = nostrEvent,
+            relayURL = relayURLs.first(),
             synchronizationRelayURLs = relayURLs,
             level = 0
         )
@@ -139,6 +143,7 @@ abstract class NostrDao(
         logger.i("Index Nostr Event: ${nostrEvent.id}")
         indexNostrEvent(
             nostrEvent = nostrEvent,
+            relayURL = relayURL,
             synchronizationRelayURLs = synchronizationRelayURLs,
             level = level
         )
@@ -146,13 +151,12 @@ abstract class NostrDao(
 
     private suspend fun indexNostrEvent(
         nostrEvent: NostrEvent,
+        relayURL: String,
         synchronizationRelayURLs: List<String>,
         level: Int
     ) {
-        val synchronizationFilters = mutableSetOf<SynchronizationFilter>() // Might want to use a RelayURL -> SynchronizationFilters hashMap...
-
-        val profilePublicKeysToSync = mutableSetOf<String>()
-        val eventIdsToSync = mutableSetOf<String>()
+        val profilePublicKeysToSync = mutableMapOf<String, MutableSet<String>>()
+        val eventIdsToSync = mutableMapOf<String, MutableSet<String>>()
 
         if (nostrEvent.unsignedNostrEventId == null) {
             // Find or create profile with the pubKey... if not found submit a sync request...
@@ -166,137 +170,22 @@ abstract class NostrDao(
                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                 )
                 database.profileDao().insertPlaceholderProfile(placeHolderProfile)
-
-//                database.synchronizeNostrEventRequestDao().insert(
-//                    synchronizationRelayURLs.take(1).map { synchronizationRelayURL -> // TODO: Take all relayURLS instead of 1
-//                        SynchronizeNostrEventRequest(
-//                            purpose = "synchronization",
-//                            synchronizationFilters = arrayOf(
-//                                SynchronizationFilter(
-//                                    authors = arrayOf(nostrEvent.pubKey),
-//                                    kinds = profileEventKinds
-//                                )
-//                            ),
-//                            relayURL = synchronizationRelayURL
-//                        )
-//                    }
-//                )
-//                synchronizationFilters.add(
-//                    SynchronizationFilter(
-//                        authors = arrayOf(nostrEvent.pubKey),
-//                        kinds = profileEventKinds
-//                    )
-//                )
-                profilePublicKeysToSync.add(nostrEvent.pubKey)
+                if (profilePublicKeysToSync[relayURL] == null) {
+                    profilePublicKeysToSync[relayURL] = mutableSetOf()
+                }
+                profilePublicKeysToSync[relayURL]?.add(nostrEvent.pubKey)
             } else if (profile.createdAt == GENESIS_AT && level == 0) {
                 logger.i("This is a placeholder profile... that might need to get synced...: $profile")
-                profilePublicKeysToSync.add(nostrEvent.pubKey)
+                if (profilePublicKeysToSync[relayURL] == null) {
+                    profilePublicKeysToSync[relayURL] = mutableSetOf()
+                }
+                profilePublicKeysToSync[relayURL]?.add(nostrEvent.pubKey)
             }
         } else {
             logger.w("We somehow have an unsignedNostrEvent: $nostrEvent")
         }
 
         // Sync tagged events and authors...
-//        nostrEvent.tags.firstTaggedQuote()?.let { taggedQuote ->
-//            when (taggedQuote) {
-//                is QEventTag -> {
-//                    Triple(
-//                        taggedQuote.eventId,
-//                        taggedQuote.author,
-//                        taggedQuote.relay,
-//                    )
-//                }
-//                is QAddressableTag -> {
-//                    Triple(
-//                        taggedQuote.address.dTag,
-//                        taggedQuote.address.pubKeyHex,
-//                        taggedQuote.relay,
-//                    )
-//                }
-//                else -> null
-//            }?.let { quotedEventData ->
-//                val quotedNostrEvent = database.nostrEventDao().getNostrEventById(quotedEventData.first)
-//
-//                if (quotedNostrEvent == null) {
-////                    val quotedPost = database.postDao().getPostById(quotedEventData.first)
-//
-////                    if (quotedPost == null) {
-////                        // Persist PlaceHolder and sync
-////                        database.postDao().insert(
-////                            Post(
-////                                id = quotedEventData.first,
-////                                createdAt = GENESIS_AT,
-////                                nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
-////                                content = "sync required",
-////                                profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
-////                            )
-////                        )
-////                    }
-////
-////                    quotedEventData.second?.let { authorPubkey ->
-////                        val repostedPostProfile = database.profileDao().getProfileByPublicKey(authorPubkey)
-////
-////                        if (repostedPostProfile == null) {
-////                            // Persist PlaceHolder and sync
-////                            database.profileDao().insertPlaceholderProfile(
-////                                Profile(
-////                                    publicKey = authorPubkey,
-////                                    createdAt = GENESIS_AT,
-////                                    nostrEventId = nostrEvent.id,  // Will get overwriting by sync handled by tagged events...
-////                                )
-////                            )
-////                            profilePublicKeysToSync.add(
-////                                authorPubkey
-////                            )
-////                        } else if (repostedPostProfile.createdAt == GENESIS_AT && level == 0) {
-////                            logger.i("${level} This is a placeholder profile... that might need to get synced...: $repostedPostProfile")
-////                            profilePublicKeysToSync.add(authorPubkey)
-////                        }
-////                    }
-////
-////                    database.quotedPostDao()
-//
-//                    val recommendRelayUrl = quotedEventData.third?.url
-//
-//                    val synchronizeNostrEventRequests = if (recommendRelayUrl != null) {
-//                        eventIdsToSync.add(quotedEventData.first)
-//
-//                        listOf(
-//                            SynchronizeNostrEventRequest(
-//                                purpose = "synchronization",
-//                                synchronizationFilters = arrayOf(
-//                                    SynchronizationFilter(
-//                                        ids = arrayOf(quotedEventData.first)
-//                                    )
-//                                ),
-//                                relayURL = recommendRelayUrl,
-//                                isRecommendedRelay = true,
-//                                level = level + 1
-//                            )
-//                        )
-//                    } else {
-//                        eventIdsToSync.add(quotedEventData.first)
-//                        synchronizationRelayURLs.map { synchronizationRelayURL ->
-//                            SynchronizeNostrEventRequest(
-//                                purpose = "synchronization",
-//                                synchronizationFilters = arrayOf(
-//                                    SynchronizationFilter(
-//                                        ids = arrayOf(quotedEventData.first)
-//                                    )
-//                                ),
-//                                relayURL = synchronizationRelayURL,
-//                                level = level + 1
-//                            )
-//                        }
-//                    }
-//
-//                    database.synchronizeNostrEventRequestDao().insert(
-//                        synchronizeNostrEventRequests
-//                    )
-//                }
-//            }
-//        }
-
         nostrEvent.tags.taggedEvents().take(4).forEach { taggedEvent -> // We only look at the first 3 tagged events...
             val taggedNostrEvent = database.nostrEventDao().getNostrEventById(taggedEvent.eventId)
             if (taggedNostrEvent == null) {
@@ -314,40 +203,18 @@ abstract class NostrDao(
 
                 val recommendRelayUrl = taggedEvent.relay?.url
 
-                val synchronizeNostrEventRequests = if (recommendRelayUrl != null) {
-                    eventIdsToSync.add(taggedEvent.eventId)
-                    listOf(
-                        SynchronizeNostrEventRequest(
-                            purpose = "synchronization",
-                            synchronizationFilters = arrayOf(
-                                SynchronizationFilter(
-                                    ids = arrayOf(taggedEvent.eventId)
-                                )
-                            ),
-                            relayURL = recommendRelayUrl,
-                            isRecommendedRelay = true,
-                            level = level + 1
-                        )
-                    )
-                } else {
-                    eventIdsToSync.add(taggedEvent.eventId)
-                    synchronizationRelayURLs.map { synchronizationRelayURL ->
-                        SynchronizeNostrEventRequest(
-                            purpose = "synchronization",
-                            synchronizationFilters = arrayOf(
-                                SynchronizationFilter(
-                                    ids = arrayOf(taggedEvent.eventId)
-                                )
-                            ),
-                            relayURL = synchronizationRelayURL,
-                            level = level + 1
-                        )
+                if (recommendRelayUrl != null) {
+                    if (eventIdsToSync[recommendRelayUrl] == null) {
+                        eventIdsToSync[recommendRelayUrl] = mutableSetOf()
                     }
-                }
+                    eventIdsToSync[recommendRelayUrl]?.add(taggedEvent.eventId)
+                } else {
+                    if (eventIdsToSync[relayURL] == null) {
+                        eventIdsToSync[relayURL] = mutableSetOf()
+                    }
+                    eventIdsToSync[relayURL]?.add(taggedEvent.eventId)
 
-                database.synchronizeNostrEventRequestDao().insert(
-                    synchronizeNostrEventRequests
-                )
+                }
             }
 
         }
@@ -375,54 +242,20 @@ abstract class NostrDao(
                     relayUrl = taggedUser.relayHint?.url
                 )
             )
-            val synchronizeNostrEventRequests = if (recommendedRelay != null) {
-//                listOf(
-//                    SynchronizeNostrEventRequest(
-//                        purpose = "synchronization",
-//                        synchronizationFilters = arrayOf(
-//                            SynchronizationFilter(
-//                                authors = arrayOf(taggedUser.pubKey),
-//                                kinds = profileEventKinds
-//                            )
-//                        ),
-//                        relayURL = recommendedRelay,
-//                        isRecommendedRelay = true,
-//                    )
-//                )
-//                synchronizationFilters.add(
-//                    SynchronizationFilter(
-//                        authors = arrayOf(taggedUser.pubKey),
-//                        kinds = profileEventKinds
-//                    )
-//                )
-                profilePublicKeysToSync.add(taggedUser.pubKey)
+            if (recommendedRelay != null) {
+                if (profilePublicKeysToSync[relayURL] == null) {
+                    profilePublicKeysToSync[relayURL] = mutableSetOf()
+                }
+                profilePublicKeysToSync[relayURL]?.add(taggedUser.pubKey)
+
             } else {
-//                synchronizationRelayURLs.take(1).map { synchronizationRelayURL ->
-//                    SynchronizeNostrEventRequest(
-//                        purpose = "synchronization",
-//                        synchronizationFilters = arrayOf(
-//                            SynchronizationFilter(
-//                                authors = arrayOf(taggedUser.pubKey),
-//                                kinds = profileEventKinds
-//                            )
-//                        ),
-//                        relayURL = synchronizationRelayURL
-//                    )
-//                }
-                profilePublicKeysToSync.add(
+                if (profilePublicKeysToSync[relayURL] == null) {
+                    profilePublicKeysToSync[relayURL] = mutableSetOf()
+                }
+                profilePublicKeysToSync[relayURL]?.add(
                     taggedUser.pubKey
                 )
-//                synchronizationFilters.add(
-//                    SynchronizationFilter(
-//                        authors = arrayOf(taggedUser.pubKey),
-//                        kinds = profileEventKinds
-//                    )
-//                )
             }
-
-//            database.synchronizeNostrEventRequestDao().insert(
-//                synchronizeNostrEventRequests
-//            )
         }
 
         nostrEvent.toProfile()?.let { profile ->
@@ -474,7 +307,10 @@ abstract class NostrDao(
             val quotedNostrEvent = database.nostrEventDao().getNostrEventById(quotedRelation.quotedNostrEventId)
 
             val quotedProfilePublicKey = if (quotedNostrEvent == null) {
-                eventIdsToSync.add(quotedRelation.quotedNostrEventId)
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(quotedRelation.quotedNostrEventId)
 
                 database.nostrEventDao().insert(
                     NostrEvent(
@@ -519,7 +355,10 @@ abstract class NostrDao(
 
             val repostedProfilePublicKey = if (repostedNostrEvent == null) {
                 // Sync event...
-                eventIdsToSync.add(repostedRelation.repostedNostrEventId)
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(repostedRelation.repostedNostrEventId)
 
                 database.nostrEventDao().insert(
                     NostrEvent(
@@ -562,7 +401,10 @@ abstract class NostrDao(
             val inReplyToNostrEvent = database.nostrEventDao().getNostrEventById(inReplyToRelation.inReplyToNostrEventId)
 
             val inReplyToProfilePublicKey = if (inReplyToNostrEvent == null) {
-                eventIdsToSync.add(inReplyToRelation.inReplyToNostrEventId)
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(inReplyToRelation.inReplyToNostrEventId)
 
                 database.nostrEventDao().insert(
                     NostrEvent(
@@ -584,7 +426,10 @@ abstract class NostrDao(
             val inReplyToRootNostrEvent = inReplyToRelation.inReplyToRootNostrEventId?.let { database.nostrEventDao().getNostrEventById(it) }
 
             val inReplyToRootProfilePublicKey = if (inReplyToRootNostrEvent == null) {
-                eventIdsToSync.add(inReplyToRelation.inReplyToNostrEventId)
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(inReplyToRelation.inReplyToNostrEventId)
 
                 inReplyToRelation.inReplyToRootProfilePublicKey
                 // Might need to save place holder...
@@ -630,22 +475,10 @@ abstract class NostrDao(
                 )
 
                 // Request a sync for the post being replied to
-                eventIdsToSync.add(zap.postId)
-//                database.synchronizeNostrEventRequestDao().insert(
-//                    synchronizationRelayURLs.map { synchronizationRelayURL ->
-//
-//                        SynchronizeNostrEventRequest(
-//                            purpose = "synchronization",
-//                            synchronizationFilters = arrayOf(
-//                                SynchronizationFilter(
-//                                    ids = arrayOf(zap.postId)
-//                                )
-//                            ),
-//                            relayURL = synchronizationRelayURL,
-//                            level = level + 1
-//                        )
-//                    }
-//                )
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(zap.postId)
             }
 
             database.zapDao().upsert(zap)
@@ -675,25 +508,17 @@ abstract class NostrDao(
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                     database.profileDao().insertPlaceholderProfile(placeHolderProfile)
-
-//                    database.synchronizeNostrEventRequestDao().insert(
-//                        synchronizationRelayURLs.take(1).map { synchronizationRelayURL -> // TODO: Get all relayURLs instead of 1
-//                            SynchronizeNostrEventRequest(
-//                                purpose = "synchronization",
-//                                synchronizationFilters = arrayOf(
-//                                    SynchronizationFilter(
-//                                        authors = arrayOf(followedHexKEys),
-//                                        kinds = profileEventKinds
-//                                    )
-//                                ),
-//                                relayURL = synchronizationRelayURL
-//                            )
-//                        }
-//                    )
-                    profilePublicKeysToSync.add(followedHexKEys)
+                    if (profilePublicKeysToSync[relayURL] == null) {
+                        profilePublicKeysToSync[relayURL] = mutableSetOf()
+                    }
+                    profilePublicKeysToSync[relayURL]?.add(followedHexKEys)
                 } else if (profile.createdAt == GENESIS_AT && level == 0) {
                     logger.i("${level} This is a placeholder profile... that might need to get synced...: $profile")
-                    profilePublicKeysToSync.add(followedHexKEys)
+
+                    if (profilePublicKeysToSync[relayURL] == null) {
+                        profilePublicKeysToSync[relayURL] = mutableSetOf()
+                    }
+                    profilePublicKeysToSync[relayURL]?.add(followedHexKEys)
                 }
 
                 // Save profile connections...
@@ -709,59 +534,51 @@ abstract class NostrDao(
         }
 
         if (level == 0) {
-            if (profilePublicKeysToSync.isNotEmpty()) {
-                synchronizationFilters.add(
-                    SynchronizationFilter(
-                        authors = profilePublicKeysToSync.take(21).toTypedArray(), // We only sync 21 profiles at a time...
-                        kinds = profileEventKinds
+            val negentropySynchronizeRequests = mutableListOf<NegentropySynchronizeRequest>()
+            profilePublicKeysToSync.forEach { relayUrlProfilePublicKey ->
+                val synchronizationFilter = SynchronizationFilter(
+                    authors = relayUrlProfilePublicKey.value.toTypedArray(),
+                    kinds = profileEventKinds
+                )
+                negentropySynchronizeRequests.add(
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayUrlProfilePublicKey.key,
+                            synchronizationFilter
+                        ),
+                        purpose = "synchronization",
+                        synchronizationFilter = synchronizationFilter,
+                        relayURL = relayUrlProfilePublicKey.key,
+                        level = level + 1
                     )
                 )
             }
 
-            if (eventIdsToSync.isNotEmpty()) {
-                synchronizationFilters.add(
-                    SynchronizationFilter(
-                        ids = eventIdsToSync.take(21).toTypedArray(), // We should only sync 21 profiles at a time...
+            eventIdsToSync.forEach { relayUrlEventIds ->
+                // TODO: Hash relayUrl + synchronicationFilter + ephocMinutes
+                val synchronizationFilter = SynchronizationFilter(
+                    ids = relayUrlEventIds.value.toTypedArray(),
+                )
+                Clock.System.now().toEpochMilliseconds()
+                negentropySynchronizeRequests.add(
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayUrlEventIds.key,
+                            synchronizationFilter
+                        ),
+                        purpose = "synchronization",
+                        synchronizationFilter = synchronizationFilter,
+                        relayURL = relayUrlEventIds.key,
+                        level = level + 1
                     )
                 )
             }
-        } else {
-            logger.d("We shouldn't sync profiles on level ${level} so we dropping: $profilePublicKeysToSync")
-        }
 
-
-
-        if (synchronizationFilters.size > 1) {
-            logger.d("We have a lot to sync")
-        }
-
-        if (synchronizationFilters.isNotEmpty()) {
-            logger.d("Synchronize ${level}: $synchronizationFilters")
-
-            val relays = if( profilePublicKeysToSync.isNotEmpty()) {
-                // If we are syncing profilePublicKeys we might want
-                Relays.eventFinderRelaySet.map { it.url }
-            } else {
-
-                synchronizationRelayURLs
-            }
-
-            synchronizationFilters.forEach { synchronizationFilter ->
-                database.synchronizeNostrEventRequestDao().insert(
-
-                    relays.take(3).map { synchronizationRelayURL -> // TODO: Get all relayURLs instead of 1
-                        SynchronizeNostrEventRequest(
-                            purpose = "synchronization",
-                            synchronizationFilters = arrayOf(
-                                synchronizationFilter
-                            ),
-                            relayURL = synchronizationRelayURL,
-                            level = level + 1
-                        )
-                    }
+            if (negentropySynchronizeRequests.isNotEmpty()) {
+                database.negentropySynchronizeRequestDao().insert(
+                    negentropySynchronizeRequests
                 )
             }
         }
-
     }
 }

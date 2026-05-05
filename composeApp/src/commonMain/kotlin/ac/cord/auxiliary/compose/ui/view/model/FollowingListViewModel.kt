@@ -77,6 +77,10 @@ class FollowingListViewModel(
             nostrRepository.queueNegentropySynchronizeRequest(
                 Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayURL = normalizedRelayUrl.url,
+                            synchronizationFilter = synchronizationFilter
+                        ),
                         purpose = "following",
                         synchronizationFilter = synchronizationFilter,
                         relayURL = normalizedRelayUrl.url,

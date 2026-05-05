@@ -82,6 +82,10 @@ class InReplyToViewModel(
             nostrRepository.queueNegentropySynchronizeRequest(
                 Relays.eventPublishRelaySet.take(1).map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayURL = normalizedRelayUrl.url,
+                            synchronizationFilter = synchronizationFilter
+                        ),
                         purpose = "inReplyTo",
                         synchronizationFilter = synchronizationFilter,
                         relayURL = normalizedRelayUrl.url,

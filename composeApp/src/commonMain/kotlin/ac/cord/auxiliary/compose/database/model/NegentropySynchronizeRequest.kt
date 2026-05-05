@@ -3,11 +3,13 @@ package ac.cord.auxiliary.compose.database.model
 import ac.cord.auxiliary.compose.database.model.traits.OptionalNostrEventEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.network.serialization.encodeToJsonString
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.math.ceil
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
@@ -30,7 +32,8 @@ import kotlin.uuid.Uuid
 )
 data class NegentropySynchronizeRequest(
     @PrimaryKey
-    val id: String = Uuid.Companion.generateV4().toHexDashString(),
+    val id: String,
+    val uuid: String = Uuid.generateV4().toHexDashString(),
     val purpose: String,
     val status: String = "pending",
     val relayURL: String,
@@ -45,4 +48,14 @@ data class NegentropySynchronizeRequest(
     override val updatedAt: Instant = createdAt,
 ): OptionalNostrEventEntity, TimestampedEntity {
 
+    companion object {
+        fun computeId(
+            relayURL: String,
+            synchronizationFilter: SynchronizationFilter,
+        ): String {
+            val id = relayURL + synchronizationFilter + ceil(Clock.System.now().epochSeconds/60.0)
+
+            return Uuid.generateV4().toHexDashString()
+        }
+    }
 }

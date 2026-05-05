@@ -245,7 +245,7 @@ class NavigationViewModel(
                     )
 
                     val negOpenCmd = NegOpenCmd(
-                        subId = negentropySynchronizeRequest.id,
+                        subId = negentropySynchronizeRequest.uuid,
                         filter = Filter(
                             ids = negentropySynchronizeRequest.synchronizationFilter.ids?.toList(),
                             authors = negentropySynchronizeRequest.synchronizationFilter.authors?.toList(),
@@ -266,7 +266,7 @@ class NavigationViewModel(
                     scope.launch(Dispatchers.IO) {
                         try {
                             val negCloseCmd = NegCloseCmd(
-                                subId = negentropySynchronizeRequest.id,
+                                subId = negentropySynchronizeRequest.uuid,
                             )
 
                             relaysSocketManager.negentropySync(
@@ -308,6 +308,7 @@ class NavigationViewModel(
                                     is NostrIncomingMessage.NegentropyError -> {
                                         logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
+                                        // TODO: Don't schedule a sync when on mobile internet.
                                         val since = negentropySynchronizeRequest.synchronizationFilter.since // TODO: Update since -> until based on what we have in the local db...
                                         val until = negentropySynchronizeRequest.synchronizationFilter.until
 

@@ -55,6 +55,10 @@ class FeedListViewModel(
 
     val negentropySynchronizeRequests = Relays.negentropicRelaySet.shuffled().take(1).map { normalizedRelayUrl ->
         NegentropySynchronizeRequest(
+            id = NegentropySynchronizeRequest.computeId(
+                normalizedRelayUrl.url,
+                synchronizationFilter = synchronizationFilter
+            ),
             purpose = "feed",
             synchronizationFilter = synchronizationFilter,
             relayURL = normalizedRelayUrl.url,
