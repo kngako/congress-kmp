@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.network.dto.RelayDTO
+import ac.cord.auxiliary.compose.network.dto.toRelayDTO
 import ac.cord.auxiliary.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
 import ac.cord.auxiliary.compose.network.relays.RelaysSocketManager
 import ac.cord.auxiliary.compose.network.sockets.NostrIncomingMessage
@@ -366,12 +367,14 @@ class NavigationViewModel(
                                                     )
                                                 )
                                             }
-                                            val broadcastNostrEventRequests = result.sendIds.map { nostrEventId ->
+                                            val eventIds = events.map { it.id }
+                                            val broadcastNostrEventRequests = result.sendIds.filter { it.toHexString() in eventIds }.map { sendId ->
                                                 BroadcastNostrEventRequest(
-                                                    nostrEventId = nostrEventId.toHexString(),
+                                                    nostrEventId = sendId.toHexString(),
                                                     relayURL = negentropySynchronizeRequest.relayURL
                                                 )
                                             }
+                                            logger.d("broadcastNostrEventRequests: $broadcastNostrEventRequests")
                                             nostrRepository.scheduleBroadcastNostrEventRequests(
                                                 broadcastNostrEventRequests
                                             )
@@ -443,11 +446,7 @@ class NavigationViewModel(
                         relaysSocketManager.publishEvent(
                             localBroadcastNostrEventRequest.nostrEvent,
                             setOf(
-                                RelayDTO(
-                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL,
-                                    write = true,
-                                    read = true
-                                )
+                                localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL.toRelayDTO()
                             )
                         ).timeout(PUBLISH_TIMEOUT.milliseconds).catch {
                             // Timeout...

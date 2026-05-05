@@ -122,6 +122,7 @@ class RelaysSocketManager constructor(
 
     @Throws(NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO>): Flow<NostrPublishResult> {
+        logger.d("publishEvent: $nostrEvent")
         return relayPool.publishEvent(
             nostrEvent = nostrEvent,
             relays = relays

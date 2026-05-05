@@ -170,14 +170,17 @@ class RelayPool(
 
     @Throws(NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: NostrEvent, relays: Set<RelayDTO> = emptySet()): Flow<NostrPublishResult> {
-        val relayUrls = relays.map { it.url }
+        val relayUrls = relays.map { NormalizedRelayUrl(it.url).displayUrl() }
 
         return if (relayUrls.isEmpty()) {
+            logger.w("Empty Relays")
             handlePublishEventToRelays(socketClients, nostrEvent)
         } else {
+            logger.d("Add Relays: $relays")
             addRelaysIfMissing(relays)
 
-            val filteredSocketClients = socketClients.filter { relayUrls.contains(it.socketUrl) }
+            val filteredSocketClients = socketClients.filter { NormalizedRelayUrl(it.socketUrl).displayUrl() in relayUrls }
+            logger.d("filteredSocketClients: ${filteredSocketClients.map { it.socketUrl }}")
 
             handlePublishEventToRelays(filteredSocketClients.toSet(), nostrEvent)
         }
