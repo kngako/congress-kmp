@@ -9,6 +9,8 @@ import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.utils.sha256.sha256
+import io.ktor.utils.io.core.toByteArray
 import kotlin.math.ceil
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -53,9 +55,11 @@ data class NegentropySynchronizeRequest(
             relayURL: String,
             synchronizationFilter: SynchronizationFilter,
         ): String {
-            val id = relayURL + synchronizationFilter + ceil(Clock.System.now().epochSeconds/60.0)
-
-            return Uuid.generateV4().toHexDashString()
+            return sha256(
+                data = relayURL.toByteArray()
+                        + synchronizationFilter.encodeToJsonString().toByteArray()
+                        + ceil(Clock.System.now().epochSeconds/60.0).encodeToJsonString().toByteArray()
+            ).toHexString()
         }
     }
 }
