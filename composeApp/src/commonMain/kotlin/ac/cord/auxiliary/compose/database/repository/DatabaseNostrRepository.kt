@@ -62,6 +62,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
+import kotlin.math.sin
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -563,10 +564,11 @@ class DatabaseNostrRepository(
 
             return when {
                 synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
-                    logger.d("observeFilteredNostrEvents: $synchronizationFilter")
+                    logger.d("getFilteredNostrEvents($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         search = synchronizationFilter.search,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -575,10 +577,23 @@ class DatabaseNostrRepository(
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
-                    logger.d("observeFilteredNostrEvents: $synchronizationFilter")
+                    logger.d("getFilteredNostrEvents($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         ids = synchronizationFilter.ids,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
+                    )
+                }
+                synchronizationFilter.ids != null -> {
+                    logger.d("getNostrEventsByIds($applyLimits): $synchronizationFilter")
+                    database.nostrEventDao().getNostrEventsByIds(
+                        ids = synchronizationFilter.ids,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -587,10 +602,11 @@ class DatabaseNostrRepository(
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
-                    logger.d("observeAuthoredNostrEvents: $synchronizationFilter")
+                    logger.d("getAuthoredNostrEvents($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getAuthoredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         authors = synchronizationFilter.authors,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -599,7 +615,7 @@ class DatabaseNostrRepository(
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.since != null &&  synchronizationFilter.tags?.contains("e") == true && synchronizationFilter.tags["e"]?.first()?.isNotEmpty() == true -> {
-                    logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                    logger.d("getNostrEventReplies($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getNostrEventReplies(
                         kinds = synchronizationFilter.kinds,
                         eventId = synchronizationFilter.tags["e"]?.first()!!,
@@ -612,10 +628,11 @@ class DatabaseNostrRepository(
                     )
                 }
                 synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
-                    logger.d("observePublicKeyMentionedNostrEvents: $synchronizationFilter")
+                    logger.d("getPublicKeyMentionedNostrEvents($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getPublicKeyMentionedNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         publicKey = synchronizationFilter.tags["p"]?.first()!!,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -624,11 +641,12 @@ class DatabaseNostrRepository(
                     )
                 }
                 else -> {
-                    logger.d("NostrEvent: $synchronizationFilter")
+                    logger.d("getNostrEvents($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getNostrEvents(
                         kinds = arrayOf(
                             TextNoteEvent.KIND,
                         ),
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {

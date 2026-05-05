@@ -69,7 +69,7 @@ interface NostrEventDao {
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getNostrEvents(
         kinds: Array<Kind>,
-        since: Instant = GENESIS_AT,
+        since: Instant,
         limit: Int
     ): List<NostrEvent>
 
@@ -78,7 +78,7 @@ interface NostrEventDao {
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         search: String,
-        since: Instant = GENESIS_AT,
+        since: Instant,
         limit: Int
     ): List<NostrEvent>
 
@@ -87,7 +87,15 @@ interface NostrEventDao {
     fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         ids: Array<HexKey>,
-        since: Instant = GENESIS_AT,
+        since: Instant,
+        limit: Int
+    ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
+    fun  getNostrEventsByIds(
+        ids: Array<HexKey>,
+        since: Instant,
         limit: Int
     ): List<NostrEvent>
 
@@ -96,7 +104,7 @@ interface NostrEventDao {
     fun  getAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
-        since: Instant = GENESIS_AT,
+        since: Instant,
         limit: Int
     ): List<NostrEvent>
 
@@ -105,7 +113,7 @@ interface NostrEventDao {
     fun  getPublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey,
-        since: Instant = GENESIS_AT,
+        since: Instant,
         limit: Int
     ): List<NostrEvent>
 

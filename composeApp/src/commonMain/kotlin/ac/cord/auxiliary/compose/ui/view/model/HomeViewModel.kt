@@ -30,7 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 
 enum class HomeScreenType {
     Following, Mentions, Messages
@@ -77,7 +77,7 @@ class HomeViewModel(
     ): SynchronizationFilter {
         val publicKey = SeedManager.activePublicKey().toHexKey()
 
-        val threeDaysAgo = Clock.System.now().minus(3.days)
+        val twelveHoursAgo = Clock.System.now().minus(12.hours)
         val now = Clock.System.now()
 
         return when (homeScreenType) {
@@ -88,7 +88,7 @@ class HomeViewModel(
                         TextNoteEvent.KIND,
                         RepostEvent.KIND,
                     ),
-                    since = threeDaysAgo,
+                    since = twelveHoursAgo,
                     until = now,
                     limit = 50
                 )
@@ -109,7 +109,7 @@ class HomeViewModel(
                     tags = mapOf(
                         Pair("p", listOf(publicKey))
                     ),
-                    since = threeDaysAgo,
+                    since = twelveHoursAgo,
                     until = now,
                     limit = 50
                 )
@@ -122,7 +122,7 @@ class HomeViewModel(
                     kinds = arrayOf(
                         LongTextNoteEvent.KIND,
                     ),
-                    since = threeDaysAgo,
+                    since = twelveHoursAgo,
                     until = now,
                     limit = 50
                 )

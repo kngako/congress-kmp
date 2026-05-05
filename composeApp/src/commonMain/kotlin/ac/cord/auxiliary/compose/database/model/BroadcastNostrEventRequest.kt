@@ -1,12 +1,16 @@
 package ac.cord.auxiliary.compose.database.model
 
 import ac.cord.auxiliary.compose.database.model.traits.NostrEventEntity
+import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
+import ac.cord.auxiliary.compose.network.serialization.encodeToJsonString
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Entity(
     foreignKeys = [
@@ -35,4 +39,7 @@ data class BroadcastNostrEventRequest(
     override val unsignedNostrEventId: Long? = null,
     val status: String = "pending",
     val relayURL: String,
-): NostrEventEntity, UnsignedNostrEventEntity
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = Clock.System.now(),
+): NostrEventEntity, UnsignedNostrEventEntity, TimestampedEntity
