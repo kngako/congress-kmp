@@ -180,7 +180,7 @@ class FollowersListViewModel(
     }
 
     companion object {
-        const val TAG = "FeedListViewModel"
+        const val TAG = "FollowersListViewModel"
 
         fun factory(
             initialFeedListUIState: FollowersListUIState = FollowersListUIState.Loading,

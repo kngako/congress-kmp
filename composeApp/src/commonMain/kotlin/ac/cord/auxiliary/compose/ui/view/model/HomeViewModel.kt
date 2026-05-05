@@ -120,10 +120,8 @@ class HomeViewModel(
                         publicKey
                     ),
                     kinds = arrayOf(
-                        LongTextNoteEvent.KIND,
+                        ContactListEvent.KIND,
                     ),
-                    since = twelveHoursAgo,
-                    until = now,
                     limit = 50
                 )
             }

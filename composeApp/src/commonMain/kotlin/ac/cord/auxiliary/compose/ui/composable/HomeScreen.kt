@@ -12,8 +12,10 @@ import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.HomeScreenType
 import ac.cord.auxiliary.compose.ui.view.model.HomeViewModel
+import ac.cord.auxiliary.compose.ui.view.model.MessageListViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
+import ac.cord.auxiliary.compose.ui.view.state.MessageListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -208,9 +210,29 @@ fun HomeScreen(
                                         feedListViewModel.initiate()
                                     }
                                 }
-
                                 HomeScreenType.Messages -> {
-                                    Text("Messaging coming soon.")
+                                    val messageListViewModel: MessageListViewModel = viewModel(
+                                        key = homeScreenTypeType.name,
+                                        factory = MessageListViewModel.factory(
+                                            initialMessageListUIState = MessageListUIState.Loading,
+                                            publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
+                                            synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
+                                                homeScreenTypeType,
+                                                profileWithFollowing = homeScreenUIState.profileWithFollowing
+                                            ),
+                                            nostrRepository = nostrRepository
+                                        ),
+                                    )
+
+                                    key(messageListViewModel.messageListUIState) {
+                                        messageListViewModel.RenderFeed(
+                                            onNavigateToEvent = onNavigateToEvent
+                                        )
+                                    }
+
+                                    key(true) {
+                                        messageListViewModel.initiate()
+                                    }
                                 }
                             }
                         }
