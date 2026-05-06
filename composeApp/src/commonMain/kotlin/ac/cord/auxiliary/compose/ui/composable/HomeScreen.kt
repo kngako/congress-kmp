@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     initialHomeScreenUIState: HomeScreenUIState = HomeScreenUIState.Loading,
     onNavigateToEvent: (Route) -> Unit,
+    onNavigateToDirectMessageDetail: () -> Unit,
     onNavigateToWriteNewNote: () -> Unit,
     onNavigateToSearch: () -> Unit,
     nostrRepository: NostrRepository,
@@ -225,7 +226,9 @@ fun HomeScreen(
 
                                     key(directMessageListViewModel.directMessageListUIState) {
                                         directMessageListViewModel.RenderFeed(
-                                            onNavigateToEvent = onNavigateToEvent
+                                            onNavigateToDirectMessageDetail = {
+                                                onNavigateToDirectMessageDetail.invoke()
+                                            }
                                         )
                                     }
 
@@ -282,6 +285,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToEvent = {},
                 onNavigateToWriteNewNote = {},
                 onNavigateToSearch = {},
+                onNavigateToDirectMessageDetail = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

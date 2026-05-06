@@ -101,14 +101,13 @@ class DirectMessageListViewModel(
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun RenderFeed(
-        onNavigateToEvent: (Route) -> Unit
+        onNavigateToDirectMessageDetail: (String) -> Unit
     ) {
-
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when (val feedListUIState = directMessageListUIState) {
+            when (val directMessageListUIState = directMessageListUIState) {
                 DirectMessageListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -135,7 +134,7 @@ class DirectMessageListViewModel(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-
+                                onNavigateToDirectMessageDetail.invoke("")
                             }
                         ) {
                             Column(
@@ -152,7 +151,7 @@ class DirectMessageListViewModel(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-
+                                onNavigateToDirectMessageDetail.invoke("")
                             }
                         ) {
                             Column(
@@ -169,7 +168,7 @@ class DirectMessageListViewModel(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-
+                                onNavigateToDirectMessageDetail.invoke("")
                             }
                         ) {
                             Column(
@@ -186,7 +185,7 @@ class DirectMessageListViewModel(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-
+                                onNavigateToDirectMessageDetail.invoke("")
                             }
                         ) {
                             Column(
@@ -203,7 +202,7 @@ class DirectMessageListViewModel(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-
+                                onNavigateToDirectMessageDetail.invoke("")
                             }
                         ) {
                             Column(
