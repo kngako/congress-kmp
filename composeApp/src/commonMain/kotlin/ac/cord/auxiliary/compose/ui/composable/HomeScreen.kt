@@ -12,10 +12,10 @@ import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.HomeScreenType
 import ac.cord.auxiliary.compose.ui.view.model.HomeViewModel
-import ac.cord.auxiliary.compose.ui.view.model.MessageListViewModel
+import ac.cord.auxiliary.compose.ui.view.model.DirectMessageListViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
-import ac.cord.auxiliary.compose.ui.view.state.MessageListUIState
+import ac.cord.auxiliary.compose.ui.view.state.DirectMessageListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +25,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -211,10 +210,10 @@ fun HomeScreen(
                                     }
                                 }
                                 HomeScreenType.Messages -> {
-                                    val messageListViewModel: MessageListViewModel = viewModel(
+                                    val directMessageListViewModel: DirectMessageListViewModel = viewModel(
                                         key = homeScreenTypeType.name,
-                                        factory = MessageListViewModel.factory(
-                                            initialMessageListUIState = MessageListUIState.Loading,
+                                        factory = DirectMessageListViewModel.factory(
+                                            initialDirectMessageListUIState = DirectMessageListUIState.Loading,
                                             publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
                                             synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
                                                 homeScreenTypeType,
@@ -224,14 +223,14 @@ fun HomeScreen(
                                         ),
                                     )
 
-                                    key(messageListViewModel.messageListUIState) {
-                                        messageListViewModel.RenderFeed(
+                                    key(directMessageListViewModel.directMessageListUIState) {
+                                        directMessageListViewModel.RenderFeed(
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
 
                                     key(true) {
-                                        messageListViewModel.initiate()
+                                        directMessageListViewModel.initiate()
                                     }
                                 }
                             }

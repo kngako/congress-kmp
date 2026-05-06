@@ -1,30 +1,20 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
-import ac.cord.auxiliary.compose.database.model.NostrEvent
-import ac.cord.auxiliary.compose.database.model.Profile
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
-import ac.cord.auxiliary.compose.ui.composable.HomeScreen
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
-import ac.cord.auxiliary.compose.ui.theme.AuxTheme
-import ac.cord.auxiliary.compose.ui.view.state.FollowingListUIState
-import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
-import ac.cord.auxiliary.compose.ui.view.state.MessageListUIState
+import ac.cord.auxiliary.compose.ui.view.state.DirectMessageListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -34,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -42,20 +31,19 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-class MessageListViewModel(
-    initialMessageListUIState: MessageListUIState,
+class DirectMessageListViewModel(
+    initialDirectMessageListUIState: DirectMessageListUIState,
     val publicKey: String,
     val synchronizationFilter: SynchronizationFilter,
     val nostrRepository: NostrRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var messageListUIState: MessageListUIState by mutableStateOf(initialMessageListUIState)
+    var directMessageListUIState: DirectMessageListUIState by mutableStateOf(initialDirectMessageListUIState)
         private set
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
@@ -72,8 +60,8 @@ class MessageListViewModel(
             nostrRepository.observeProfileWithFollowing(
                 publicKey
             ).collect {
-                messageListUIState = MessageListUIState.Loaded(
-                    messageList = emptyList()
+                directMessageListUIState = DirectMessageListUIState.Loaded(
+                    directMessageList = emptyList()
                 )
             }
         }
@@ -120,8 +108,8 @@ class MessageListViewModel(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when (val feedListUIState = messageListUIState) {
-                MessageListUIState.Error -> {
+            when (val feedListUIState = directMessageListUIState) {
+                DirectMessageListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -134,7 +122,7 @@ class MessageListViewModel(
                         )
                     }
                 }
-                is MessageListUIState.Loaded -> {
+                is DirectMessageListUIState.Loaded -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -258,7 +246,7 @@ class MessageListViewModel(
 //                    }
 
                 }
-                MessageListUIState.Loading -> {
+                DirectMessageListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -285,14 +273,14 @@ class MessageListViewModel(
         const val TAG = "MessageListViewModel"
 
         fun factory(
-            initialMessageListUIState: MessageListUIState = MessageListUIState.Loading,
+            initialDirectMessageListUIState: DirectMessageListUIState = DirectMessageListUIState.Loading,
             publicKey: String,
             synchronizationFilter: SynchronizationFilter,
             nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                MessageListViewModel(
-                    initialMessageListUIState = initialMessageListUIState,
+                DirectMessageListViewModel(
+                    initialDirectMessageListUIState = initialDirectMessageListUIState,
                     publicKey = publicKey,
                     synchronizationFilter = synchronizationFilter,
                     nostrRepository = nostrRepository
