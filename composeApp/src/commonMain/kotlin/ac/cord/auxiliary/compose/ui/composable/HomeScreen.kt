@@ -12,10 +12,10 @@ import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.FeedListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.HomeScreenType
 import ac.cord.auxiliary.compose.ui.view.model.HomeViewModel
-import ac.cord.auxiliary.compose.ui.view.model.DirectMessageListViewModel
+import ac.cord.auxiliary.compose.ui.view.model.ChatRoomListViewModel
 import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
-import ac.cord.auxiliary.compose.ui.view.state.DirectMessageListUIState
+import ac.cord.auxiliary.compose.ui.view.state.ChatRoomListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -211,10 +211,10 @@ fun HomeScreen(
                                     }
                                 }
                                 HomeScreenType.Messages -> {
-                                    val directMessageListViewModel: DirectMessageListViewModel = viewModel(
+                                    val chatRoomListViewModel: ChatRoomListViewModel = viewModel(
                                         key = homeScreenTypeType.name,
-                                        factory = DirectMessageListViewModel.factory(
-                                            initialDirectMessageListUIState = DirectMessageListUIState.Loading,
+                                        factory = ChatRoomListViewModel.factory(
+                                            initialChatRoomListUIState = ChatRoomListUIState.Loading,
                                             publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
                                             synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
                                                 homeScreenTypeType,
@@ -224,8 +224,8 @@ fun HomeScreen(
                                         ),
                                     )
 
-                                    key(directMessageListViewModel.directMessageListUIState) {
-                                        directMessageListViewModel.RenderFeed(
+                                    key(true) {
+                                        chatRoomListViewModel.RenderFeed(
                                             onNavigateToDirectMessageDetail = {
                                                 onNavigateToDirectMessageDetail.invoke()
                                             }
@@ -233,7 +233,7 @@ fun HomeScreen(
                                     }
 
                                     key(true) {
-                                        directMessageListViewModel.initiate()
+                                        chatRoomListViewModel.initiate()
                                     }
                                 }
                             }

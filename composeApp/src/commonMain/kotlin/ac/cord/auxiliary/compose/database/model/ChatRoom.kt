@@ -8,6 +8,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -69,11 +70,11 @@ data class ChatRoom(
     // Might want to focus on the other last messages...
     val initialGiftWrapUnsignedId: String,
 
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
-    override val savedAt: Instant,
-    override val viewedAt: Instant?,
-    override val deletedAt: Instant?,
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = createdAt,
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null,
 
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
 }

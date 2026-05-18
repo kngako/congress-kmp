@@ -1,17 +1,20 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
-import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
-import ac.cord.auxiliary.compose.ui.view.state.DirectMessageListUIState
+import ac.cord.auxiliary.compose.ui.view.state.ChatRoomListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
@@ -36,14 +39,14 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-class DirectMessageListViewModel(
-    initialDirectMessageListUIState: DirectMessageListUIState,
+class ChatRoomListViewModel(
+    initialChatRoomListUIState: ChatRoomListUIState,
     val publicKey: String,
     val synchronizationFilter: SynchronizationFilter,
     val nostrRepository: NostrRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var directMessageListUIState: DirectMessageListUIState by mutableStateOf(initialDirectMessageListUIState)
+    var chatRoomListUIState: ChatRoomListUIState by mutableStateOf(initialChatRoomListUIState)
         private set
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
@@ -59,9 +62,38 @@ class DirectMessageListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.observeProfileWithFollowing(
                 publicKey
-            ).collect {
-                directMessageListUIState = DirectMessageListUIState.Loaded(
-                    directMessageList = emptyList()
+            ).distinctUntilChanged().collect {
+                chatRoomListUIState = ChatRoomListUIState.Loaded(
+                    chatRoomList = listOf(
+                        ChatRoom(
+                            id ="steveBikoId",
+                            userPublicKey = "steveBikoId",
+                            name = "Steve Biko",
+                            subject = "BC: Systems",
+                            initialGiftWrapUnsignedId = "",
+                        ),
+                        ChatRoom(
+                            id = "chrisHaniId",
+                            userPublicKey = "chrisHaniId",
+                            name = "Chris Hani",
+                            subject = "MK: Gym",
+                            initialGiftWrapUnsignedId = "",
+                        ),
+                        ChatRoom(
+                            id = "desmondTutuId",
+                            userPublicKey = "desmondTutuId",
+                            name = "Desmond Tutu",
+                            subject = "TRC: Masses",
+                            initialGiftWrapUnsignedId = "",
+                        ),
+                        ChatRoom(
+                            id = "hipHopPantsulaId",
+                            userPublicKey = "hipHopPantsulaId",
+                            name = "Hip Hop Pantsula",
+                            subject = "Motswako: Jabba",
+                            initialGiftWrapUnsignedId = "",
+                        )
+                    )
                 )
             }
         }
@@ -107,8 +139,8 @@ class DirectMessageListViewModel(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when (val directMessageListUIState = directMessageListUIState) {
-                DirectMessageListUIState.Error -> {
+            when (val chatRoomListUIState = chatRoomListUIState) {
+                ChatRoomListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -121,131 +153,56 @@ class DirectMessageListViewModel(
                         )
                     }
                 }
-                is DirectMessageListUIState.Loaded -> {
+                is ChatRoomListUIState.Loaded -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "Messages"
-                        )
 
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                onNavigateToDirectMessageDetail.invoke("")
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                        if (chatRoomListUIState.chatRoomList.isEmpty()) {
+                            Text(
+                                text = "No messages. Go to a profile and send them a message."
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(10.dp),
                             ) {
-                                Text(
-                                    text = "Steve Biko"
-                                )
-                            }
+                                item {
+                                    Text(
+                                        text = "Messages"
+                                    )
+                                }
 
+                                items(
+                                    items = chatRoomListUIState.chatRoomList,
+                                    key = { it.id }
+                                ) { chatRoom ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = {
+                                            onNavigateToDirectMessageDetail.invoke("")
+                                        }
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(20.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                        ) {
+                                            Text(
+                                                text = chatRoom.name ?: chatRoom.subject ?: "Unnamed chat"
+                                            )
+                                        }
+
+                                    }
+                                }
+                            }
                         }
 
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                onNavigateToDirectMessageDetail.invoke("")
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Chris Hani"
-                                )
-                            }
 
-                        }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                onNavigateToDirectMessageDetail.invoke("")
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Desmond Tutu"
-                                )
-                            }
-
-                        }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                onNavigateToDirectMessageDetail.invoke("")
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Hip Hop Pantsula"
-                                )
-                            }
-
-                        }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                onNavigateToDirectMessageDetail.invoke("")
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Knee Cap"
-                                )
-                            }
-                        }
                     }
-//                    if (feedListUIState.messageList.isEmpty()) {
-//                        Column(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            horizontalAlignment = Alignment.CenterHorizontally
-//                        )  {
-//                            Spacer(
-//                                modifier = Modifier.height(50.dp)
-//                            )
-//                            Text(
-//                                text = "No events were found",
-//                            )
-//                        }
-//                    } else {
-//                        LazyColumn(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            horizontalAlignment = Alignment.CenterHorizontally,
-//                            verticalArrangement = Arrangement.spacedBy(10.dp)
-//                        ) {
-//                            items(
-//                                items = feedListUIState.messageList,
-//                                key = { profile -> profile.publicKey }
-//                            ) { profile ->
-//                                profile.RenderAsListItem(
-//                                    onNavigateToEvent = onNavigateToEvent
-//                                )
-//                            }
-//                        }
-//                    }
-
                 }
-                DirectMessageListUIState.Loading -> {
+                ChatRoomListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -272,14 +229,14 @@ class DirectMessageListViewModel(
         const val TAG = "MessageListViewModel"
 
         fun factory(
-            initialDirectMessageListUIState: DirectMessageListUIState = DirectMessageListUIState.Loading,
+            initialChatRoomListUIState: ChatRoomListUIState = ChatRoomListUIState.Loading,
             publicKey: String,
             synchronizationFilter: SynchronizationFilter,
             nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                DirectMessageListViewModel(
-                    initialDirectMessageListUIState = initialDirectMessageListUIState,
+                ChatRoomListViewModel(
+                    initialChatRoomListUIState = initialChatRoomListUIState,
                     publicKey = publicKey,
                     synchronizationFilter = synchronizationFilter,
                     nostrRepository = nostrRepository
