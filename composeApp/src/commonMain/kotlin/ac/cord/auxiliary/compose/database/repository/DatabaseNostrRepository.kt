@@ -63,7 +63,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
-import kotlin.math.sin
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -116,132 +115,129 @@ class DatabaseNostrRepository(
     override suspend fun createNewProfile(
         publicKey: HexKey,
         name: String?,
-        biography: String?,
-        onError: () -> Unit,
-        onProfileReady: (Profile) -> Unit,
-        synchronizationRelayURLs: List<String>
+        biography: String?
     ) {
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
             about = biography,
         )
 
-        val signedAt = if (name == null && biography == null) {
-            // We are most likely try to sign in to an already existing block...
-            GENESIS_AT
-        } else {
-            null
-        }
-
-        val unsignedNostrEvent = saveUnsignedNostrEvent(
+        val unsignedNostrEvents = mutableListOf(
             UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,
                 content = profileEventTemplate.content,
-                signedAt = signedAt // This will keep us from trying to sign this event... but we should automatically sync the npub profile
+                signedAt = null
             )
         )
 
-        if (unsignedNostrEvent == null) {
-            onError.invoke()
-        } else if (unsignedNostrEvent.kind == 0) {
-            // Look busy for the onboarding screen
-            delay(3_500)
+        val followUsers = listOf(ContactTag(publicKey, null, null))
+        val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
+                followUsers.map { it.toTagArray() }
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = ContactListEvent.KIND,
+                tags = contactListTagList.toTypedArray(),
+                content = RelaySet.assemble(
+                    emptyMap()
+                )
+            )
+        )
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = ChatMessageRelayListEvent.KIND,
+                tags = ChatMessageRelayListEvent.createTagArray(
+                    Relays.DefaultDMRelayList
+                ),
+                content = ""
+            )
+        )
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = AdvertisedRelayListEvent.KIND,
+                tags = Relays.DefaultNIP65List.map{ it.toTagArray() }.toTypedArray(),
+                content = ""
+            )
+        )
 
 
-            if (unsignedNostrEvent.signedAt == null) {
-                // Save ContactListNostrEvent
-                val followUsers = listOf(ContactTag(publicKey, null, null))
-                val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
-                        followUsers.map { it.toTagArray() }
 
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = ContactListEvent.KIND,
-                        tags = contactListTagList.toTypedArray(),
-                        content = RelaySet.assemble(
-                            emptyMap()
-                        )
-                    )
-                )
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = SearchRelayListEvent.KIND,
+                tags = Relays.DefaultSearchRelayList.map{ RelayTag.assemble(it) }
+                    .plus(
+                        SearchRelayListEvent.ALT_TAG
+                    ).toTypedArray(),
+                privateTags = emptyArray(),
+                content = ""
+            )
+        )
 
-                // Save AdvertisedRelayListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = AdvertisedRelayListEvent.KIND,
-                        tags = Relays.DefaultNIP65List.map{ it.toTagArray() }.toTypedArray(),
-                        content = ""
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = IndexerRelayListEvent.KIND,
+                tags = arrayOf(AltTag.assemble(IndexerRelayListEvent.ALT)),
+                privateTags = Relays.DefaultIndexerRelayList.map { RelayTag.assemble(it) }.toTypedArray() ,
+                content = ""
+            )
+        )
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = ChannelListEvent.KIND,
+                tags = arrayOf(
+                    AltTag.assemble(
+                        ChannelListEvent.ALT
                     )
-                )
-                // Save ChatMessageRelayListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = ChatMessageRelayListEvent.KIND,
-                        tags = Relays.DefaultDMRelayList.map{ RelayTag.assemble(it) }
-                            .plusElement(
-                                AltTag.assemble("Relay list to receive private messages")
-                            ).toTypedArray(),
-                        content = ""
-                    )
-                )
-                // Save SearchRelayListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = SearchRelayListEvent.KIND,
-                        tags = Relays.DefaultSearchRelayList.map{ RelayTag.assemble(it) }
-                            .plus(
-                                SearchRelayListEvent.ALT_TAG
-                            ).toTypedArray(),
-                        privateTags = emptyArray(),
-                        content = ""
-                    )
-                )
-                // Save IndexerRelayListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = IndexerRelayListEvent.KIND,
-                        tags = arrayOf(AltTag.assemble(IndexerRelayListEvent.ALT)),
-                        privateTags = Relays.DefaultIndexerRelayList.map { RelayTag.assemble(it) }.toTypedArray() ,
-                        content = ""
-                    )
-                )
-                // Save ChannelListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = ChannelListEvent.KIND,
-                        tags = arrayOf(
-                            AltTag.assemble(
-                                ChannelListEvent.ALT
-                            )
-                        ),
-                        privateTags = Relays.DefaultChannels.map { it.toTagArray() }.toTypedArray(),
-                        content = ""
-                    )
-                )
-                // Save RelayFeedsListEvent
-                saveUnsignedNostrEvent(
-                    UnsignedNostrEvent(
-                        pubKey = publicKey,
-                        kind = RelayFeedsListEvent.KIND,
-                        tags = arrayOf(
-                            AltTag.assemble(RelayFeedsListEvent.ALT)
-                        ),
-                        privateTags = Relays.DefaultGlobalRelays.map { RelayTag.assemble(it)}.toTypedArray(),
-                        content = ""
-                    )
-                )
-            }
-        }
+                ),
+                privateTags = Relays.DefaultChannels.map { it.toTagArray() }.toTypedArray(),
+                content = ""
+            )
+        )
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = RelayFeedsListEvent.KIND,
+                tags = arrayOf(
+                    AltTag.assemble(RelayFeedsListEvent.ALT)
+                ),
+                privateTags = Relays.DefaultGlobalRelays.map { RelayTag.assemble(it)}.toTypedArray(),
+                content = ""
+            )
+        )
+
+        saveUnsignedNostrEvents(unsignedNostrEvents)
     }
 
+    override suspend fun signInToProfile(
+        publicKey: HexKey
+    ) {
+        val profileEventTemplate = MetadataEvent.createNew()
+
+        saveUnsignedNostrEvent(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = profileEventTemplate.kind,
+                createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
+                tags = profileEventTemplate.tags,
+                content = profileEventTemplate.content,
+                signedAt = GENESIS_AT // This will keep us from trying to sign this event... but we should automatically sync the npub profile
+            )
+        )
+    }
     override suspend fun createNewTextNote(
         publicKey: HexKey,
         mentionedPublicKeys: List<HexKey>,
@@ -362,14 +358,27 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? = try {
+        logger.d("Save unsigned: ${unsignedNostrEvent.kind}")
         // TODO: We can actually check the unsignedNostrEvent.pubKey for support... if it's writeable
-        delay(2_100) // Just to make it look like we are doing serious work...
+        if (unsignedNostrEvent.kind == MetadataEvent.KIND){
+            delay(2_100) // Just to make it look like we are doing serious work...
+        }
+
         unsignedNostrEvent.copy(
             id = database.unsignedNostrEventDao().upsert(unsignedNostrEvent)
         )
     } catch (e: Throwable) {
         logger.e("Failed to saveUnsignedNostrEvent", e)
         null
+    }
+
+    override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) {
+        logger.d("saveUnsignedNostrEvents: $unsignedNostrEvents")
+        delay(2_100)
+
+        database.unsignedNostrEventDao().insert(
+            unsignedNostrEvents
+        )
     }
 
     override suspend fun wipeDatabase() {

@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.database.dao
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
 import androidx.room3.Dao
+import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
@@ -22,10 +23,13 @@ interface UnsignedNostrEventDao {
     @Upsert
     suspend fun upsert(unsignedNostrEvent: UnsignedNostrEvent): Long
 
+    @Insert
+    suspend fun insert(unsignedNostrEvents: List<UnsignedNostrEvent>)
+
     @Transaction
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfile(publicKey: String): Flow<LocalAccount?>
 
-    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedAt IS NULL") // TODO: where nostrEvent.unsignedNostrEventId is 0
+    @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedAt IS NULL")
     fun observeUnsignedNostrEvents(publicKey: String): Flow<UnsignedNostrEvent?>
 }

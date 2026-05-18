@@ -1,6 +1,5 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
-import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.SignInToProfileUIState
 import ac.cord.auxiliary.compose.ui.view.state.form.SignInToProfileFormState
@@ -72,23 +71,13 @@ class SignInToProfileViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 when (credentialEntity) {
                     is NPub -> {
-                        nostrRepository.createNewProfile(
-                            publicKey = credentialEntity.hex,
-                            name = null,
-                            biography = null,
-                            onError = onError,
-                            onProfileReady = {},
-                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                        nostrRepository.signInToProfile(
+                            publicKey = credentialEntity.hex
                         )
                     }
                     is NSec -> {
-                        nostrRepository.createNewProfile(
-                            publicKey = credentialEntity.toPubKeyHex(),
-                            name = null,
-                            biography = null,
-                            onError = onError,
-                            onProfileReady = {},
-                            synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                        nostrRepository.signInToProfile(
+                            publicKey = credentialEntity.toPubKeyHex()
                         )
                     }
                     else -> {

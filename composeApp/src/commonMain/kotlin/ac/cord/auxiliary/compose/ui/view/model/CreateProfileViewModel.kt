@@ -1,7 +1,6 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.managers.SeedManager
-import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.CreateProfileUIState
 import androidx.compose.runtime.MutableState
@@ -78,16 +77,7 @@ class CreateProfileViewModel(
             nostrRepository.createNewProfile(
                 publicKey,
                 name = createProfileFormState.nameField.textFieldState.text.toString(),
-                biography = createProfileFormState.biographyField.textFieldState.text.toString(),
-                onError = {
-                    createProfileUIState.value = CreateProfileUIState.Error
-                },
-                { profile ->
-                    createProfileUIState.value = CreateProfileUIState.ProfileReady(
-                        profile = profile
-                    )
-                },
-                synchronizationRelayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                biography = createProfileFormState.biographyField.textFieldState.text.toString()
             )
         }
     }

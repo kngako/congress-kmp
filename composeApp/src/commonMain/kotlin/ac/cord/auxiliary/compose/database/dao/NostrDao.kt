@@ -58,28 +58,6 @@ abstract class NostrDao(
                 signedAt = Clock.System.now()
             )
         )
-        // Find or create profile with the pubKey... if not found TODO: submit a sync request...
-//        val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
-//
-//        if (profile == null) {
-//            val placeHolderProfile = Profile(
-//                publicKey = nostrEvent.pubKey,
-//                nostrEventId = nostrEvent.pubKey // This is illegal... because the nostrEventId should be the one with all the profile information
-//            )
-//            val placeHolderProfileNostrEvent = NostrEvent(
-//                id = placeHolderProfile.publicKey,
-//                kind = DraftWrapEvent.KIND,
-//                pubKey = placeHolderProfile.publicKey,
-//                content = placeHolderProfile.publicKey,
-//                createdAt = GENESIS_AT,
-//                sig = placeHolderProfile.publicKey,
-//                tags = emptyArray(),
-//            )
-//            database.nostrEventDao().upsert(placeHolderProfileNostrEvent)
-//            database.profileDao().upsert(placeHolderProfile)
-//
-//            // TODO: Sync to find and update profile
-//        }
 
         database.nostrEventDao().upsert(nostrEvent)
 

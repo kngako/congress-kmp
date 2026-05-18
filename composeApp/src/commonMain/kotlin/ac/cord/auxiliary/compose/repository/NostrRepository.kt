@@ -40,12 +40,11 @@ interface NostrRepository {
     suspend fun createNewProfile(
         publicKey: HexKey,
         name: String?,
-        biography: String?,
-        onError: () -> Unit,
-//        onUnsignProfile: (UnsignedNostrEvent) -> Unit,
-//        onUnbroadcastedProfile: (NostrEvent) -> Unit,
-        onProfileReady: (Profile) -> Unit,
-        synchronizationRelayURLs: List<String>
+        biography: String?
+    )
+
+    suspend fun signInToProfile(
+        publicKey: HexKey
     )
 
     suspend fun createNewTextNote(
@@ -59,6 +58,8 @@ interface NostrRepository {
     )
 
     suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent?
+
+    suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>)
 
     suspend fun wipeDatabase()
 
@@ -169,11 +170,12 @@ interface NostrRepository {
             override suspend fun createNewProfile(
                 publicKey: HexKey,
                 name: String?,
-                biography: String?,
-                onError: () -> Unit,
-                onProfileReady: (Profile) -> Unit,
-                synchronizationRelayURLs: List<String>
+                biography: String?
             ) {
+            }
+
+            override suspend fun signInToProfile(publicKey: HexKey) {
+                TODO("Not yet implemented")
             }
 
             override suspend fun createNewTextNote(
@@ -190,6 +192,10 @@ interface NostrRepository {
 
             override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? {
                 return null
+            }
+
+            override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) {
+                TODO("Not yet implemented")
             }
 
             override suspend fun wipeDatabase() {

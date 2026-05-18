@@ -104,36 +104,38 @@ class NavigationViewModel(
         val tempSigner = NostrSignerSync(
             SeedManager.activeKeyPair()
         )
-        logger.i { "observeUnsignedNostrEvents" }
         scope.launch(Dispatchers.IO) {
+            logger.i { "observeUnsignedNostrEvents" }
             nostrRepository.observeUnsignedNostrEvents(
                 publicKey = SeedManager.activePublicKey().toHexKey()
             ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
-                unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
-                    logger.d("Unsigned")
-                    val event = tempSigner.signNormal<Event>(
-                        createdAt = unsignedNostrEvent.createdAt.epochSeconds,
-                        kind = unsignedNostrEvent.kind,
-                        tags = unsignedNostrEvent.tags,
-                        content = unsignedNostrEvent.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: unsignedNostrEvent.content
-                    )
+                scope.launch(Dispatchers.IO) {
+                    unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
+                        logger.d("Unsigned: ${unsignedNostrEvent.kind}")
+                        val event = tempSigner.signNormal<Event>(
+                            createdAt = unsignedNostrEvent.createdAt.epochSeconds,
+                            kind = unsignedNostrEvent.kind,
+                            tags = unsignedNostrEvent.tags,
+                            content = unsignedNostrEvent.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: unsignedNostrEvent.content
+                        )
+                        logger.d("Signed: ${event.toJson()}")
 
-                    nostrRepository.publishNostrEvent(
-                        unsignedNostrEvent,
-                        NostrEvent(
-                            id = event.id,
-                            pubKey = event.pubKey,
-                            kind = event.kind,
-                            tags = event.tags,
-                            content = event.content,
-                            createdAt = Instant.fromEpochSeconds(event.createdAt),
-                            sig = event.sig,
-                            unsignedNostrEventId = unsignedNostrEvent.id
-                        ),
-                        relayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
-                    )
+                        nostrRepository.publishNostrEvent(
+                            unsignedNostrEvent,
+                            NostrEvent(
+                                id = event.id,
+                                pubKey = event.pubKey,
+                                kind = event.kind,
+                                tags = event.tags,
+                                content = event.content,
+                                createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                sig = event.sig,
+                                unsignedNostrEventId = unsignedNostrEvent.id
+                            ),
+                            relayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                        )
+                    }
                 }
-
             }
         }
     }

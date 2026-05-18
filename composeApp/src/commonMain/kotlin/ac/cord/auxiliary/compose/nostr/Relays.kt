@@ -51,7 +51,7 @@ object Relays {
 
     val DefaultGlobalRelays = listOf(wine, news)
 
-    val DefaultDMRelayList = listOf(auth, oxchat, nos)
+    val DefaultDMRelayList = listOf(primal, oxtr, nos)
 
     val DefaultSearchRelayList = setOf(wine, where, nostoday, antiprimal, ditto)
 
