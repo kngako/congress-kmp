@@ -3,7 +3,12 @@ package ac.cord.auxiliary.compose.database
 import ac.cord.auxiliary.compose.database.converters.AuxConverters
 import ac.cord.auxiliary.compose.database.dao.BroadcastNostrEventReceiptDao
 import ac.cord.auxiliary.compose.database.dao.BroadcastNostrEventRequestDao
+import ac.cord.auxiliary.compose.database.dao.ChatMessageDao
+import ac.cord.auxiliary.compose.database.dao.ChatRoomDao
 import ac.cord.auxiliary.compose.database.dao.ConnectionDao
+import ac.cord.auxiliary.compose.database.dao.GiftWrapMessageDao
+import ac.cord.auxiliary.compose.database.dao.GiftWrapSealDao
+import ac.cord.auxiliary.compose.database.dao.GiftWrapUnsignedDao
 import ac.cord.auxiliary.compose.database.dao.InReplyToRelationDao
 import ac.cord.auxiliary.compose.database.dao.MentionDao
 import ac.cord.auxiliary.compose.database.dao.NegentropySynchronizeRequestDao
@@ -24,7 +29,12 @@ import ac.cord.auxiliary.compose.database.dao.UnsignedNostrEventDao
 import ac.cord.auxiliary.compose.database.dao.ZapDao
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.ChatMessage
+import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.Connection
+import ac.cord.auxiliary.compose.database.model.GiftWrapMessage
+import ac.cord.auxiliary.compose.database.model.GiftWrapSeal
+import ac.cord.auxiliary.compose.database.model.GiftWrapUnsigned
 import ac.cord.auxiliary.compose.database.model.InReplyToRelation
 import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
@@ -42,6 +52,7 @@ import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventResult
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.Zap
+import androidx.room3.AutoMigration
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
@@ -56,7 +67,12 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         BroadcastNostrEventReceipt::class,
         BroadcastNostrEventRequest::class,
         Connection::class,
+        ChatMessage::class,
+        ChatRoom::class,
         InReplyToRelation::class,
+        GiftWrapMessage::class,
+        GiftWrapSeal::class,
+        GiftWrapUnsigned::class,
         Mention::class,
         NegentropySynchronizeRequest::class,
         NegentropySynchronizeResult::class,
@@ -74,13 +90,30 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 1
+    version = 2,
+    autoMigrations = [
+        AutoMigration(
+            from = 1,
+            to = 2
+        )
+    ]
 )
 @TypeConverters(AuxConverters::class)
 abstract class AuxDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao
     abstract fun broadcastNostrEventRequestDao(): BroadcastNostrEventRequestDao
+
+    abstract fun chatMessageDao(): ChatMessageDao
+
+    abstract fun chatRoomDao(): ChatRoomDao
+
     abstract fun connectionDao(): ConnectionDao
+
+    abstract fun giftWrapMessageDao(): GiftWrapMessageDao
+
+    abstract fun giftWrapSealDao(): GiftWrapSealDao
+
+    abstract fun giftWrapUnsignedDao(): GiftWrapUnsignedDao
 
     abstract fun inReplyToRelationDao(): InReplyToRelationDao
 
