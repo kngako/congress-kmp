@@ -181,7 +181,7 @@ abstract class NostrDao(
                 profilePublicKeysToSync[relayURL]?.add(nostrEvent.pubKey)
             }
         } else {
-            logger.w("We somehow have an unsignedNostrEvent: $nostrEvent")
+            logger.w("We somehow have an unsignedNostrEvent/giftwrap event: $nostrEvent")
         }
 
         // Index reposts first because they have the contained posts...
@@ -322,6 +322,7 @@ abstract class NostrDao(
         }
 
         nostrEvent.toGiftWrapMessageWithReceiverPTag()?.let { giftWrapMessage ->
+            logger.d("giftWrapMessage: $giftWrapMessage")
             val giftWrapReceiverProfile = database.profileDao().getProfileByPublicKey(giftWrapMessage.receiverPublicKey)
 
             if (giftWrapReceiverProfile == null) {
@@ -369,45 +370,49 @@ abstract class NostrDao(
                     giftWrapSeal.decryptGiftWrapPayload(
                         activeUserPrivateKey
                     )?.let { giftWrapPayload ->
-
                         database.giftWrapUnsignedDao().upsert(
                             giftWrapPayload
                         )
 
-                        val chatRoomId = Musig2.aggregateKeys(
-                            giftWrapPayload.receiverPublicKeys()
-                        ).value.toHex()
-                        // Process chatMessage and chatRoom stuff...
-                        // Find or create chatRoom
-                        val chatRoom = database.chatRoomDao().findChatRoomById(
-                            chatRoomId
-                        )
+                        val receiverPublicKeys = giftWrapPayload.receiverPublicKeys()
+                        logger.d("receiverPublicKeys: $receiverPublicKeys")
 
-                        if (chatRoom == null) {
-                            database.chatRoomDao().upsert(
-                                ChatRoom(
-                                    id = chatRoomId,
-                                    userPublicKey = SeedManager.activeKeyPair().pubKey.toHex(),
-                                    subject = null, // TODO: Get subject from tags...
+                        if (receiverPublicKeys.isNotEmpty()) {
+                            val chatRoomId = Musig2.aggregateKeys(
+                                giftWrapPayload.receiverPublicKeys()
+                            ).value.toHex()
+                            // Process chatMessage and chatRoom stuff...
+                            // Find or create chatRoom
+                            val chatRoom = database.chatRoomDao().findChatRoomById(
+                                chatRoomId
+                            )
+
+                            if (chatRoom == null) {
+                                database.chatRoomDao().upsert(
+                                    ChatRoom(
+                                        id = chatRoomId,
+                                        userPublicKey = SeedManager.activeKeyPair().pubKey.toHex(),
+                                        subject = null, // TODO: Get subject from tags...
+                                        createdAt = giftWrapPayload.createdAt,
+                                        initialGiftWrapUnsignedId = giftWrapPayload.id
+                                    )
+                                )
+                            } else {
+                                // TODO: Update subject from tags...
+                            }
+
+                            // Save chatMessage
+                            database.chatMessageDao().upsert(
+                                ChatMessage(
+                                    id = giftWrapPayload.id,
+                                    senderPublicKey = giftWrapPayload.publicKey,
+                                    isUserMessage = SeedManager.activePublicKey().toHex() == giftWrapPayload.publicKey,
+                                    chatRoomId = chatRoomId,
                                     createdAt = giftWrapPayload.createdAt,
-                                    initialGiftWrapUnsignedId = giftWrapPayload.id
+                                    content = giftWrapPayload.content,
                                 )
                             )
-                        } else {
-                            // TODO: Update subject from tags...
                         }
-
-                        // Save chatMessage
-                        database.chatMessageDao().upsert(
-                            ChatMessage(
-                                id = giftWrapPayload.id,
-                                senderPublicKey = giftWrapPayload.publicKey,
-                                isUserMessage = SeedManager.activePublicKey().toHex() == giftWrapPayload.publicKey,
-                                chatRoomId = chatRoomId,
-                                createdAt = giftWrapPayload.createdAt,
-                                content = giftWrapPayload.content,
-                            )
-                        )
 
                     }
                 }

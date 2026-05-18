@@ -5,9 +5,12 @@ import ac.cord.auxiliary.compose.database.model.traits.NostrEventEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
+import ac.cord.auxiliary.compose.network.serialization.encodeToJsonString
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
@@ -80,6 +83,9 @@ data class GiftWrapMessage(
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity  {
 
+    @Ignore
+    private val logger = Logger.withTag("GiftWrapMessage")
+
     suspend fun decryptGiftWrapSeal(
         privateKey: ByteArray
     ): GiftWrapSeal? {
@@ -97,6 +103,7 @@ data class GiftWrapMessage(
                 content = content,
                 sig = signature
             )
+            logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
             val nostrSigner = NostrSignerInternal(
                 keyPair = KeyPair(privKey = privateKey)
@@ -105,6 +112,8 @@ data class GiftWrapMessage(
             giftWrapEvent.unwrapOrNull(
                 nostrSigner
             )?.let { giftWrapSeal ->
+
+                logger.d("giftWrapSeal: ${giftWrapSeal.toJson()}")
                 return GiftWrapSeal(
                     id = giftWrapSeal.id,
                     publicKey = giftWrapSeal.pubKey,
