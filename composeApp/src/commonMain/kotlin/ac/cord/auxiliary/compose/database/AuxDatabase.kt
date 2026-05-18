@@ -8,7 +8,7 @@ import ac.cord.auxiliary.compose.database.dao.ChatRoomDao
 import ac.cord.auxiliary.compose.database.dao.ConnectionDao
 import ac.cord.auxiliary.compose.database.dao.GiftWrapMessageDao
 import ac.cord.auxiliary.compose.database.dao.GiftWrapSealDao
-import ac.cord.auxiliary.compose.database.dao.GiftWrapUnsignedDao
+import ac.cord.auxiliary.compose.database.dao.GiftWrapPayloadDao
 import ac.cord.auxiliary.compose.database.dao.InReplyToRelationDao
 import ac.cord.auxiliary.compose.database.dao.MentionDao
 import ac.cord.auxiliary.compose.database.dao.NegentropySynchronizeRequestDao
@@ -34,7 +34,7 @@ import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.GiftWrapMessage
 import ac.cord.auxiliary.compose.database.model.GiftWrapSeal
-import ac.cord.auxiliary.compose.database.model.GiftWrapUnsigned
+import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.InReplyToRelation
 import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
@@ -72,7 +72,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         InReplyToRelation::class,
         GiftWrapMessage::class,
         GiftWrapSeal::class,
-        GiftWrapUnsigned::class,
+        GiftWrapPayload::class,
         Mention::class,
         NegentropySynchronizeRequest::class,
         NegentropySynchronizeResult::class,
@@ -90,13 +90,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 2,
-    autoMigrations = [
-        AutoMigration(
-            from = 1,
-            to = 2
-        )
-    ]
+    version = 1
 )
 @TypeConverters(AuxConverters::class)
 abstract class AuxDatabase: RoomDatabase() {
@@ -113,7 +107,7 @@ abstract class AuxDatabase: RoomDatabase() {
 
     abstract fun giftWrapSealDao(): GiftWrapSealDao
 
-    abstract fun giftWrapUnsignedDao(): GiftWrapUnsignedDao
+    abstract fun giftWrapUnsignedDao(): GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): InReplyToRelationDao
 

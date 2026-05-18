@@ -8,7 +8,6 @@ import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,51 +48,20 @@ class ChatRoomListViewModel(
     var chatRoomListUIState: ChatRoomListUIState by mutableStateOf(initialChatRoomListUIState)
         private set
 
-    val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
-
     fun initiate() {
         logger.d("init")
-//        scheduleSynchronization()
-        observeLocalNostrFeed()
-//        observeSynchronizeNostrEventRequestByPurposeAndStatusCount()
+        scheduleSynchronization()
+        observeChatRoomFeed()
     }
-    fun observeLocalNostrFeed() {
-        logger.d("observeLocalNostrFeed")
+
+    fun observeChatRoomFeed() {
+        logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeProfileWithFollowing(
+            nostrRepository.observeChatRoomsByPublicKey(
                 publicKey
             ).distinctUntilChanged().collect {
                 chatRoomListUIState = ChatRoomListUIState.Loaded(
-                    chatRoomList = listOf(
-                        ChatRoom(
-                            id ="steveBikoId",
-                            userPublicKey = "steveBikoId",
-                            name = "Steve Biko",
-                            subject = "BC: Systems",
-                            initialGiftWrapUnsignedId = "",
-                        ),
-                        ChatRoom(
-                            id = "chrisHaniId",
-                            userPublicKey = "chrisHaniId",
-                            name = "Chris Hani",
-                            subject = "MK: Gym",
-                            initialGiftWrapUnsignedId = "",
-                        ),
-                        ChatRoom(
-                            id = "desmondTutuId",
-                            userPublicKey = "desmondTutuId",
-                            name = "Desmond Tutu",
-                            subject = "TRC: Masses",
-                            initialGiftWrapUnsignedId = "",
-                        ),
-                        ChatRoom(
-                            id = "hipHopPantsulaId",
-                            userPublicKey = "hipHopPantsulaId",
-                            name = "Hip Hop Pantsula",
-                            subject = "Motswako: Jabba",
-                            initialGiftWrapUnsignedId = "",
-                        )
-                    )
+                    chatRoomList = it
                 )
             }
         }
@@ -110,23 +78,13 @@ class ChatRoomListViewModel(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
                         ),
-                        purpose = "following",
+                        purpose = "chat",
                         synchronizationFilter = synchronizationFilter,
                         relayURL = normalizedRelayUrl.url,
                         level = 0
                     )
                 }
             )
-        }
-    }
-
-    fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount() {
-        logger.d("observeSynchronizeNostrEventRequestByPurposeAndStatusCount")
-        viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeSynchronizeNostrEventRequestByPurposeAndStatusCount("feed").distinctUntilChanged().collect { count ->
-                logger.d("Pending/Processing Synchronization Request: $count")
-                isSynchronizationPending.value = count > 0
-            }
         }
     }
 
@@ -177,8 +135,8 @@ class ChatRoomListViewModel(
 
                                 items(
                                     items = chatRoomListUIState.chatRoomList,
-                                    key = { it.id }
-                                ) { chatRoom ->
+                                    key = { it.chatRoom.id }
+                                ) { localChatRoom ->
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
@@ -190,16 +148,13 @@ class ChatRoomListViewModel(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
                                             Text(
-                                                text = chatRoom.name ?: chatRoom.subject ?: "Unnamed chat"
+                                                text = localChatRoom.chatRoom.subject ?: "Unnamed chat"
                                             )
                                         }
-
                                     }
                                 }
                             }
                         }
-
-
                     }
                 }
                 ChatRoomListUIState.Loading -> {
@@ -226,7 +181,7 @@ class ChatRoomListViewModel(
     }
 
     companion object {
-        const val TAG = "MessageListViewModel"
+        const val TAG = "ChatRoomListViewModel"
 
         fun factory(
             initialChatRoomListUIState: ChatRoomListUIState = ChatRoomListUIState.Loading,

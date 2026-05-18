@@ -20,7 +20,7 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
-            entity = GiftWrapUnsigned::class,
+            entity = GiftWrapPayload::class,
             parentColumns = ["id"],
             childColumns = ["initialGiftWrapUnsignedId"],
             onDelete = ForeignKey.CASCADE,
@@ -49,11 +49,6 @@ data class ChatRoom(
      *  There is no need to send subject in every message. The newest subject in the chat room is the subject of the conversation.
      */
     val subject: String?,
-
-    /**
-     * Should probably be the human-readable name of whichever participant is not the user...
-     */
-    val name: String?,
 
     /**
      * Derived from kind14/15 tags

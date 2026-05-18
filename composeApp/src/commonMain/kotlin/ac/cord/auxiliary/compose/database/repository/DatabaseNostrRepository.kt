@@ -15,6 +15,7 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
@@ -680,6 +681,10 @@ class DatabaseNostrRepository(
 
     override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> {
         return database.profileDao().observeProfileWithFollowingByPublicKey(publicKey)
+    }
+
+    override suspend fun observeChatRoomsByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
+        return database.chatRoomDao().observeChatRoomByUserPublicKey(publicKey)
     }
 
     override suspend fun getRecentSearches(): List<RecentSearch> {

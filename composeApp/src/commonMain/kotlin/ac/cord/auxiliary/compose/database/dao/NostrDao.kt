@@ -3,6 +3,8 @@ package ac.cord.auxiliary.compose.database.dao
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.ChatMessage
+import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
@@ -10,24 +12,21 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.NostrEventRelay
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
-import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.network.serialization.encodeToJsonString
-import ac.cord.auxiliary.compose.nostr.Relays
+import ac.cord.auxiliary.compose.managers.SeedManager
+import ac.cord.auxiliary.compose.managers.toHex
 import androidx.room3.Dao
 import androidx.room3.Transaction
-import androidx.room3.useWriterConnection
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
-import com.vitorpamplona.quartz.nip18Reposts.quotes.QAddressableTag
-import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
-import com.vitorpamplona.quartz.nip18Reposts.quotes.firstTaggedQuote
-import kotlin.math.ceil
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Dao
 abstract class NostrDao(
@@ -124,7 +123,7 @@ abstract class NostrDao(
         } else {
             // Nothing else needs to be done
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
-            if (profile?.createdAt == GENESIS_AT) {
+            if (profile?.createdAt == GENESIS_AT && nostrEvent.kind == MetadataEvent.KIND) {
                 logger.i("This is a placeholder profile might need to get synced...: ${profile.publicKey}")
                 // Setup the sync here...
             } else {
@@ -158,13 +157,13 @@ abstract class NostrDao(
         val profilePublicKeysToSync = mutableMapOf<String, MutableSet<String>>()
         val eventIdsToSync = mutableMapOf<String, MutableSet<String>>()
 
-        if (nostrEvent.unsignedNostrEventId == null) {
+        if (nostrEvent.unsignedNostrEventId == null && nostrEvent.kind != GiftWrapEvent.KIND) {
             // Find or create profile with the pubKey... if not found submit a sync request...
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 
             if (profile == null) {
                 val placeHolderProfile = Profile(
-                    displayName = "LOADING PROFILE...",
+                    displayName = "LOADING...",
                     publicKey = nostrEvent.pubKey,
                     createdAt = GENESIS_AT,
                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -184,6 +183,67 @@ abstract class NostrDao(
         } else {
             logger.w("We somehow have an unsignedNostrEvent: $nostrEvent")
         }
+
+        // Index reposts first because they have the contained posts...
+        nostrEvent.toRepostedRelationWithContainedPost()?.let { (repostedRelation, containedPost) ->
+            // Find or create placeHolder note that is being reposted
+            val repostedNostrEvent = database.nostrEventDao().getNostrEventById(repostedRelation.repostedNostrEventId)
+
+            val repostedProfilePublicKey = if (repostedNostrEvent == null) {
+                // Sync event...
+                if (eventIdsToSync[relayURL] == null) {
+                    eventIdsToSync[relayURL] = mutableSetOf()
+                }
+                eventIdsToSync[relayURL]?.add(repostedRelation.repostedNostrEventId)
+
+                database.nostrEventDao().insert(
+                    if (containedPost != null) {
+                        NostrEvent(
+                            id = containedPost.id,
+                            content = containedPost.content,
+                            createdAt = Instant.fromEpochSeconds(containedPost.createdAt),
+                            pubKey = containedPost.pubKey,
+                            sig = containedPost.sig,
+                            kind = containedPost.kind,
+                            tags = containedPost.tags
+                        )
+                    } else {
+                        NostrEvent(
+                            id = repostedRelation.repostedNostrEventId,
+                            content = "Pending Sync",
+                            createdAt = GENESIS_AT,
+                            pubKey = nostrEvent.pubKey,
+                            sig = "",
+                            kind = nostrEvent.kind,
+                            tags = emptyArray()
+                        )
+                    }
+                )
+
+                repostedRelation.repostedProfilePublicKey
+            } else {
+                repostedRelation.repostedProfilePublicKey ?: repostedNostrEvent.pubKey
+            }
+
+            val repostedProfile = repostedProfilePublicKey?.let { database.profileDao().getProfileByPublicKey(it) }
+
+            if (repostedProfilePublicKey != null && repostedProfile == null) {
+                database.profileDao().insertPlaceholderProfile(
+                    Profile(
+                        displayName = "LOADING...",
+                        publicKey = repostedProfilePublicKey,
+                        createdAt = GENESIS_AT,
+                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                    )
+                )
+            }
+            database.repostedRelationDao().upsert(
+                repostedRelation.copy(
+                    repostedProfilePublicKey = repostedProfilePublicKey
+                )
+            )
+        }
+
 
         // Sync tagged events and authors...
         nostrEvent.tags.taggedEvents().take(4).forEach { taggedEvent -> // We only look at the first 3 tagged events...
@@ -227,7 +287,7 @@ abstract class NostrDao(
                 // Save a placeholder
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
-                        displayName = "LOADING PROFILE...",
+                        displayName = "LOADING...",
                         publicKey = taggedUser.pubKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -243,11 +303,10 @@ abstract class NostrDao(
                 )
             )
             if (recommendedRelay != null) {
-                if (profilePublicKeysToSync[relayURL] == null) {
-                    profilePublicKeysToSync[relayURL] = mutableSetOf()
+                if (profilePublicKeysToSync[recommendedRelay] == null) {
+                    profilePublicKeysToSync[recommendedRelay] = mutableSetOf()
                 }
-                profilePublicKeysToSync[relayURL]?.add(taggedUser.pubKey)
-
+                profilePublicKeysToSync[recommendedRelay]?.add(taggedUser.pubKey)
             } else {
                 if (profilePublicKeysToSync[relayURL] == null) {
                     profilePublicKeysToSync[relayURL] = mutableSetOf()
@@ -260,6 +319,100 @@ abstract class NostrDao(
 
         nostrEvent.toProfile()?.let { profile ->
             database.profileDao().upsert(profile)
+        }
+
+        nostrEvent.toGiftWrapMessageWithReceiverPTag()?.let { giftWrapMessage ->
+            val giftWrapReceiverProfile = database.profileDao().getProfileByPublicKey(giftWrapMessage.receiverPublicKey)
+
+            if (giftWrapReceiverProfile == null) {
+                // Save a placeholder
+                database.profileDao().insertPlaceholderProfile(
+                    Profile(
+                        displayName = "LOADING...",
+                        publicKey = giftWrapMessage.receiverPublicKey,
+                        createdAt = GENESIS_AT,
+                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                    )
+                )
+
+                val recommendRelayUrl = giftWrapMessage.receiverRelayHit
+
+                if (recommendRelayUrl != null) {
+                    if (profilePublicKeysToSync[recommendRelayUrl] == null) {
+                        profilePublicKeysToSync[recommendRelayUrl] = mutableSetOf()
+                    }
+                    profilePublicKeysToSync[recommendRelayUrl]?.add(giftWrapMessage.receiverPublicKey)
+                } else {
+                    if (profilePublicKeysToSync[relayURL] == null) {
+                        profilePublicKeysToSync[relayURL] = mutableSetOf()
+                    }
+                    profilePublicKeysToSync[relayURL]?.add(
+                        giftWrapMessage.receiverPublicKey
+                    )
+                }
+            }
+
+
+            database.giftWrapMessageDao().upsert(
+                giftWrapMessage
+            )
+
+            // TODO: Might want to process this somewhere else where privateKey is available...
+            SeedManager.activeKeyPair().privKey?.let { activeUserPrivateKey ->
+                giftWrapMessage.decryptGiftWrapSeal(
+                    activeUserPrivateKey
+                )?.let { giftWrapSeal ->
+                    database.giftWrapSealDao().upsert(
+                        giftWrapSeal
+                    )
+
+                    giftWrapSeal.decryptGiftWrapPayload(
+                        activeUserPrivateKey
+                    )?.let { giftWrapPayload ->
+
+                        database.giftWrapUnsignedDao().upsert(
+                            giftWrapPayload
+                        )
+
+                        val chatRoomId = Musig2.aggregateKeys(
+                            giftWrapPayload.receiverPublicKeys()
+                        ).value.toHex()
+                        // Process chatMessage and chatRoom stuff...
+                        // Find or create chatRoom
+                        val chatRoom = database.chatRoomDao().findChatRoomById(
+                            chatRoomId
+                        )
+
+                        if (chatRoom == null) {
+                            database.chatRoomDao().upsert(
+                                ChatRoom(
+                                    id = chatRoomId,
+                                    userPublicKey = SeedManager.activeKeyPair().pubKey.toHex(),
+                                    subject = null, // TODO: Get subject from tags...
+                                    createdAt = giftWrapPayload.createdAt,
+                                    initialGiftWrapUnsignedId = giftWrapPayload.id
+                                )
+                            )
+                        } else {
+                            // TODO: Update subject from tags...
+                        }
+
+                        // Save chatMessage
+                        database.chatMessageDao().upsert(
+                            ChatMessage(
+                                id = giftWrapPayload.id,
+                                senderPublicKey = giftWrapPayload.publicKey,
+                                isUserMessage = SeedManager.activePublicKey().toHex() == giftWrapPayload.publicKey,
+                                chatRoomId = chatRoomId,
+                                createdAt = giftWrapPayload.createdAt,
+                                content = giftWrapPayload.content,
+                            )
+                        )
+
+                    }
+                }
+            }
+
         }
 
         nostrEvent.toPost()?.let { post ->
@@ -334,7 +487,7 @@ abstract class NostrDao(
             if (quotedProfilePublicKey != null && quotedProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
-                        displayName = "LOADING PROFILE...",
+                        displayName = "LOADING...",
                         publicKey = quotedProfilePublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -346,52 +499,6 @@ abstract class NostrDao(
             database.quotedRelationDao().upsert(
                 quotedRelation.copy(
                     quotedProfilePublicKey = quotedProfilePublicKey
-                )
-            )
-        }
-        nostrEvent.toRepostedRelation()?.let { repostedRelation ->
-            // Find or create placeHolder note that is being reposted
-            val repostedNostrEvent = database.nostrEventDao().getNostrEventById(repostedRelation.repostedNostrEventId)
-
-            val repostedProfilePublicKey = if (repostedNostrEvent == null) {
-                // Sync event...
-                if (eventIdsToSync[relayURL] == null) {
-                    eventIdsToSync[relayURL] = mutableSetOf()
-                }
-                eventIdsToSync[relayURL]?.add(repostedRelation.repostedNostrEventId)
-
-                database.nostrEventDao().insert(
-                    NostrEvent(
-                        id = repostedRelation.repostedNostrEventId,
-                        content = "Pending Sync",
-                        createdAt = GENESIS_AT,
-                        pubKey = nostrEvent.pubKey,
-                        sig = "",
-                        kind = nostrEvent.kind,
-                        tags = emptyArray()
-                    )
-                )
-
-                repostedRelation.repostedProfilePublicKey
-            } else {
-                repostedRelation.repostedProfilePublicKey ?: repostedNostrEvent.pubKey
-            }
-
-            val repostedProfile = repostedProfilePublicKey?.let { database.profileDao().getProfileByPublicKey(it) }
-
-            if (repostedProfilePublicKey != null && repostedProfile == null) {
-                database.profileDao().insertPlaceholderProfile(
-                    Profile(
-                        displayName = "LOADING PROFILE...",
-                        publicKey = repostedProfilePublicKey,
-                        createdAt = GENESIS_AT,
-                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
-                    )
-                )
-            }
-            database.repostedRelationDao().upsert(
-                repostedRelation.copy(
-                    repostedProfilePublicKey = repostedProfilePublicKey
                 )
             )
         }
@@ -442,7 +549,7 @@ abstract class NostrDao(
             if (inReplyToRootProfilePublicKey != null && inReplyToProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
                     Profile(
-                        displayName = "LOADING PROFILE...",
+                        displayName = "LOADING...",
                         publicKey = inReplyToRootProfilePublicKey,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
@@ -502,7 +609,7 @@ abstract class NostrDao(
 
                 if (profile == null) {
                     val placeHolderProfile = Profile(
-                        displayName = "LOADING PROFILE...",
+                        displayName = "LOADING...",
                         publicKey = followedHexKEys,
                         createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,

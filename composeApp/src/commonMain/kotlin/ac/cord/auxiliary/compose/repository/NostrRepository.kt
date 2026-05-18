@@ -12,6 +12,7 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
@@ -121,6 +122,8 @@ interface NostrRepository {
     suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?>
 
     suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?>
+
+    suspend fun observeChatRoomsByPublicKey(publicKey: String): Flow<List<LocalChatRoom>>
 
     suspend fun getRecentSearches(): List<RecentSearch>
 
@@ -286,6 +289,10 @@ interface NostrRepository {
             }
 
             override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeChatRoomsByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
                 TODO("Not yet implemented")
             }
 

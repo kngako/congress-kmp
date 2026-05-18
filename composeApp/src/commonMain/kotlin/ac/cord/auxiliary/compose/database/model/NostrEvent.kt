@@ -5,7 +5,6 @@ import ac.cord.auxiliary.compose.database.model.traits.LocalStoreEntity
 import ac.cord.auxiliary.compose.database.model.traits.SoftDeletableEntity
 import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UnsignedNostrEventEntity
-import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
 import androidx.room3.Entity
@@ -16,10 +15,10 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip18Reposts.quotes.QAddressableTag
@@ -27,6 +26,7 @@ import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.firstTaggedQuote
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.utils.EventFactory
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -180,6 +180,40 @@ data class NostrEvent(
         return null
     }
 
+    fun toGiftWrapMessageWithReceiverPTag(): GiftWrapMessage? = try {
+        if (kind == GiftWrapEvent.KIND) {
+            val giftWrapEvent = GiftWrapEvent(
+                id = id,
+                pubKey = pubKey,
+                createdAt = createdAt.epochSeconds,
+                kind = kind,
+                tags = tags,
+                content = content,
+                sig = sig
+            )
+
+
+
+            return giftWrapEvent.taggedUsers().firstOrNull()?.let { receiverPTag ->
+                GiftWrapMessage(
+                    id = giftWrapEvent.id,
+                    kind = giftWrapEvent.kind,
+                    publicKey = giftWrapEvent.pubKey,
+                    content = giftWrapEvent.content,
+                    createdAt = Instant.fromEpochSeconds(giftWrapEvent.createdAt),
+                    receiverPublicKey = receiverPTag.pubKey,
+                    receiverRelayHit = receiverPTag.relayHint?.url,
+                    signature = giftWrapEvent.sig,
+                    nostrEventId = id,
+                )
+            }
+
+        }
+        return null
+    } catch (e: Throwable) {
+        return null
+    }
+
     fun toReaction(): Reaction? = try {
         if (kind == ReactionEvent.KIND) {
             val reactionEvent = EventFactory.create<ReactionEvent>(
@@ -212,7 +246,7 @@ data class NostrEvent(
         return null
     }
 
-    fun toRepostedRelation(): RepostedRelation? = try {
+    fun toRepostedRelationWithContainedPost(): Pair<RepostedRelation, Event?>? = try {
         if (kind == RepostEvent.KIND) {
             val repostEvent = EventFactory.create<RepostEvent>(
                 id = id,
@@ -224,16 +258,37 @@ data class NostrEvent(
                 sig = sig
             )
 
-            return repostEvent.containedPost()?.let { containedPost ->
-                RepostedRelation(
-                    repostedNostrEventId = containedPost.id,
-                    repostedProfilePublicKey = containedPost.pubKey,
+            return repostEvent.containedPost().let { containedPost ->
+                if (containedPost != null) {
+                    Pair(
+                        RepostedRelation(
+                            repostedNostrEventId = containedPost.id,
+                            repostedProfilePublicKey = containedPost.pubKey,
 
-                    repostingNostrEventId = repostEvent.id,
+                            repostingNostrEventId = repostEvent.id,
 
-                    createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
-                    updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
-                )
+                            createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
+                            updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
+                        ),
+                        containedPost
+                    )
+                } else {
+                    repostEvent.boostedEvent()?.let { eTag ->
+                        Pair(
+                            RepostedRelation(
+                                repostedNostrEventId = eTag.eventId,
+                                repostedProfilePublicKey = eTag.author,
+
+                                repostingNostrEventId = repostEvent.id,
+
+                                createdAt = Instant.fromEpochSeconds(repostEvent.createdAt),
+                                updatedAt = Instant.fromEpochSeconds(repostEvent.createdAt),
+                            ),
+                            null
+                        )
+                    }
+
+                }
 
             }
         }

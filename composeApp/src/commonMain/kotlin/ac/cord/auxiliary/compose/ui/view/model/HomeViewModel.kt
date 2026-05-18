@@ -23,6 +23,7 @@ import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import com.vitorpamplona.quartz.nip23LongContent.LongTextNoteEvent
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import com.vitorpamplona.quartz.nip96FileStorage.config.FileServersEvent
 import com.vitorpamplona.quartz.nipB7Blossom.BlossomServersEvent
@@ -116,11 +117,11 @@ class HomeViewModel(
             }
             HomeScreenType.Messages -> {
                 SynchronizationFilter(
-                    authors = arrayOf(
-                        publicKey
-                    ),
                     kinds = arrayOf(
-                        ContactListEvent.KIND,
+                        GiftWrapEvent.KIND,
+                    ),
+                    tags = mapOf(
+                        Pair("p", listOf(publicKey))
                     ),
                     limit = 50
                 )

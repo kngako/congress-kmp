@@ -9,6 +9,9 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
+import fr.acinq.bitcoin.PublicKey
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -21,7 +24,7 @@ import kotlin.time.Instant
         ),
     ],
 )
-data class GiftWrapUnsigned(
+data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
     @PrimaryKey
     val id: HexKey,
 
@@ -31,9 +34,9 @@ data class GiftWrapUnsigned(
     val publicKey: String,
 
     /**
-     * Chat Message Kind
+     * Payload Event Kind
      */
-    val kind: Kind = 14,
+    val kind: Kind,
 
     /**
      * Tags for the unsigned giftwrap
@@ -54,7 +57,7 @@ data class GiftWrapUnsigned(
      * content MUST be plain text. Fields id and created_at are required.
      */
     val content: String,
-    val quotedEventId: String?,
+    val quotedEventId: String? = null,
 
     /**
      * Associated GiftWrapSeal
@@ -64,17 +67,28 @@ data class GiftWrapUnsigned(
     /**
      * Current time
      */
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
-    override val savedAt: Instant,
-    override val viewedAt: Instant?,
-    override val deletedAt: Instant?, // Who this message should be seen by (used to derive conversationId)
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
+
+    fun receiverPublicKeys(): List<PublicKey> = try {
+        tags.taggedUsers().map {
+            PublicKey(
+                it.pubKey.hexToByteArray()
+            )
+        }
+    } catch (e: Throwable) {
+        return emptyList()
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as GiftWrapUnsigned
+        other as GiftWrapPayload
 
         if (kind != other.kind) return false
         if (id != other.id) return false

@@ -9,7 +9,10 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
+import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -56,12 +59,48 @@ data class GiftWrapSeal(
     /**
      * randomTimeUpTo2DaysInThePast()
      */
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
-    override val savedAt: Instant,
-    override val viewedAt: Instant?,
-    override val deletedAt: Instant?, // Who this message should be seen by (used to derive conversationId)
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity  {
+
+    suspend fun decryptGiftWrapPayload(
+        privateKey: ByteArray
+    ): GiftWrapPayload? {
+        if (kind == SealedRumorEvent.KIND) {
+            val sealedRumorEvent = SealedRumorEvent(
+                id = id,
+                pubKey = publicKey,
+                tags = tags,
+                createdAt = createdAt.epochSeconds,
+                content = content,
+                sig = signature
+            )
+
+            val nostrSigner = NostrSignerInternal(
+                keyPair = KeyPair(privKey = privateKey)
+            )
+
+            sealedRumorEvent.unsealOrNull(
+                nostrSigner
+            )?.let { giftWrapPayload ->
+                return GiftWrapPayload(
+                    id = giftWrapPayload.id,
+                    publicKey = giftWrapPayload.pubKey,
+                    kind = giftWrapPayload.kind,
+                    tags = giftWrapPayload.tags,
+                    content = giftWrapPayload.content,
+                    createdAt = Instant.fromEpochSeconds(giftWrapPayload.createdAt),
+                )
+            }
+
+        }
+
+        return null
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

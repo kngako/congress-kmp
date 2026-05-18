@@ -11,6 +11,15 @@ import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
+import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import fr.acinq.bitcoin.PrivateKey
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -33,12 +42,19 @@ data class GiftWrapMessage(
     val publicKey: String,
 
     val kind: Kind = 1059,
+
     /**
+     * Receiver Public Key Derived from tags
+     *
      * [
      *     ["p", receiverPublicKey, "<relay-url>"] // receiver
      *   ]
+     *
      */
-    val tags: Array<Array<String>>,
+    val receiverPublicKey: String,
+
+    val receiverRelayHit: String?,
+
     /**
      *
      * encrypt(GiftWrapSeal, randomPrivateKey, receiverPublicKey)
@@ -57,47 +73,50 @@ data class GiftWrapMessage(
     /**
      * randomTimeUpTo2DaysInThePast
      */
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
-    override val savedAt: Instant,
-    override val viewedAt: Instant?,
-    override val deletedAt: Instant?, // Who this message should be seen by (used to derive conversationId)
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): NostrEventEntity, TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity  {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
 
-        other as GiftWrapMessage
+    suspend fun decryptGiftWrapSeal(
+        privateKey: ByteArray
+    ): GiftWrapSeal? {
+        if (kind == GiftWrapEvent.KIND) {
+            val giftWrapEvent = GiftWrapEvent(
+                id = id,
+                pubKey = publicKey,
+                tags = arrayOf(
+                    PTag(
+                        pubKey = receiverPublicKey,
+                        relayHint = receiverRelayHit?.let { NormalizedRelayUrl(it) }
+                    ).toTagArray()
+                ),
+                createdAt = createdAt.epochSeconds,
+                content = content,
+                sig = signature
+            )
 
-        if (kind != other.kind) return false
-        if (id != other.id) return false
-        if (publicKey != other.publicKey) return false
-        if (!tags.contentDeepEquals(other.tags)) return false
-        if (content != other.content) return false
-        if (signature != other.signature) return false
-        if (nostrEventId != other.nostrEventId) return false
-        if (createdAt != other.createdAt) return false
-        if (updatedAt != other.updatedAt) return false
-        if (savedAt != other.savedAt) return false
-        if (viewedAt != other.viewedAt) return false
-        if (deletedAt != other.deletedAt) return false
+            val nostrSigner = NostrSignerInternal(
+                keyPair = KeyPair(privKey = privateKey)
+            )
 
-        return true
-    }
+            giftWrapEvent.unwrapOrNull(
+                nostrSigner
+            )?.let { giftWrapSeal ->
+                return GiftWrapSeal(
+                    id = giftWrapSeal.id,
+                    publicKey = giftWrapSeal.pubKey,
+                    content = giftWrapSeal.content,
+                    tags = giftWrapSeal.tags,
+                    createdAt = Instant.fromEpochSeconds(giftWrapSeal.createdAt),
+                    signature = giftWrapSeal.sig
+                )
+            }
+        }
 
-    override fun hashCode(): Int {
-        var result = kind
-        result = 31 * result + id.hashCode()
-        result = 31 * result + publicKey.hashCode()
-        result = 31 * result + tags.contentDeepHashCode()
-        result = 31 * result + content.hashCode()
-        result = 31 * result + signature.hashCode()
-        result = 31 * result + nostrEventId.hashCode()
-        result = 31 * result + createdAt.hashCode()
-        result = 31 * result + updatedAt.hashCode()
-        result = 31 * result + savedAt.hashCode()
-        result = 31 * result + (viewedAt?.hashCode() ?: 0)
-        result = 31 * result + (deletedAt?.hashCode() ?: 0)
-        return result
+
+        return null
     }
 }

@@ -1,10 +1,10 @@
 package ac.cord.auxiliary.compose.ui.view.state
 
-import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 
 sealed interface ChatRoomListUIState {
     data class Loaded(
-        val chatRoomList: List<ChatRoom>
+        val chatRoomList: List<LocalChatRoom>
     ): ChatRoomListUIState
 
     data object Error: ChatRoomListUIState

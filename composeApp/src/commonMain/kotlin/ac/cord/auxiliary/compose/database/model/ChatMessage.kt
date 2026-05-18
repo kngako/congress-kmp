@@ -8,6 +8,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
@@ -19,9 +20,9 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
-            entity = GiftWrapUnsigned::class,
+            entity = GiftWrapPayload::class,
             parentColumns = ["id"],
-            childColumns = ["giftWrapUnsignedId"],
+            childColumns = ["id"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
@@ -35,17 +36,15 @@ data class ChatMessage(
 
     val chatRoomId: String,
 
-    val giftWrapUnsignedId: String,
-
-    val replyToEventId: String?,
-    val quotedEventId: String?,
+    val replyToEventId: String? = null,
+    val quotedEventId: String? = null,
 
     val content: String,
 
-    override val createdAt: Instant,
-    override val updatedAt: Instant,
-    override val savedAt: Instant,
-    override val viewedAt: Instant?,
-    override val deletedAt: Instant?, // Who this message should be seen by (used to derive conversationId)
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = Clock.System.now(),
+    override val viewedAt: Instant? = null,
+    override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity  {
 }
