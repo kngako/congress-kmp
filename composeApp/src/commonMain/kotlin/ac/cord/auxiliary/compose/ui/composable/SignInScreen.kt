@@ -180,12 +180,7 @@ fun SignInToProfileScreen(
                         } else {
                             Button(
                                 onClick = {
-                                    signInToProfileViewModel.signInToAccount(
-                                        onError = {
-                                            signInToProfileViewModel.signInToProfileUIState.value =
-                                                SignInToProfileUIState.Error
-                                        }
-                                    )
+                                    signInToProfileViewModel.signInToAccount()
                                 }
                             ) {
                                 Text(
@@ -231,12 +226,7 @@ fun SignInToProfileScreen(
                         } else {
                             Button(
                                 onClick = {
-                                    signInToProfileViewModel.signInToAccount(
-                                        onError = {
-                                            signInToProfileViewModel.signInToProfileUIState.value =
-                                                SignInToProfileUIState.Error
-                                        }
-                                    )
+                                    signInToProfileViewModel.signInToAccount()
                                 }
                             ) {
                                 Text(

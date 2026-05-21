@@ -62,7 +62,6 @@ class SignInToProfileViewModel(
     }
 
     fun signInToAccount(
-        onError: () -> Unit,
     ) {
         logger.d { "signInToAccount" }
         validateCredential().let { credentialEntity ->
