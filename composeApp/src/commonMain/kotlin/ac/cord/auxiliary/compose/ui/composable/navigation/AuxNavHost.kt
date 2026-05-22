@@ -5,7 +5,7 @@ import ac.cord.auxiliary.compose.database.repository.DatabaseNostrRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseSearchRepository
 import ac.cord.auxiliary.compose.managers.DatabaseManager
 import ac.cord.auxiliary.compose.ui.composable.CreateProfileScreen
-import ac.cord.auxiliary.compose.ui.composable.DirectMessageDetailScreen
+import ac.cord.auxiliary.compose.ui.composable.ChatRoomDetailScreen
 import ac.cord.auxiliary.compose.ui.composable.HomeScreen
 import ac.cord.auxiliary.compose.ui.composable.ImplementationPendingScreen
 import ac.cord.auxiliary.compose.ui.composable.LandingScreen
@@ -24,7 +24,7 @@ import ac.cord.auxiliary.compose.ui.composable.UnsyncedProfileScreen
 import ac.cord.auxiliary.compose.ui.composable.WriteNewNoteScreen
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.BlankRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.CreateProfileRoute
-import ac.cord.auxiliary.compose.ui.composable.navigation.routes.DirectMessageDetailRoute
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.FeedRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.LandingRoute
@@ -47,7 +47,6 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnsignedProfile
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnsyncedProfileRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.cord.auxiliary.compose.ui.view.model.NavigationViewModel
-import ac.cord.auxiliary.compose.ui.view.state.FeedListUIState
 import ac.cord.auxiliary.compose.ui.view.state.NavigationUIState
 import ac.cord.auxiliary.compose.ui.view.state.NostrEventDetailUIState
 import ac.cord.auxiliary.compose.ui.view.state.SearchUIState
@@ -336,7 +335,7 @@ fun AuxNavHost(
                 },
                 onNavigateToDirectMessageDetail = {
                     navController.navigate(
-                        route = DirectMessageDetailRoute(
+                        route = ChatRoomDetailRoute(
                             directMessageIdentifier = ""
                         )
                     )
@@ -352,8 +351,8 @@ fun AuxNavHost(
 
             }
         }
-        composable<DirectMessageDetailRoute> {
-            DirectMessageDetailScreen(
+        composable<ChatRoomDetailRoute> {
+            ChatRoomDetailScreen(
                 nostrRepository = databaseNostrRepository
             )
         }

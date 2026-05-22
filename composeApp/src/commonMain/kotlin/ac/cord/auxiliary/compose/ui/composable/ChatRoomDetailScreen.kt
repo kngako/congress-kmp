@@ -3,8 +3,7 @@ package ac.cord.auxiliary.compose.ui.composable
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
-import ac.cord.auxiliary.compose.ui.view.model.DirectMessageDetailViewModel
-import ac.cord.auxiliary.compose.ui.view.model.UnqueuedProfileSynchronizationViewModel
+import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,11 +26,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DirectMessageDetailScreen(
+fun ChatRoomDetailScreen(
     nostrRepository: NostrRepository
 ) {
-    val directMessageDetailViewModel: DirectMessageDetailViewModel = viewModel(
-        factory = DirectMessageDetailViewModel.factory(
+    val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
+        factory = ChatRoomDetailViewModel.factory(
             nostrRepository = nostrRepository
         )
     )
@@ -76,7 +75,7 @@ fun DirectMessageDetailScreen(
     }
 
     LaunchedEffect(true) {
-        directMessageDetailViewModel.queueSynchronization()
+        chatRoomDetailViewModel.queueSynchronization()
     }
 }
 
@@ -87,7 +86,7 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            DirectMessageDetailScreen(
+            ChatRoomDetailScreen(
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

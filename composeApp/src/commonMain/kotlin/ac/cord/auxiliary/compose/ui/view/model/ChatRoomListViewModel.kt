@@ -72,7 +72,7 @@ class ChatRoomListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+                Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
                         id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,

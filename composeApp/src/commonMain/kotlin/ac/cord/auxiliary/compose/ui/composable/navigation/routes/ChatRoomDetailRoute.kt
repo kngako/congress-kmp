@@ -3,7 +3,7 @@ package ac.cord.auxiliary.compose.ui.composable.navigation.routes
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class DirectMessageDetailRoute(
+data class ChatRoomDetailRoute(
     val directMessageIdentifier: String,
 ): Route() {
 }
