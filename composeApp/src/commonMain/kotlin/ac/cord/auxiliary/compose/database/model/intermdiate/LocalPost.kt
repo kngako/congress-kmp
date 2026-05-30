@@ -8,8 +8,8 @@ import androidx.room3.Relation
 data class LocalPost(
     @Embedded val post: Post,
     @Relation(
-        parentColumn = "profilePublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["profilePublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile
 )

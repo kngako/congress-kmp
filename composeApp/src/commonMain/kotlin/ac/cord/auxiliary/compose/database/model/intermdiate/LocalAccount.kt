@@ -13,32 +13,32 @@ data class LocalAccount(
     @Embedded val unsignedNostrEvent: UnsignedNostrEvent?,
 
     @Relation(
-        parentColumn = "id",
-        entityColumn = "unsignedNostrEventId"
+        parentColumns = ["id"],
+        entityColumns = ["unsignedNostrEventId"]
     )
     val nostrEvent: NostrEvent?,
 
     @Relation(
-        parentColumn = "pubKey",
-        entityColumn = "publicKey"
+        parentColumns = ["pubKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 
     @Relation(
-        parentColumn = "id",
-        entityColumn = "unsignedNostrEventId"
+        parentColumns = ["id"],
+        entityColumns = ["unsignedNostrEventId"]
     )
     val broadcastNostrEventRequest: BroadcastNostrEventRequest?,
 
     @Relation(
-        parentColumn = "id",
-        entityColumn = "unsignedNostrEventId"
+        parentColumns = ["id"],
+        entityColumns = ["unsignedNostrEventId"]
     )
     val broadcastNostrEventReceipt: BroadcastNostrEventReceipt?,
 
     @Relation(
-        parentColumn = "id",
-        entityColumn = "unsignedNostrEventId"
+        parentColumns = ["id"],
+        entityColumns = ["unsignedNostrEventId"]
     )
     val synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
 

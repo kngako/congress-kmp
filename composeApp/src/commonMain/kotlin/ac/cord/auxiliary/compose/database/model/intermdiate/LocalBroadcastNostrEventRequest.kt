@@ -9,8 +9,8 @@ data class LocalBroadcastNostrEventRequest(
     @Embedded val broadcastNostrEventRequest: BroadcastNostrEventRequest,
 
     @Relation(
-        parentColumn = "nostrEventId",
-        entityColumn = "id"
+        parentColumns = ["nostrEventId"],
+        entityColumns = ["id"]
     )
     val nostrEvent: NostrEvent,
 )

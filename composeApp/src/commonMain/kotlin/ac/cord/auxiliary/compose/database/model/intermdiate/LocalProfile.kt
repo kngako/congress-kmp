@@ -9,8 +9,8 @@ data class LocalProfile(
     @Embedded val nostrEvent: NostrEvent,
 
     @Relation(
-        parentColumn = "pubKey",
-        entityColumn = "publicKey"
+        parentColumns = ["pubKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile,
 )

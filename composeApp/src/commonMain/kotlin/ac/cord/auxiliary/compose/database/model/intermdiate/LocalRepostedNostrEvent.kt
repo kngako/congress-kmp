@@ -27,21 +27,21 @@ data class LocalRepostedNostrEvent(
     @Embedded val repostedRelation: RepostedRelation,
 
     @Relation(
-        parentColumn = "repostedNostrEventId",
-        entityColumn = "id"
+        parentColumns = ["repostedNostrEventId"],
+        entityColumns = ["id"]
     )
     val nostrEvent: NostrEvent,
 
     @Relation(
-        parentColumn = "repostedProfilePublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["repostedProfilePublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 
     @Relation(
         entity = Mention::class,
-        parentColumn = "repostedNostrEventId",
-        entityColumn = "mentioningNostrEventId",
+        parentColumns = ["repostedNostrEventId"],
+        entityColumns = ["mentioningNostrEventId"],
     )
     val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {

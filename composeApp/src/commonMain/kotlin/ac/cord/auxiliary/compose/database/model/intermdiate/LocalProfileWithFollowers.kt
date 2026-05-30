@@ -11,18 +11,18 @@ data class LocalProfileWithFollowers(
     @Embedded val nostrEvent: NostrEvent,
 
     @Relation(
-        parentColumn = "pubKey",
-        entityColumn = "publicKey"
+        parentColumns = ["pubKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile,
 
     @Relation(
-        parentColumn = "pubKey",
-        entityColumn = "publicKey",
+        parentColumns = ["pubKey"],
+        entityColumns = ["publicKey"],
         associateBy = Junction(
             value = Connection::class,
-            parentColumn = "destinationPublicKey",
-            entityColumn = "sourcePublicKey"
+            parentColumns = ["destinationPublicKey"],
+            entityColumns = ["sourcePublicKey"]
         )
     )
     val followers: List<Profile>

@@ -27,21 +27,21 @@ data class LocalInReplyToNostrEvent(
     @Embedded val inReplyToRelation: InReplyToRelation,
 
     @Relation(
-        parentColumn = "inReplyToNostrEventId",
-        entityColumn = "id"
+        parentColumns = ["inReplyToNostrEventId"],
+        entityColumns = ["id"]
     )
     val nostrEvent: NostrEvent,
 
     @Relation(
-        parentColumn = "inReplyToProfilePublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["inReplyToProfilePublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 
     @Relation(
         entity = Mention::class,
-        parentColumn = "inReplyToNostrEventId",
-        entityColumn = "mentioningNostrEventId",
+        parentColumns = ["inReplyToNostrEventId"],
+        entityColumns = ["mentioningNostrEventId"],
     )
     val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {

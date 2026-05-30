@@ -9,8 +9,8 @@ data class LocalMention(
     @Embedded val mention: Mention,
 
     @Relation(
-        parentColumn = "mentionedPublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["mentionedPublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 )

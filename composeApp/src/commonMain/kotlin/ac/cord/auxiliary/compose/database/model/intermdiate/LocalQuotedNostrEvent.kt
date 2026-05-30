@@ -30,21 +30,21 @@ data class LocalQuotedNostrEvent(
     @Embedded val quotedRelation: QuotedRelation,
 
     @Relation(
-        parentColumn = "quotedNostrEventId",
-        entityColumn = "id"
+        parentColumns = ["quotedNostrEventId"],
+        entityColumns = ["id"]
     )
     val nostrEvent: NostrEvent,
 
     @Relation(
-        parentColumn = "quotedProfilePublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["quotedProfilePublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 
     @Relation(
         entity = Mention::class,
-        parentColumn = "quotedNostrEventId",
-        entityColumn = "mentioningNostrEventId",
+        parentColumns = ["quotedNostrEventId"],
+        entityColumns = ["mentioningNostrEventId"],
     )
     val mentionedProfiles: List<LocalMention> = emptyList(),
 ) {

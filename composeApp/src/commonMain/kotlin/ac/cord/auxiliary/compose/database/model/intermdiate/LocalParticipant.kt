@@ -9,8 +9,8 @@ data class LocalParticipant(
     @Embedded val participant: Participant,
 
     @Relation(
-        parentColumn = "participantPublicKey",
-        entityColumn = "publicKey"
+        parentColumns = ["participantPublicKey"],
+        entityColumns = ["publicKey"]
     )
     val profile: Profile?,
 )
