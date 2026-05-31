@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
@@ -27,11 +28,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -52,7 +53,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +69,7 @@ fun MetadataEventDetail(
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
     onNavigateToEditProfile: () -> Unit,
+    onNavigateToChatRoom: (Route) -> Unit,
     nostrRepository: NostrRepository
 ) {
     val scope = rememberCoroutineScope()
@@ -162,6 +163,20 @@ fun MetadataEventDetail(
                                 modifier = Modifier.weight(1f)
                             )
 
+                            if (!metadataEventDetailViewModel.isActiveUser()) {
+                                IconButton(
+                                    onClick = {
+                                        onNavigateToChatRoom.invoke(
+                                            ImplementationPendingRoute("Direct message")
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Mail,
+                                        contentDescription = "Direct Message"
+                                    )
+                                }
+                            }
 
 
                             when(val metadataEventDetailUIState = metadataEventDetailViewModel.metadataEventDetailUIState) {
@@ -383,6 +398,7 @@ private fun MetadataEventEventDetailPreview() {
                 onNavigateBack = {},
                 onNavigateToEvent = {},
                 onNavigateToEditProfile = {},
+                onNavigateToChatRoom = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

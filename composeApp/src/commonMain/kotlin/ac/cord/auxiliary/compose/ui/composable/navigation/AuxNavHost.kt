@@ -423,7 +423,12 @@ fun AuxNavHost(
                             quotedEventId = nostrEventId
                         )
                     )
-                }
+                },
+                onNavigateToDirectMessage = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                },
             )
         }
         composable<ImplementationPendingRoute> { backStackEntry ->

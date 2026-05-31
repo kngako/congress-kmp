@@ -39,6 +39,7 @@ fun NostrEventDetailScreen(
     nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
+    onNavigateToDirectMessage: (Route) -> Unit,
     onNavigateToEditProfile: () -> Unit,
     onNavigateToWriteAReply: (String) -> Unit,
     onNavigateToQuoteNostrEvent: (String) -> Unit,
@@ -69,6 +70,7 @@ fun NostrEventDetailScreen(
                         localNostrEvent = feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToEvent = onNavigateToEvent,
+                        onNavigateToChatRoom = onNavigateToDirectMessage,
                         onNavigateToEditProfile = onNavigateToEditProfile,
                         nostrRepository = nostrRepository
                     )
@@ -167,7 +169,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToEvent = {},
                 onNavigateToWriteAReply = {},
                 onNavigateToEditProfile = {},
-                onNavigateToQuoteNostrEvent = {}
+                onNavigateToQuoteNostrEvent = {},
+                onNavigateToDirectMessage = {}
             )
         }
     }

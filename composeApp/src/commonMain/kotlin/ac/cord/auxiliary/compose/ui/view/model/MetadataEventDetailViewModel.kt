@@ -74,7 +74,7 @@ class MetadataEventDetailViewModel(
                 logger.d("We found relations: $relations")
 
                 metadataEventDetailUIState = MetadataEventDetailUIState.Loaded(
-                    isActiveUser = activePublicKey == publicKey,
+                    isActiveUser = isActiveUser(activePublicKey),
                     followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == publicKey && connection.destinationPublicKey == activePublicKey },
                     followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activePublicKey && connection.destinationPublicKey == publicKey }
                 )
@@ -85,6 +85,18 @@ class MetadataEventDetailViewModel(
                 }
             }
         }
+    }
+
+    fun isActiveUser(activePublicKey: HexKey): Boolean {
+        return activePublicKey == publicKey
+    }
+
+    fun isActiveUser(): Boolean {
+        val activePublicKey = SeedManager.activePublicKey().toHexKey()
+
+        return isActiveUser(
+            activePublicKey = activePublicKey
+        )
     }
 
     fun getSynchronizationFilter(
