@@ -339,11 +339,9 @@ fun AuxNavHost(
                         route = SearchRoute
                     )
                 },
-                onNavigateToDirectMessageDetail = {
+                onNavigateToDirectMessageDetail = { chatRoomDetailRoute ->
                     navController.navigate(
-                        route = ChatRoomDetailRoute(
-                            directMessageIdentifier = ""
-                        )
+                        route = chatRoomDetailRoute
                     )
                 },
                 nostrRepository = databaseNostrRepository

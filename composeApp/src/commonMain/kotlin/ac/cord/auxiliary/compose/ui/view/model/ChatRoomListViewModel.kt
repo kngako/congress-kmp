@@ -5,6 +5,8 @@ import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -91,7 +93,7 @@ class ChatRoomListViewModel(
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun RenderFeed(
-        onNavigateToDirectMessageDetail: (String) -> Unit
+        onNavigateToDirectMessageDetail: (Route) -> Unit
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -140,7 +142,11 @@ class ChatRoomListViewModel(
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
-                                            onNavigateToDirectMessageDetail.invoke("")
+                                            onNavigateToDirectMessageDetail.invoke(
+                                                ChatRoomDetailRoute(
+                                                    directMessageIdentifier = localChatRoom.chatRoom.id
+                                                )
+                                            )
                                         }
                                     ) {
                                         Column(

@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
@@ -56,7 +57,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     initialHomeScreenUIState: HomeScreenUIState = HomeScreenUIState.Loading,
     onNavigateToEvent: (Route) -> Unit,
-    onNavigateToDirectMessageDetail: () -> Unit,
+    onNavigateToDirectMessageDetail: (Route) -> Unit,
     onNavigateToWriteNewNote: () -> Unit,
     onNavigateToSearch: () -> Unit,
     nostrRepository: NostrRepository,
@@ -226,9 +227,7 @@ fun HomeScreen(
 
                                     key(true) {
                                         chatRoomListViewModel.RenderFeed(
-                                            onNavigateToDirectMessageDetail = {
-                                                onNavigateToDirectMessageDetail.invoke()
-                                            }
+                                            onNavigateToDirectMessageDetail = onNavigateToDirectMessageDetail
                                         )
                                     }
 

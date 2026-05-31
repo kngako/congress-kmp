@@ -10,6 +10,9 @@ class DatabaseChatRepository(
     private val database: AuxDatabase,
     private val scope: CoroutineScope
 ): ChatRepository {
+    override suspend fun getChatRoomByIdentifier(id: String): LocalChatRoom? {
+        return database.chatRoomDao().findChatRoomById(id)
+    }
 
     override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? {
         return database.nostrNip17Dao().getOrCreateChatRoom(

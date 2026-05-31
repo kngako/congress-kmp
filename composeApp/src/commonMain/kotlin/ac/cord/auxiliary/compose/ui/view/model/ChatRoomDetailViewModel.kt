@@ -13,10 +13,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import fr.acinq.bitcoin.Crypto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailViewModel(
-    val publicKey: String,
+    val directMessageId: String,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository
@@ -38,19 +41,37 @@ class ChatRoomDetailViewModel(
     // TODO: Render MessageList...
     fun initiateChatRoomDetail() {
         // TODO: GetOrCreateChatRoom
-        viewModelScope.launch {
-            val localChatRoom = chatRepository.getOrCreateChatRoom(publicKey)
+        if (Crypto.isPubKeyCompressed(directMessageId.hexToByteArray())) {
+            logger.d("compressed: $directMessageId")
+            // Get ChatRoomById
+            viewModelScope.launch(Dispatchers.IO) {
+                val localChatRoom = chatRepository.getChatRoomByIdentifier(directMessageId)
 
-            chatRoomDetailUIState = if (localChatRoom == null) {
-                ChatRoomDetailUIState.Error
-            } else {
-                ChatRoomDetailUIState.Loaded(
-                    localChatRoom = localChatRoom
-                )
+                chatRoomDetailUIState = if (localChatRoom == null) {
+                    ChatRoomDetailUIState.Error
+                } else {
+                    ChatRoomDetailUIState.Loaded(
+                        localChatRoom = localChatRoom
+                    )
+                }
+
             }
+        } else {
+            logger.d("Not compressed key publicKey: $directMessageId")
+            viewModelScope.launch(Dispatchers.IO) {
+                // We need to get or create a chat with the user on this publicKey...
+                val localChatRoom = chatRepository.getOrCreateChatRoom(directMessageId)
 
-            queueSynchronization()
+                chatRoomDetailUIState = if (localChatRoom == null) {
+                    ChatRoomDetailUIState.Error
+                } else {
+                    ChatRoomDetailUIState.Loaded(
+                        localChatRoom = localChatRoom
+                    )
+                }
+            }
         }
+        queueSynchronization()
     }
 
 
@@ -65,7 +86,7 @@ class ChatRoomDetailViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomDetailViewModel(
-                    publicKey = publicKey,
+                    directMessageId = publicKey,
                     initialChatRoomDetailUIState = initialChatRoomDetailUIState,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
