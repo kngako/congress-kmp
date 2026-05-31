@@ -1,6 +1,5 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
-import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
@@ -21,7 +20,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -59,12 +57,12 @@ class ChatRoomListViewModel(
     fun observeChatRoomFeed() {
         logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.observeChatRoomsByPublicKey(
+            nostrRepository.getChatRoomListByPublicKey(
                 publicKey
-            ).distinctUntilChanged().collect {
-                logger.d("ChatRoomList: $it")
+            ).let { chatRooms ->
+                logger.d("ChatRoomList: $chatRooms")
                 chatRoomListUIState = ChatRoomListUIState.Loaded(
-                    chatRoomList = it
+                    chatRoomList = chatRooms
                 )
             }
         }
@@ -155,11 +153,19 @@ class ChatRoomListViewModel(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
                                             // TODO: Remove active user pubKey
-                                            val participantNames = localChatRoom.participants.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }
 
-                                            Text(
-                                                text = localChatRoom.chatRoom.subject ?: participantNames.joinToString { ", " }
-                                            )
+                                            if (localChatRoom.participants.size == 1) {
+                                                Text(
+                                                    text = "Note to Self (${localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
+                                                )
+                                            } else {
+                                                // Remove the active user publicKey from participants...
+                                                val participantNames = localChatRoom.participants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }
+
+                                                Text(
+                                                    text = localChatRoom.chatRoom.subject ?: participantNames.joinToString()
+                                                )
+                                            }
                                         }
                                     }
                                 }

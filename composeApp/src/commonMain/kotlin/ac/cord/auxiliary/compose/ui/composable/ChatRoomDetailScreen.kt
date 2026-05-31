@@ -85,7 +85,7 @@ fun ChatRoomDetailScreen(
                 ) {
                     chatRoomDetailUIState.localChatRoom.participants.forEach { participant ->
                         Text(
-                            participant.profile?.humanReadableNameOrPubkey() ?: participant.participant.participantPublicKey
+                            "- ${participant.profile?.humanReadableNameOrPubkey() ?: participant.participant.participantPublicKey}"
                         )
                     }
                 }

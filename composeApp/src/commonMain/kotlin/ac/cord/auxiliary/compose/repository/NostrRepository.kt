@@ -124,7 +124,7 @@ interface NostrRepository {
 
     suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?>
 
-    suspend fun observeChatRoomsByPublicKey(publicKey: String): Flow<List<LocalChatRoom>>
+    suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom>
 
     suspend fun getRecentSearches(): List<RecentSearch>
 
@@ -298,7 +298,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeChatRoomsByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
+            override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
                 TODO("Not yet implemented")
             }
 
