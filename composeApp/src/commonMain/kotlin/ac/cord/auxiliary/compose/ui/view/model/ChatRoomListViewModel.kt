@@ -62,6 +62,7 @@ class ChatRoomListViewModel(
             nostrRepository.observeChatRoomsByPublicKey(
                 publicKey
             ).distinctUntilChanged().collect {
+                logger.d("ChatRoomList: $it")
                 chatRoomListUIState = ChatRoomListUIState.Loaded(
                     chatRoomList = it
                 )
@@ -153,8 +154,11 @@ class ChatRoomListViewModel(
                                             modifier = Modifier.padding(20.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
+                                            // TODO: Remove active user pubKey
+                                            val participantNames = localChatRoom.participants.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }
+
                                             Text(
-                                                text = localChatRoom.chatRoom.subject ?: "Unnamed chat"
+                                                text = localChatRoom.chatRoom.subject ?: participantNames.joinToString { ", " }
                                             )
                                         }
                                     }

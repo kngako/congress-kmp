@@ -52,7 +52,7 @@ abstract class NostrNip17Dao(
         if (localChatRoom != null) {
             return localChatRoom
         } else {
-            val profiles = database.profileDao().getAllProfiles()
+            val profiles = database.profileDao().getProfileByPublicKeys(hexKeys)
 
             if (profiles.isNotEmpty()) {
                 // Create new chatRoom
