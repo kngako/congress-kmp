@@ -164,24 +164,6 @@ fun MetadataEventDetail(
                                 modifier = Modifier.weight(1f)
                             )
 
-                            if (!metadataEventDetailViewModel.isActiveUser()) {
-                                IconButton(
-                                    onClick = {
-                                        onNavigateToChatRoom.invoke(
-                                            ChatRoomDetailRoute(
-                                                directMessageIdentifier = localNostrEvent.nostrEvent.id
-                                            )
-                                        )
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Mail,
-                                        contentDescription = "Direct Message"
-                                    )
-                                }
-                            }
-
-
                             when(val metadataEventDetailUIState = metadataEventDetailViewModel.metadataEventDetailUIState) {
                                 MetadataEventDetailUIState.Error -> {
                                     Icon(
@@ -240,6 +222,22 @@ fun MetadataEventDetail(
                                     LoadingIndicator()
                                 }
                             }
+
+                            IconButton(
+                                onClick = {
+                                    onNavigateToChatRoom.invoke(
+                                        ChatRoomDetailRoute(
+                                            directMessageIdentifier = localNostrEvent.nostrEvent.id
+                                        )
+                                    )
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Mail,
+                                    contentDescription = "Direct Message"
+                                )
+                            }
+
                         }
                         Text(
                             modifier = Modifier.fillMaxWidth().padding(
