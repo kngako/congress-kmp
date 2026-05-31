@@ -83,11 +83,9 @@ fun ChatRoomDetailScreen(
                 Column(
                     modifier = Modifier.padding(innerPadding)
                 ) {
-                    chatRoomDetailUIState.localChatRoom.participants.forEach { participant ->
-                        Text(
-                            "- ${participant.profile?.humanReadableNameOrPubkey() ?: participant.participant.participantPublicKey}"
-                        )
-                    }
+                    Text(
+                        text = "Messages will appear here..."
+                    )
                 }
             }
         }
