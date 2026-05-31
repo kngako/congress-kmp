@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.ui.composable.navigation
 
 import ac.cord.auxiliary.compose.AuxGlobal
+import ac.cord.auxiliary.compose.database.repository.DatabaseChatRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseNostrRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseSearchRepository
 import ac.cord.auxiliary.compose.managers.DatabaseManager
@@ -88,6 +89,11 @@ fun AuxNavHost(
         database = databaseManager.auxDatabase,
         applicationIOScope
     )
+    val databaseChatRepository = DatabaseChatRepository(
+        database = databaseManager.auxDatabase,
+        applicationIOScope
+    )
+
     val searchRepository = DatabaseSearchRepository(
         database = databaseManager.auxDatabase
     )
@@ -353,7 +359,8 @@ fun AuxNavHost(
         }
         composable<ChatRoomDetailRoute> {
             ChatRoomDetailScreen(
-                nostrRepository = databaseNostrRepository
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository
             )
         }
         composable<SearchRoute> {

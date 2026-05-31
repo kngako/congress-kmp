@@ -16,6 +16,7 @@ import ac.cord.auxiliary.compose.database.dao.NegentropySynchronizeResultDao
 import ac.cord.auxiliary.compose.database.dao.NostrDao
 import ac.cord.auxiliary.compose.database.dao.NostrEventDao
 import ac.cord.auxiliary.compose.database.dao.NostrEventRelayDao
+import ac.cord.auxiliary.compose.database.dao.NostrNip17Dao
 import ac.cord.auxiliary.compose.database.dao.PostDao
 import ac.cord.auxiliary.compose.database.dao.ProfileDao
 import ac.cord.auxiliary.compose.database.dao.QuotedRelationDao
@@ -122,6 +123,8 @@ abstract class AuxDatabase: RoomDatabase() {
     abstract fun nostrEventDao(): NostrEventDao
 
     abstract fun nostrEventRelayDao(): NostrEventRelayDao
+
+    abstract fun nostrNip17Dao(): NostrNip17Dao
 
     abstract fun postDao(): PostDao
 
