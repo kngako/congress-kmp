@@ -24,6 +24,9 @@ interface ProfileDao {
     @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
     fun getProfileByPublicKey(publicKey: String): Profile?
 
+    @Query("SELECT * FROM Profile WHERE publicKey IN (:publicKeys)")
+    fun getProfileByPublicKeys(publicKeys: List<String>): List<Profile>
+
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfileWithFollowersByPublicKey(publicKey: String): Flow<LocalProfileWithFollowers?>
 

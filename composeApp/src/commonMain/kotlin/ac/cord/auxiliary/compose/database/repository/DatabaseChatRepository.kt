@@ -11,9 +11,10 @@ class DatabaseChatRepository(
     private val scope: CoroutineScope
 ): ChatRepository {
 
-    override suspend fun getOrCreateChatRoom(publicKey: String): LocalChatRoom? {
+    override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? {
         return database.nostrNip17Dao().getOrCreateChatRoom(
-            publicKey
+            publicKey,
+            defaultSubject = defaultSubject
         )
     }
 

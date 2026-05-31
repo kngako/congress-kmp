@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ChatRoomDao {
     @Query("SELECT * FROM ChatRoom WHERE id = :id")
-    fun findChatRoomById(id: String): ChatRoom?
+    fun findChatRoomById(id: String): LocalChatRoom?
 
     @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey")
     fun observeChatRoomByUserPublicKey(userPublicKey: String): Flow<List<LocalChatRoom>>

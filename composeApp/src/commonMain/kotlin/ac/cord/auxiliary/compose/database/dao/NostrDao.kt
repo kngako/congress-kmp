@@ -361,11 +361,11 @@ abstract class NostrDao(
                             ).value.toHex()
                             // Process chatMessage and chatRoom stuff...
                             // Find or create chatRoom
-                            val chatRoom = database.chatRoomDao().findChatRoomById(
+                            val localChatRoom = database.chatRoomDao().findChatRoomById(
                                 chatRoomId
                             )
 
-                            if (chatRoom == null) {
+                            if (localChatRoom == null) {
                                 database.chatRoomDao().upsert(
                                     ChatRoom(
                                         id = chatRoomId,

@@ -36,13 +36,14 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomDetailScreen(
+    publicKey: String,
     initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
-            publicKey = "",
+            publicKey = publicKey,
             initialChatRoomDetailUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository
@@ -136,6 +137,7 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             ChatRoomDetailScreen(
+                publicKey = "publicKey",
                 initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(

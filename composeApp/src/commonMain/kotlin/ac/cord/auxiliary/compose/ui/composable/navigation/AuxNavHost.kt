@@ -357,8 +357,11 @@ fun AuxNavHost(
 
             }
         }
-        composable<ChatRoomDetailRoute> {
+        composable<ChatRoomDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
+
             ChatRoomDetailScreen(
+                publicKey = route.directMessageIdentifier,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository
             )
