@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -167,7 +168,9 @@ fun MetadataEventDetail(
                                 IconButton(
                                     onClick = {
                                         onNavigateToChatRoom.invoke(
-                                            ImplementationPendingRoute("Direct message")
+                                            ChatRoomDetailRoute(
+                                                directMessageIdentifier = localNostrEvent.nostrEvent.id
+                                            )
                                         )
                                     }
                                 ) {
