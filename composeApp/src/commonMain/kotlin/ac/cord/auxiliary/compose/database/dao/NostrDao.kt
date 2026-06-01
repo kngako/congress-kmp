@@ -382,7 +382,7 @@ abstract class NostrDao(
                             // Save chatMessage
                             database.chatMessageDao().upsert(
                                 ChatMessage(
-                                    id = giftWrapPayload.id,
+                                    giftWrapPayloadId = giftWrapPayload.id,
                                     senderPublicKey = giftWrapPayload.publicKey,
                                     isUserMessage = SeedManager.activePublicKey().toHex() == giftWrapPayload.publicKey,
                                     chatRoomId = chatRoomId,

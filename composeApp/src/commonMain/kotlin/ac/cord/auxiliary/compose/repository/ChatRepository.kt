@@ -17,6 +17,8 @@ interface ChatRepository {
 
     suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String? = null): LocalChatRoom?
 
+    suspend fun sendChatMessage(text: String, chatRoom: ChatRoom)
+
     fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
 
     companion object {
@@ -40,6 +42,13 @@ interface ChatRepository {
 
             override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? {
                 return null
+            }
+
+            override suspend fun sendChatMessage(
+                text: String,
+                chatRoom: ChatRoom
+            ) {
+                // TODO("Not yet implemented")
             }
 
             override fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom? {

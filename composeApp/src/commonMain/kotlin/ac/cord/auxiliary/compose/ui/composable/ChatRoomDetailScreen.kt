@@ -181,7 +181,9 @@ fun ChatRoomDetailScreen(
                                     } else {
                                         IconButton(
                                             onClick = {
-
+                                                chatRoomDetailMessageListViewModel.sendMessage(
+                                                    textFieldState = textFieldState
+                                                )
                                             }
                                         ) {
                                             Icon(

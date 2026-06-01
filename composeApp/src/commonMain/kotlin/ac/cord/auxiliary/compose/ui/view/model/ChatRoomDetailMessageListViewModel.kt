@@ -1,6 +1,8 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.ChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
+import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
@@ -8,15 +10,27 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.KeyOff
+import androidx.compose.material.icons.filled.LockClock
+import androidx.compose.material.icons.filled.Signpost
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -32,10 +47,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import fr.acinq.lightning.utils.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.uuid.Uuid
 
 class ChatRoomDetailMessageListViewModel(
     initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState,
@@ -57,7 +74,7 @@ class ChatRoomDetailMessageListViewModel(
         logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
             chatRepository.observeChatMessageListByChatRoomId(
-                localChatRoom.chatRoom.userPublicKey
+                localChatRoom.chatRoom.id
             ).distinctUntilChanged().collect { chatMessages ->
                 logger.d("getChatMessageListByChatRoomId: $chatMessages")
                 chatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loaded(
@@ -145,24 +162,81 @@ class ChatRoomDetailMessageListViewModel(
                                     items = chatRoomDetailMessageListUIState.chatMessageList,
                                     key = { it.chatMessage.id }
                                 ) { localChatMessage ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        onClick = {
+                                    Row {
 
+                                        if (localChatMessage.chatMessage.isUserMessage) {
+                                            Spacer(
+                                                modifier = Modifier.width(40.dp)
+                                            )
+
+                                            Spacer(
+                                                modifier = Modifier.weight(1f)
+                                            )
                                         }
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(20.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
+
+
+
+                                        Card(
+                                            onClick = {
+
+                                            }
                                         ) {
-                                            Text(
-                                                text = localChatMessage.chatMessage.senderPublicKey // TODO: Get send name...
+                                            Column(
+                                                modifier = Modifier.padding(10.dp),
+                                                horizontalAlignment = if (localChatMessage.chatMessage.isUserMessage) {
+                                                    Alignment.End
+                                                } else {
+                                                    Alignment.Start
+                                                },
+                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                if (localChatMessage.chatMessage.isUserMessage.not()) {
+                                                    Text(
+                                                        text = localChatMessage.chatMessage.senderPublicKey, // TODO: Get send name...
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.MiddleEllipsis,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
+
+                                                Text(
+                                                    text = localChatMessage.chatMessage.content,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(
+                                                        10.dp,
+                                                        Alignment.End
+                                                    ),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Text(
+                                                        text = localChatMessage.chatMessage.createdAt.toFormattedTimeAndDateString(),
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                    if (localChatMessage.chatMessage.isUserMessage) {
+                                                        Icon(
+                                                            Icons.Default.KeyOff,
+                                                            contentDescription = "Message status"
+                                                        )
+                                                    }
+
+                                                }
+                                            }
+                                        }
+
+                                        if (!localChatMessage.chatMessage.isUserMessage) {
+                                            Spacer(
+                                                modifier = Modifier.weight(1f)
                                             )
-                                            Text(
-                                                text = localChatMessage.chatMessage.content
+                                            Spacer(
+                                                modifier = Modifier.width(40.dp)
                                             )
                                         }
+
                                     }
+
                                 }
                             }
                         }
@@ -188,6 +262,21 @@ class ChatRoomDetailMessageListViewModel(
                     }
                 }
             }
+        }
+    }
+
+    fun sendMessage(textFieldState: TextFieldState) {
+        if (textFieldState.text.isNotBlank()) {
+            val text = textFieldState.text.toString()
+            textFieldState.clearText()
+
+            viewModelScope.launch(Dispatchers.IO) {
+                chatRepository.sendChatMessage(
+                    text = text,
+                    chatRoom = localChatRoom.chatRoom
+                )
+            }
+
         }
     }
 

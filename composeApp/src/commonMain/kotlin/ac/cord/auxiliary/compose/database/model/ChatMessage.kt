@@ -22,22 +22,23 @@ import kotlin.time.Instant
         ForeignKey(
             entity = GiftWrapPayload::class,
             parentColumns = ["id"],
-            childColumns = ["id"],
+            childColumns = ["giftWrapPayloadId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
 )
 data class ChatMessage(
-    @PrimaryKey
-    val id: HexKey,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
 
     val senderPublicKey: String,
     val isUserMessage: Boolean,
 
     val chatRoomId: String,
+    val giftWrapPayloadId: String? = null,
 
-    val replyToEventId: String? = null,
-    val quotedEventId: String? = null,
+    val replyToMessageId: Long? = null,
+    val quotedMessageId: Long? = null,
 
     val content: String,
 

@@ -10,10 +10,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ChatMessageDao {
-    @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId")
+    @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     fun observeChatMessagesByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
-    @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId")
+    @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     fun getChatMessagesByChatRoomId(chatRoomId: String): List<LocalChatMessage>
 
     @Upsert

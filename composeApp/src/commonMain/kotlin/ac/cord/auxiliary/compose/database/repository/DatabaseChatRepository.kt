@@ -1,11 +1,16 @@
 package ac.cord.auxiliary.compose.database.repository
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
+import ac.cord.auxiliary.compose.database.model.ChatMessage
 import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import fr.acinq.lightning.utils.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
@@ -40,6 +45,21 @@ class DatabaseChatRepository(
     } catch (e: Throwable) {
         logger.e("Error getting or creating chat", e)
         return null
+    }
+
+    override suspend fun sendChatMessage(
+        text: String,
+        chatRoom: ChatRoom
+    ) {
+        logger.i("sendChatMessage($text): $chatRoom")
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = text,
+                chatRoomId = chatRoom.id,
+                senderPublicKey = chatRoom.userPublicKey,
+                isUserMessage = true
+            )
+        )
     }
 
     override fun updateChatRoomSubject(
