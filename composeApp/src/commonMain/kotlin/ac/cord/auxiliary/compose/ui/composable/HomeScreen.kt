@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.ui.composable
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
+import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.NostrEventDetailRoute
@@ -61,6 +62,7 @@ fun HomeScreen(
     onNavigateToWriteNewNote: () -> Unit,
     onNavigateToSearch: () -> Unit,
     nostrRepository: NostrRepository,
+    chatRepository: ChatRepository
 ) {
     val scope = rememberCoroutineScope()
 
@@ -221,7 +223,8 @@ fun HomeScreen(
                                                 homeScreenTypeType,
                                                 profileWithFollowing = homeScreenUIState.profileWithFollowing
                                             ),
-                                            nostrRepository = nostrRepository
+                                            nostrRepository = nostrRepository,
+                                            chatRepository = chatRepository
                                         ),
                                     )
 
@@ -285,7 +288,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToWriteNewNote = {},
                 onNavigateToSearch = {},
                 onNavigateToDirectMessageDetail = {},
-                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY
             )
         }
     }

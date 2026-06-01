@@ -13,6 +13,10 @@ class DatabaseChatRepository(
 ): ChatRepository {
     val logger = Logger.withTag(TAG)
 
+    override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
+        return database.chatRoomDao().getChatRoomListByUserPublicKey(publicKey)
+    }
+
     override suspend fun getChatRoomByIdentifier(id: String): LocalChatRoom? {
         return database.chatRoomDao().findChatRoomById(id)
     }

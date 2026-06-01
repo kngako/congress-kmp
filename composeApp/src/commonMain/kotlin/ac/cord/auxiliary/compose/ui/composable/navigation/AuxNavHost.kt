@@ -344,7 +344,8 @@ fun AuxNavHost(
                         route = chatRoomDetailRoute
                     )
                 },
-                nostrRepository = databaseNostrRepository
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository
             )
         }
         composable<BlankRoute> {

@@ -7,7 +7,9 @@ import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
+import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailMessageListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailViewModel
+import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailUIState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +55,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -96,6 +99,14 @@ fun ChatRoomDetailScreen(
         is ChatRoomDetailUIState.Loaded -> {
             val textFieldState = rememberTextFieldState()
 
+            val chatRoomDetailMessageListViewModel: ChatRoomDetailMessageListViewModel = viewModel(
+                factory = ChatRoomDetailMessageListViewModel.factory(
+                    localChatRoom = chatRoomDetailUIState.localChatRoom,
+                    nostrRepository = nostrRepository,
+                    chatRepository = chatRepository
+                )
+            )
+
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -118,12 +129,19 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Messages will appear here..."
-                        )
+                        key(true) {
+                            chatRoomDetailMessageListViewModel.RenderMessages(
+                                onNavigateToDirectMessageDetail = {}
+                            )
+                        }
                     }
+
+                    key(true) {
+                        chatRoomDetailMessageListViewModel.initiate()
+                    }
+
                     // TODO: Check that we have direct message relays for this user...
                     Column(
                         modifier = Modifier.fillMaxWidth()

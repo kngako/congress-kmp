@@ -3,6 +3,7 @@ package ac.cord.auxiliary.compose.ui.view.model
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
+import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
@@ -42,7 +43,8 @@ class ChatRoomListViewModel(
     initialChatRoomListUIState: ChatRoomListUIState,
     val publicKey: String,
     val synchronizationFilter: SynchronizationFilter,
-    val nostrRepository: NostrRepository
+    val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
     var chatRoomListUIState: ChatRoomListUIState by mutableStateOf(initialChatRoomListUIState)
@@ -57,7 +59,7 @@ class ChatRoomListViewModel(
     fun observeChatRoomFeed() {
         logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            nostrRepository.getChatRoomListByPublicKey(
+            chatRepository.getChatRoomListByPublicKey(
                 publicKey
             ).let { chatRooms ->
                 logger.d("ChatRoomList: $chatRooms")
@@ -202,13 +204,15 @@ class ChatRoomListViewModel(
             publicKey: String,
             synchronizationFilter: SynchronizationFilter,
             nostrRepository: NostrRepository,
+            chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomListViewModel(
                     initialChatRoomListUIState = initialChatRoomListUIState,
                     publicKey = publicKey,
                     synchronizationFilter = synchronizationFilter,
-                    nostrRepository = nostrRepository
+                    nostrRepository = nostrRepository,
+                    chatRepository = chatRepository
                 )
             }
         }

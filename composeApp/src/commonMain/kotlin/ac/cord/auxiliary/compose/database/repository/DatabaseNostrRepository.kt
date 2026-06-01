@@ -692,10 +692,6 @@ class DatabaseNostrRepository(
         return database.profileDao().observeProfileWithFollowingByPublicKey(publicKey)
     }
 
-    override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
-        return database.chatRoomDao().getChatRoomListByUserPublicKey(publicKey)
-    }
-
     override suspend fun getRecentSearches(): List<RecentSearch> {
         return database.recentSearchDao().getAllRecentSearches()
     }
