@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.ui.composable
 
 import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.Participant
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
@@ -70,7 +71,16 @@ fun ChatRoomDetailScreen(
                 topBar = {
                     TopAppBar(
                         title = {
-                            Text(chatRoomDetailUIState.localChatRoom.chatRoom.subject ?: "Message")
+                            val messageTitle = chatRoomDetailUIState.localChatRoom.chatRoom.subject ?: if (chatRoomDetailUIState.localChatRoom.participants.size == 1) {
+                                    "Note to Self (${chatRoomDetailUIState.localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
+                                } else {
+                                    // Remove the active user publicKey from participants...
+                                    chatRoomDetailUIState.localChatRoom.participants.filter { it.participant.participantPublicKey != chatRoomDetailUIState.localChatRoom.chatRoom.userPublicKey }.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }.joinToString()
+                                }
+
+                            Text(
+                                text = messageTitle
+                            )
                         }
                     )
                 },
@@ -133,7 +143,7 @@ fun ChatRoomDetailScreen(
 
 @Preview
 @Composable
-private fun UnqueuedProfileSynchronizationScreenPreview() {
+private fun ChatRoomDetailScreenPreview() {
     AuxTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
@@ -145,9 +155,9 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "",
                             userPublicKey = "",
-                            subject = "sdfa",
+                            subject = "Message title",
                             initialGiftWrapUnsignedId = ""
-                        )
+                        ),
                     )
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,

@@ -152,8 +152,6 @@ class ChatRoomListViewModel(
                                             modifier = Modifier.padding(20.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
-                                            // TODO: Remove active user pubKey
-
                                             if (localChatRoom.participants.size == 1) {
                                                 Text(
                                                     text = "Note to Self (${localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
