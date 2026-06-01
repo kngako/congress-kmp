@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailMessageListViewModel(
@@ -55,12 +56,12 @@ class ChatRoomDetailMessageListViewModel(
     fun observeChatRoomFeed() {
         logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            chatRepository.getChatRoomListByPublicKey(
+            chatRepository.observeChatMessageListByChatRoomId(
                 localChatRoom.chatRoom.userPublicKey
-            ).let { chatRooms ->
-                logger.d("ChatRoomList: $chatRooms")
+            ).distinctUntilChanged().collect { chatMessages ->
+                logger.d("getChatMessageListByChatRoomId: $chatMessages")
                 chatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loaded(
-                    chatRoomList = chatRooms
+                    chatMessageList = chatMessages
                 )
             }
         }
@@ -89,9 +90,8 @@ class ChatRoomDetailMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages(
-        onNavigateToDirectMessageDetail: (Route) -> Unit
-    ) {
+    fun RenderMessages() {
+
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -111,52 +111,56 @@ class ChatRoomDetailMessageListViewModel(
                     }
                 }
                 is ChatRoomDetailMessageListUIState.Loaded -> {
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
 
-                        if (chatRoomDetailMessageListUIState.chatRoomList.isEmpty()) {
+                        if (chatRoomDetailMessageListUIState.chatMessageList.isEmpty()) {
+                            Spacer(
+                                modifier = Modifier.height(20.dp)
+                            )
                             Text(
-                                text = "No messages. Go to a profile and send them a message."
+                                modifier = Modifier.padding(20.dp),
+                                text = "Currently no messages have been shared.\nBreak the ice.",
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(20.dp)
                             )
                         } else {
+
                             LazyColumn(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(5.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 reverseLayout = true
                             ) {
                                 items(
-                                    items = chatRoomDetailMessageListUIState.chatRoomList,
-                                    key = { it.chatRoom.id }
-                                ) { localChatRoom ->
+                                    items = chatRoomDetailMessageListUIState.chatMessageList,
+                                    key = { it.chatMessage.id }
+                                ) { localChatMessage ->
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
-                                            onNavigateToDirectMessageDetail.invoke(
-                                                ChatRoomDetailRoute(
-                                                    directMessageIdentifier = localChatRoom.chatRoom.id
-                                                )
-                                            )
+
                                         }
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(20.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
-                                            if (localChatRoom.participants.size == 1) {
-                                                Text(
-                                                    text = "Note to Self (${localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
-                                                )
-                                            } else {
-                                                // Remove the active user publicKey from participants...
-                                                val participantNames = localChatRoom.participants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }
-
-                                                Text(
-                                                    text = localChatRoom.chatRoom.subject ?: participantNames.joinToString()
-                                                )
-                                            }
+                                            Text(
+                                                text = localChatMessage.chatMessage.senderPublicKey // TODO: Get send name...
+                                            )
+                                            Text(
+                                                text = localChatMessage.chatMessage.content
+                                            )
                                         }
                                     }
                                 }

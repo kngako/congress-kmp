@@ -2,10 +2,12 @@ package ac.cord.auxiliary.compose.database.repository
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 
 class DatabaseChatRepository(
     private val database: AuxDatabase,
@@ -20,6 +22,15 @@ class DatabaseChatRepository(
     override suspend fun getChatRoomByIdentifier(id: String): LocalChatRoom? {
         return database.chatRoomDao().findChatRoomById(id)
     }
+
+    override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage> {
+        return database.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+    }
+
+    override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>> {
+        return database.chatMessageDao().observeChatMessagesByChatRoomId(chatRoomId)
+    }
+
 
     override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
