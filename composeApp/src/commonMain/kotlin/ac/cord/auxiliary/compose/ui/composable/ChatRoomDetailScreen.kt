@@ -9,25 +9,53 @@ import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailViewModel
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailUIState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AlternateEmail
+import androidx.compose.material.icons.filled.BrowseGallery
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.EmojiFlags
+import androidx.compose.material.icons.filled.InsertEmoticon
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.PinDrop
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FlexibleBottomAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +94,7 @@ fun ChatRoomDetailScreen(
             }
         }
         is ChatRoomDetailUIState.Loaded -> {
+            val textFieldState = rememberTextFieldState()
 
             Scaffold(
                 topBar = {
@@ -83,19 +112,118 @@ fun ChatRoomDetailScreen(
                             )
                         }
                     )
-                },
-                bottomBar = {
-                    BottomAppBar {
-                        Text("Message actions coming soon...")
-                    }
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
-                    Text(
-                        text = "Messages will appear here..."
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Messages will appear here..."
+                        )
+                    }
+                    // TODO: Check that we have direct message relays for this user...
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(BottomAppBarDefaults.containerColor)
+                            .navigationBarsPadding()
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = textFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                placeholder = {
+                                    Text(
+                                        text = "Say what now?"
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (textFieldState.text.isEmpty()) {
+                                        IconButton(
+                                            onClick = {
+
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Mic,
+                                                contentDescription = "Voice"
+                                            )
+                                        }
+
+                                    } else {
+                                        IconButton(
+                                            onClick = {
+
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Send,
+                                                contentDescription = "Send"
+                                            )
+                                        }
+                                    }
+                                }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.padding(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            IconButton(
+                                onClick = {
+
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.InsertEmoticon,
+                                    contentDescription = "Add emoji"
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.AlternateEmail,
+                                    contentDescription = "Mention profile"
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Collections,
+                                    contentDescription = "Attach media"
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = "Send location"
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
