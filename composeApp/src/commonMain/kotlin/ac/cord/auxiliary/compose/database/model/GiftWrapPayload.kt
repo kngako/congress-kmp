@@ -7,10 +7,15 @@ import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
+import com.vitorpamplona.quartz.nip14Subject.subject
 import fr.acinq.bitcoin.PublicKey
+import fr.acinq.bitcoin.XonlyPublicKey
+import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -73,15 +78,43 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
+    val logger = Logger.withTag(TAG)
 
-    fun receiverPublicKeys(): List<PublicKey> = try {
-        tags.taggedUsers().map {
+    fun aggregateParticipantsPublicKeys(): XonlyPublicKey? = try {
+        logger.d("aggregateParticipantsPublicKeys")
+        val hexKeys = tags.taggedUsers().map {
+            it.pubKey
+        }
+
+        logger.d("HexKeys: $hexKeys")
+        val publicKeys = hexKeys.map {
             PublicKey(
-                it.pubKey.hexToByteArray()
+                PublicKey.compress(it.hexToByteArray())
             )
+        }
+        logger.d("PublicKeys: $publicKeys")
+
+        val chatRoomXOnlyPublicKey = Musig2.aggregateKeys(
+            publicKeys
+        )
+        logger.d("ChatRoomXOnly: $chatRoomXOnlyPublicKey")
+
+        return chatRoomXOnlyPublicKey
+    } catch (e: Throwable) {
+        logger.e("Failed to aggregate participants publicKeys", e)
+        return null
+    }
+
+    fun receiverPubKeys(): List<HexKey> = try {
+        tags.taggedUsers().map {
+            it.pubKey
         }
     } catch (e: Throwable) {
         return emptyList()
+    }
+
+    fun parseSubject(): String? {
+        return tags.subject()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -120,5 +153,9 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
         result = 31 * result + (viewedAt?.hashCode() ?: 0)
         result = 31 * result + (deletedAt?.hashCode() ?: 0)
         return result
+    }
+
+    companion object {
+        const val TAG = "GiftWrapPayload"
     }
 }

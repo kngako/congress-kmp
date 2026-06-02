@@ -10,6 +10,7 @@ import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.NostrEventRelay
+import ac.cord.auxiliary.compose.database.model.Participant
 import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
@@ -24,7 +25,6 @@ import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
-import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -352,14 +352,10 @@ abstract class NostrDao(
                             giftWrapPayload
                         )
 
-                        val receiverPublicKeys = giftWrapPayload.receiverPublicKeys()
-                        logger.d("receiverPublicKeys: $receiverPublicKeys")
-
-                        if (receiverPublicKeys.isNotEmpty()) {
-                            val chatRoomId = Musig2.aggregateKeys(
-                                giftWrapPayload.receiverPublicKeys()
-                            ).value.toHex()
-                            // Process chatMessage and chatRoom stuff...
+                        val musig2AggregatedPublicKey = giftWrapPayload.aggregateParticipantsPublicKeys()
+                        if (musig2AggregatedPublicKey != null) {
+                            val chatRoomId = musig2AggregatedPublicKey.value.toHex()
+                            logger.d("ChatRoomId: $chatRoomId")
                             // Find or create chatRoom
                             val localChatRoom = database.chatRoomDao().findChatRoomById(
                                 chatRoomId
@@ -375,11 +371,27 @@ abstract class NostrDao(
                                         initialGiftWrapUnsignedId = giftWrapPayload.id
                                     )
                                 )
+
+                                // Add participants...
+                                database.participantDao().upsert(
+                                    giftWrapPayload.receiverPubKeys().map {
+                                        Participant(
+                                            participantPublicKey = it,
+                                            chatRoomId = chatRoomId
+                                        )
+                                    }
+                                )
                             } else {
-                                // TODO: Update subject from tags...
+                                giftWrapPayload.parseSubject()?.let { subject ->
+                                    database.chatRoomDao().upsert(
+                                        localChatRoom.chatRoom.copy(
+                                            subject = subject,
+                                            updatedAt = giftWrapPayload.createdAt
+                                        )
+                                    )
+                                }
                             }
 
-                            // Save chatMessage
                             database.chatMessageDao().upsert(
                                 ChatMessage(
                                     giftWrapPayloadId = giftWrapPayload.id,
@@ -390,8 +402,9 @@ abstract class NostrDao(
                                     content = giftWrapPayload.content,
                                 )
                             )
+                        } else {
+                            logger.w("Failed to setup chatRoom for message")
                         }
-
                     }
                 }
             }

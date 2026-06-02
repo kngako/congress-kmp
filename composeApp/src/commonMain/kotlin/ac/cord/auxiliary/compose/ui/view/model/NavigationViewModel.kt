@@ -93,6 +93,7 @@ class NavigationViewModel(
 
     init {
         observeUnsignedNostrEvents()
+        // TODO: observePendingUnsignedChatMessages
         observePendingBroadcastNostrEventRequests()
         observeProfile()
         observePendingSyncNostrEventRequests()
