@@ -30,8 +30,8 @@ import kotlin.time.Instant
     ],
 )
 data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
-    @PrimaryKey
-    val id: HexKey,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
 
     /**
      * Sender Public Key

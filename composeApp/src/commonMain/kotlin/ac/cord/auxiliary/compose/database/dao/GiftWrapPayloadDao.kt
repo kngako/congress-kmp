@@ -4,13 +4,16 @@ import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import androidx.room3.Dao
 import androidx.room3.Query
 import androidx.room3.Upsert
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface GiftWrapPayloadDao {
     @Query("SELECT * FROM GiftWrapPayload")
     fun  getAllGiftWrapUnsigned(): List<GiftWrapPayload>
 
-    @Upsert
-    suspend fun upsert(giftWrapPayload: GiftWrapPayload)
+    @Query("SELECT * FROM GiftWrapPayload WHERE publicKey = :publicKey AND giftWrapSealId IS NULL")
+    fun observeUnsealedGiftWrapPayloads(publicKey: String): Flow<GiftWrapPayload?>
 
+    @Upsert
+    suspend fun upsert(giftWrapPayload: GiftWrapPayload): Long
 }

@@ -105,6 +105,7 @@ fun AuxNavHost(
         factory = NavigationViewModel.factory(
             initialNavigationUIState = NavigationUIState.Loading,
             nostrRepository = databaseNostrRepository,
+            chatRepository = databaseChatRepository,
             relayRepository = databaseNostrRepository,
             scope = applicationIOScope
         )

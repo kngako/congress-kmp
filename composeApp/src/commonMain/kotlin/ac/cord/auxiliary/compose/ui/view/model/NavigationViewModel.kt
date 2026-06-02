@@ -1,11 +1,11 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.GiftWrapSeal
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.managers.SeedManager
-import ac.cord.auxiliary.compose.network.dto.RelayDTO
 import ac.cord.auxiliary.compose.network.dto.toRelayDTO
 import ac.cord.auxiliary.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT
 import ac.cord.auxiliary.compose.network.relays.RelaysSocketManager
@@ -13,6 +13,7 @@ import ac.cord.auxiliary.compose.network.sockets.NostrIncomingMessage
 import ac.cord.auxiliary.compose.network.sockets.NostrSocketClientFactory
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.CachingImportRepository
+import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
 import ac.cord.auxiliary.compose.ui.view.state.NavigationUIState
@@ -29,9 +30,15 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
+import com.vitorpamplona.quartz.nip17Dm.NIP17Factory
+import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
+import com.vitorpamplona.quartz.nip59Giftwrap.rumors.Rumor
+import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
+import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -52,6 +59,7 @@ import kotlin.time.Instant
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
     val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository,
     val relayRepository: RelayRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
@@ -70,6 +78,7 @@ class NavigationViewModel(
         fun factory(
             initialNavigationUIState: NavigationUIState,
             nostrRepository: NostrRepository,
+            chatRepository: ChatRepository,
             relayRepository: RelayRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
@@ -77,6 +86,7 @@ class NavigationViewModel(
                 NavigationViewModel(
                     initialNavigationUIState = initialNavigationUIState,
                     nostrRepository = nostrRepository,
+                    chatRepository = chatRepository,
                     relayRepository = relayRepository,
                     scope = scope
                 )
@@ -93,7 +103,7 @@ class NavigationViewModel(
 
     init {
         observeUnsignedNostrEvents()
-        // TODO: observePendingUnsignedChatMessages
+        observeUnsealedGiftWrapPayloads()
         observePendingBroadcastNostrEventRequests()
         observeProfile()
         observePendingSyncNostrEventRequests()
@@ -134,6 +144,29 @@ class NavigationViewModel(
                                 unsignedNostrEventId = unsignedNostrEvent.id
                             ),
                             relayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeUnsealedGiftWrapPayloads() {
+        val tempSigner = NostrSignerSync(
+            SeedManager.activeKeyPair()
+        )
+        scope.launch(Dispatchers.IO) {
+            logger.i { "observeUnsealedGiftWrapPayloads" }
+            chatRepository.observeUnsealedGiftWrapPayloads(
+                publicKey = SeedManager.activePublicKey().toHexKey()
+            ).distinctUntilChanged().collect { giftWrapPayloadOrNull ->
+                scope.launch(Dispatchers.IO) {
+                    giftWrapPayloadOrNull?.let { giftWrapPayload ->
+                        logger.d("seal and deliver giftWrapPayload: $giftWrapPayload")
+
+                        chatRepository.sealGiftWrapPayload(
+                            giftWrapPayload,
+                            nostrSignerSync = tempSigner
                         )
                     }
                 }

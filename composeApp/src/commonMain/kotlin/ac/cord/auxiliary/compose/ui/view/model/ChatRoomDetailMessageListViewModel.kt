@@ -260,7 +260,7 @@ class ChatRoomDetailMessageListViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 chatRepository.sendChatMessage(
                     text = text,
-                    chatRoom = localChatRoom.chatRoom
+                    localChatRoom = localChatRoom
                 )
             }
 

@@ -1,7 +1,11 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
+import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.GiftWrapMessage
+import ac.cord.auxiliary.compose.database.model.GiftWrapSeal
+import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Participant
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.managers.SeedManager
@@ -9,6 +13,11 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import kotlin.time.Instant
 
 
 @Dao
@@ -62,6 +71,66 @@ abstract class NostrNip17Dao(
         }
 
         return null
+    }
+
+    @Transaction
+    open suspend fun persistAndBroadcastGiftWrap(
+        sealedRumorEvent: SealedRumorEvent,
+        giftWrapEvent: GiftWrapEvent,
+        receiverPublicKey: PTag
+    ) {
+
+        val nostrEvent = NostrEvent(
+            id = giftWrapEvent.id,
+            content = giftWrapEvent.content,
+            createdAt = Instant.fromEpochSeconds(giftWrapEvent.createdAt),
+            sig = giftWrapEvent.sig,
+            pubKey = giftWrapEvent.pubKey,
+            tags = giftWrapEvent.tags,
+            kind = giftWrapEvent.kind
+        )
+
+
+        database.nostrEventDao().insert(nostrEvent)
+
+        // TODO: Get ChatMessageRelayListEvent.KIND for receiverPublicKey.pubkey
+//        receiverPublicKey.relayHint?.url?.let { url ->
+//            database.broadcastNostrEventRequestDao().insert(
+//                listOf(
+//                    BroadcastNostrEventRequest(
+//                        nostrEventId = nostrEvent.id,
+//                        relayURL = url
+//                    )
+//                )
+//            )
+//        }
+
+
+        database.giftWrapMessageDao().upsert(
+            GiftWrapMessage(
+                id = giftWrapEvent.id,
+                nostrEventId = nostrEvent.id,
+                content = giftWrapEvent.content,
+                createdAt = Instant.fromEpochSeconds(giftWrapEvent.createdAt),
+                signature = giftWrapEvent.sig,
+                publicKey = giftWrapEvent.pubKey,
+                kind = giftWrapEvent.kind,
+                receiverPublicKey = receiverPublicKey.pubKey,
+                receiverRelayHit = receiverPublicKey.relayHint?.url
+            )
+        )
+
+        val giftWrapSeal = GiftWrapSeal(
+            id = sealedRumorEvent.id,
+            publicKey = sealedRumorEvent.pubKey,
+            content = sealedRumorEvent.content,
+            kind = sealedRumorEvent.kind,
+            tags = sealedRumorEvent.tags,
+            signature = sealedRumorEvent.sig,
+            giftWrapMessageId = giftWrapEvent.id
+        )
+
+        database.giftWrapSealDao().upsert(giftWrapSeal)
     }
 
     companion object {

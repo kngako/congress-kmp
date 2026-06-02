@@ -55,7 +55,6 @@ import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventResult
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.Zap
-import androidx.room3.AutoMigration
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
@@ -111,7 +110,7 @@ abstract class AuxDatabase: RoomDatabase() {
 
     abstract fun giftWrapSealDao(): GiftWrapSealDao
 
-    abstract fun giftWrapUnsignedDao(): GiftWrapPayloadDao
+    abstract fun giftWrapPayloadDao(): GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): InReplyToRelationDao
 

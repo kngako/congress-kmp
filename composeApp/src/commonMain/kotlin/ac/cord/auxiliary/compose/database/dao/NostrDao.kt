@@ -347,10 +347,18 @@ abstract class NostrDao(
 
                     giftWrapSeal.decryptGiftWrapPayload(
                         activeUserPrivateKey
-                    )?.let { giftWrapPayload ->
-                        database.giftWrapUnsignedDao().upsert(
-                            giftWrapPayload
+                    )?.let { decryptedGiftWrapPayload ->
+                        val result = database.giftWrapPayloadDao().upsert(
+                            decryptedGiftWrapPayload
                         )
+
+                        val giftWrapPayload = if (result != -1L) {
+                            decryptedGiftWrapPayload.copy(
+                                id = result
+                            )
+                        } else {
+                            decryptedGiftWrapPayload
+                        }
 
                         val chatRoomId = giftWrapPayload.aggregatedParticipantsPublicKey()
                         logger.d("ChatRoomId: $chatRoomId")
@@ -368,7 +376,7 @@ abstract class NostrDao(
                                         userPublicKey = SeedManager.activeKeyPair().pubKey.toHex(),
                                         subject = null, // TODO: Get subject from tags...
                                         createdAt = giftWrapPayload.createdAt,
-                                        initialGiftWrapUnsignedId = giftWrapPayload.id
+                                        initialGiftWrapPayloadId = giftWrapPayload.id
                                     )
                                 )
 

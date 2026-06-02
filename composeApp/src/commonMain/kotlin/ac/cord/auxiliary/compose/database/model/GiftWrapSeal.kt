@@ -96,7 +96,7 @@ data class GiftWrapSeal(
                 logger.d("giftWrapPayload: ${giftWrapPayload.toJson()}")
 
                 return GiftWrapPayload(
-                    id = giftWrapPayload.id,
+                    giftWrapSealId = id,
                     publicKey = giftWrapPayload.pubKey,
                     kind = giftWrapPayload.kind,
                     tags = giftWrapPayload.tags,

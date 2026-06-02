@@ -1,49 +1,31 @@
 package ac.cord.auxiliary.compose.ui.composable
 
 import ac.cord.auxiliary.compose.database.model.ChatRoom
-import ac.cord.auxiliary.compose.database.model.Participant
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
-import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailMessageListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailViewModel
-import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailUIState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AlternateEmail
-import androidx.compose.material.icons.filled.BrowseGallery
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.EmojiFlags
-import androidx.compose.material.icons.filled.InsertEmoticon
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Pin
-import androidx.compose.material.icons.filled.PinDrop
-import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,25 +34,17 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -300,7 +274,7 @@ private fun ChatRoomDetailScreenPreview() {
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",
-                            initialGiftWrapUnsignedId = ""
+                            initialGiftWrapPayloadId = 0
                         ),
                     )
                 ),

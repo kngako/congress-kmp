@@ -1,8 +1,14 @@
 package ac.cord.auxiliary.compose.repository
 
+import ac.cord.auxiliary.compose.database.model.ChatMessage
 import ac.cord.auxiliary.compose.database.model.ChatRoom
+import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -17,9 +23,17 @@ interface ChatRepository {
 
     suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String? = null): LocalChatRoom?
 
-    suspend fun sendChatMessage(text: String, chatRoom: ChatRoom)
+    suspend fun sendChatMessage(
+        text: String,
+        localChatRoom: LocalChatRoom,
+        messageType: Kind = ChatMessageEvent.KIND
+    )
 
     fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
+
+    suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?>
+
+    suspend fun sealGiftWrapPayload(giftWrapPayload: GiftWrapPayload, nostrSignerSync: NostrSignerSync)
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
@@ -46,13 +60,25 @@ interface ChatRepository {
 
             override suspend fun sendChatMessage(
                 text: String,
-                chatRoom: ChatRoom
+                localChatRoom: LocalChatRoom,
+                messageType: Kind
             ) {
                 // TODO("Not yet implemented")
             }
 
             override fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom? {
                 return null
+            }
+
+            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun sealGiftWrapPayload(
+                giftWrapPayload: GiftWrapPayload,
+                nostrSignerSync: NostrSignerSync
+            ) {
+                TODO("Not yet implemented")
             }
         }
     }

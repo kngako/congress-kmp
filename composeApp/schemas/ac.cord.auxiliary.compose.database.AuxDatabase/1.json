@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "65a72c3df37d4135fefcfb91e43296ff",
+    "identityHash": "24fc70446262631361657ac068483160",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -276,7 +276,7 @@
       },
       {
         "tableName": "ChatMessage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `chatRoomId` TEXT NOT NULL, `giftWrapPayloadId` TEXT, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `giftWrapPayloadId` INTEGER NOT NULL, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -297,15 +297,16 @@
             "notNull": true
           },
           {
+            "fieldPath": "giftWrapPayloadId",
+            "columnName": "giftWrapPayloadId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "chatRoomId",
             "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "giftWrapPayloadId",
-            "columnName": "giftWrapPayloadId",
-            "affinity": "TEXT"
           },
           {
             "fieldPath": "replyToMessageId",
@@ -385,7 +386,7 @@
       },
       {
         "tableName": "ChatRoom",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `initialGiftWrapUnsignedId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapUnsignedId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `initialGiftWrapPayloadId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -405,9 +406,9 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "initialGiftWrapUnsignedId",
-            "columnName": "initialGiftWrapUnsignedId",
-            "affinity": "TEXT"
+            "fieldPath": "initialGiftWrapPayloadId",
+            "columnName": "initialGiftWrapPayloadId",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "createdAt",
@@ -461,7 +462,7 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "initialGiftWrapUnsignedId"
+              "initialGiftWrapPayloadId"
             ],
             "referencedColumns": [
               "id"
@@ -790,12 +791,12 @@
       },
       {
         "tableName": "GiftWrapPayload",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `quotedEventId` TEXT, `giftWrapSealId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`giftWrapSealId`) REFERENCES `GiftWrapSeal`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `quotedEventId` TEXT, `giftWrapSealId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`giftWrapSealId`) REFERENCES `GiftWrapSeal`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "TEXT",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -862,7 +863,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": false,
+          "autoGenerate": true,
           "columnNames": [
             "id"
           ]
@@ -2630,7 +2631,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '65a72c3df37d4135fefcfb91e43296ff')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '24fc70446262631361657ac068483160')"
     ]
   }
 }

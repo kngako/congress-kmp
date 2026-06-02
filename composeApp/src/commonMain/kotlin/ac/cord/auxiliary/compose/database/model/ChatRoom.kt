@@ -28,7 +28,7 @@ import kotlin.time.Instant
         ForeignKey(
             entity = GiftWrapPayload::class,
             parentColumns = ["id"],
-            childColumns = ["initialGiftWrapUnsignedId"],
+            childColumns = ["initialGiftWrapPayloadId"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
@@ -69,7 +69,7 @@ data class ChatRoom(
     // TODO: Add a LastChatMessageRelation
 //    val lastChatMessageId: String? = null,
     // Might want to focus on the other last messages...
-    val initialGiftWrapUnsignedId: String? = null,
+    val initialGiftWrapPayloadId: Long? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
@@ -77,7 +77,7 @@ data class ChatRoom(
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null,
 
-): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
+    ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
 
     companion object {
         const val TAG = "ChatRoom"

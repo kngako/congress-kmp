@@ -34,8 +34,8 @@ data class ChatMessage(
     val senderPublicKey: String,
     val isUserMessage: Boolean,
 
+    val giftWrapPayloadId: Long,
     val chatRoomId: String,
-    val giftWrapPayloadId: String? = null,
 
     val replyToMessageId: Long? = null,
     val quotedMessageId: Long? = null,
