@@ -378,9 +378,10 @@ class NavigationViewModel(
                                                 )
                                             }
                                             logger.d("broadcastNostrEventRequests: $broadcastNostrEventRequests")
-                                            nostrRepository.scheduleBroadcastNostrEventRequests(
-                                                broadcastNostrEventRequests
-                                            )
+                                            // TODO: Schedule broadcastNostrEventRequests
+//                                            nostrRepository.scheduleBroadcastNostrEventRequests(
+//                                                broadcastNostrEventRequests
+//                                            )
 
                                             relaysSocketManager.closeNegentropySync(
                                                 negCloseCmd,
