@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
+import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapMessage
@@ -17,6 +18,7 @@ import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import kotlin.math.log
 import kotlin.time.Instant
 
 
@@ -94,16 +96,43 @@ abstract class NostrNip17Dao(
         database.nostrEventDao().insert(nostrEvent)
 
         // TODO: Get ChatMessageRelayListEvent.KIND for receiverPublicKey.pubkey
-//        receiverPublicKey.relayHint?.url?.let { url ->
-//            database.broadcastNostrEventRequestDao().insert(
-//                listOf(
-//                    BroadcastNostrEventRequest(
-//                        nostrEventId = nostrEvent.id,
-//                        relayURL = url
-//                    )
-//                )
-//            )
-//        }
+        val chatMessageRelayListEvents = database.nostrEventDao().getAuthoredNostrEvents(
+            kinds = arrayOf(ChatMessageRelayListEvent.KIND),
+            authors = arrayOf(
+                receiverPublicKey.pubKey
+            ),
+            since = GENESIS_AT,
+            limit = 5
+        )
+        logger.d("Found messageRelayLists: $chatMessageRelayListEvents")
+
+        chatMessageRelayListEvents.firstOrNull()?.let { chatMessageRelayListNostrEvent ->
+            val chatMessageRelayListEvent = ChatMessageRelayListEvent(
+                id = chatMessageRelayListNostrEvent.id,
+                pubKey = chatMessageRelayListNostrEvent.pubKey,
+                tags = chatMessageRelayListNostrEvent.tags,
+                content = chatMessageRelayListNostrEvent.content,
+                sig = chatMessageRelayListNostrEvent.sig,
+                createdAt = chatMessageRelayListNostrEvent.createdAt.epochSeconds,
+            )
+
+            logger.d("Broadcast to ${chatMessageRelayListEvent.relays()}")
+
+            // TODO: Only broadcasting to the first 3 relays...
+            chatMessageRelayListEvent.relays().take(3).forEach { relayUrl ->
+                logger.d("Submit BroadcastNostrEventRequest to $relayUrl")
+                database.broadcastNostrEventRequestDao().insert(
+                    listOf(
+                        BroadcastNostrEventRequest(
+                            nostrEventId = nostrEvent.id,
+                            relayURL = relayUrl.url
+                        )
+                    )
+                )
+            }
+        }
+
+
 
 
         database.giftWrapMessageDao().upsert(

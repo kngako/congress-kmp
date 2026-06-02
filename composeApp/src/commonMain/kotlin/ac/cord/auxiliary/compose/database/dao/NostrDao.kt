@@ -24,6 +24,7 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -37,8 +38,8 @@ abstract class NostrDao(
     val profileEventKinds = arrayOf(
         MetadataEvent.KIND,
         ContactListEvent.KIND,
+        ChatMessageRelayListEvent.KIND,
 //        AdvertisedRelayListEvent.KIND,
-//        ChatMessageRelayListEvent.KIND,
 //        SearchRelayListEvent.KIND,
 //        IndexerRelayListEvent.KIND,
 //        ChannelListEvent.KIND,
