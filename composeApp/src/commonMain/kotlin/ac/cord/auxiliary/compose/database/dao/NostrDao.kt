@@ -354,7 +354,8 @@ abstract class NostrDao(
 
                         val musig2AggregatedPublicKey = giftWrapPayload.aggregateParticipantsPublicKeys()
                         if (musig2AggregatedPublicKey != null) {
-                            val chatRoomId = musig2AggregatedPublicKey.value.toHex()
+                            val chatRoomId = musig2AggregatedPublicKey.publicKey.toHex()
+
                             logger.d("ChatRoomId: $chatRoomId")
                             // Find or create chatRoom
                             val localChatRoom = database.chatRoomDao().findChatRoomById(
@@ -373,13 +374,48 @@ abstract class NostrDao(
                                 )
 
                                 // Add participants...
-                                database.participantDao().upsert(
-                                    giftWrapPayload.receiverPubKeys().map {
-                                        Participant(
-                                            participantPublicKey = it,
-                                            chatRoomId = chatRoomId
+                                val participants = giftWrapPayload.participantPubKeys().map {
+                                    Participant(
+                                        participantPublicKey = it,
+                                        chatRoomId = chatRoomId
+                                    )
+                                }
+
+                                // Sync missing participant profiles...
+                                participants.forEach { participant ->
+                                    val giftWrapParticipantProfile = database.profileDao().getProfileByPublicKey(participant.participantPublicKey)
+
+                                    if (giftWrapParticipantProfile == null) {
+                                        // Save a placeholder
+                                        database.profileDao().insertPlaceholderProfile(
+                                            Profile(
+                                                displayName = "LOADING...",
+                                                publicKey = participant.participantPublicKey,
+                                                createdAt = GENESIS_AT,
+                                                nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                                            )
                                         )
+
+                                        val recommendRelayUrl = giftWrapMessage.receiverRelayHit
+
+                                        if (recommendRelayUrl != null) {
+                                            if (profilePublicKeysToSync[recommendRelayUrl] == null) {
+                                                profilePublicKeysToSync[recommendRelayUrl] = mutableSetOf()
+                                            }
+                                            profilePublicKeysToSync[recommendRelayUrl]?.add(participant.participantPublicKey)
+                                        } else {
+                                            if (profilePublicKeysToSync[relayURL] == null) {
+                                                profilePublicKeysToSync[relayURL] = mutableSetOf()
+                                            }
+                                            profilePublicKeysToSync[relayURL]?.add(
+                                                participant.participantPublicKey
+                                            )
+                                        }
                                     }
+                                }
+
+                                database.participantDao().upsert(
+                                    participants
                                 )
                             } else {
                                 giftWrapPayload.parseSubject()?.let { subject ->

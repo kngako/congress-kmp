@@ -34,9 +34,14 @@ abstract class NostrNip17Dao(
         logger.d("hexKeys: $hexKeys")
 
         val publicKeys = hexKeys.map {
-            PublicKey(
+            val publicKey = PublicKey(
                 PublicKey.compress(it.hexToByteArray())
             )
+            if (publicKey.isValid().not()) {
+                logger.w("$it is an invalid pubkey: $publicKey")
+            }
+
+            publicKey
         }
         logger.d("PublicKeys: $publicKeys")
 

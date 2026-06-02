@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -78,20 +79,24 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
-    val logger = Logger.withTag(TAG)
+    @Ignore
+    private val logger = Logger.withTag(TAG)
 
     fun aggregateParticipantsPublicKeys(): XonlyPublicKey? = try {
         logger.d("aggregateParticipantsPublicKeys")
-        val hexKeys = tags.taggedUsers().map {
-            it.pubKey
-        }
+
+        val hexKeys = participantPubKeys()
 
         logger.d("HexKeys: $hexKeys")
         val publicKeys = hexKeys.map {
-            PublicKey(
+            val publicKey = PublicKey(
                 PublicKey.compress(it.hexToByteArray())
             )
+
+            logger.d("$publicKey: ${publicKey.isValid()}")
+            publicKey
         }
+
         logger.d("PublicKeys: $publicKeys")
 
         val chatRoomXOnlyPublicKey = Musig2.aggregateKeys(
@@ -105,12 +110,19 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
         return null
     }
 
-    fun receiverPubKeys(): List<HexKey> = try {
-        tags.taggedUsers().map {
-            it.pubKey
-        }
+    fun participantPubKeys(): Set<HexKey> = try {
+        val hexKeys = mutableSetOf(
+            publicKey
+        )
+        hexKeys.addAll(
+            tags.taggedUsers().map {
+                it.pubKey
+            }
+        )
+
+        return hexKeys
     } catch (e: Throwable) {
-        return emptyList()
+        return emptySet()
     }
 
     fun parseSubject(): String? {
