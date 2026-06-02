@@ -79,7 +79,6 @@ abstract class NostrNip17Dao(
         giftWrapEvent: GiftWrapEvent,
         receiverPublicKey: PTag
     ) {
-
         val nostrEvent = NostrEvent(
             id = giftWrapEvent.id,
             content = giftWrapEvent.content,
@@ -89,6 +88,7 @@ abstract class NostrNip17Dao(
             tags = giftWrapEvent.tags,
             kind = giftWrapEvent.kind
         )
+        logger.d("NostrEvent: $nostrEvent")
 
 
         database.nostrEventDao().insert(nostrEvent)
@@ -120,17 +120,18 @@ abstract class NostrNip17Dao(
             )
         )
 
-        val giftWrapSeal = GiftWrapSeal(
-            id = sealedRumorEvent.id,
-            publicKey = sealedRumorEvent.pubKey,
-            content = sealedRumorEvent.content,
-            kind = sealedRumorEvent.kind,
-            tags = sealedRumorEvent.tags,
-            signature = sealedRumorEvent.sig,
-            giftWrapMessageId = giftWrapEvent.id
+        database.giftWrapSealDao().upsert(
+            GiftWrapSeal(
+                id = sealedRumorEvent.id,
+                publicKey = sealedRumorEvent.pubKey,
+                content = sealedRumorEvent.content,
+                kind = sealedRumorEvent.kind,
+                tags = sealedRumorEvent.tags,
+                signature = sealedRumorEvent.sig,
+                giftWrapMessageId = giftWrapEvent.id
+            )
         )
-
-        database.giftWrapSealDao().upsert(giftWrapSeal)
+        logger.d("persistAndBroadcastGiftWrap done")
     }
 
     companion object {

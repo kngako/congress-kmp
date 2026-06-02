@@ -107,8 +107,10 @@ class DatabaseChatRepository(
             tags = giftWrapPayload.tags,
             content = giftWrapPayload.content
         )
+        logger.d("GiftWrap Payload Event: ${giftWrapPayloadEvent.toJson()}")
 
         giftWrapPayload.tags.taggedUsers().forEachIndexed {  index, receiverPublicKey ->
+            logger.d("Seal to $receiverPublicKey")
             val payload = giftWrapPayloadEvent.toJson()
 
             val sealedRumorEvent = nostrSignerSync.signNormal<SealedRumorEvent>(
@@ -120,6 +122,7 @@ class DatabaseChatRepository(
                     toPublicKey = receiverPublicKey.pubKey
                 )
             )
+            logger.d("SealedRumorEvent: ${sealedRumorEvent.toJson()}")
 
             val giftWrapEvent = nostrSignerSync.signNormal<GiftWrapEvent>(
                 createdAt = TimeUtils.randomWithTwoDays(),
@@ -132,6 +135,7 @@ class DatabaseChatRepository(
                     toPublicKey = receiverPublicKey.pubKey
                 )
             )
+            logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
             database.nostrNip17Dao().persistAndBroadcastGiftWrap(
                 sealedRumorEvent = sealedRumorEvent,
@@ -146,6 +150,7 @@ class DatabaseChatRepository(
                         giftWrapSealId = sealedRumorEvent.id
                     )
                 )
+                logger.d("GiftWrap now sealed: ${giftWrapPayload.id}")
             }
         }
     }
