@@ -6,6 +6,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.LoadingDataIndicator
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.theme.AuxTheme
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailMessageListViewModel
 import ac.cord.auxiliary.compose.ui.view.model.ChatRoomDetailViewModel
@@ -62,7 +63,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -114,16 +118,7 @@ fun ChatRoomDetailScreen(
                 topBar = {
                     TopAppBar(
                         title = {
-                            val messageTitle = chatRoomDetailUIState.localChatRoom.chatRoom.subject ?: if (chatRoomDetailUIState.localChatRoom.participants.size == 1) {
-                                    "Note to Self (${chatRoomDetailUIState.localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
-                                } else {
-                                    // Remove the active user publicKey from participants...
-                                    chatRoomDetailUIState.localChatRoom.participants.filter { it.participant.participantPublicKey != chatRoomDetailUIState.localChatRoom.chatRoom.userPublicKey }.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }.joinToString()
-                                }
-
-                            Text(
-                                text = messageTitle
-                            )
+                            chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
                         }
                     )
                 }

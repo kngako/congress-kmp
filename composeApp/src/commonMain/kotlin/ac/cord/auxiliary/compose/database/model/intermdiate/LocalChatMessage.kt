@@ -12,4 +12,9 @@ import androidx.room3.Relation
 data class LocalChatMessage(
     @Embedded val chatMessage: ChatMessage,
 
+    @Relation(
+        parentColumns = ["senderPublicKey"],
+        entityColumns = ["publicKey"]
+    )
+    val profile: Profile?,
 )

@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -187,9 +188,10 @@ class ChatRoomDetailMessageListViewModel(
                                                 ) {
                                                     if (localChatMessage.chatMessage.isUserMessage.not()) {
                                                         Text(
-                                                            text = localChatMessage.chatMessage.senderPublicKey, // TODO: Get send name...
+                                                            text = localChatMessage.profile?.humanReadableNameOrPubkey() ?: localChatMessage.chatMessage.senderPublicKey,
                                                             maxLines = 1,
                                                             overflow = TextOverflow.MiddleEllipsis,
+                                                            color = ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
                                                     }

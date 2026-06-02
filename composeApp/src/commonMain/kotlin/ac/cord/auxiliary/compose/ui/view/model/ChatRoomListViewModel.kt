@@ -1,12 +1,14 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
+import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.Route
+import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import ac.cord.auxiliary.compose.ui.view.state.ChatRoomListUIState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,7 +28,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -130,12 +135,6 @@ class ChatRoomListViewModel(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                item {
-                                    Text(
-                                        text = "Messages"
-                                    )
-                                }
-
                                 items(
                                     items = chatRoomListUIState.chatRoomList,
                                     key = { it.chatRoom.id }
@@ -154,18 +153,7 @@ class ChatRoomListViewModel(
                                             modifier = Modifier.padding(20.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
-                                            if (localChatRoom.participants.size == 1) {
-                                                Text(
-                                                    text = "Note to Self (${localChatRoom.participants.first().profile?.humanReadableNameOrPubkey()})"
-                                                )
-                                            } else {
-                                                // Remove the active user publicKey from participants...
-                                                val participantNames = localChatRoom.participants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.map { it.profile?.humanReadableNameOrPubkey() ?: "unknown participant" }
-
-                                                Text(
-                                                    text = localChatRoom.chatRoom.subject ?: participantNames.joinToString()
-                                                )
-                                            }
+                                            localChatRoom.RenderChatRoomTitleText()
                                         }
                                     }
                                 }
