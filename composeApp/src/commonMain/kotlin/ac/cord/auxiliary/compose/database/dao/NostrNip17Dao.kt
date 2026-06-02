@@ -8,11 +8,8 @@ import ac.cord.auxiliary.compose.managers.SeedManager
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
-import fr.acinq.bitcoin.PublicKey
-import fr.acinq.bitcoin.crypto.musig2.Musig2
-import kotlin.math.log
+
 
 @Dao
 abstract class NostrNip17Dao(
@@ -26,38 +23,19 @@ abstract class NostrNip17Dao(
 
         val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
-        val hexKeys = listOf(
+        val hexKeys = setOf(
             activePublicKey,
             publicKey
-        ).sorted()
-
-        logger.d("hexKeys: $hexKeys")
-
-        val publicKeys = hexKeys.map {
-            val publicKey = PublicKey(
-                PublicKey.compress(it.hexToByteArray())
-            )
-            if (publicKey.isValid().not()) {
-                logger.w("$it is an invalid pubkey: $publicKey")
-            }
-
-            publicKey
-        }
-        logger.d("PublicKeys: $publicKeys")
-
-        val chatRoomXOnlyPublicKey = Musig2.aggregateKeys(
-            publicKeys
         )
-        logger.d("ChatRoomXOnly: $chatRoomXOnlyPublicKey")
 
-        val chatRoomId = chatRoomXOnlyPublicKey.publicKey.value.toHex()
+        val chatRoomId = ChatRoom.deriveChatRoomId(hexKeys)
         logger.d("chatRoomId: $chatRoomId")
         val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
 
         if (localChatRoom != null) {
             return localChatRoom
         } else {
-            val profiles = database.profileDao().getProfileByPublicKeys(hexKeys)
+            val profiles = database.profileDao().getProfileByPublicKeys(hexKeys.toList())
 
             if (profiles.isNotEmpty()) {
                 // Create new chatRoom

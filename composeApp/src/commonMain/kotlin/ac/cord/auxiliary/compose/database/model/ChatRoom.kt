@@ -6,8 +6,14 @@ import ac.cord.auxiliary.compose.database.model.traits.TimestampedEntity
 import ac.cord.auxiliary.compose.database.model.traits.UserViewableEntity
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import fr.acinq.bitcoin.PrivateKey
+import fr.acinq.bitcoin.PublicKey
+import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -72,4 +78,45 @@ data class ChatRoom(
     override val deletedAt: Instant? = null,
 
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
+
+    companion object {
+        const val TAG = "ChatRoom"
+
+        @Ignore
+        val logger = Logger.withTag(TAG)
+
+        fun deriveChatRoomId(hexKeySet: Set<String>): String {
+            val hexKeys = hexKeySet.sorted()
+
+            logger.d("hexKeys: $hexKeys")
+
+            val publicKeys = hexKeys.map {
+
+                val publicKey = PublicKey(
+                    PublicKey.compress(it.hexToByteArray())
+                )
+                if (publicKey.isValid().not()) {
+                    logger.w("$it is an invalid pubkey (not representing a point on the secp256k1 curve): $publicKey")
+                    // Using it to derive a publicKey
+                    val derivedPublicKey = PrivateKey(
+                        publicKey.xOnly().value
+                    ).publicKey()
+
+                    logger.w("Derived $derivedPublicKey: ${derivedPublicKey.isValid()}")
+
+                    derivedPublicKey
+                } else {
+                    publicKey
+                }
+            }
+            logger.d("PublicKeys: $publicKeys")
+
+            val chatRoomXOnlyPublicKey = Musig2.aggregateKeys(
+                publicKeys
+            )
+            logger.d("ChatRoomXOnly: $chatRoomXOnlyPublicKey")
+
+            return chatRoomXOnlyPublicKey.publicKey.toHex()
+        }
+    }
 }

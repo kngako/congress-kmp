@@ -15,7 +15,6 @@ import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip14Subject.subject
 import fr.acinq.bitcoin.PublicKey
-import fr.acinq.bitcoin.XonlyPublicKey
 import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -82,29 +81,12 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
     @Ignore
     private val logger = Logger.withTag(TAG)
 
-    fun aggregateParticipantsPublicKeys(): XonlyPublicKey? = try {
+    fun aggregatedParticipantsPublicKey(): String? = try {
         logger.d("aggregateParticipantsPublicKeys")
 
-        val hexKeys = participantPubKeys()
+        val hexKeySet = participantPubKeys()
 
-        logger.d("HexKeys: $hexKeys")
-        val publicKeys = hexKeys.map {
-            val publicKey = PublicKey(
-                PublicKey.compress(it.hexToByteArray())
-            )
-
-            logger.d("$publicKey: ${publicKey.isValid()}")
-            publicKey
-        }
-
-        logger.d("PublicKeys: $publicKeys")
-
-        val chatRoomXOnlyPublicKey = Musig2.aggregateKeys(
-            publicKeys
-        )
-        logger.d("ChatRoomXOnly: $chatRoomXOnlyPublicKey")
-
-        return chatRoomXOnlyPublicKey
+        return ChatRoom.deriveChatRoomId(hexKeySet)
     } catch (e: Throwable) {
         logger.e("Failed to aggregate participants publicKeys", e)
         return null
@@ -122,6 +104,7 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
 
         return hexKeys
     } catch (e: Throwable) {
+        logger.e("Failed to get participant public keys", e)
         return emptySet()
     }
 

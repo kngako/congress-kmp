@@ -352,11 +352,10 @@ abstract class NostrDao(
                             giftWrapPayload
                         )
 
-                        val musig2AggregatedPublicKey = giftWrapPayload.aggregateParticipantsPublicKeys()
-                        if (musig2AggregatedPublicKey != null) {
-                            val chatRoomId = musig2AggregatedPublicKey.publicKey.toHex()
+                        val chatRoomId = giftWrapPayload.aggregatedParticipantsPublicKey()
+                        logger.d("ChatRoomId: $chatRoomId")
 
-                            logger.d("ChatRoomId: $chatRoomId")
+                        if (chatRoomId != null) {
                             // Find or create chatRoom
                             val localChatRoom = database.chatRoomDao().findChatRoomById(
                                 chatRoomId
