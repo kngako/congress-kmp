@@ -25,5 +25,5 @@ interface BroadcastNostrEventRequestDao {
     suspend fun upsert(broadcastNostrEventRequest: BroadcastNostrEventRequest)
 
     @Insert
-    suspend fun insert(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>)
+    suspend fun insert(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>): LongArray
 }

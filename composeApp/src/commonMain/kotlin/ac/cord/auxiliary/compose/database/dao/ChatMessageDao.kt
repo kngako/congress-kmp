@@ -16,6 +16,9 @@ interface ChatMessageDao {
     @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     fun getChatMessagesByChatRoomId(chatRoomId: String): List<LocalChatMessage>
 
+    @Query("SELECT * FROM ChatMessage WHERE giftWrapPayloadId = :giftWrapPayloadId ORDER BY createdAt DESC")
+    fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: Long): ChatMessage?
+
     @Upsert
     suspend fun upsert(chatMessage: ChatMessage)
 }

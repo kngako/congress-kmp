@@ -717,7 +717,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
-        return database.broadcastNostrEventRequestDao().insert(
+        database.broadcastNostrEventRequestDao().insert(
             broadcastNostrEventRequests
         )
     }

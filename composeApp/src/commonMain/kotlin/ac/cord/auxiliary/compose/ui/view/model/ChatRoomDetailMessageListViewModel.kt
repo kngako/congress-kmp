@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyOff
 import androidx.compose.material.icons.filled.LockClock
+import androidx.compose.material.icons.filled.Pending
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -229,7 +231,7 @@ class ChatRoomDetailMessageListViewModel(
                                                                 )
                                                             } else if (localChatMessage.chatMessageNostrEventRelation != null) {
                                                                 Icon(
-                                                                    Icons.Default.LockClock,
+                                                                    Icons.Default.Pending,
                                                                     contentDescription = "Message signed and sealed status"
                                                                 )
                                                             } else {

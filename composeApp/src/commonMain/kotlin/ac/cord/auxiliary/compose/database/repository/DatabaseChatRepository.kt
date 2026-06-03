@@ -2,6 +2,7 @@ package ac.cord.auxiliary.compose.database.repository
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.model.ChatMessage
+import ac.cord.auxiliary.compose.database.model.ChatMessageNostrEventRelation
 import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
@@ -138,20 +139,14 @@ class DatabaseChatRepository(
             logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
             database.nostrNip17Dao().persistAndBroadcastGiftWrap(
+                giftWrapPayload = Pair(
+                    index,
+                    giftWrapPayload
+                ),
                 sealedRumorEvent = sealedRumorEvent,
                 giftWrapEvent = giftWrapEvent,
                 receiverPublicKey = receiverPublicKey
             )
-
-            if (index == 0 && giftWrapPayload.giftWrapSealId == null) {
-                // Only update the giftWrapPayload.giftWrapSealId on the first seal...
-                database.giftWrapPayloadDao().upsert(
-                    giftWrapPayload.copy(
-                        giftWrapSealId = sealedRumorEvent.id
-                    )
-                )
-                logger.d("GiftWrap now sealed: ${giftWrapPayload.id}")
-            }
         }
     }
 
