@@ -48,6 +48,8 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnsignedProfile
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnsyncedProfileRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.cord.auxiliary.compose.ui.view.model.NavigationViewModel
+import ac.cord.auxiliary.compose.ui.view.model.NotaryViewModel
+import ac.cord.auxiliary.compose.ui.view.model.SynchronizationViewModel
 import ac.cord.auxiliary.compose.ui.view.state.NavigationUIState
 import ac.cord.auxiliary.compose.ui.view.state.NostrEventDetailUIState
 import ac.cord.auxiliary.compose.ui.view.state.SearchUIState
@@ -105,11 +107,26 @@ fun AuxNavHost(
         factory = NavigationViewModel.factory(
             initialNavigationUIState = NavigationUIState.Loading,
             nostrRepository = databaseNostrRepository,
-            chatRepository = databaseChatRepository,
             relayRepository = databaseNostrRepository,
             scope = applicationIOScope
         )
     )
+    val notaryViewModel: NotaryViewModel = viewModel(
+        factory = NotaryViewModel.factory(
+            nostrRepository = databaseNostrRepository,
+            chatRepository = databaseChatRepository,
+            scope = applicationIOScope
+        )
+    )
+    // TODO: Produce a notary UI Element...
+    val synchronizationViewModel: SynchronizationViewModel = viewModel(
+        factory = SynchronizationViewModel.factory(
+            nostrRepository = databaseNostrRepository,
+            relayRepository = databaseNostrRepository,
+            scope = applicationIOScope
+        )
+    )
+    // TODO: Produce a synchronization UI element...
 
     LaunchedEffect(lifecycleOwner) {
         navigationViewModel.navigationUIState.collect { state ->
