@@ -100,14 +100,10 @@ fun AuxNavHost(
         database = databaseManager.auxDatabase
     )
 
-
-
-
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
             initialNavigationUIState = NavigationUIState.Loading,
             nostrRepository = databaseNostrRepository,
-            relayRepository = databaseNostrRepository,
             scope = applicationIOScope
         )
     )
