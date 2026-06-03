@@ -1,11 +1,7 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.managers.SeedManager
-import ac.cord.auxiliary.compose.network.relays.RelaysSocketManager
-import ac.cord.auxiliary.compose.network.sockets.NostrSocketClientFactory
-import ac.cord.auxiliary.compose.repository.CachingImportRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
-import ac.cord.auxiliary.compose.repository.RelayRepository
 import ac.cord.auxiliary.compose.ui.view.state.NavigationUIState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -22,37 +18,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 
 class NavigationViewModel(
     initialNavigationUIState: NavigationUIState,
     val nostrRepository: NostrRepository,
-    val relayRepository: RelayRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
-
-    val relaysSocketManager = RelaysSocketManager(
-        nostrSocketClientFactory = NostrSocketClientFactory,
-        cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
-        relayRepository = relayRepository,
-    )
 
     companion object {
         private const val TAG = "NavigationViewModel"
 
-        private val mutex = Mutex()
-
         fun factory(
             initialNavigationUIState: NavigationUIState,
             nostrRepository: NostrRepository,
-            relayRepository: RelayRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NavigationViewModel(
                     initialNavigationUIState = initialNavigationUIState,
                     nostrRepository = nostrRepository,
-                    relayRepository = relayRepository,
                     scope = scope
                 )
             }
