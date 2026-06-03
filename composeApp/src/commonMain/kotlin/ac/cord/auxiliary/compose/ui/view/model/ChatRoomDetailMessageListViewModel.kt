@@ -21,7 +21,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyOff
+import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -213,10 +216,29 @@ class ChatRoomDetailMessageListViewModel(
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
                                                         if (localChatMessage.chatMessage.isUserMessage) {
-                                                            Icon(
-                                                                Icons.Default.KeyOff,
-                                                                contentDescription = "Message status"
-                                                            )
+                                                            // TODO: Add delivered and read receipt..
+                                                            if (localChatMessage.chatMessageBroadcastNostrEventReceiptRelation != null) {
+                                                                Icon(
+                                                                    Icons.Default.Check,
+                                                                    contentDescription = "Message sent"
+                                                                )
+                                                            } else if (localChatMessage.chatMessageBroadcastNostrEventRequestRelation != null) {
+                                                                Icon(
+                                                                    Icons.Default.AccessTime,
+                                                                    contentDescription = "Message sent"
+                                                                )
+                                                            } else if (localChatMessage.chatMessageNostrEventRelation != null) {
+                                                                Icon(
+                                                                    Icons.Default.LockClock,
+                                                                    contentDescription = "Message signed and sealed status"
+                                                                )
+                                                            } else {
+                                                                Icon(
+                                                                    Icons.Default.KeyOff,
+                                                                    contentDescription = "Unsealed message status"
+                                                                )
+                                                            }
+
                                                         }
 
                                                     }

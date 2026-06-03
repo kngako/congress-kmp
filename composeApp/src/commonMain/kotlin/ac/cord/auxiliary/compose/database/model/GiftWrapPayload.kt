@@ -26,7 +26,7 @@ import kotlin.time.Instant
             parentColumns = ["id"],
             childColumns = ["giftWrapSealId"],
             onDelete = ForeignKey.CASCADE,
-        ),
+        )
     ],
 )
 data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
