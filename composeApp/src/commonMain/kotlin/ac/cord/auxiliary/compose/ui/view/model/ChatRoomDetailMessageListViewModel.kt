@@ -120,6 +120,7 @@ class ChatRoomDetailMessageListViewModel(
 
                 } else {
                     isReceiverChatMessageRelayListMissing.value = true
+                    // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
                         Relays.negentropicRelaySet,
                         SynchronizationFilter(

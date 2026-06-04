@@ -258,24 +258,9 @@ class SynchronizationViewModel(
                                             logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
                                             // TODO: Don't schedule a sync when on mobile internet.
-                                            val since = negentropySynchronizeRequest.synchronizationFilter.since // TODO: Update since -> until based on what we have in the local db...
-                                            val until = negentropySynchronizeRequest.synchronizationFilter.until
-
-                                            val synchronizationFilter = negentropySynchronizeRequest.synchronizationFilter.copy(
-                                                since = since,
-                                                until = until
-                                            )
-
                                             nostrRepository.queueSynchronizeNostrEvent(
                                                 listOf(
-                                                    SynchronizeNostrEventRequest(
-                                                        purpose = negentropySynchronizeRequest.purpose,
-                                                        synchronizationFilters = arrayOf(
-                                                            synchronizationFilter
-                                                        ),
-                                                        relayURL = negentropySynchronizeRequest.relayURL,
-                                                        level = negentropySynchronizeRequest.level,
-                                                    )
+                                                    negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
                                                 )
                                             )
                                             return@collect
@@ -327,6 +312,16 @@ class SynchronizationViewModel(
                                             )
 
                                             return@collect
+                                        }
+                                        is NostrIncomingMessage.NoticeMessage -> {
+                                            logger.d("Notice message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
+                                            if (nostrIncomingMessage.subscriptionId?.contains("negentropy disabled") == true) {
+                                                nostrRepository.queueSynchronizeNostrEvent(
+                                                    listOf(
+                                                        negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                                    )
+                                                )
+                                            }
                                         }
                                         else -> {
                                             logger.d("Unhandled message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")

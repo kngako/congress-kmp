@@ -50,6 +50,24 @@ data class NegentropySynchronizeRequest(
     override val updatedAt: Instant = createdAt,
 ): OptionalNostrEventEntity, TimestampedEntity {
 
+    fun toSynchronizeNostrEventRequest(): SynchronizeNostrEventRequest {
+        val since = synchronizationFilter.since // TODO: Update since -> until based on what we have in the local db...
+        val until = synchronizationFilter.until
+
+        val synchronizationFilter = synchronizationFilter.copy(
+            since = since,
+            until = until
+        )
+
+        return SynchronizeNostrEventRequest(
+            purpose = purpose,
+            synchronizationFilters = arrayOf(
+                synchronizationFilter
+            ),
+            relayURL = relayURL,
+            level = level,
+        )
+    }
     companion object {
         fun computeId(
             relayURL: String,
