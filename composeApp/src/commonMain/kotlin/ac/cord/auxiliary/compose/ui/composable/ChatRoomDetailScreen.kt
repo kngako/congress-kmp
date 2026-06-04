@@ -113,6 +113,7 @@ fun ChatRoomDetailScreen(
                     }
 
                     // TODO: Check that we have direct message relays for this user...
+
                     Column(
                         modifier = Modifier.fillMaxWidth()
                             .background(BottomAppBarDefaults.containerColor)

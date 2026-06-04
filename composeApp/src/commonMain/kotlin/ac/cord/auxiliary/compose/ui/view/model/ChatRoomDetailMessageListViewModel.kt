@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
+import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
@@ -25,9 +26,11 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyOff
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -49,6 +52,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -96,34 +100,58 @@ class ChatRoomDetailMessageListViewModel(
 
                 val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
-                if (chatMessageRelayListEvent != null) {
+                val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
                     // Sync messages from this relay...
-                    val synchronizationFilter = SynchronizationFilter(
-                        kinds = arrayOf(
-                            GiftWrapEvent.KIND,
-                        ),
-                        tags = mapOf(
-                            Pair("p", listOf(recipients.participant.participantPublicKey))
-                        ),
-                        limit = 50
+                    Pair(
+                        chatMessageRelayListEvent.relays(),
+                        SynchronizationFilter(
+                            kinds = arrayOf(
+                                GiftWrapEvent.KIND,
+                            ),
+                            tags = mapOf(
+                                Pair("p", listOf(recipients.participant.participantPublicKey))
+                            ),
+                            limit = 50
+                        )
                     )
-                    nostrRepository.queueNegentropySynchronizeRequest(
-                        chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
-                            NegentropySynchronizeRequest(
-                                id = NegentropySynchronizeRequest.computeId(
-                                    relayURL = normalizedRelayUrl.url,
-                                    synchronizationFilter = synchronizationFilter
-                                ),
-                                purpose = "sent-messages",
-                                synchronizationFilter = synchronizationFilter,
-                                relayURL = normalizedRelayUrl.url,
-                                level = 0
-                            )
-                        }
-                    )
+
                 } else {
                     isReceiverChatMessageRelayListMissing.value = true
+                    Pair(
+                        Relays.negentropicRelaySet,
+                        SynchronizationFilter(
+                            kinds = arrayOf(
+                                ChatMessageRelayListEvent.KIND,
+                            ),
+                            authors = arrayOf(
+                                recipients.participant.participantPublicKey
+                            ),
+                            limit = 50
+                        )
+                    )
                 }
+
+                val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayURL = normalizedRelayUrl.url,
+                            synchronizationFilter = relayAndSynchronizationFilter.second
+                        ),
+                        purpose = if (isReceiverChatMessageRelayListMissing.value) {
+                            "chat-message-relays"
+                        } else {
+                            "sent-messages"
+                        },
+                        synchronizationFilter = relayAndSynchronizationFilter.second,
+                        relayURL = normalizedRelayUrl.url,
+                        level = 0
+                    )
+                }
+                logger.i("negentropySynchronizeRequests: $negentropySynchronizeRequests")
+
+                nostrRepository.queueNegentropySynchronizeRequest(
+                    negentropySynchronizeRequests
+                )
             }
         }
     }
@@ -181,6 +209,48 @@ class ChatRoomDetailMessageListViewModel(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 reverseLayout = true
                             ) {
+                                item {
+                                    if (isReceiverChatMessageRelayListMissing.value) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Card(
+                                                onClick = {
+                                                    // TODO: Open description for chatMessageRelayList
+                                                },
+                                                modifier = Modifier.fillMaxWidth(0.79f),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            ) {
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                                    horizontalArrangement = Arrangement.Center,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        Text(
+                                                            text = "No Chat Message Relays were found for this user.",
+                                                            textAlign = TextAlign.Center,
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                    }
+
+                                                    Icon(
+                                                        Icons.Default.Info,
+                                                        contentDescription = "Warning description"
+                                                    )
+                                                }
+
+
+                                            }
+                                        }
+                                    }
+                                }
                                 items(
                                     items = chatRoomDetailMessageListUIState.chatMessageList,
                                     key = { it.chatMessage.id }
