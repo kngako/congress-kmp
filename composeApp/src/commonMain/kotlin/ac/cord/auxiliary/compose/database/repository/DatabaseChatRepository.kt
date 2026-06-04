@@ -7,11 +7,14 @@ import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
+import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
@@ -140,6 +143,11 @@ class DatabaseChatRepository(
         giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
+        val wrapperKeyPair = KeyPair()
+        val wrapperSigner = NostrSignerSync(
+            keyPair = wrapperKeyPair
+        )
+
         val giftWrapPayloadEvent = nostrSignerSync.signNormal<Event>(
             createdAt = giftWrapPayload.createdAt.epochSeconds,
             kind = giftWrapPayload.kind,
@@ -163,13 +171,13 @@ class DatabaseChatRepository(
             )
             logger.d("SealedRumorEvent: ${sealedRumorEvent.toJson()}")
 
-            val giftWrapEvent = nostrSignerSync.signNormal<GiftWrapEvent>(
+            val giftWrapEvent = wrapperSigner.signNormal<GiftWrapEvent>(
                 createdAt = TimeUtils.randomWithTwoDays(),
                 kind = GiftWrapEvent.KIND,
                 tags = arrayOf(
                     PTag.assemble(receiverPublicKey.pubKey, receiverPublicKey.relayHint)
                 ),
-                content = nostrSignerSync.nip44Encrypt(
+                content = wrapperSigner.nip44Encrypt(
                     plaintext = sealedRumorEvent.toJson(),
                     toPublicKey = receiverPublicKey.pubKey
                 )
