@@ -9,6 +9,7 @@ import ac.cord.auxiliary.compose.network.relays.RelaysSocketManager
 import ac.cord.auxiliary.compose.network.sockets.NostrIncomingMessage
 import ac.cord.auxiliary.compose.network.sockets.NostrSocketClientFactory
 import ac.cord.auxiliary.compose.repository.CachingImportRepository
+import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
 import androidx.lifecycle.ViewModel
@@ -37,6 +38,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class SynchronizationViewModel(
     val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository,
     val relayRepository: RelayRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
@@ -54,12 +56,14 @@ class SynchronizationViewModel(
 
         fun factory(
             nostrRepository: NostrRepository,
+            chatRepository: ChatRepository,
             relayRepository: RelayRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SynchronizationViewModel(
                     nostrRepository = nostrRepository,
+                    chatRepository = chatRepository,
                     relayRepository = relayRepository,
                     scope = scope
                 )
@@ -372,7 +376,7 @@ class SynchronizationViewModel(
                                     logger.d("Nostr Publish Result: $nostrPublishResult")
                                     nostrRepository.broadcastProcessed(
                                         localBroadcastNostrEventRequest.broadcastNostrEventRequest,
-                                        "published"
+                                        "published" // TODO: Might want to pass the nostrPublishResult.result
                                     )
                                 }
                             }

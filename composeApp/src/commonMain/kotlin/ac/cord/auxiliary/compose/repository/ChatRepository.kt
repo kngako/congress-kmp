@@ -9,6 +9,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -22,6 +23,8 @@ interface ChatRepository {
     suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
     suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String? = null): LocalChatRoom?
+
+    suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
 
     suspend fun sendChatMessage(
         text: String,
@@ -55,6 +58,10 @@ interface ChatRepository {
             }
 
             override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? {
+                return null
+            }
+
+            override suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent? {
                 return null
             }
 

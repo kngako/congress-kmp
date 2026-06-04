@@ -44,6 +44,8 @@ data class Participant(
     val participantPublicKey: HexKey,
     val chatRoomId: String,
 
+    // TODO: Add relayHint...
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
     override val savedAt: Instant = Clock.System.now(),

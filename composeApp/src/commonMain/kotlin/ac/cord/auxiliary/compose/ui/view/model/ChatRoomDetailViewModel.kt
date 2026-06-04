@@ -34,13 +34,7 @@ class ChatRoomDetailViewModel(
 
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
 
-    fun queueSynchronization() {
-        logger.d { "queueSynchronization" }
-    }
-
-    // TODO: Render MessageList...
     fun initiateChatRoomDetail() {
-        // TODO: GetOrCreateChatRoom
         if (Crypto.isPubKeyCompressed(directMessageId.hexToByteArray())) {
             logger.d("compressed: $directMessageId")
             // Get ChatRoomById
@@ -71,7 +65,6 @@ class ChatRoomDetailViewModel(
                 }
             }
         }
-        queueSynchronization()
     }
 
 

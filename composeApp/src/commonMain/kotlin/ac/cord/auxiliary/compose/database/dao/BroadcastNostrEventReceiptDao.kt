@@ -18,5 +18,5 @@ interface BroadcastNostrEventReceiptDao {
     fun getBroadcastNostrEventReceiptByNostrEventId(nostrEventId: String): Flow<BroadcastNostrEventReceipt?>
 
     @Upsert
-    suspend fun upsert(broadcastNostrEventReceipt: BroadcastNostrEventReceipt)
+    suspend fun upsert(broadcastNostrEventReceipt: BroadcastNostrEventReceipt): Long
 }

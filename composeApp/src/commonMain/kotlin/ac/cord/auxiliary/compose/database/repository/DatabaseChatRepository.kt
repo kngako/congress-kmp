@@ -1,6 +1,7 @@
 package ac.cord.auxiliary.compose.database.repository
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
+import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.ChatMessage
 import ac.cord.auxiliary.compose.database.model.ChatMessageNostrEventRelation
 import ac.cord.auxiliary.compose.database.model.ChatRoom
@@ -15,6 +16,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
@@ -52,6 +54,34 @@ class DatabaseChatRepository(
     } catch (e: Throwable) {
         logger.e("Error getting or creating chat", e)
         return null
+    }
+
+    override suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent? {
+        // TODO: Implement a UserChatMessageRelayList model
+        return database.nostrEventDao().getAuthoredNostrEvents(
+            kinds = arrayOf(
+                ChatMessageRelayListEvent.KIND
+            ),
+            authors = arrayOf(
+                publicKey
+            ),
+            since = GENESIS_AT,
+            limit = 5
+        ).firstOrNull()?.let { nostrEvent ->
+            if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
+                logger.e("getAuthoredNostrEvents returned invalid ChatMessageRelayListEvent for ${publicKey}: $nostrEvent")
+                null
+            } else {
+                ChatMessageRelayListEvent(
+                    id = nostrEvent.id,
+                    tags = nostrEvent.tags,
+                    pubKey = nostrEvent.pubKey,
+                    content = nostrEvent.content,
+                    createdAt = nostrEvent.createdAt.epochSeconds,
+                    sig = nostrEvent.sig
+                )
+            }
+        }
     }
 
     override suspend fun sendChatMessage(

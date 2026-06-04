@@ -118,6 +118,7 @@ fun AuxNavHost(
     val synchronizationViewModel: SynchronizationViewModel = viewModel(
         factory = SynchronizationViewModel.factory(
             nostrRepository = databaseNostrRepository,
+            chatRepository = databaseChatRepository,
             relayRepository = databaseNostrRepository,
             scope = applicationIOScope
         )

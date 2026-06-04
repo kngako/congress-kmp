@@ -1,6 +1,8 @@
 package ac.cord.auxiliary.compose.ui.view.model
 
+import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
+import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import ac.cord.auxiliary.compose.extensions.toFormattedTimeAndDateString
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
@@ -24,9 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyOff
-import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.Pending
-import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -34,6 +34,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -62,6 +64,8 @@ class ChatRoomDetailMessageListViewModel(
     val logger = Logger.withTag(TAG)
     var chatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState by mutableStateOf(initialChatRoomDetailMessageListUIState)
         private set
+
+    val isReceiverChatMessageRelayListMissing: MutableState<Boolean> = mutableStateOf(false)
 
     fun initiate() {
         logger.d("init")
@@ -85,23 +89,43 @@ class ChatRoomDetailMessageListViewModel(
 
     fun scheduleSynchronization() {
         logger.d("scheduleSynchronization")
-//        viewModelScope.launch(Dispatchers.IO) {
-//            // Sync Notifications... might want to also run this in the background
-//            nostrRepository.queueNegentropySynchronizeRequest(
-//                Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
-//                    NegentropySynchronizeRequest(
-//                        id = NegentropySynchronizeRequest.computeId(
-//                            relayURL = normalizedRelayUrl.url,
-//                            synchronizationFilter = synchronizationFilter
-//                        ),
-//                        purpose = "chat",
-//                        synchronizationFilter = synchronizationFilter,
-//                        relayURL = normalizedRelayUrl.url,
-//                        level = 0
-//                    )
-//                }
-//            )
-//        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Sync Notifications... might want to also run this in the background
+            localChatRoom.participants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
+
+                val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
+
+                if (chatMessageRelayListEvent != null) {
+                    // Sync messages from this relay...
+                    val synchronizationFilter = SynchronizationFilter(
+                        kinds = arrayOf(
+                            GiftWrapEvent.KIND,
+                        ),
+                        tags = mapOf(
+                            Pair("p", listOf(recipients.participant.participantPublicKey))
+                        ),
+                        limit = 50
+                    )
+                    nostrRepository.queueNegentropySynchronizeRequest(
+                        chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
+                            NegentropySynchronizeRequest(
+                                id = NegentropySynchronizeRequest.computeId(
+                                    relayURL = normalizedRelayUrl.url,
+                                    synchronizationFilter = synchronizationFilter
+                                ),
+                                purpose = "sent-messages",
+                                synchronizationFilter = synchronizationFilter,
+                                relayURL = normalizedRelayUrl.url,
+                                level = 0
+                            )
+                        }
+                    )
+                } else {
+                    isReceiverChatMessageRelayListMissing.value = true
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -218,7 +242,6 @@ class ChatRoomDetailMessageListViewModel(
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
                                                         if (localChatMessage.chatMessage.isUserMessage) {
-                                                            // TODO: Add delivered and read receipt..
                                                             if (localChatMessage.chatMessageBroadcastNostrEventReceiptRelation != null) {
                                                                 Icon(
                                                                     Icons.Default.Check,

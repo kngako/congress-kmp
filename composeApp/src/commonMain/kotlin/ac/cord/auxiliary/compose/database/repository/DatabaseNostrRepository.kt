@@ -4,6 +4,7 @@ import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
+import ac.cord.auxiliary.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.NegentropySynchronizeRequest
 import ac.cord.auxiliary.compose.database.model.NostrEvent
@@ -406,6 +407,29 @@ class DatabaseNostrRepository(
                 status = status
             )
         )
+
+        if (status == "published") {
+            val broadcastNostrEventReceiptId = database.broadcastNostrEventReceiptDao().upsert(
+                BroadcastNostrEventReceipt(
+                    nostrEventId = broadcastNostrEventRequest.nostrEventId,
+                    unsignedNostrEventId = broadcastNostrEventRequest.unsignedNostrEventId,
+                    isAccepted = true,
+                    relayURL = broadcastNostrEventRequest.relayURL
+                )
+            )
+
+            database.chatMessageBroadcastNostrEventRequestRelationDao().getChatMessageBroadcastNostrEventRequestRelationByBroadcastRequest(
+                broadcastNostrEventRequestId = broadcastNostrEventRequest.id
+            )?.let { chatMessageBroadcastNostrEventRequestRelation ->
+                // This is actually a chatMessage related broadcast event...
+                database.chatMessageBroadcastNostrEventReceiptRelationDao().upsert(
+                    ChatMessageBroadcastNostrEventReceiptRelation(
+                        chatMessageId = chatMessageBroadcastNostrEventRequestRelation.chatMessageId,
+                        broadcastNostrEventReceiptId = broadcastNostrEventReceiptId
+                    )
+                )
+            }
+        }
     }
 
     override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
