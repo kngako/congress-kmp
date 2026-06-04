@@ -108,6 +108,9 @@ class ChatRoomDetailMessageListViewModel(
                             kinds = arrayOf(
                                 GiftWrapEvent.KIND,
                             ),
+                            authors = arrayOf(
+                                localChatRoom.chatRoom.userPublicKey
+                            ),
                             tags = mapOf(
                                 Pair("p", listOf(recipients.participant.participantPublicKey))
                             ),

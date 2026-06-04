@@ -456,10 +456,13 @@ abstract class NostrDao(
                                     }
 
                                     if (chatMessageRelayListEvent != null) {
-                                        // Sync messages from this relay...
+                                        // Sync messages from this relay that were sent by us
                                         val synchronizationFilter = SynchronizationFilter(
                                             kinds = arrayOf(
                                                 GiftWrapEvent.KIND,
+                                            ),
+                                            authors = arrayOf(
+                                                userPublicKey
                                             ),
                                             tags = mapOf(
                                                 Pair("p", listOf(participant.participantPublicKey))
