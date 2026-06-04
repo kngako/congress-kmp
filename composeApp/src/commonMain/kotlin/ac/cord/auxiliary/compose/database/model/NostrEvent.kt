@@ -56,6 +56,11 @@ data class NostrEvent(
     val content: String,
     val sig: HexKey,
 
+    /**
+     * Knew which relay this nostr event came from and use that as a relayHint if need be...
+     */
+    val relayUrl: String? = null,
+
     val quotedNostrEventId: HexKey? = null,
     val quotedAuthorPublicKey: HexKey? = null,
 

@@ -1,10 +1,7 @@
 package ac.cord.auxiliary.compose.database.model.intermdiate
 
 import ac.cord.auxiliary.compose.database.model.ChatRoom
-import ac.cord.auxiliary.compose.database.model.Mention
 import ac.cord.auxiliary.compose.database.model.Participant
-import ac.cord.auxiliary.compose.database.model.Post
-import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.ui.composable.widgets.profile.ProfileColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +19,7 @@ data class LocalChatRoom(
         parentColumns = ["id"],
         entityColumns = ["chatRoomId"],
     )
-    val participants: List<LocalParticipant> = emptyList(),
+    val localParticipants: List<LocalParticipant> = emptyList(),
 ) {
     @Composable
     fun RenderChatRoomTitleText() {
@@ -32,13 +29,13 @@ data class LocalChatRoom(
                 color = ProfileColor.fromPublicKey(chatRoom.id)
             )
         } else {
-            if (participants.size == 1) {
+            if (localParticipants.size == 1) {
                 Text(
-                    text = "Note to Self (${participants.first().profile?.humanReadableNameOrPubkey()})"
+                    text = "Note to Self (${localParticipants.first().profile?.humanReadableNameOrPubkey()})"
                 )
             } else {
                 // Remove the active user publicKey from participants...
-                val participantNames = participants.filter { it.participant.participantPublicKey != chatRoom.userPublicKey }.map { buildAnnotatedString {
+                val participantNames = localParticipants.filter { it.participant.participantPublicKey != chatRoom.userPublicKey }.map { buildAnnotatedString {
                     withStyle(style = SpanStyle(color = ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
                         append(it.profile?.humanReadableNameOrPubkey() ?: "unknown participant")
                     }

@@ -376,6 +376,7 @@ fun AuxNavHost(
 
             ChatRoomDetailScreen(
                 publicKey = route.directMessageIdentifier,
+                relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository
             )

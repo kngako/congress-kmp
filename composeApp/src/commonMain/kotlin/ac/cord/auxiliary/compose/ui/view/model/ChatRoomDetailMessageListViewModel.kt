@@ -96,7 +96,7 @@ class ChatRoomDetailMessageListViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
-            localChatRoom.participants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
+            localChatRoom.localParticipants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
 
                 val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 

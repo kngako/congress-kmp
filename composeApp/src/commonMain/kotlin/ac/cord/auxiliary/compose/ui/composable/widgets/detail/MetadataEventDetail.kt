@@ -227,7 +227,8 @@ fun MetadataEventDetail(
                                 onClick = {
                                     onNavigateToChatRoom.invoke(
                                         ChatRoomDetailRoute(
-                                            directMessageIdentifier = localNostrEvent.nostrEvent.pubKey
+                                            directMessageIdentifier = localNostrEvent.nostrEvent.pubKey,
+                                            relayHint = localNostrEvent.nostrEvent.relayUrl,
                                         )
                                     )
                                 }

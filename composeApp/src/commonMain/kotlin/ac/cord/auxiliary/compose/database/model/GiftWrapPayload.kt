@@ -11,11 +11,10 @@ import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip14Subject.subject
-import fr.acinq.bitcoin.PublicKey
-import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -84,27 +83,33 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
     fun aggregatedParticipantsPublicKey(): String? = try {
         logger.d("aggregateParticipantsPublicKeys")
 
-        val hexKeySet = participantPubKeys()
+        val hexKeySet = participantPTags()
 
-        return ChatRoom.deriveChatRoomId(hexKeySet)
+        return ChatRoom.deriveChatRoomId(
+            hexKeySet.map { it.pubKey }.toSet()
+        )
     } catch (e: Throwable) {
         logger.e("Failed to aggregate participants publicKeys", e)
         return null
     }
 
-    fun participantPubKeys(): Set<HexKey> = try {
-        val hexKeys = mutableSetOf(
-            publicKey
+    fun participantPTags(relayUrl: NormalizedRelayUrl? = null): Set<PTag> = try {
+        val pTags = mutableSetOf(
+            PTag(
+                pubKey = publicKey,
+                relayHint = relayUrl
+            )
         )
-        hexKeys.addAll(
+
+        pTags.addAll(
             tags.taggedUsers().map {
-                it.pubKey
+                it
             }
         )
 
-        return hexKeys
+        return pTags
     } catch (e: Throwable) {
-        logger.e("Failed to get participant public keys", e)
+        logger.e("Failed to get pTags", e)
         return emptySet()
     }
 

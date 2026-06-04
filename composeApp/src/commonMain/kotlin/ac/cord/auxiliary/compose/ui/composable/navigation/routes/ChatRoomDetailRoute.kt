@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ChatRoomDetailRoute(
     val directMessageIdentifier: String, // TODO: have this as a publicKey
+    val relayHint: String?
 ): Route() {
 }

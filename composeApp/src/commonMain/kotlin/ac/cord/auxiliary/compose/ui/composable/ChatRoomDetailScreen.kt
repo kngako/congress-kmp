@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun ChatRoomDetailScreen(
     publicKey: String,
+    relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository
@@ -57,6 +58,7 @@ fun ChatRoomDetailScreen(
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
             publicKey = publicKey,
+            relayHint = relayHint,
             initialChatRoomDetailUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository
@@ -269,6 +271,7 @@ private fun ChatRoomDetailScreenPreview() {
         ) {
             ChatRoomDetailScreen(
                 publicKey = "publicKey",
+                relayHint = null,
                 initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(

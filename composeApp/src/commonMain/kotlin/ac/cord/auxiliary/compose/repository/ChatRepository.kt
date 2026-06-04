@@ -1,6 +1,5 @@
 package ac.cord.auxiliary.compose.repository
 
-import ac.cord.auxiliary.compose.database.model.ChatMessage
 import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
@@ -22,7 +21,7 @@ interface ChatRepository {
 
     suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
-    suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String? = null): LocalChatRoom?
+    suspend fun getOrCreateChatRoom(publicKey: String, relayHint: String?, defaultSubject: String? = null): LocalChatRoom?
 
     suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
 
@@ -57,7 +56,11 @@ interface ChatRepository {
                 }
             }
 
-            override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? {
+            override suspend fun getOrCreateChatRoom(
+                publicKey: String,
+                relayHint: String?,
+                defaultSubject: String?
+            ): LocalChatRoom? {
                 return null
             }
 

@@ -32,7 +32,7 @@ abstract class NostrNip17Dao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    open suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String? = null): LocalChatRoom? {
+    open suspend fun getOrCreateChatRoom(publicKey: String, relayHint: String?, defaultSubject: String? = null): LocalChatRoom? {
         logger.d("getOrCreateChatRoom: $publicKey")
 
         val activePublicKey = SeedManager.activePublicKey().toHexKey()
@@ -64,7 +64,8 @@ abstract class NostrNip17Dao(
                     profiles.map {
                         Participant(
                             participantPublicKey = it.publicKey,
-                            chatRoomId = chatRoomId
+                            chatRoomId = chatRoomId,
+                            relayHint = relayHint
                         )
                     }
                 )

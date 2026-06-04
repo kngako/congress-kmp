@@ -21,6 +21,7 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
@@ -376,17 +377,20 @@ abstract class NostrDao(
                                     ChatRoom(
                                         id = chatRoomId,
                                         userPublicKey = userPublicKey,
-                                        subject = decryptedGiftWrapPayload.parseSubject(), // TODO: Get subject from tags...
+                                        subject = decryptedGiftWrapPayload.parseSubject(),
                                         createdAt = decryptedGiftWrapPayload.createdAt,
                                         initialGiftWrapPayloadId = giftWrapPayload.id
                                     )
                                 )
 
                                 // Add participants...
-                                val participants = giftWrapPayload.participantPubKeys().map {
+                                val participants = giftWrapPayload.participantPTags(
+                                    NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
+                                ).map {
                                     Participant(
-                                        participantPublicKey = it,
-                                        chatRoomId = chatRoomId
+                                        participantPublicKey = it.pubKey,
+                                        chatRoomId = chatRoomId,
+                                        relayHint = it.relayHint?.url
                                     )
                                 }
 

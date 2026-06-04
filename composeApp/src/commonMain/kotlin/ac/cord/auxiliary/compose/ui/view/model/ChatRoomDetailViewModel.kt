@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 class ChatRoomDetailViewModel(
     val directMessageId: String,
+    val relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository
@@ -36,7 +37,7 @@ class ChatRoomDetailViewModel(
 
     fun initiateChatRoomDetail() {
         if (Crypto.isPubKeyCompressed(directMessageId.hexToByteArray())) {
-            logger.d("compressed: $directMessageId")
+            logger.d("compressed (most likely chat room): $directMessageId")
             // Get ChatRoomById
             viewModelScope.launch(Dispatchers.IO) {
                 val localChatRoom = chatRepository.getChatRoomByIdentifier(directMessageId)
@@ -51,10 +52,13 @@ class ChatRoomDetailViewModel(
 
             }
         } else {
-            logger.d("Not compressed key publicKey: $directMessageId")
+            logger.d("Uncompressed publicKey (most likely npub): $directMessageId")
             viewModelScope.launch(Dispatchers.IO) {
                 // We need to get or create a chat with the user on this publicKey...
-                val localChatRoom = chatRepository.getOrCreateChatRoom(directMessageId)
+                val localChatRoom = chatRepository.getOrCreateChatRoom(
+                    publicKey = directMessageId,
+                    relayHint = relayHint
+                )
 
                 chatRoomDetailUIState = if (localChatRoom == null) {
                     ChatRoomDetailUIState.Error
@@ -73,6 +77,7 @@ class ChatRoomDetailViewModel(
 
         fun factory(
             publicKey: String,
+            relayHint: String?,
             initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository
@@ -80,6 +85,7 @@ class ChatRoomDetailViewModel(
             initializer {
                 ChatRoomDetailViewModel(
                     directMessageId = publicKey,
+                    relayHint = relayHint,
                     initialChatRoomDetailUIState = initialChatRoomDetailUIState,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository

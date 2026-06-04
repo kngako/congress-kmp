@@ -3,7 +3,6 @@ package ac.cord.auxiliary.compose.database.repository
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
 import ac.cord.auxiliary.compose.database.model.ChatMessage
-import ac.cord.auxiliary.compose.database.model.ChatMessageNostrEventRelation
 import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
@@ -13,6 +12,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
@@ -46,9 +46,14 @@ class DatabaseChatRepository(
     }
 
 
-    override suspend fun getOrCreateChatRoom(publicKey: String, defaultSubject: String?): LocalChatRoom? = try {
+    override suspend fun getOrCreateChatRoom(
+        publicKey: String,
+        relayHint: String?,
+        defaultSubject: String?
+    ): LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
             publicKey,
+            relayHint = relayHint,
             defaultSubject = defaultSubject
         )
     } catch (e: Throwable) {
@@ -91,16 +96,19 @@ class DatabaseChatRepository(
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")
 
-        val receiverTags = localChatRoom.participants.filter { participant ->
-            participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey
-        }.map { participant ->
-            PTag.assemble(participant.participant.participantPublicKey, null) // TODO: Get the relays associated with the participant...
+        val receiverTags = localChatRoom.localParticipants.filter { participant ->
+            participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey // TODO: Allow this where it's notes to self...
+        }.map { localParticipant ->
+            PTag.assemble(
+                localParticipant.participant.participantPublicKey,
+                localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+            )
         }
 
         val giftWrapPayloadId = database.giftWrapPayloadDao().upsert(
             GiftWrapPayload(
                 kind = messageType,
-                tags = receiverTags.toTypedArray(), // TODO: Get participants...
+                tags = receiverTags.toTypedArray(),
                 content = text,
                 publicKey = localChatRoom.chatRoom.userPublicKey
             )
