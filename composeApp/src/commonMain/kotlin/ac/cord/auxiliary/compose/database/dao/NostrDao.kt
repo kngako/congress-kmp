@@ -15,6 +15,7 @@ import ac.cord.auxiliary.compose.database.model.Post
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
+import ac.cord.auxiliary.compose.exceptions.GiftWrapImpersonationException
 import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.managers.toHex
 import androidx.room3.Dao
@@ -27,6 +28,7 @@ import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -350,6 +352,13 @@ abstract class NostrDao(
                     giftWrapSeal.decryptGiftWrapPayload(
                         activeUserPrivateKey
                     )?.let { decryptedGiftWrapPayload ->
+                        if (giftWrapSeal.publicKey.lowercase() != decryptedGiftWrapPayload.publicKey.lowercase()) {
+                            val giftWrapImpersonation = GiftWrapImpersonationException(
+                                "Seal pubkey (${giftWrapSeal.publicKey}) and payload pubkey (${decryptedGiftWrapPayload.publicKey}) needs to be the same for the giftWrap ${nostrEvent.id}"
+                            )
+                            logger.e("Impersonation", giftWrapImpersonation)
+                            throw giftWrapImpersonation // Once this is thrown the database transaction fails and nothing gets saved to the DB...
+                        }
                         val result = database.giftWrapPayloadDao().upsert(
                             decryptedGiftWrapPayload
                         )
