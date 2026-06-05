@@ -108,9 +108,6 @@ class ChatRoomDetailMessageListViewModel(
                             kinds = arrayOf(
                                 GiftWrapEvent.KIND,
                             ),
-                            authors = arrayOf(
-                                localChatRoom.chatRoom.userPublicKey
-                            ),
                             tags = mapOf(
                                 Pair("p", listOf(recipients.participant.participantPublicKey))
                             ),
@@ -119,6 +116,7 @@ class ChatRoomDetailMessageListViewModel(
                     )
 
                 } else {
+                    // Try to find the ChatMessageRelayList for this participant...
                     isReceiverChatMessageRelayListMissing.value = true
                     // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
@@ -134,6 +132,8 @@ class ChatRoomDetailMessageListViewModel(
                         )
                     )
                 }
+
+                logger.i("GiftWrapFilter: ${relayAndSynchronizationFilter.second}")
 
                 val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
