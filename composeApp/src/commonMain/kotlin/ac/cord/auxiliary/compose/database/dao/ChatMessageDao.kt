@@ -5,14 +5,17 @@ import ac.cord.auxiliary.compose.database.model.Relay
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import androidx.room3.Dao
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ChatMessageDao {
+    @Transaction
     @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     fun observeChatMessagesByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
+    @Transaction
     @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     fun getChatMessagesByChatRoomId(chatRoomId: String): List<LocalChatMessage>
 
