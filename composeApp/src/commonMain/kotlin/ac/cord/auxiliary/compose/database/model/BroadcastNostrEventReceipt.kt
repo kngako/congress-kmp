@@ -34,6 +34,7 @@ data class BroadcastNostrEventReceipt(
     override val nostrEventId: HexKey,
     override val unsignedNostrEventId: Long? = null,
     val isAccepted: Boolean,
+    val isSync: Boolean = false,
     val relayURL: String,
     val messages: String? = null
 ): NostrEventEntity, UnsignedNostrEventEntity

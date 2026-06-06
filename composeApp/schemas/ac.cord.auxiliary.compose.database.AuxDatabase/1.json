@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "630d9cf4853f9f393e7e043f4cd03a6d",
+    "identityHash": "6f2020861ae05ebf5290388d73772039",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `unsignedNostrEventId` INTEGER, `isAccepted` INTEGER NOT NULL, `relayURL` TEXT NOT NULL, `messages` TEXT, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nostrEventId` TEXT NOT NULL, `unsignedNostrEventId` INTEGER, `isAccepted` INTEGER NOT NULL, `isSync` INTEGER NOT NULL, `relayURL` TEXT NOT NULL, `messages` TEXT, FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`unsignedNostrEventId`) REFERENCES `UnsignedNostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -28,6 +28,12 @@
           {
             "fieldPath": "isAccepted",
             "columnName": "isAccepted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSync",
+            "columnName": "isSync",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -2863,7 +2869,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '630d9cf4853f9f393e7e043f4cd03a6d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6f2020861ae05ebf5290388d73772039')"
     ]
   }
 }

@@ -2,8 +2,10 @@ package ac.cord.auxiliary.compose.database.dao
 
 import ac.cord.auxiliary.compose.database.AuxDatabase
 import ac.cord.auxiliary.compose.database.GENESIS_AT
+import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventReceipt
 import ac.cord.auxiliary.compose.database.model.BroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.ChatMessage
+import ac.cord.auxiliary.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation
 import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.Mention
@@ -722,7 +724,7 @@ abstract class NostrDao(
                                         }
                                     }
 
-                                    database.chatMessageDao().upsert(
+                                    val chatMessageId = database.chatMessageDao().upsert(
                                         ChatMessage(
                                             giftWrapPayloadId = giftWrapPayload.id,
                                             senderPublicKey = giftWrapPayload.publicKey,
@@ -730,6 +732,22 @@ abstract class NostrDao(
                                             chatRoomId = chatRoomId,
                                             createdAt = giftWrapPayload.createdAt,
                                             content = giftWrapPayload.content,
+                                        )
+                                    )
+
+                                    val broadcastNostrEventReceiptId = database.broadcastNostrEventReceiptDao().upsert(
+                                        BroadcastNostrEventReceipt(
+                                            nostrEventId = nostrEvent.id,
+                                            isAccepted = true,
+                                            isSync = true,
+                                            relayURL = relayURL
+                                        )
+                                    )
+
+                                    database.chatMessageBroadcastNostrEventReceiptRelationDao().upsert(
+                                        ChatMessageBroadcastNostrEventReceiptRelation(
+                                            broadcastNostrEventReceiptId = broadcastNostrEventReceiptId,
+                                            chatMessageId = chatMessageId
                                         )
                                     )
                                 } else {

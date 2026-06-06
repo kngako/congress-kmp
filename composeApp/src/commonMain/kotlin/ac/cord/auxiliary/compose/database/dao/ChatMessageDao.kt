@@ -23,5 +23,5 @@ interface ChatMessageDao {
     fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: Long): ChatMessage?
 
     @Upsert
-    suspend fun upsert(chatMessage: ChatMessage)
+    suspend fun upsert(chatMessage: ChatMessage): Long
 }
