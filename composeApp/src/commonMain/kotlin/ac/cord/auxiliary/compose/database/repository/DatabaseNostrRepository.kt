@@ -463,21 +463,26 @@ class DatabaseNostrRepository(
     ) {
         storeNostrEventMutex.withLock {
             logger.d("saveNostrEvent: $nostrEvent")
-            database.nostrDao().storeNostrEvent(
-                nostrEvent.copy(
-                    broadcastedAt = nostrEvent.createdAt,
-                ),
-                synchronizationRelayURLs = synchronizationRelayURLs,
-                relayURL = synchronizeNostrEventRequest.relayURL,
-                level = synchronizeNostrEventRequest.level
-            )
-
-            database.synchronizeNostrEventRequestDao().upsert(
-                synchronizeNostrEventRequest.copy(
-                    nostrEventId = nostrEvent.id,
-                    status = "processed"
+            try {
+                database.nostrDao().storeNostrEvent(
+                    nostrEvent.copy(
+                        broadcastedAt = nostrEvent.createdAt,
+                    ),
+                    synchronizationRelayURLs = synchronizationRelayURLs,
+                    relayURL = synchronizeNostrEventRequest.relayURL,
+                    level = synchronizeNostrEventRequest.level
                 )
-            )
+
+                database.synchronizeNostrEventRequestDao().upsert(
+                    synchronizeNostrEventRequest.copy(
+                        nostrEventId = nostrEvent.id,
+                        status = "processed"
+                    )
+                )
+            } catch (e: Throwable) {
+                logger.e("Failed to save nostrEvent ${nostrEvent.id}", e)
+            }
+
         }
     }
 
@@ -487,18 +492,26 @@ class DatabaseNostrRepository(
         synchronizationRelayURLs: List<String>
     ) {
         logger.d("saveNostrEvent: $nostrEvent")
-        database.nostrDao().storeNostrEvent(
-            nostrEvent,
-            relayURL = negentropySynchronizeRequest.relayURL,
-            synchronizationRelayURLs = synchronizationRelayURLs,
-            level = negentropySynchronizeRequest.level
-        )
 
-        database.negentropySynchronizeRequestDao().upsert(
-            negentropySynchronizeRequest.copy(
-                status = "processed"
+        try {
+            database.nostrDao().storeNostrEvent(
+                nostrEvent,
+                relayURL = negentropySynchronizeRequest.relayURL,
+                synchronizationRelayURLs = synchronizationRelayURLs,
+                level = negentropySynchronizeRequest.level
             )
-        )
+
+            database.negentropySynchronizeRequestDao().upsert(
+                negentropySynchronizeRequest.copy(
+                    status = "processed"
+                )
+            )
+        } catch (e: Throwable) {
+            logger.e("Failed to save nostr event $nostrEvent.id", e)
+        }
+
+
+
     }
 
     override suspend fun queueSynchronizeNostrEvent(

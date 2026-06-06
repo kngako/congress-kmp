@@ -15,13 +15,17 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip44Encryption.Nip44
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import fr.acinq.bitcoin.PrivateKey
+import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -87,7 +91,7 @@ data class GiftWrapMessage(
     private val logger = Logger.withTag("GiftWrapMessage")
 
     suspend fun decryptGiftWrapSeal(
-        privateKey: ByteArray
+        keyPair: KeyPair
     ): GiftWrapSeal? {
         if (kind == GiftWrapEvent.KIND) {
             val giftWrapEvent = GiftWrapEvent(
@@ -105,26 +109,44 @@ data class GiftWrapMessage(
             )
             logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
-            val nostrSigner = NostrSignerInternal(
-                keyPair = KeyPair(privKey = privateKey)
-            )
+            giftWrapEvent.recipientPubKey()?.let { recipientPublicKey ->
+                logger.d("Recipient PublicKey: $recipientPublicKey")
 
-            giftWrapEvent.unwrapOrNull(
-                nostrSigner
-            )?.let { giftWrapSeal ->
+                if (keyPair.pubKey.toHexKey() != recipientPublicKey) {
+                    logger.e("We are unwrapping a message we may have sent from ${keyPair.pubKey.toHexKey()}")
 
-                logger.d("giftWrapSeal: ${giftWrapSeal.toJson()}")
-                return GiftWrapSeal(
-                    id = giftWrapSeal.id,
-                    publicKey = giftWrapSeal.pubKey,
-                    content = giftWrapSeal.content,
-                    tags = giftWrapSeal.tags,
-                    createdAt = Instant.fromEpochSeconds(giftWrapSeal.createdAt),
-                    signature = giftWrapSeal.sig
-                )
+                    keyPair.privKey?.let { privateKey ->
+                        val sealJSON = Nip44.decrypt(
+                            giftWrapEvent.content,
+                            privateKey = privateKey,
+                            pubKey = giftWrapEvent.pubKey.hexToByteArray()
+                        )
+                        logger.d("SealJSON: $sealJSON")
+
+                        null
+                    }
+                } else {
+                    val nostrSigner = NostrSignerInternal(
+                        keyPair = KeyPair(privKey = keyPair.privKey)
+                    )
+
+                    giftWrapEvent.unwrapOrNull(
+                        nostrSigner
+                    )?.let { giftWrapSeal ->
+
+                        logger.d("giftWrapSeal: ${giftWrapSeal.toJson()}")
+                        return GiftWrapSeal(
+                            id = giftWrapSeal.id,
+                            publicKey = giftWrapSeal.pubKey,
+                            content = giftWrapSeal.content,
+                            tags = giftWrapSeal.tags,
+                            createdAt = Instant.fromEpochSeconds(giftWrapSeal.createdAt),
+                            signature = giftWrapSeal.sig
+                        )
+                    }
+                }
             }
         }
-
 
         return null
     }
