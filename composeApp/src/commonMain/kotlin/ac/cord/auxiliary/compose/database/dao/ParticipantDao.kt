@@ -15,6 +15,8 @@ interface ParticipantDao {
     @Query("SELECT * FROM Participant WHERE participantPublicKey = :participantPublicKey")
     fun findParticipantByPublicKey(participantPublicKey: String): Participant?
 
+    @Query("SELECT * FROM Participant WHERE chatRoomId = :chatRoomId")
+    fun findParticipantsByChatRoomId(chatRoomId: String): List<Participant>
 
     @Upsert
     suspend fun upsert(participants: List<Participant>)

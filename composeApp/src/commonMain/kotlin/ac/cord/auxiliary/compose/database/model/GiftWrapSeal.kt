@@ -95,14 +95,20 @@ data class GiftWrapSeal(
             )?.let { giftWrapPayload ->
                 logger.d("giftWrapPayload: ${giftWrapPayload.toJson()}")
 
-                return GiftWrapPayload(
+                val giftWrapPayload = GiftWrapPayload(
                     giftWrapSealId = id,
                     publicKey = giftWrapPayload.pubKey,
                     kind = giftWrapPayload.kind,
                     tags = giftWrapPayload.tags,
                     content = giftWrapPayload.content,
                     createdAt = Instant.fromEpochSeconds(giftWrapPayload.createdAt),
+                    chatRoomId = ""
                 )
+                return giftWrapPayload.aggregatedParticipantsPublicKey()?.let {
+                    giftWrapPayload.copy(
+                        chatRoomId = it
+                    )
+                }
             }
 
         }

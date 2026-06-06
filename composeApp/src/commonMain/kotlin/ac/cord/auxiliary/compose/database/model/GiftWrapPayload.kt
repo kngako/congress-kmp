@@ -37,6 +37,8 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
      */
     val publicKey: String,
 
+    val chatRoomId: String,
+
     /**
      * Payload Event Kind
      */

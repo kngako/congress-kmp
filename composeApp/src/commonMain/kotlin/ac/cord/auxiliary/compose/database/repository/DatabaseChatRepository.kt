@@ -113,6 +113,7 @@ class DatabaseChatRepository(
                 kind = messageType,
                 tags = receiverTags.toTypedArray(),
                 content = text,
+                chatRoomId = localChatRoom.chatRoom.id,
                 publicKey = localChatRoom.chatRoom.userPublicKey
             )
         )
@@ -143,21 +144,22 @@ class DatabaseChatRepository(
         giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
-        val wrapperKeyPair = KeyPair()
-        val wrapperSigner = NostrSignerSync(
-            keyPair = wrapperKeyPair
-        )
+        database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEachIndexed { index, participant ->
+            val wrapperKeyPair = KeyPair()
+            val wrapperSigner = NostrSignerSync(
+                keyPair = wrapperKeyPair
+            )
 
-        val giftWrapPayloadEvent = nostrSignerSync.signNormal<Event>(
-            createdAt = giftWrapPayload.createdAt.epochSeconds,
-            kind = giftWrapPayload.kind,
-            tags = giftWrapPayload.tags,
-            content = giftWrapPayload.content
-        )
-        logger.d("GiftWrap Payload Event: ${giftWrapPayloadEvent.toJson()}")
+            val giftWrapPayloadEvent = nostrSignerSync.signNormal<Event>(
+                createdAt = giftWrapPayload.createdAt.epochSeconds,
+                kind = giftWrapPayload.kind,
+                tags = giftWrapPayload.tags,
+                content = giftWrapPayload.content
+            )
+            logger.d("GiftWrap Payload Event: ${giftWrapPayloadEvent.toJson()}")
 
-        giftWrapPayload.tags.taggedUsers().forEachIndexed {  index, receiverPublicKey ->
-            logger.d("Seal to $receiverPublicKey")
+
+            logger.d("Seal to $participant")
             val payload = giftWrapPayloadEvent.toJson()
 
             val sealedRumorEvent = nostrSignerSync.signNormal<SealedRumorEvent>(
@@ -166,7 +168,7 @@ class DatabaseChatRepository(
                 tags = emptyArray(),
                 content = nostrSignerSync.nip44Encrypt(
                     plaintext = payload,
-                    toPublicKey = receiverPublicKey.pubKey
+                    toPublicKey = participant.participantPublicKey
                 )
             )
             logger.d("SealedRumorEvent: ${sealedRumorEvent.toJson()}")
@@ -175,11 +177,11 @@ class DatabaseChatRepository(
                 createdAt = TimeUtils.randomWithTwoDays(),
                 kind = GiftWrapEvent.KIND,
                 tags = arrayOf(
-                    PTag.assemble(receiverPublicKey.pubKey, receiverPublicKey.relayHint)
+                    PTag.assemble(participant.participantPublicKey, participant.relayHint?.let { NormalizedRelayUrl(it) })
                 ),
                 content = wrapperSigner.nip44Encrypt(
                     plaintext = sealedRumorEvent.toJson(),
-                    toPublicKey = receiverPublicKey.pubKey
+                    toPublicKey = participant.participantPublicKey
                 )
             )
             logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
@@ -191,9 +193,13 @@ class DatabaseChatRepository(
                 ),
                 sealedRumorEvent = sealedRumorEvent,
                 giftWrapEvent = giftWrapEvent,
-                receiverPublicKey = receiverPublicKey
+                receiverPublicKey = PTag(
+                    pubKey = participant.participantPublicKey,
+                    relayHint = participant.relayHint?.let { NormalizedRelayUrl(it) }
+                )
             )
         }
+
     }
 
     companion object {
