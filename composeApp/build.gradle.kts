@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinPluginSerialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -39,13 +40,14 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.work.runtime.ktx)
 //            implementation(libs.androidx.room.sqlite.wrapper)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.okhttp.coroutines)
+
+            implementation(libs.sqldelight.android.driver)
         }
         commonMain.dependencies {
-            implementation(libs.lightning.kmp.core)
-
             implementation(libs.androidx.datastore)
             implementation(libs.androidx.datastore.preferences)
 
@@ -72,21 +74,36 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
 
 
-            implementation(libs.navigation.compose)
-
             implementation(libs.kermit)
 
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.serialization.cbor)
+
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
             implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.kotlinx.json)
 
+
+
+            implementation(libs.lightning.kmp.core)
+
+            implementation(libs.navigation.compose)
+
             implementation(libs.okio)
 
+
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines.extensions)
+
             implementation(libs.vitorpamplona.quartz)
+
+            implementation("com.ionspin.kotlin:bignum:0.3.10")
+
+            implementation("no.synth:kmp-zip:0.8.0")
+            implementation("no.synth:kmp-zip-okio:0.8.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -96,6 +113,7 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
         }
         iosMain.dependencies {
+            implementation(libs.sqldelight.native.driver)
         }
     }
 }
@@ -104,6 +122,9 @@ android {
     namespace = "ac.cord.auxiliary.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId = "ac.cord.auxiliary.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -145,6 +166,23 @@ dependencies {
 
 room3 {
     schemaDirectory("$projectDir/schemas")
+}
+
+sqldelight {
+    databases {
+        create("ChannelsDatabase") {
+            packageName.set("fr.acinq.phoenix.db.sqldelight")
+            srcDirs.from("src/commonMain/sqldelight/channelsdb")
+        }
+        create("PaymentsDatabase") {
+            packageName.set("fr.acinq.phoenix.db.sqldelight")
+            srcDirs.from("src/commonMain/sqldelight/paymentsdb")
+        }
+        create("AppDatabase") {
+            packageName.set("fr.acinq.phoenix.db.sqldelight")
+            srcDirs.from("src/commonMain/sqldelight/appdb")
+        }
+    }
 }
 
 compose.desktop {
