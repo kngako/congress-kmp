@@ -37,7 +37,10 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -79,7 +82,7 @@ class FeedListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.observeNostrFeed(
                 synchronizationFilter
-            ).distinctUntilChanged().collect { localNostrEvents ->
+            ).distinctUntilChanged().first().let { localNostrEvents ->
                 feedListUIState = FeedListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
