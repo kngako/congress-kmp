@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 interface ChatRepository {
+    suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>>
+
     suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom>
 
     suspend fun getChatRoomByIdentifier(id: String): LocalChatRoom?
@@ -39,6 +41,10 @@ interface ChatRepository {
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
+            override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
+                return flow {  }
+            }
+
             override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
                 return emptyList()
             }

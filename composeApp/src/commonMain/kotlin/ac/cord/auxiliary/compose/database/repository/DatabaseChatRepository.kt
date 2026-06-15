@@ -31,6 +31,9 @@ class DatabaseChatRepository(
     private val scope: CoroutineScope
 ): ChatRepository {
     val logger = Logger.withTag(TAG)
+    override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
+        return database.chatRoomDao().observeChatRoomListByUserPublicKey(publicKey)
+    }
 
     override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
         return database.chatRoomDao().getChatRoomListByUserPublicKey(publicKey)

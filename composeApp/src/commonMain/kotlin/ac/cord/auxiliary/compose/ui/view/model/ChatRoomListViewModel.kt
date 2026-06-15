@@ -64,9 +64,9 @@ class ChatRoomListViewModel(
     fun observeChatRoomFeed() {
         logger.d("observeChatRoomFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            chatRepository.getChatRoomListByPublicKey(
+            chatRepository.observeChatRoomListByPublicKey(
                 publicKey
-            ).let { chatRooms ->
+            ).collect { chatRooms ->
                 logger.d("ChatRoomList: $chatRooms")
                 chatRoomListUIState = ChatRoomListUIState.Loaded(
                     chatRoomList = chatRooms
