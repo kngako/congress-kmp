@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchResultScreen(
+    activeUserPublicKey: String,
     searchQuery: String,
     nostrRepository: NostrRepository,
     searchRepository: SearchRepository,
@@ -265,6 +266,7 @@ fun SearchResultScreen(
                                                     onNavigateToEvent = { nostrEventId ->
                                                         onNavigateToEvent.invoke(
                                                             NostrEventDetailRoute(
+                                                                activeUserPublicKey = activeUserPublicKey,
                                                                 nostrEventId = nostrEventId
                                                             )
                                                         )
@@ -315,6 +317,7 @@ private fun SearchResultScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             SearchResultScreen(
+                activeUserPublicKey = "",
                 searchQuery = "What happened...",
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY,

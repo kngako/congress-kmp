@@ -113,7 +113,7 @@ object SeedManager {
      * Returns an empty map if the seed file does not exist yet.
      * Returns null if there was a problem when loading or decrypting the seed file.
      */
-    suspend fun loadAndDecryptOrNull(phoenixGlobal: PhoenixGlobal): Map<WalletId, UserWallet>? = when (val res = loadAndDecrypt(phoenixGlobal)) {
+    fun loadAndDecryptOrNull(phoenixGlobal: PhoenixGlobal): Map<WalletId, UserWallet>? = when (val res = loadAndDecrypt(phoenixGlobal)) {
         is DecryptSeedResult.Success -> res.userWalletsMap
         is DecryptSeedResult.Failure.SeedFileNotFound -> emptyMap()
         is DecryptSeedResult.Failure -> null

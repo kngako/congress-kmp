@@ -2,7 +2,6 @@ package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.HomeScreenUIState
 import androidx.compose.foundation.pager.PagerState
@@ -15,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip04Dm.messages.PrivateDmEvent
@@ -38,6 +38,7 @@ enum class HomeScreenType {
 }
 
 class HomeViewModel(
+    val activeUserPublicKey: HexKey,
     val initialHomeScreenUIState: HomeScreenUIState,
     val nostrRepository: NostrRepository,
     val pagerState: PagerState
@@ -56,10 +57,8 @@ class HomeViewModel(
     fun observeActiveUserProfileWithFollowing() {
         logger.d("observeActiveUserProfileWithFollowing")
         viewModelScope.launch(Dispatchers.IO) {
-            val activePublicKey = SeedManager.activePublicKey().toHexKey()
-
             nostrRepository.observeProfileWithFollowing(
-                activePublicKey
+                activeUserPublicKey
             ).collect { profileWithFollowing ->
                 homeScreenUIState = if (profileWithFollowing != null) {
                     HomeScreenUIState.Loaded(
@@ -76,7 +75,6 @@ class HomeViewModel(
         homeScreenType: HomeScreenType,
         profileWithFollowing: LocalProfileWithFollowing,
     ): SynchronizationFilter {
-        val publicKey = SeedManager.activePublicKey().toHexKey()
 
         val twelveHoursAgo = Clock.System.now().minus(12.hours)
         val now = Clock.System.now()
@@ -108,7 +106,7 @@ class HomeViewModel(
                         FileServersEvent.KIND
                     ),
                     tags = mapOf(
-                        Pair("p", listOf(publicKey))
+                        Pair("p", listOf(activeUserPublicKey))
                     ),
                     since = twelveHoursAgo,
                     until = now,
@@ -121,7 +119,7 @@ class HomeViewModel(
                         GiftWrapEvent.KIND,
                     ),
                     tags = mapOf(
-                        Pair("p", listOf(publicKey))
+                        Pair("p", listOf(activeUserPublicKey))
                     ),
                     limit = 50
                 )
@@ -133,12 +131,14 @@ class HomeViewModel(
         const val TAG = "HomeViewModel"
 
         fun factory(
+            activeUserPublicKey: HexKey,
             initialHomeScreenUIState: HomeScreenUIState,
             nostrRepository: NostrRepository,
             pagerState: PagerState
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 HomeViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
                     initialHomeScreenUIState = initialHomeScreenUIState,
                     nostrRepository = nostrRepository,
                     pagerState = pagerState,

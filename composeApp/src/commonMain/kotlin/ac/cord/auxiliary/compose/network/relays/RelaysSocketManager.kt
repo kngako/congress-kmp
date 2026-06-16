@@ -16,14 +16,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ac.cord.auxiliary.compose.exceptions.NostrPublishException
-import ac.cord.auxiliary.compose.managers.SeedManager
-import ac.cord.auxiliary.compose.managers.toHex
 import ac.cord.auxiliary.compose.network.sockets.NostrIncomingMessage
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
+import fr.acinq.phoenix.managers.WalletManager
+import fr.acinq.phoenix.managers.nostrPrivateKey
+import fr.acinq.phoenix.managers.nostrPublicKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 
 
 /**
@@ -34,7 +37,8 @@ import kotlinx.coroutines.flow.Flow
 class RelaysSocketManager constructor(
     private val nostrSocketClientFactory: NostrSocketClientFactory,
     private val cachingImportRepository: CachingImportRepository,
-    private val relayRepository: RelayRepository
+    private val relayRepository: RelayRepository,
+    private val walletManager: WalletManager
 ) {
     val logger = Logger.withTag("RelaysSocketManager")
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -59,24 +63,17 @@ class RelaysSocketManager constructor(
         observeActiveUserId()
     }
 
-    private val observeRelayJobs =  mutableMapOf<String, Job>()
+    private val observeRelayJobs =  mutableMapOf<HexKey, Job>()
 
     private fun observeActiveUserId() =
         scope.launch {
-            SeedManager.activePublicKey().toHex()?.let { publicKey ->
-                observeRelayJobs[publicKey]?.cancel()
-
-                observeRelayJobs[publicKey] = observeRelays(publicKey)
+            walletManager.keyManager.collectLatest { keyManager ->
+                keyManager?.nostrPublicKey()?.value?.toHex()?.let { pubkey ->
+                    observeRelayJobs[pubkey]?.cancel()
+                    observeRelayJobs[pubkey] = observeRelays(pubkey)
+                }
             }
-//            credentialsManager.credentials.collect { credentials ->
-//                credentials.forEach { credential ->
-//                    credential.npub.bech32ToHexOrNull()?.let { publicKey ->
-//                        observeRelayJobs[publicKey]?.cancel()
-//
-//                        observeRelayJobs[publicKey] = observeRelays(publicKey)
-//                    }
-//                }
-//            }
+
         }
 
     private fun observeRelays(publicKey: String): Job =

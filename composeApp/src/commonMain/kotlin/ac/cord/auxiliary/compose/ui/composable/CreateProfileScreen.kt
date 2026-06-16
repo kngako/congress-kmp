@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import fr.acinq.bitcoin.Chain
+import fr.acinq.phoenix.managers.WalletManager
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -45,12 +47,15 @@ fun CreateProfileScreen(
     initialCreateProfileUIState: CreateProfileUIState = CreateProfileUIState.Declaration,
     onNavigateToSocialPreconditionRoute: () -> Unit,
     onNavigateToEndThis: () -> Unit,
-    nostrRepository: NostrRepository
+    nostrRepository: NostrRepository,
+    writeSeed: (List<String>) -> Unit,
+    walletManager: WalletManager
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
         factory = CreateProfileViewModel.factory(
             initialCreateProfileUIState,
-            nostrRepository
+            nostrRepository,
+            walletManager = walletManager
         )
     )
     Scaffold { innerPadding ->
@@ -270,7 +275,7 @@ fun CreateProfileScreen(
                         } else {
                             Button(
                                 onClick = {
-                                    createProfileViewModel.createAccount()
+                                    createProfileViewModel.createAccount(writeSeed)
                                 }
                             ) {
                                 Text(
@@ -361,6 +366,7 @@ fun CreateAccountScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             CreateProfileScreen(
+                walletManager = WalletManager(Chain.Mainnet),
                 initialCreateProfileUIState =
 //                    CreateProfileUIState.InputPrompt,
 //                    CreateProfileUIState.Error,
@@ -399,7 +405,9 @@ fun CreateAccountScreenPreview() {
                     ),
                 onNavigateToSocialPreconditionRoute = {},
                 onNavigateToEndThis = {},
-                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY)
+                writeSeed = {},
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
+            )
         }
     }
 }

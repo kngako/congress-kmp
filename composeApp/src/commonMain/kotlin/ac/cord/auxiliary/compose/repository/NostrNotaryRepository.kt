@@ -6,12 +6,13 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.exceptions.SignatureException
 import ac.cord.auxiliary.compose.exceptions.SigningKeyNotFoundException
 import ac.cord.auxiliary.compose.exceptions.SigningRejectedException
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.network.UserAgent
 import ac.cord.auxiliary.compose.network.asClientTag
 import ac.cord.auxiliary.compose.network.dto.RelayDTO
 import com.vitorpamplona.quartz.nip19Bech32.toNsec
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
+import fr.acinq.phoenix.managers.WalletManager
+import fr.acinq.phoenix.managers.nostrPrivateKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -29,6 +30,7 @@ import kotlinx.coroutines.sync.withLock
  */
 class NostrNotaryRepository(
     private val nostrRepository: NostrRepository,
+    private val walletManager: WalletManager,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -70,11 +72,9 @@ class NostrNotaryRepository(
         setResponse(SignResult.Rejected(SigningRejectedException()))
     }
 
-    private fun findNsecOrThrow(pubkey: String): String =
+    private fun findNsecOrThrow(activeUserPublicKey: String): String =
         runCatching {
-//            val npub = Hex.decode(pubkey).toNpub()
-//            credentialsStore.findOrThrow(npub = npub).nsec
-            SeedManager.activeKeyPair().privKey?.toNsec()
+            walletManager.keyManager.value?.nostrPrivateKey()?.value?.toByteArray()?.toNsec()
         }.getOrNull() ?: throw SigningKeyNotFoundException()
 
     private fun signNostrEvent(publicKey: String, event: UnsignedNostrEvent): NostrEvent? {

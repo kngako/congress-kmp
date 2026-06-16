@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.bitcoin.Crypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 
 class ChatRoomDetailViewModel(
     val directMessageId: String,
+    val activeUserPublicKey: HexKey,
     val relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
     val nostrRepository: NostrRepository,
@@ -56,6 +58,7 @@ class ChatRoomDetailViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 // We need to get or create a chat with the user on this publicKey...
                 val localChatRoom = chatRepository.getOrCreateChatRoom(
+                    activeUserPublicKey = activeUserPublicKey,
                     publicKey = directMessageId,
                     relayHint = relayHint
                 )
@@ -76,6 +79,7 @@ class ChatRoomDetailViewModel(
         private const val TAG = "ChatRoomDetailViewModel"
 
         fun factory(
+            activeUserPublicKey: HexKey,
             publicKey: String,
             relayHint: String?,
             initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
@@ -84,6 +88,7 @@ class ChatRoomDetailViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomDetailViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
                     directMessageId = publicKey,
                     relayHint = relayHint,
                     initialChatRoomDetailUIState = initialChatRoomDetailUIState,

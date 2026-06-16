@@ -4,7 +4,7 @@ import ac.cord.auxiliary.compose.AuxGlobal
 import ac.cord.auxiliary.compose.database.repository.DatabaseChatRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseNostrRepository
 import ac.cord.auxiliary.compose.database.repository.DatabaseSearchRepository
-import ac.cord.auxiliary.compose.managers.DatabaseManager
+import ac.cord.auxiliary.compose.managers.AuxDatabaseManager
 import ac.cord.auxiliary.compose.ui.composable.CreateProfileScreen
 import ac.cord.auxiliary.compose.ui.composable.ChatRoomDetailScreen
 import ac.cord.auxiliary.compose.ui.composable.HomeScreen
@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import co.touchlab.kermit.Logger
+import fr.acinq.phoenix.PhoenixGlobal
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AuxNavHost(
     auxGlobal: AuxGlobal,
+    phoenixGlobal: PhoenixGlobal,
     navController: NavHostController
 ) {
     val logger = Logger.withTag("AuxNavHost")
@@ -85,44 +87,45 @@ fun AuxNavHost(
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val databaseManager = DatabaseManager(auxGlobal)
+    val auxDatabaseManager = AuxDatabaseManager(auxGlobal)
 
     val databaseNostrRepository = DatabaseNostrRepository(
-        database = databaseManager.auxDatabase,
+        database = auxDatabaseManager.auxDatabase,
         applicationIOScope
     )
     val databaseChatRepository = DatabaseChatRepository(
-        database = databaseManager.auxDatabase,
+        database = auxDatabaseManager.auxDatabase,
         applicationIOScope
     )
 
     val searchRepository = DatabaseSearchRepository(
-        database = databaseManager.auxDatabase
+        database = auxDatabaseManager.auxDatabase
     )
 
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
             initialNavigationUIState = NavigationUIState.Loading,
             nostrRepository = databaseNostrRepository,
+            phoenixGlobal = phoenixGlobal,
             scope = applicationIOScope
         )
     )
-    val notaryViewModel: NotaryViewModel = viewModel(
-        factory = NotaryViewModel.factory(
-            nostrRepository = databaseNostrRepository,
-            chatRepository = databaseChatRepository,
-            scope = applicationIOScope
-        )
-    )
-    // TODO: Produce a notary UI Element...
-    val synchronizationViewModel: SynchronizationViewModel = viewModel(
-        factory = SynchronizationViewModel.factory(
-            nostrRepository = databaseNostrRepository,
-            chatRepository = databaseChatRepository,
-            relayRepository = databaseNostrRepository,
-            scope = applicationIOScope
-        )
-    )
+//    val notaryViewModel: NotaryViewModel = viewModel(
+//        factory = NotaryViewModel.factory(
+//            nostrRepository = databaseNostrRepository,
+//            chatRepository = databaseChatRepository,
+//            scope = applicationIOScope
+//        )
+//    )
+//    // TODO: Produce a notary UI Element...
+//    val synchronizationViewModel: SynchronizationViewModel = viewModel(
+//        factory = SynchronizationViewModel.factory(
+//            nostrRepository = databaseNostrRepository,
+//            chatRepository = databaseChatRepository,
+//            relayRepository = databaseNostrRepository,
+//            scope = applicationIOScope
+//        )
+//    )
     // TODO: Produce a synchronization UI element...
 
     LaunchedEffect(lifecycleOwner) {
@@ -247,26 +250,44 @@ fun AuxNavHost(
             )
         }
         composable<CreateProfileRoute> {
-            CreateProfileScreen(
-                onNavigateToSocialPreconditionRoute = {
-                    navController.navigate(
-                        route = SocialPreconditionRoute
-                    )
-                },
-                onNavigateToEndThis = {
-                    navController.navigate(
-                        route = BlankRoute
-                    ) {
-                        popUpTo(0)
+            val walletManager = navigationViewModel.activeWalletInUI.value?.business?.walletManager
+
+            if (walletManager != null) {
+                CreateProfileScreen(
+                    onNavigateToSocialPreconditionRoute = {
+                        navController.navigate(
+                            route = SocialPreconditionRoute
+                        )
+                    },
+                    onNavigateToEndThis = {
+                        navController.navigate(
+                            route = BlankRoute
+                        ) {
+                            popUpTo(0)
+                        }
+                    },
+                    nostrRepository = databaseNostrRepository,
+                    walletManager = walletManager,
+                    writeSeed = { words ->
+                        navigationViewModel.writeSeed(
+                            words,
+                            isRestoringWallet = false,
+                            onSeedWritten = { walletId ->
+
+                            }
+                        )
                     }
-                },
-                nostrRepository = databaseNostrRepository
-            )
+                )
+            } else {
+                ImplementationPendingScreen("Something went wrong")
+            }
+
         }
         composable<WriteNewNoteRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<WriteNewNoteRoute>()
             WriteNewNoteScreen(
                 replyToNostrEventId = route.inReplyToEventId,
+                activeUserPublicKey = route.activeUserPublicKey,
                 quotedNostrEventId = route.quotedEventId,
                 onNostrEventPublished = {
                     applicationMainScope.launch {
@@ -276,6 +297,7 @@ fun AuxNavHost(
                 onNavigateToNostrEvent = { hexKey ->
                     navController.navigate(
                         route = NostrEventDetailRoute(
+                            activeUserPublicKey = route.activeUserPublicKey,
                             nostrEventId = hexKey
                         )
                     )
@@ -337,8 +359,10 @@ fun AuxNavHost(
                 }
             )
         }
-        composable<FeedRoute> {
+        composable<FeedRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<FeedRoute>()
             HomeScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
                 onNavigateToEvent = { eventRoute ->
                     navController.navigate(
                         route = eventRoute
@@ -346,7 +370,9 @@ fun AuxNavHost(
                 },
                 onNavigateToWriteNewNote = {
                     navController.navigate(
-                        route = WriteNewNoteRoute()
+                        route = WriteNewNoteRoute(
+                            activeUserPublicKey = route.activeUserPublicKey
+                        )
                     )
                 },
                 onNavigateToSearch = {
@@ -375,14 +401,18 @@ fun AuxNavHost(
             val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
 
             ChatRoomDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
                 publicKey = route.directMessageIdentifier,
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository
             )
         }
-        composable<SearchRoute> {
+        composable<SearchRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SearchRoute>()
+
             SearchScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
                 initialSearchUIState = SearchUIState.Prompt,
                 nostrRepository = databaseNostrRepository,
                 searchRepository = searchRepository,
@@ -402,6 +432,7 @@ fun AuxNavHost(
             val route = backStackEntry.toRoute<SearchResultRoute>()
 
             SearchResultScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
                 searchQuery = route.query,
                 nostrRepository = databaseNostrRepository,
                 searchRepository = searchRepository,
@@ -419,6 +450,7 @@ fun AuxNavHost(
             val route = backStackEntry.toRoute<NostrEventDetailRoute>()
 
             NostrEventDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
                 initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
                 nostrEventId = route.nostrEventId,
                 nostrRepository = databaseNostrRepository,
@@ -433,6 +465,7 @@ fun AuxNavHost(
                 onNavigateToWriteAReply = { nostrEventId ->
                     navController.navigate(
                         route = WriteNewNoteRoute(
+                            activeUserPublicKey = route.activeUserPublicKey,
                             inReplyToEventId = nostrEventId
                         )
                     )
@@ -445,6 +478,7 @@ fun AuxNavHost(
                 onNavigateToQuoteNostrEvent = { nostrEventId ->
                     navController.navigate(
                         route = WriteNewNoteRoute(
+                            activeUserPublicKey = route.activeUserPublicKey,
                             quotedEventId = nostrEventId
                         )
                     )

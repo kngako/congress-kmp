@@ -50,12 +50,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
+    activeUserPublicKey: HexKey,
     initialHomeScreenUIState: HomeScreenUIState = HomeScreenUIState.Loading,
     onNavigateToEvent: (Route) -> Unit,
     onNavigateToDirectMessageDetail: (Route) -> Unit,
@@ -68,6 +70,7 @@ fun HomeScreen(
 
     val homeScreenViewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
+            activeUserPublicKey = activeUserPublicKey,
             initialHomeScreenUIState = initialHomeScreenUIState,
             nostrRepository = nostrRepository,
             pagerState = rememberPagerState { HomeScreenType.entries.size }
@@ -115,6 +118,7 @@ fun HomeScreen(
                                 onClick = {
                                     onNavigateToEvent.invoke(
                                         NostrEventDetailRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             nostrEventId = homeScreenUIState.profileWithFollowing.nostrEvent.id
                                         )
                                     )
@@ -205,6 +209,7 @@ fun HomeScreen(
 
                                     key(feedListViewModel.feedListUIState) {
                                         feedListViewModel.RenderFeed(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
@@ -262,6 +267,7 @@ private fun HomeScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             HomeScreen(
+                activeUserPublicKey = "",
                 initialHomeScreenUIState = HomeScreenUIState.Loaded(
                     profileWithFollowing = LocalProfileWithFollowing(
                         nostrEvent = NostrEvent(

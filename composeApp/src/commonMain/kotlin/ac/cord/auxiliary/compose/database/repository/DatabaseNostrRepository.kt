@@ -16,7 +16,6 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
@@ -57,6 +56,7 @@ import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
+import fr.acinq.phoenix.managers.WalletManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -389,12 +389,14 @@ class DatabaseNostrRepository(
     override suspend fun publishNostrEvent(
         unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
-        relayURLs: List<String>
+        relayURLs: List<String>,
+        walletManager: WalletManager
     ) {
         database.nostrDao().publishNostrEvent(
             unsignedNostrEvent,
             nostrEvent,
-            relayURLs
+            relayURLs,
+            walletManager = walletManager
         )
     }
 
@@ -459,7 +461,8 @@ class DatabaseNostrRepository(
     override suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
-        synchronizationRelayURLs: List<String>
+        synchronizationRelayURLs: List<String>,
+        walletManager: WalletManager,
     ) {
         storeNostrEventMutex.withLock {
             logger.d("saveNostrEvent: $nostrEvent")
@@ -470,7 +473,8 @@ class DatabaseNostrRepository(
                     ),
                     synchronizationRelayURLs = synchronizationRelayURLs,
                     relayURL = synchronizeNostrEventRequest.relayURL,
-                    level = synchronizeNostrEventRequest.level
+                    level = synchronizeNostrEventRequest.level,
+                    walletManager = walletManager
                 )
 
                 database.synchronizeNostrEventRequestDao().upsert(
@@ -489,7 +493,8 @@ class DatabaseNostrRepository(
     override suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         negentropySynchronizeRequest: NegentropySynchronizeRequest,
-        synchronizationRelayURLs: List<String>
+        synchronizationRelayURLs: List<String>,
+        walletManager: WalletManager
     ) {
         logger.d("saveNostrEvent: $nostrEvent")
 
@@ -498,7 +503,8 @@ class DatabaseNostrRepository(
                 nostrEvent,
                 relayURL = negentropySynchronizeRequest.relayURL,
                 synchronizationRelayURLs = synchronizationRelayURLs,
-                level = negentropySynchronizeRequest.level
+                level = negentropySynchronizeRequest.level,
+                walletManager = walletManager
             )
 
             database.negentropySynchronizeRequestDao().upsert(

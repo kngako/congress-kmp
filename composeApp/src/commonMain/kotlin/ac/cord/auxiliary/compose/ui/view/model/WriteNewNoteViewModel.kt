@@ -3,7 +3,6 @@ package ac.cord.auxiliary.compose.ui.view.model
 import ac.cord.auxiliary.compose.database.model.Profile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentParser
 import ac.cord.auxiliary.compose.ui.composable.widgets.content.ContentSegment
@@ -30,6 +29,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class WriteNewNoteViewModel(
+    val activeUserPublicKey: HexKey,
     val replyToNostrEventId: HexKey?,
     val quotedNostrEventId: HexKey?,
 
@@ -41,6 +41,7 @@ class WriteNewNoteViewModel(
         private const val TAG = "WriteNewNoteViewModel"
 
         fun factory(
+            activeUserPublicKey: HexKey,
             replyToNostrEventId: HexKey?,
             quotedNostrEventId: HexKey?,
             initialWriteNewNoteUIState: WriteNewNoteUIState,
@@ -48,6 +49,7 @@ class WriteNewNoteViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 WriteNewNoteViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
                     replyToNostrEventId = replyToNostrEventId,
                     quotedNostrEventId = quotedNostrEventId,
                     initialWriteNewNoteUIState = initialWriteNewNoteUIState,
@@ -120,7 +122,7 @@ class WriteNewNoteViewModel(
                 ).firstOrNull()
             }
 
-            val activePublicKey = SeedManager.activePublicKey().toHexKey()
+            val activePublicKey = activeUserPublicKey
 
             // TODO: Get note being replied too...
             // TODO: Get users being mentioned...
@@ -170,6 +172,7 @@ class WriteNewNoteViewModel(
     }
 
     fun createNewNote(
+        activeUserPublicKey: HexKey,
         onNostrEventPublished: () -> Unit,
         inReplyToNostrEvent: LocalNostrEvent? = null,
         quotedNostrEvent: LocalNostrEvent? = null,
@@ -183,7 +186,7 @@ class WriteNewNoteViewModel(
             ).filterIsInstance<ContentSegment.NostrProfileSegment>().map { it.pubkey }
 
             nostrRepository.createNewTextNote(
-                publicKey = SeedManager.activePublicKey().toHexKey(),
+                publicKey = activeUserPublicKey,
                 mentionedPublicKeys = mentionedPublicKeys,
                 textInput = writeNewNoteFormState.textField.textFieldState.text.toString(),
                 inReplyToNostrEvent = inReplyToNostrEvent,

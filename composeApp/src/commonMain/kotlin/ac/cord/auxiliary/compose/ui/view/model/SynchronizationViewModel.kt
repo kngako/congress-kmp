@@ -24,6 +24,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
+import fr.acinq.phoenix.managers.WalletManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -40,6 +41,7 @@ class SynchronizationViewModel(
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val relayRepository: RelayRepository,
+    val walletManager: WalletManager,
     val scope: CoroutineScope,
 ): ViewModel() {
 
@@ -47,10 +49,11 @@ class SynchronizationViewModel(
         nostrSocketClientFactory = NostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
+        walletManager = walletManager
     )
 
     companion object {
-        private const val TAG = "NavigationViewModel"
+        private const val TAG = "SynchronizationViewModel"
 
         private val mutex = Mutex()
 
@@ -58,6 +61,7 @@ class SynchronizationViewModel(
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
             relayRepository: RelayRepository,
+            walletManager: WalletManager,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -65,6 +69,7 @@ class SynchronizationViewModel(
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
                     relayRepository = relayRepository,
+                    walletManager = walletManager,
                     scope = scope
                 )
             }
@@ -119,7 +124,9 @@ class SynchronizationViewModel(
                                                 nostrRepository.saveNostrEvent(
                                                     nostrEvent = it,
                                                     synchronizeNostrEventRequest,
-                                                    synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                    synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL),
+                                                    walletManager = walletManager
+                                                    // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                 )
                                             }
                                         }
@@ -131,7 +138,9 @@ class SynchronizationViewModel(
                                             nostrRepository.saveNostrEvent(
                                                 nostrEvent = nostrEvent,
                                                 synchronizeNostrEventRequest,
-                                                synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL),
+                                                walletManager = walletManager
+                                                // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                             )
                                         }
                                     }
@@ -228,7 +237,9 @@ class SynchronizationViewModel(
                                                     nostrRepository.saveNostrEvent(
                                                         nostrEvent = it,
                                                         negentropySynchronizeRequest,
-                                                        synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                        synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL),
+                                                        walletManager = walletManager
+                                                        // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                     )
                                                 }
                                             }
@@ -240,7 +251,9 @@ class SynchronizationViewModel(
                                                 nostrRepository.saveNostrEvent(
                                                     nostrEvent = nostrEvent,
                                                     negentropySynchronizeRequest,
-                                                    synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL) // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
+                                                    synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL),
+                                                    walletManager = walletManager
+                                                    // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                 )
                                             }
                                         }

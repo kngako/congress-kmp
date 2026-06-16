@@ -12,10 +12,10 @@ import ac.cord.auxiliary.compose.database.model.GiftWrapSeal
 import ac.cord.auxiliary.compose.database.model.NostrEvent
 import ac.cord.auxiliary.compose.database.model.Participant
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
-import ac.cord.auxiliary.compose.managers.SeedManager
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
@@ -32,13 +32,12 @@ abstract class NostrNip17Dao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    open suspend fun getOrCreateChatRoom(publicKey: String, relayHint: String?, defaultSubject: String? = null): LocalChatRoom? {
+    open suspend fun getOrCreateChatRoom(activeUserPublicKey: HexKey, publicKey: String, relayHint: String?, defaultSubject: String? = null): LocalChatRoom? {
         logger.d("getOrCreateChatRoom: $publicKey")
 
-        val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
         val hexKeys = setOf(
-            activePublicKey,
+            activeUserPublicKey,
             publicKey
         )
 
@@ -55,7 +54,7 @@ abstract class NostrNip17Dao(
                 // Create new chatRoom
                 val chatRoom = ChatRoom(
                     id = chatRoomId,
-                    userPublicKey = activePublicKey,
+                    userPublicKey = activeUserPublicKey,
                     subject = defaultSubject,
                 )
                 database.chatRoomDao().upsert(chatRoom)

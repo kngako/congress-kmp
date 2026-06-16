@@ -45,10 +45,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomDetailScreen(
+    activeUserPublicKey: HexKey,
     publicKey: String,
     relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
@@ -61,7 +63,8 @@ fun ChatRoomDetailScreen(
             relayHint = relayHint,
             initialChatRoomDetailUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
-            chatRepository = chatRepository
+            chatRepository = chatRepository,
+            activeUserPublicKey = activeUserPublicKey
         )
     )
 
@@ -270,6 +273,7 @@ private fun ChatRoomDetailScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             ChatRoomDetailScreen(
+                activeUserPublicKey = "",
                 publicKey = "publicKey",
                 relayHint = null,
                 initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(

@@ -113,6 +113,7 @@ class FeedListViewModel(
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun RenderFeed(
+        activeUserPublicKey: String,
         onNavigateToEvent: (Route) -> Unit
     ) {
         Column(
@@ -160,6 +161,7 @@ class FeedListViewModel(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
                                             NostrEventDetailRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
                                         )

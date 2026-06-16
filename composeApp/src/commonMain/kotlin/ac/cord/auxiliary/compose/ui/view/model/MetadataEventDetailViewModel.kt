@@ -3,7 +3,6 @@ package ac.cord.auxiliary.compose.ui.view.model
 import ac.cord.auxiliary.compose.database.model.Connection
 import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.MetadataEventDetailUIState
 import androidx.compose.foundation.pager.PagerState
@@ -46,7 +45,8 @@ enum class MetadataEventDetailType {
 
 class MetadataEventDetailViewModel(
     initialMetadataEventDetailUIState: MetadataEventDetailUIState = MetadataEventDetailUIState.Loading,
-    val publicKey: HexKey,
+    val activeUserPublicKey: HexKey,
+    val eventPublicKey: HexKey,
     val nostrRepository: NostrRepository,
     val pagerState: PagerState
 ): ViewModel() {
@@ -65,18 +65,17 @@ class MetadataEventDetailViewModel(
     fun observeMetadataEventRelationWithActiveUser() {
         logger.d("observeLocalNostrFeed")
         viewModelScope.launch(Dispatchers.IO) {
-            val activePublicKey = SeedManager.activePublicKey().toHexKey()
 
             nostrRepository.observeRelation(
-                publicKey,
-                activePublicKey = activePublicKey
+                eventPublicKey,
+                activePublicKey = activeUserPublicKey
             ).collect { relations ->
                 logger.d("We found relations: $relations")
 
                 metadataEventDetailUIState = MetadataEventDetailUIState.Loaded(
-                    isActiveUser = isActiveUser(activePublicKey),
-                    followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == publicKey && connection.destinationPublicKey == activePublicKey },
-                    followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activePublicKey && connection.destinationPublicKey == publicKey }
+                    isActiveUser = isActiveUser(activeUserPublicKey),
+                    followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == eventPublicKey && connection.destinationPublicKey == activeUserPublicKey },
+                    followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activeUserPublicKey && connection.destinationPublicKey == eventPublicKey }
                 )
 
                 if (isActionPending.value) {
@@ -88,14 +87,12 @@ class MetadataEventDetailViewModel(
     }
 
     fun isActiveUser(activePublicKey: HexKey): Boolean {
-        return activePublicKey == publicKey
+        return activePublicKey == eventPublicKey
     }
 
     fun isActiveUser(): Boolean {
-        val activePublicKey = SeedManager.activePublicKey().toHexKey()
-
         return isActiveUser(
-            activePublicKey = activePublicKey
+            activePublicKey = activeUserPublicKey
         )
     }
 
@@ -105,7 +102,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Posts -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     TextNoteEvent.KIND,
@@ -117,7 +114,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Replies -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     TextNoteEvent.KIND,
@@ -130,7 +127,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Articles -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     LongTextNoteEvent.KIND,
@@ -141,7 +138,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Followers -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     ContactListEvent.KIND,
@@ -153,7 +150,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Following -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     ContactListEvent.KIND,
@@ -164,7 +161,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Zaps -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     LnZapEvent.KIND,
@@ -176,7 +173,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Photos -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     PictureEvent.KIND,
@@ -187,7 +184,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Shorts -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     VideoShortEvent.KIND,
@@ -198,7 +195,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Videos -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     VideoNormalEvent.KIND,
@@ -209,7 +206,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Bookmarks -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     BookmarkListEvent.KIND,
@@ -220,7 +217,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Reports -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     ReportEvent.KIND,
@@ -231,7 +228,7 @@ class MetadataEventDetailViewModel(
         MetadataEventDetailType.Relays -> {
             SynchronizationFilter(
                 authors = arrayOf(
-                    publicKey
+                    eventPublicKey
                 ),
                 kinds = arrayOf(
                     RelayFeedsListEvent.KIND,
@@ -244,32 +241,30 @@ class MetadataEventDetailViewModel(
     fun follow() {
         isActionPending.value = true
 
-        val activePublicKey = SeedManager.activePublicKey().toHexKey()
-
         viewModelScope.launch(Dispatchers.IO) {
             val contactListEvent = nostrRepository.getNostrEvent(
-                publicKey = activePublicKey,
+                publicKey = activeUserPublicKey,
                 kind = ContactListEvent.KIND
             )
 
             logger.d("ContactListEvent: $contactListEvent")
 
             val followUsers: TagArray = if (contactListEvent != null) {
-                if (contactListEvent.tags.isTaggedUser(publicKey)) {
+                if (contactListEvent.tags.isTaggedUser(eventPublicKey)) {
                     // User already being followed
-                    logger.d("User is already following $publicKey")
+                    logger.d("User is already following $eventPublicKey")
                     return@launch
                 }
 
                 contactListEvent.tags.plus(
                     ContactTag(
-                        pubKey = publicKey
+                        pubKey = eventPublicKey
                     ).toTagArray()
                 )
             } else {
                 arrayOf(
-                    ContactTag(activePublicKey, null, null).toTagArray(),
-                    ContactTag(publicKey, null, null).toTagArray(),
+                    ContactTag(activeUserPublicKey, null, null).toTagArray(),
+                    ContactTag(eventPublicKey, null, null).toTagArray(),
                 )
             }
             val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
@@ -277,7 +272,7 @@ class MetadataEventDetailViewModel(
 
             nostrRepository.saveUnsignedNostrEvent(
                 UnsignedNostrEvent(
-                    pubKey = activePublicKey,
+                    pubKey = activeUserPublicKey,
                     kind = ContactListEvent.KIND,
                     tags = contactListTagList.toTypedArray(),
                     content = RelaySet.assemble(
@@ -291,24 +286,22 @@ class MetadataEventDetailViewModel(
     fun unfollow(connection: Connection) {
         isActionPending.value = true
 
-        val activePublicKey = SeedManager.activePublicKey().toHexKey()
-
         viewModelScope.launch(Dispatchers.IO) {
             val contactListEvent = nostrRepository.getNostrEvent(
-                publicKey = activePublicKey,
+                publicKey = activeUserPublicKey,
                 kind = ContactListEvent.KIND
             )
 
 
             if (contactListEvent != null) {
-                if (!contactListEvent.tags.isTaggedUser(publicKey)) {
-                    logger.d("User is not being followed so no need to unfollow: $publicKey")
+                if (!contactListEvent.tags.isTaggedUser(eventPublicKey)) {
+                    logger.d("User is not being followed so no need to unfollow: $eventPublicKey")
                 } else {
                     nostrRepository.saveUnsignedNostrEvent(
                         UnsignedNostrEvent(
-                            pubKey = activePublicKey,
+                            pubKey = activeUserPublicKey,
                             kind = ContactListEvent.KIND,
-                            tags = contactListEvent.tags.filter { it.size > 1 && it[1] != publicKey }.toTypedArray(),
+                            tags = contactListEvent.tags.filter { it.size > 1 && it[1] != eventPublicKey }.toTypedArray(),
                             content = RelaySet.assemble(
                                 emptyMap()
                             )
@@ -326,15 +319,17 @@ class MetadataEventDetailViewModel(
         const val TAG = "MetadataEventDetailViewModel"
 
         fun factory(
+            activeUserPublicKey: HexKey,
             publicKey: HexKey,
             nostrRepository: NostrRepository,
             pagerState: PagerState
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 MetadataEventDetailViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
                     nostrRepository = nostrRepository,
                     pagerState = pagerState,
-                    publicKey = publicKey
+                    eventPublicKey = publicKey,
                 )
             }
         }

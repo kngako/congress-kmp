@@ -4,7 +4,7 @@ import ac.cord.auxiliary.compose.AuxGlobal
 import ac.cord.auxiliary.compose.database.builder.PlatformDatabaseBuilder
 import ac.cord.auxiliary.compose.database.builder.getRoomDatabase
 
-class DatabaseManager(
+class AuxDatabaseManager(
     auxGlobal: AuxGlobal
 ) {
     val auxDatabase by lazy {

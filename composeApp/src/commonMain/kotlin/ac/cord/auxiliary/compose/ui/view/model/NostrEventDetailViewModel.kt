@@ -2,7 +2,6 @@ package ac.cord.auxiliary.compose.ui.view.model
 
 import ac.cord.auxiliary.compose.database.model.SynchronizeNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.nostr.Relays
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.ui.view.state.NostrEventDetailUIState
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class NostrEventDetailViewModel(
+    val activeUserPublicKey: HexKey,
     val nostrEventId: HexKey,
     initialNostrEventDetailUIState: NostrEventDetailUIState,
     val nostrRepository: NostrRepository
@@ -54,7 +54,12 @@ class NostrEventDetailViewModel(
                                     LnZapEvent.KIND,
                                 ),
                                 tags = mapOf(
-                                    Pair("p", listOf(SeedManager.activePublicKey().toHexKey()))
+                                    Pair(
+                                        "p",
+                                        listOf(
+                                            activeUserPublicKey
+                                        )
+                                    )
                                 ),
                                 limit = 50
                             )
@@ -85,6 +90,7 @@ class NostrEventDetailViewModel(
 
         fun factory(
             nostrEventId: HexKey,
+            activeUserPublicKey: HexKey,
             initialNostrEventDetailUIState: NostrEventDetailUIState = NostrEventDetailUIState.Loading,
             nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
@@ -92,7 +98,8 @@ class NostrEventDetailViewModel(
                 NostrEventDetailViewModel(
                     nostrEventId = nostrEventId,
                     initialNostrEventDetailUIState = initialNostrEventDetailUIState,
-                    nostrRepository = nostrRepository
+                    nostrRepository = nostrRepository,
+                    activeUserPublicKey = activeUserPublicKey
                 )
             }
         }

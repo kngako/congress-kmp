@@ -69,6 +69,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchScreen(
+    activeUserPublicKey: String,
     initialSearchUIState: SearchUIState,
     nostrRepository: NostrRepository,
     searchRepository: SearchRepository,
@@ -165,6 +166,7 @@ fun SearchScreen(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
                                                     SearchResultRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
                                                         textFieldState.text.toString()
                                                     )
                                                 )
@@ -180,6 +182,7 @@ fun SearchScreen(
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
                                                     textFieldState.text.toString()
                                                 )
                                             )
@@ -202,6 +205,7 @@ fun SearchScreen(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
                                                     SearchResultRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
                                                         query = "#${textFieldState.text.toString().replace("#","")}"
                                                     )
                                                 )
@@ -217,6 +221,7 @@ fun SearchScreen(
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
                                                     "#${textFieldState.text.toString().replaceFirst("#","")}"
                                                 )
                                             )
@@ -251,7 +256,10 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToProfile.invoke(
-                                                NostrEventDetailRoute(profile.nostrEventId)
+                                                NostrEventDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    profile.nostrEventId
+                                                )
                                             )
                                         }
                                         .fillMaxWidth(),
@@ -292,6 +300,7 @@ fun SearchScreen(
                                                             onClick = {
                                                                 onNavigateToProfile.invoke(
                                                                     NostrEventDetailRoute(
+                                                                        activeUserPublicKey = activeUserPublicKey,
                                                                         profile.nostrEventId
                                                                     )
                                                                 )
@@ -353,6 +362,7 @@ fun SearchScreen(
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
                                                     query = recentSearch.query
                                                 )
                                             )
@@ -404,6 +414,7 @@ private fun SearchScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             SearchScreen(
+                activeUserPublicKey = "",
                 initialSearchUIState = SearchUIState.Prompt,
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY,

@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import kotlinx.coroutines.launch
 
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MetadataEventDetail(
     localNostrEvent: LocalNostrEvent,
+    activeUserPublicKey: HexKey,
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
     onNavigateToEditProfile: () -> Unit,
@@ -80,6 +82,7 @@ fun MetadataEventDetail(
 
     val metadataEventDetailViewModel: MetadataEventDetailViewModel = viewModel(
         factory = MetadataEventDetailViewModel.factory(
+            activeUserPublicKey = activeUserPublicKey,
             publicKey = localNostrEvent.nostrEvent.pubKey,
             nostrRepository = nostrRepository,
             pagerState = rememberPagerState { MetadataEventDetailType.entries.size }
@@ -227,6 +230,7 @@ fun MetadataEventDetail(
                                 onClick = {
                                     onNavigateToChatRoom.invoke(
                                         ChatRoomDetailRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             directMessageIdentifier = localNostrEvent.nostrEvent.pubKey,
                                             relayHint = localNostrEvent.nostrEvent.relayUrl,
                                         )
@@ -305,6 +309,7 @@ fun MetadataEventDetail(
 
                                     key(feedListViewModel.feedListUIState) {
                                         feedListViewModel.RenderFeed(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
@@ -328,6 +333,7 @@ fun MetadataEventDetail(
 
                                     key(followingListViewModel.followingListUIState) {
                                         followingListViewModel.RenderFeed(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
@@ -350,6 +356,7 @@ fun MetadataEventDetail(
 
                                     key(followersListViewModel.followersListUIState) {
                                         followersListViewModel.RenderFeed(
+                                            activeUserPublicKey = activeUserPublicKey,
                                             onNavigateToEvent = onNavigateToEvent
                                         )
                                     }
@@ -380,6 +387,7 @@ private fun MetadataEventEventDetailPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             MetadataEventDetail(
+                activeUserPublicKey = "",
                 localNostrEvent = LocalNostrEvent(
                     nostrEvent = NostrEvent(
                         id = "eventId",

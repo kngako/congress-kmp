@@ -105,6 +105,7 @@ class FollowersListViewModel(
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun RenderFeed(
+        activeUserPublicKey: String,
         onNavigateToEvent: (Route) -> Unit
     ) {
         Column(
@@ -149,6 +150,7 @@ class FollowersListViewModel(
                                 key = { profile -> profile.publicKey }
                             ) { follower ->
                                 follower.RenderAsListItem(
+                                    activeUserPublicKey = activeUserPublicKey,
                                     onNavigateToEvent = onNavigateToEvent
                                 )
                             }

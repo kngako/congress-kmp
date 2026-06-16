@@ -63,6 +63,7 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun WriteNewNoteScreen(
+    activeUserPublicKey: HexKey,
     initialWriteNewNoteUIState: WriteNewNoteUIState = WriteNewNoteUIState.Loading,
     replyToNostrEventId: HexKey?,
     quotedNostrEventId: HexKey?,
@@ -72,6 +73,7 @@ fun WriteNewNoteScreen(
 ) {
     val writeNewNoteViewModel: WriteNewNoteViewModel =  viewModel (
         factory = WriteNewNoteViewModel.factory(
+            activeUserPublicKey = activeUserPublicKey,
             replyToNostrEventId = replyToNostrEventId,
             quotedNostrEventId = quotedNostrEventId,
             initialWriteNewNoteUIState,
@@ -417,6 +419,7 @@ fun WriteNewNoteScreen(
                             Button(
                                 onClick = {
                                     writeNewNoteViewModel.createNewNote(
+                                        activeUserPublicKey = activeUserPublicKey,
                                         onNostrEventPublished = onNostrEventPublished,
                                         inReplyToNostrEvent = writeNewNoteUIState.inReplyToNostrEvent,
                                         quotedNostrEvent = writeNewNoteUIState.quotedNostrEvent
@@ -461,6 +464,7 @@ private fun WriteNewNoteScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             WriteNewNoteScreen(
+                activeUserPublicKey = "",
                 replyToNostrEventId = null,
                 quotedNostrEventId = null,
                 initialWriteNewNoteUIState =

@@ -35,7 +35,7 @@ kotlin {
         }
     }
     
-    jvm()
+//    jvm()
     
     sourceSets {
         androidMain.dependencies {
@@ -160,7 +160,7 @@ dependencies {
     add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
 //    add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room3.compiler)
-    add("kspJvm", libs.androidx.room3.compiler)
+//    add("kspJvm", libs.androidx.room3.compiler)
     // Add any other platform target you use in your project, for example kspDesktop
 }
 

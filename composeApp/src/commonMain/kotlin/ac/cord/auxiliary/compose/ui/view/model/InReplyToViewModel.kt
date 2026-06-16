@@ -118,6 +118,7 @@ class InReplyToViewModel(
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun RenderFeed(
+        activeUserPublicKey: String,
         onNavigateToEvent: (Route) -> Unit
     ) {
         Column(
@@ -165,6 +166,7 @@ class InReplyToViewModel(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
                                             NostrEventDetailRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
                                         )

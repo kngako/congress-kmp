@@ -18,7 +18,6 @@ package fr.acinq.phoenix.managers
 
 import fr.acinq.bitcoin.*
 import fr.acinq.lightning.crypto.Bip84OnChainKeys
-import fr.acinq.lightning.crypto.KeyManager
 import fr.acinq.lightning.crypto.LocalKeyManager
 import fr.acinq.lightning.crypto.div
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +91,16 @@ fun LocalKeyManager.nodeIdHash(): String = this.nodeKeys.nodeKey.publicKey.hash1
 fun LocalKeyManager.cloudKey(): ByteVector32 {
     val path = KeyPath(if (isMainnet()) "m/51'/0'/0'/0" else "m/51'/1'/0'/0")
     return derivePrivateKey(path).privateKey.value
+}
+
+/** Key used to encrypt/decrypt blobs we store in the cloud. */
+fun LocalKeyManager.nostrPrivateKey(): PrivateKey {
+    val path = KeyPath(if (isMainnet()) "m/44'/1237'/0'/0/0" else "m/44'/1237'/1'/0/0")
+    return derivePrivateKey(path).privateKey
+}
+
+fun LocalKeyManager.nostrPublicKey(): PublicKey {
+    return nostrPrivateKey().publicKey()
 }
 
 fun LocalKeyManager.cloudKeyHash(): String {

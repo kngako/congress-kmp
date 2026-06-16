@@ -144,6 +144,7 @@ class ChatRoomListViewModel(
                                         onClick = {
                                             onNavigateToDirectMessageDetail.invoke(
                                                 ChatRoomDetailRoute(
+                                                    activeUserPublicKey = publicKey,
                                                     directMessageIdentifier = localChatRoom.chatRoom.id,
                                                     relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint
                                                 )

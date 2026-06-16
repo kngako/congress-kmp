@@ -131,6 +131,7 @@ data class Profile(
 
     @Composable
     fun RenderAsListItem(
+        activeUserPublicKey: String,
         onNavigateToEvent: (Route) -> Unit
     ) {
         Card(
@@ -141,6 +142,7 @@ data class Profile(
             onClick = {
                 onNavigateToEvent.invoke(
                     NostrEventDetailRoute(
+                        activeUserPublicKey = activeUserPublicKey,
                         nostrEventId
                     )
                 )
@@ -191,7 +193,9 @@ data class Profile(
 
 @Preview
 @Composable
-fun ProfileRenderAsListItemPreview() {
+fun ProfileRenderAsListItemPreview(
+    activeUserPublicKey: String
+) {
     val profile = Profile(
         publicKey = "pubKey",
         displayName = "John Doe",
@@ -204,6 +208,7 @@ fun ProfileRenderAsListItemPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             profile.RenderAsListItem(
+                activeUserPublicKey = "",
                 onNavigateToEvent = {}
             )
         }

@@ -7,18 +7,15 @@ import ac.cord.auxiliary.compose.database.model.ChatRoom
 import ac.cord.auxiliary.compose.database.model.GiftWrapPayload
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatMessage
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
-import ac.cord.auxiliary.compose.managers.SeedManager
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
-import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
@@ -53,12 +50,14 @@ class DatabaseChatRepository(
 
 
     override suspend fun getOrCreateChatRoom(
+        activeUserPublicKey: HexKey,
         publicKey: String,
         relayHint: String?,
         defaultSubject: String?
     ): LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
-            publicKey,
+            activeUserPublicKey = activeUserPublicKey,
+            publicKey = publicKey,
             relayHint = relayHint,
             defaultSubject = defaultSubject
         )

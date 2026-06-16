@@ -35,6 +35,7 @@ import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 @Composable
 fun NostrEventDetailScreen(
     initialNostrEventDetailUIState: NostrEventDetailUIState,
+    activeUserPublicKey: HexKey,
     nostrEventId: HexKey,
     nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
@@ -48,7 +49,8 @@ fun NostrEventDetailScreen(
         factory = NostrEventDetailViewModel.factory(
             nostrEventId = nostrEventId,
             initialNostrEventDetailUIState = initialNostrEventDetailUIState,
-            nostrRepository = nostrRepository
+            nostrRepository = nostrRepository,
+            activeUserPublicKey = activeUserPublicKey
         ),
     )
 
@@ -67,6 +69,7 @@ fun NostrEventDetailScreen(
             when(feedListUIState.localNostrEvent.nostrEvent.kind) {
                 MetadataEvent.KIND -> {
                     MetadataEventDetail(
+                        activeUserPublicKey = activeUserPublicKey,
                         localNostrEvent = feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToEvent = onNavigateToEvent,
@@ -164,6 +167,7 @@ It has survived not only five centuries, but also the leap into electronic types
                     )
                 ),
                 nostrEventId = "",
+                activeUserPublicKey = "",
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {},
                 onNavigateToEvent = {},

@@ -23,7 +23,11 @@ interface ChatRepository {
 
     suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
-    suspend fun getOrCreateChatRoom(publicKey: String, relayHint: String?, defaultSubject: String? = null): LocalChatRoom?
+    suspend fun getOrCreateChatRoom(
+        activeUserPublicKey: HexKey,
+        publicKey: String, relayHint: String?,
+        defaultSubject: String? = null
+    ): LocalChatRoom?
 
     suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
 
@@ -63,6 +67,7 @@ interface ChatRepository {
             }
 
             override suspend fun getOrCreateChatRoom(
+                activeUserPublicKey: HexKey,
                 publicKey: String,
                 relayHint: String?,
                 defaultSubject: String?

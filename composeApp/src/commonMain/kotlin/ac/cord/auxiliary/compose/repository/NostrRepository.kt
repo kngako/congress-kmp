@@ -12,7 +12,6 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalNostrEvent
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalAccount
-import ac.cord.auxiliary.compose.database.model.intermdiate.LocalChatRoom
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfile
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowers
 import ac.cord.auxiliary.compose.database.model.intermdiate.LocalProfileWithFollowing
@@ -20,6 +19,7 @@ import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilte
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import fr.acinq.phoenix.managers.WalletManager
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
@@ -66,7 +66,8 @@ interface NostrRepository {
     suspend fun publishNostrEvent(
         unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
-        relayURLs: List<String> = emptyList()
+        relayURLs: List<String> = emptyList(),
+        walletManager: WalletManager
     )
 
     suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest, status: String = "processing")
@@ -83,13 +84,15 @@ interface NostrRepository {
     suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
-        synchronizationRelayURLs: List<String>
+        synchronizationRelayURLs: List<String>,
+        walletManager: WalletManager
     )
 
     suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         negentropySynchronizeRequest: NegentropySynchronizeRequest,
-        synchronizationRelayURLs: List<String>
+        synchronizationRelayURLs: List<String>,
+        walletManager: WalletManager
     )
 
     suspend fun queueSynchronizeNostrEvent(
@@ -202,7 +205,8 @@ interface NostrRepository {
             override suspend fun publishNostrEvent(
                 unsignedNostrEvent: UnsignedNostrEvent,
                 nostrEvent: NostrEvent,
-                relayURLs: List<String>
+                relayURLs: List<String>,
+                walletManager: WalletManager
             ) {
 
             }
@@ -229,7 +233,8 @@ interface NostrRepository {
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
                 synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
-                synchronizationRelayURLs: List<String>
+                synchronizationRelayURLs: List<String>,
+                walletManager: WalletManager
             ) {
                 TODO("Not yet implemented")
             }
@@ -237,7 +242,8 @@ interface NostrRepository {
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
                 negentropySynchronizeRequest: NegentropySynchronizeRequest,
-                synchronizationRelayURLs: List<String>
+                synchronizationRelayURLs: List<String>,
+                walletManager: WalletManager
             ) {
                 TODO("Not yet implemented")
             }

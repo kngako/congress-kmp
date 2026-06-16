@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
 import com.machankura.compose.ui.composable.widgets.nfc.NfcState
 import com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository
+import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.android.services.HceService
 
 class MainActivity : ComponentActivity() {
@@ -31,7 +32,13 @@ class MainActivity : ComponentActivity() {
                     platformContext = PlatformContext(
                         applicationContext = applicationContext
                     )
+                ),
+                phoenixGlobal = PhoenixGlobal(
+                    ctx = fr.acinq.phoenix.utils.PlatformContext(
+                        applicationContext = applicationContext
+                    )
                 )
+
             )
         }
     }
