@@ -425,7 +425,9 @@ fun AuxNavHost(
                 },
                 onNavigateToSearch = {
                     navController.navigate(
-                        route = SearchRoute
+                        route = SearchRoute(
+                            activeUserPublicKey = route.activeUserPublicKey
+                        )
                     )
                 },
                 onNavigateToDirectMessageDetail = { chatRoomDetailRoute ->
