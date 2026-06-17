@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.ui.view.model.HomeScreenType
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.launch
@@ -156,7 +157,7 @@ fun HomeScreen(
                         edgePadding = 10.dp,
                         selectedTabIndex = homeScreenViewModel.pagerState.currentPage,
                     ) {
-                        _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.entries.forEachIndexed { index, destination ->
+                        HomeScreenType.entries.forEachIndexed { index, destination ->
                             Tab(
                                 selected = homeScreenViewModel.pagerState.currentPage == index,
                                 onClick = {
@@ -182,30 +183,6 @@ fun HomeScreen(
                             state = homeScreenViewModel.pagerState,
                         ) { pageIndex ->
                             when (val homeScreenTypeType = _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.entries[pageIndex]) {
-                                _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.Following, _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.Mentions -> {
-                                    val feedListViewModel: at.torch.compose.ui.view.model.FeedListViewModel = viewModel(
-                                        key = homeScreenTypeType.name,
-                                        factory = _root_ide_package_.at.torch.compose.ui.view.model.FeedListViewModel.Companion.factory(
-                                            initialFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
-                                            synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
-                                                homeScreenTypeType,
-                                                profileWithFollowing = homeScreenUIState.profileWithFollowing
-                                            ),
-                                            nostrRepository = nostrRepository
-                                        ),
-                                    )
-
-                                    key(feedListViewModel.feedListUIState) {
-                                        feedListViewModel.RenderFeed(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            onNavigateToEvent = onNavigateToEvent
-                                        )
-                                    }
-
-                                    key(true) {
-                                        feedListViewModel.initiate()
-                                    }
-                                }
                                 _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.Messages -> {
                                     val chatRoomListViewModel: at.torch.compose.ui.view.model.ChatRoomListViewModel = viewModel(
                                         key = homeScreenTypeType.name,

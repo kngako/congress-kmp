@@ -29,7 +29,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
 enum class HomeScreenType {
-    Following, Mentions, Messages
+    Messages
 }
 
 class HomeViewModel(
@@ -75,39 +75,6 @@ class HomeViewModel(
         val now = Clock.System.now()
 
         return when (homeScreenType) {
-            HomeScreenType.Following -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    authors = profileWithFollowing.following.map { it.publicKey }.toTypedArray(),
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                        RepostEvent.KIND,
-                    ),
-                    since = twelveHoursAgo,
-                    until = now,
-                    limit = 50
-                )
-            }
-            HomeScreenType.Mentions -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                        RepostEvent.KIND,
-                        ReactionEvent.KIND,
-                        LnZapEvent.KIND,
-                        ContactListEvent.KIND,
-                        AdvertisedRelayListEvent.KIND,
-                        PrivateDmEvent.KIND,
-                        BlossomServersEvent.KIND,
-                        FileServersEvent.KIND
-                    ),
-                    tags = mapOf(
-                        Pair("p", listOf(activeUserPublicKey))
-                    ),
-                    since = twelveHoursAgo,
-                    until = now,
-                    limit = 50
-                )
-            }
             HomeScreenType.Messages -> {
                 _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
