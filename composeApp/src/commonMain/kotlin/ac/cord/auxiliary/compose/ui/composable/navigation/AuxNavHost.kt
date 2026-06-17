@@ -255,7 +255,9 @@ fun AuxNavHost(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
-                        route = LandingRoute
+                        route = LoadingRoute(
+                            text = "Loading Aux"
+                        )
                     )
                 },
                 onNavigateToWalletIntroPage = {
