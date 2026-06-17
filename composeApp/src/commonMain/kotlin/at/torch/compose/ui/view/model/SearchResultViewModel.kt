@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 enum class SearchResultType {
-    Posts, Articles, Profiles, Photos, Shorts, Videos
+    Profiles
 }
 
 class SearchResultViewModel(
@@ -55,62 +55,11 @@ class SearchResultViewModel(
     fun initiateSearchResults(searchResultType: SearchResultType = this.searchResultType) {
         logger.d("initiateSearchResults")
         val synchronizationFilter = when (searchResultType) {
-            SearchResultType.Posts -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        TextNoteEvent.KIND,
-                        RepostEvent.KIND,
-                        ReactionEvent.KIND,
-                        LnZapEvent.KIND,
-                    ),
-                    search = searchQuery,
-                    limit = 50
-                )
-            }
             SearchResultType.Profiles -> {
                 _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         MetadataEvent.KIND,
                     ),
-                    search = searchQuery,
-                    limit = 50
-                )
-            }
-            SearchResultType.Articles -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        LongTextNoteEvent.KIND,
-                    ),
-                    search = searchQuery,
-                    limit = 50
-                )
-            }
-            SearchResultType.Photos -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        PictureEvent.KIND,
-                    ),
-                    // TODO: filter for tags of pictures...
-                    search = searchQuery,
-                    limit = 50
-                )
-            }
-            SearchResultType.Videos -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        VideoNormalEvent.KIND,
-                    ),
-                    // TODO: filter for tags of videos...
-                    search = searchQuery,
-                    limit = 50
-                )
-            }
-            SearchResultType.Shorts -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        VideoShortEvent.KIND,
-                    ),
-                    // TODO: filter for tags of videos...
                     search = searchQuery,
                     limit = 50
                 )
@@ -169,7 +118,7 @@ class SearchResultViewModel(
         const val TAG = "SearchViewModel"
 
         fun factory(
-            initialSearchResultType: SearchResultType = SearchResultType.Posts,
+            initialSearchResultType: SearchResultType = SearchResultType.Profiles,
             searchQuery: String,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             searchRepository: at.torch.compose.repository.SearchRepository,

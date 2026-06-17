@@ -67,7 +67,7 @@ fun SearchResultScreen(
 
     val searchViewModel: at.torch.compose.ui.view.model.SearchResultViewModel = viewModel(
         factory = _root_ide_package_.at.torch.compose.ui.view.model.SearchResultViewModel.Companion.factory(
-            initialSearchResultType = _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Posts,
+            initialSearchResultType = _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Profiles,
             searchQuery = searchQuery,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
@@ -196,23 +196,8 @@ fun SearchResultScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             when(_root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.entries[pageIndex]) {
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Posts -> {
-                                    Text("Posts")
-                                }
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Articles -> {
-                                    Text("Articles")
-                                }
                                 _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Profiles -> {
                                     Text("Profiles")
-                                }
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Photos -> {
-                                    Text("Photos")
-                                }
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Videos -> {
-                                    Text("Videos")
-                                }
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Shorts -> {
-                                    Text("Shorts")
                                 }
                             }
 
