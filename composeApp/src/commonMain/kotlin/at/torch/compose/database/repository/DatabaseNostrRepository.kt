@@ -5,9 +5,26 @@ import at.torch.compose.database.model.BroadcastNostrEventReceipt
 import at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation
 import at.torch.compose.database.model.RecentSearch
 import at.torch.compose.database.model.UnsignedNostrEvent
+import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
+import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
+import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
+import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
+import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
+import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
+import com.vitorpamplona.quartz.marmot.mls.tree.Capabilities
+import com.vitorpamplona.quartz.marmot.mls.tree.Credential
+import com.vitorpamplona.quartz.marmot.mls.tree.Extension
+import com.vitorpamplona.quartz.marmot.mls.tree.LeafNode
+import com.vitorpamplona.quartz.marmot.mls.tree.LeafNodeSource
+import com.vitorpamplona.quartz.marmot.mls.tree.Lifetime
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.hints.EventHintBundle
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -38,6 +55,7 @@ import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
+import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +63,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.collections.emptyMap
 import kotlin.collections.plus
+import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -105,7 +124,7 @@ class DatabaseNostrRepository(
         )
 
         val unsignedNostrEvents = mutableListOf(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
@@ -200,7 +219,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = RelayFeedsListEvent.KIND,
                 tags = arrayOf(
@@ -215,7 +234,110 @@ class DatabaseNostrRepository(
             )
         )
 
+        // KeyPackage...
+        val slot = KeyPackageUtils.PRIMARY_SLOT
+        val dTag = KeyPackageUtils.generateRandomDTag() // TODO: Persist this...
+        val identity = publicKey.hexToByteArray()
+        val bundle = generateKeyPackage(identity, dTag)
+
+        val keyPackageBytes = bundle.keyPackage.toTlsBytes()
+        val keyPackageBase64 = Base64.encode(keyPackageBytes)
+        val keyPackageRef = bundle.keyPackage.reference().toHexKey()
+
+        val keyPackageTemplate = KeyPackageEvent.build(
+            keyPackageBase64 = keyPackageBase64,
+            dTagSlot = dTag,
+            keyPackageRef = keyPackageRef,
+            relays = Relays.DefaultDMRelayList,
+        )
+
+        unsignedNostrEvents.add(
+            UnsignedNostrEvent(
+                pubKey = publicKey,
+                kind = keyPackageTemplate.kind,
+                tags = keyPackageTemplate.tags,
+                content = keyPackageTemplate.content
+            )
+        )
+
         saveUnsignedNostrEvents(unsignedNostrEvents)
+    }
+
+    private fun generateKeyPackage(
+        identity: ByteArray,
+        dTagSlot: String = KeyPackageUtils.PRIMARY_SLOT,
+    ): KeyPackageBundle {
+        val initKp = X25519.generateKeyPair()
+        val encKp = X25519.generateKeyPair()
+        val sigKp = Ed25519.generateKeyPair()
+
+        val leafNode =
+            buildKeyPackageLeafNode(
+                encryptionKey = encKp.publicKey,
+                signatureKey = sigKp.publicKey,
+                identity = identity,
+                signingKey = sigKp.privateKey,
+            )
+
+        val unsigned =
+            MlsKeyPackage(
+                initKey = initKp.publicKey,
+                leafNode = leafNode,
+                // LastResort (0x000A) marks this as a last-resort KeyPackage per MLS Extensions draft.
+                // MDK always marks KeyPackages as last-resort via .mark_as_last_resort().
+                extensions = listOf(Extension(extensionType = 0x000A, extensionData = ByteArray(0))),
+                signature = ByteArray(0),
+            )
+        val keyPackage =
+            unsigned.copy(
+                signature =
+                    MlsCryptoProvider.signWithLabel(
+                        sigKp.privateKey,
+                        "KeyPackageTBS",
+                        unsigned.encodeTbs(),
+                    ),
+            )
+
+        val bundle = KeyPackageBundle(keyPackage, initKp.privateKey, encKp.privateKey, sigKp.privateKey)
+        // TODO: Persist this...
+
+        return bundle
+    }
+
+
+    private fun buildKeyPackageLeafNode(
+        encryptionKey: ByteArray,
+        signatureKey: ByteArray,
+        identity: ByteArray,
+        signingKey: ByteArray,
+    ): LeafNode {
+        val now = TimeUtils.now()
+        val unsigned =
+            LeafNode(
+                encryptionKey = encryptionKey,
+                signatureKey = signatureKey,
+                credential = Credential.Basic(identity),
+                capabilities =
+                    Capabilities(
+                        extensions =
+                            listOf(
+                                0x000A, // LastResort (required by OpenMLS validation)
+                                0xF2EE, // NostrGroupData (required by group's RequiredCapabilities)
+                            ),
+                        proposals =
+                            listOf(
+                                0x000A, // SelfRemove (required by group's RequiredCapabilities)
+                            ),
+                    ),
+                leafNodeSource = LeafNodeSource.KEY_PACKAGE,
+                lifetime = Lifetime(notBefore = now, notAfter = now + KEY_PACKAGE_LIFETIME_SECONDS),
+                extensions = emptyList(),
+                signature = ByteArray(0),
+            )
+
+        val tbs = unsigned.encodeTbs(groupId = null, leafIndex = null)
+        val signature = MlsCryptoProvider.signWithLabel(signingKey, "LeafNodeTBS", tbs)
+        return unsigned.copy(signature = signature)
     }
 
     override suspend fun signInToProfile(
