@@ -31,22 +31,19 @@ import kotlinx.coroutines.launch
 class CreateProfileViewModel(
     val initialCreateProfileUIState: CreateProfileUIState,
     val createProfileFormState: CreateProfileFormState = CreateProfileFormState(),
-    val nostrRepository: NostrRepository,
-    val walletManager: WalletManager
+    val nostrRepository: NostrRepository
 ): ViewModel() {
     companion object {
         private const val TAG = "CreateAccountViewModel"
 
         fun factory(
             initialCreateProfileUIState: CreateProfileUIState,
-            nostrRepository: NostrRepository,
-            walletManager: WalletManager
+            nostrRepository: NostrRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 CreateProfileViewModel(
                     initialCreateProfileUIState,
-                    nostrRepository = nostrRepository,
-                    walletManager = walletManager
+                    nostrRepository = nostrRepository
                 )
             }
         }
@@ -106,8 +103,10 @@ class CreateProfileViewModel(
                 remoteSwapInExtendedPublicKey =  NodeParamsManager.remoteSwapInXpub
             )
 
+            val pubkey = localKeyManager.nostrPublicKey()
+            logger.d("NostrKey: $pubkey")
             nostrRepository.createNewProfile(
-                localKeyManager.nostrPublicKey().toHex(),
+                pubkey,
                 name = createProfileFormState.nameField.textFieldState.text.toString(),
                 biography = createProfileFormState.biographyField.textFieldState.text.toString()
             )

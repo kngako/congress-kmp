@@ -45,17 +45,14 @@ import fr.acinq.phoenix.managers.WalletManager
 @Composable
 fun CreateProfileScreen(
     initialCreateProfileUIState: CreateProfileUIState = CreateProfileUIState.Declaration,
-    onNavigateToSocialPreconditionRoute: () -> Unit,
     onNavigateToEndThis: () -> Unit,
     nostrRepository: NostrRepository,
-    writeSeed: (List<String>) -> Unit,
-    walletManager: WalletManager
+    writeSeed: (List<String>) -> Unit
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
         factory = CreateProfileViewModel.factory(
             initialCreateProfileUIState,
-            nostrRepository,
-            walletManager = walletManager
+            nostrRepository
         )
     )
     Scaffold { innerPadding ->
@@ -319,8 +316,7 @@ fun CreateProfileScreen(
                                 contentColor = Color.White
                             ),
                             onClick = {
-
-                                onNavigateToSocialPreconditionRoute.invoke()
+                                createProfileViewModel.createAccount(writeSeed)
                             }
                         ) {
                             Text(
@@ -366,7 +362,6 @@ fun CreateAccountScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             CreateProfileScreen(
-                walletManager = WalletManager(Chain.Mainnet),
                 initialCreateProfileUIState =
 //                    CreateProfileUIState.InputPrompt,
 //                    CreateProfileUIState.Error,
@@ -403,7 +398,6 @@ fun CreateAccountScreenPreview() {
                             about = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
                         )
                     ),
-                onNavigateToSocialPreconditionRoute = {},
                 onNavigateToEndThis = {},
                 writeSeed = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY

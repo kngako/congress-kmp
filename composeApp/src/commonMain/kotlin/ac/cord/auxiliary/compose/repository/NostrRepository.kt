@@ -19,7 +19,7 @@ import ac.cord.auxiliary.compose.database.model.typealiases.SynchronizationFilte
 import ac.cord.auxiliary.compose.database.model.types.SynchronizationFilter
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import fr.acinq.phoenix.managers.WalletManager
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
@@ -67,7 +67,7 @@ interface NostrRepository {
         unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
         relayURLs: List<String> = emptyList(),
-        walletManager: WalletManager
+        activeKeyPair: KeyPair
     )
 
     suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest, status: String = "processing")
@@ -85,14 +85,14 @@ interface NostrRepository {
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>,
-        walletManager: WalletManager
+        activeKeyPair: KeyPair
     )
 
     suspend fun saveNostrEvent(
         nostrEvent: NostrEvent,
         negentropySynchronizeRequest: NegentropySynchronizeRequest,
         synchronizationRelayURLs: List<String>,
-        walletManager: WalletManager
+        activeKeyPair: KeyPair
     )
 
     suspend fun queueSynchronizeNostrEvent(
@@ -206,7 +206,7 @@ interface NostrRepository {
                 unsignedNostrEvent: UnsignedNostrEvent,
                 nostrEvent: NostrEvent,
                 relayURLs: List<String>,
-                walletManager: WalletManager
+                activeKeyPair: KeyPair
             ) {
 
             }
@@ -234,7 +234,7 @@ interface NostrRepository {
                 nostrEvent: NostrEvent,
                 synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
                 synchronizationRelayURLs: List<String>,
-                walletManager: WalletManager
+                activeKeyPair: KeyPair
             ) {
                 TODO("Not yet implemented")
             }
@@ -243,7 +243,7 @@ interface NostrRepository {
                 nostrEvent: NostrEvent,
                 negentropySynchronizeRequest: NegentropySynchronizeRequest,
                 synchronizationRelayURLs: List<String>,
-                walletManager: WalletManager
+                activeKeyPair: KeyPair
             ) {
                 TODO("Not yet implemented")
             }

@@ -22,10 +22,12 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
+import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.WalletManager
 import fr.acinq.phoenix.managers.nostrPrivateKey
 import fr.acinq.phoenix.managers.nostrPublicKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 
 
@@ -35,10 +37,10 @@ import kotlinx.coroutines.flow.collectLatest
  * https://github.com/PrimalHQ/primal-android-app/blob/6db2e6862239335dede4162338d7c4f10ad35031/app/src/main/kotlin/net/primal/android/networking/relays/RelaysSocketManager.kt
  */
 class RelaysSocketManager constructor(
+    private val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     private val nostrSocketClientFactory: NostrSocketClientFactory,
     private val cachingImportRepository: CachingImportRepository,
     private val relayRepository: RelayRepository,
-    private val walletManager: WalletManager
 ) {
     val logger = Logger.withTag("RelaysSocketManager")
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -67,12 +69,18 @@ class RelaysSocketManager constructor(
 
     private fun observeActiveUserId() =
         scope.launch {
-            walletManager.keyManager.collectLatest { keyManager ->
-                keyManager?.nostrPublicKey()?.value?.toHex()?.let { pubkey ->
-                    observeRelayJobs[pubkey]?.cancel()
-                    observeRelayJobs[pubkey] = observeRelays(pubkey)
+            activeWalletStateFlow.collectLatest { activeWallet ->
+                if (activeWallet == null) {
+                    // TODO: Cancel all pending jobs?
+                }
+                activeWallet?.business?.walletManager?.keyManager?.collectLatest { keyManager ->
+                    keyManager?.nostrPublicKey()?.let { pubkey ->
+                        observeRelayJobs[pubkey]?.cancel()
+                        observeRelayJobs[pubkey] = observeRelays(pubkey)
+                    }
                 }
             }
+
 
         }
 

@@ -12,6 +12,7 @@ import ac.cord.auxiliary.compose.repository.CachingImportRepository
 import ac.cord.auxiliary.compose.repository.ChatRepository
 import ac.cord.auxiliary.compose.repository.NostrRepository
 import ac.cord.auxiliary.compose.repository.RelayRepository
+import androidx.compose.runtime.key
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
@@ -19,17 +20,22 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.negentropy.Negentropy
 import com.vitorpamplona.negentropy.storage.StorageVector
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
+import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.WalletManager
+import fr.acinq.phoenix.managers.nostrPrivateKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
@@ -38,18 +44,18 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.milliseconds
 
 class SynchronizationViewModel(
+    val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val relayRepository: RelayRepository,
-    val walletManager: WalletManager,
     val scope: CoroutineScope,
 ): ViewModel() {
 
     val relaysSocketManager = RelaysSocketManager(
+        activeWalletStateFlow = activeWalletStateFlow,
         nostrSocketClientFactory = NostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
-        walletManager = walletManager
     )
 
     companion object {
@@ -58,18 +64,18 @@ class SynchronizationViewModel(
         private val mutex = Mutex()
 
         fun factory(
+            activeWalletStateFlow: StateFlow<ActiveWallet?>,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
             relayRepository: RelayRepository,
-            walletManager: WalletManager,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SynchronizationViewModel(
+                    activeWalletStateFlow = activeWalletStateFlow,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
                     relayRepository = relayRepository,
-                    walletManager = walletManager,
                     scope = scope
                 )
             }
@@ -79,12 +85,25 @@ class SynchronizationViewModel(
     private val logger = Logger.withTag(TAG)
 
     init {
-        observePendingBroadcastNostrEventRequests()
-        observePendingSyncNostrEventRequests()
-        observePendingNegentropySynchronizeRequests()
+        scope.launch {
+            activeWalletStateFlow.collectLatest { activeWallet ->
+                activeWallet?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
+                    val keyPair = KeyPair(
+                        privKey = nostrPrivateKey.value.toByteArray()
+                    )
+
+                    observePendingBroadcastNostrEventRequests(keyPair)
+                    observePendingSyncNostrEventRequests(keyPair)
+                    observePendingNegentropySynchronizeRequests(keyPair)
+                }
+            }
+        }
+
     }
 
-    private fun observePendingSyncNostrEventRequests() {
+    private fun observePendingSyncNostrEventRequests(
+        keyPair: KeyPair
+    ) {
         logger.i { "observePendingSyncNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {
@@ -125,7 +144,7 @@ class SynchronizationViewModel(
                                                     nostrEvent = it,
                                                     synchronizeNostrEventRequest,
                                                     synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL),
-                                                    walletManager = walletManager
+                                                    activeKeyPair = keyPair
                                                     // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                 )
                                             }
@@ -139,7 +158,7 @@ class SynchronizationViewModel(
                                                 nostrEvent = nostrEvent,
                                                 synchronizeNostrEventRequest,
                                                 synchronizationRelayURLs = listOf(synchronizeNostrEventRequest.relayURL),
-                                                walletManager = walletManager
+                                                activeKeyPair = keyPair
                                                 // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                             )
                                         }
@@ -170,7 +189,9 @@ class SynchronizationViewModel(
         }
     }
 
-    private fun observePendingNegentropySynchronizeRequests() {
+    private fun observePendingNegentropySynchronizeRequests(
+        keyPair: KeyPair
+    ) {
         logger.i { "observePendingNegentropySynchronizeRequests" }
 
         scope.launch(Dispatchers.IO) {
@@ -238,7 +259,7 @@ class SynchronizationViewModel(
                                                         nostrEvent = it,
                                                         negentropySynchronizeRequest,
                                                         synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL),
-                                                        walletManager = walletManager
+                                                        activeKeyPair = keyPair
                                                         // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                     )
                                                 }
@@ -252,7 +273,7 @@ class SynchronizationViewModel(
                                                     nostrEvent = nostrEvent,
                                                     negentropySynchronizeRequest,
                                                     synchronizationRelayURLs = listOf(negentropySynchronizeRequest.relayURL),
-                                                    walletManager = walletManager
+                                                    activeKeyPair = keyPair
                                                     // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                 )
                                             }
@@ -356,7 +377,9 @@ class SynchronizationViewModel(
     }
 
     @OptIn(FlowPreview::class)
-    private fun observePendingBroadcastNostrEventRequests() {
+    private fun observePendingBroadcastNostrEventRequests(
+        keyPair: KeyPair
+    ) {
         logger.i { "observePendingBroadcastNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {

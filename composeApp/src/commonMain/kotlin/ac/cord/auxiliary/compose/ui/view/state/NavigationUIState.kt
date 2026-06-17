@@ -8,8 +8,11 @@ import ac.cord.auxiliary.compose.database.model.UnsignedNostrEvent
 abstract class NavigationUIState {
     data object Error: NavigationUIState()
 
-    data object Loading: NavigationUIState()
+    data class Loading(
+        val text: String? = null
+    ): NavigationUIState()
 
+    data object StartupPhoenix: NavigationUIState()
     data object Landing: NavigationUIState()
 
     data class UnsignedProfile(

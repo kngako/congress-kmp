@@ -27,6 +27,7 @@ import ac.cord.auxiliary.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.hints.EventHintBundle
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.hashtags.hashtags
@@ -56,7 +57,6 @@ import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
-import fr.acinq.phoenix.managers.WalletManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -390,13 +390,13 @@ class DatabaseNostrRepository(
         unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: NostrEvent,
         relayURLs: List<String>,
-        walletManager: WalletManager
+        activeKeyPair: KeyPair
     ) {
         database.nostrDao().publishNostrEvent(
             unsignedNostrEvent,
             nostrEvent,
             relayURLs,
-            walletManager = walletManager
+            activeKeyPair = activeKeyPair
         )
     }
 
@@ -462,7 +462,7 @@ class DatabaseNostrRepository(
         nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>,
-        walletManager: WalletManager,
+        activeKeyPair: KeyPair,
     ) {
         storeNostrEventMutex.withLock {
             logger.d("saveNostrEvent: $nostrEvent")
@@ -474,7 +474,7 @@ class DatabaseNostrRepository(
                     synchronizationRelayURLs = synchronizationRelayURLs,
                     relayURL = synchronizeNostrEventRequest.relayURL,
                     level = synchronizeNostrEventRequest.level,
-                    walletManager = walletManager
+                    activeKeyPair = activeKeyPair
                 )
 
                 database.synchronizeNostrEventRequestDao().upsert(
@@ -494,7 +494,7 @@ class DatabaseNostrRepository(
         nostrEvent: NostrEvent,
         negentropySynchronizeRequest: NegentropySynchronizeRequest,
         synchronizationRelayURLs: List<String>,
-        walletManager: WalletManager
+        activeKeyPair: KeyPair
     ) {
         logger.d("saveNostrEvent: $nostrEvent")
 
@@ -504,7 +504,7 @@ class DatabaseNostrRepository(
                 relayURL = negentropySynchronizeRequest.relayURL,
                 synchronizationRelayURLs = synchronizationRelayURLs,
                 level = negentropySynchronizeRequest.level,
-                walletManager = walletManager
+                activeKeyPair = activeKeyPair
             )
 
             database.negentropySynchronizeRequestDao().upsert(

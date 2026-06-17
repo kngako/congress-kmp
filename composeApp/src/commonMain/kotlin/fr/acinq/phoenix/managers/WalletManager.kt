@@ -16,6 +16,9 @@
 
 package fr.acinq.phoenix.managers
 
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import fr.acinq.bitcoin.*
 import fr.acinq.lightning.crypto.Bip84OnChainKeys
 import fr.acinq.lightning.crypto.LocalKeyManager
@@ -99,8 +102,10 @@ fun LocalKeyManager.nostrPrivateKey(): PrivateKey {
     return derivePrivateKey(path).privateKey
 }
 
-fun LocalKeyManager.nostrPublicKey(): PublicKey {
-    return nostrPrivateKey().publicKey()
+fun LocalKeyManager.nostrPublicKey(): HexKey {
+    return KeyPair(
+        privKey = nostrPrivateKey().value.toByteArray()
+    ).pubKey.toHexKey()
 }
 
 fun LocalKeyManager.cloudKeyHash(): String {

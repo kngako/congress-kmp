@@ -14,20 +14,23 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
+import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.WalletManager
 import fr.acinq.phoenix.managers.nostrPrivateKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
 
 class NotaryViewModel(
+    val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val scope: CoroutineScope,
-    val walletManager: WalletManager,
 ): ViewModel() {
 
     companion object {
@@ -35,17 +38,17 @@ class NotaryViewModel(
 
 
         fun factory(
+            activeWalletStateFlow: StateFlow<ActiveWallet?>,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
-            walletManager: WalletManager,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NotaryViewModel(
+                    activeWalletStateFlow = activeWalletStateFlow,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
                     scope = scope,
-                    walletManager = walletManager
                 )
             }
         }
@@ -54,13 +57,19 @@ class NotaryViewModel(
     private val logger = Logger.withTag(TAG)
 
     init {
-        walletManager.keyManager.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
-            val keyPair = KeyPair(
-                privKey = nostrPrivateKey.value.toByteArray()
-            )
+        scope.launch {
+            activeWalletStateFlow.collectLatest { activeWallet ->
+                logger.d("activeWallet: $activeWallet")
+                activeWallet?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
 
-            observeUnsignedNostrEvents(keyPair)
-            observeUnsealedGiftWrapPayloads(keyPair)
+                    val keyPair = KeyPair(
+                        privKey = nostrPrivateKey.value.toByteArray()
+                    )
+
+                    observeUnsignedNostrEvents(keyPair)
+                    observeUnsealedGiftWrapPayloads(keyPair)
+                }
+            }
         }
     }
 
@@ -72,7 +81,7 @@ class NotaryViewModel(
                 keyPair
             )
             scope.launch(Dispatchers.IO) {
-                logger.i { "observeUnsignedNostrEvents" }
+                logger.i { "observeUnsignedNostrEvents: ${keyPair.pubKey.toHexKey()}" }
                 nostrRepository.observeUnsignedNostrEvents(
                     publicKey = keyPair.pubKey.toHexKey()
                 ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
@@ -100,7 +109,7 @@ class NotaryViewModel(
                                     unsignedNostrEventId = unsignedNostrEvent.id
                                 ),
                                 relayURLs = Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url },
-                                walletManager = walletManager
+                                activeKeyPair = keyPair
                             )
                         }
                     }
@@ -116,7 +125,7 @@ class NotaryViewModel(
             keyPair
         )
         scope.launch(Dispatchers.IO) {
-            logger.i { "observeUnsealedGiftWrapPayloads" }
+            logger.i { "observeUnsealedGiftWrapPayloads: ${keyPair.pubKey.toHexKey()}" }
             chatRepository.observeUnsealedGiftWrapPayloads(
                 publicKey = keyPair.pubKey.toHexKey()
             ).distinctUntilChanged().collect { giftWrapPayloadOrNull ->

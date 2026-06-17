@@ -16,6 +16,7 @@ import ac.cord.auxiliary.compose.ui.composable.SearchResultScreen
 import ac.cord.auxiliary.compose.ui.composable.SearchScreen
 import ac.cord.auxiliary.compose.ui.composable.SignInToProfileScreen
 import ac.cord.auxiliary.compose.ui.composable.SocialPreconditionScreen
+import ac.cord.auxiliary.compose.ui.composable.SovereignWalletStartupScreen
 import ac.cord.auxiliary.compose.ui.composable.UnannouncedProfileScreen
 import ac.cord.auxiliary.compose.ui.composable.UnindexedProfileScreen
 import ac.cord.auxiliary.compose.ui.composable.UnqueuedProfileScreen
@@ -40,6 +41,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.SocialPreconditionRoute
+import ac.cord.auxiliary.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnannouncedProfileRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnindexedProfileRoute
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnqueuedProfileRoute
@@ -49,6 +51,7 @@ import ac.cord.auxiliary.compose.ui.composable.navigation.routes.UnsyncedProfile
 import ac.cord.auxiliary.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import ac.cord.auxiliary.compose.ui.view.model.NavigationViewModel
 import ac.cord.auxiliary.compose.ui.view.model.NotaryViewModel
+import ac.cord.auxiliary.compose.ui.view.model.SovereignWalletViewModel
 import ac.cord.auxiliary.compose.ui.view.model.SynchronizationViewModel
 import ac.cord.auxiliary.compose.ui.view.state.NavigationUIState
 import ac.cord.auxiliary.compose.ui.view.state.NostrEventDetailUIState
@@ -56,6 +59,7 @@ import ac.cord.auxiliary.compose.ui.view.state.SearchUIState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -76,7 +80,7 @@ fun AuxNavHost(
     navController: NavHostController
 ) {
     val logger = Logger.withTag("AuxNavHost")
-
+// TODO
     val exceptionHandler =
         CoroutineExceptionHandler { _, throwable ->
             logger.e("Caught exception: ${throwable.message}", throwable)
@@ -102,30 +106,38 @@ fun AuxNavHost(
         database = auxDatabaseManager.auxDatabase
     )
 
+    val sovereignWalletViewModel: SovereignWalletViewModel = viewModel(factory = SovereignWalletViewModel.factory(
+        phoenixGlobal = phoenixGlobal
+    ))
+
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
-            initialNavigationUIState = NavigationUIState.Loading,
+            activeWallet = sovereignWalletViewModel.activeWalletInUI,
+            initialNavigationUIState = NavigationUIState.Loading(),
             nostrRepository = databaseNostrRepository,
-            phoenixGlobal = phoenixGlobal,
             scope = applicationIOScope
         )
     )
-//    val notaryViewModel: NotaryViewModel = viewModel(
-//        factory = NotaryViewModel.factory(
-//            nostrRepository = databaseNostrRepository,
-//            chatRepository = databaseChatRepository,
-//            scope = applicationIOScope
-//        )
-//    )
-//    // TODO: Produce a notary UI Element...
-//    val synchronizationViewModel: SynchronizationViewModel = viewModel(
-//        factory = SynchronizationViewModel.factory(
-//            nostrRepository = databaseNostrRepository,
-//            chatRepository = databaseChatRepository,
-//            relayRepository = databaseNostrRepository,
-//            scope = applicationIOScope
-//        )
-//    )
+
+
+    val notaryViewModel: NotaryViewModel = viewModel(
+        factory = NotaryViewModel.factory(
+            activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+            nostrRepository = databaseNostrRepository,
+            chatRepository = databaseChatRepository,
+            scope = applicationIOScope
+        )
+    )
+    // TODO: Produce a notary UI Element...
+    val synchronizationViewModel: SynchronizationViewModel = viewModel(
+        factory = SynchronizationViewModel.factory(
+            activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+            nostrRepository = databaseNostrRepository,
+            chatRepository = databaseChatRepository,
+            relayRepository = databaseNostrRepository,
+            scope = applicationIOScope
+        )
+    )
     // TODO: Produce a synchronization UI element...
 
     LaunchedEffect(lifecycleOwner) {
@@ -138,9 +150,18 @@ fun AuxNavHost(
                         popUpTo(0)
                     }
                 }
+                is NavigationUIState.StartupPhoenix -> {
+                    navController.navigate(
+                        route = SovereignWalletStartupRoute
+                    ) {
+                        popUpTo(0)
+                    }
+                }
                 is NavigationUIState.Loading -> {
                     navController.navigate(
-                        route = LoadingRoute
+                        route = LoadingRoute(
+                            text = state.text
+                        )
                     ) {
                         popUpTo(0)
                     }
@@ -207,7 +228,9 @@ fun AuxNavHost(
                 }
                 is NavigationUIState.ProfileLoaded -> {
                     navController.navigate(
-                        route = SocialPreconditionRoute
+                        route = SocialPreconditionRoute(
+                            activeUserPubkey = state.publicKey
+                        )
                     ) {
                         popUpTo(0)
                     }
@@ -225,10 +248,37 @@ fun AuxNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = LoadingRoute
+        startDestination = LoadingRoute()
     ) {
-        composable<LoadingRoute> {
-            LoadingScreen()
+        composable<SovereignWalletStartupRoute> {
+            SovereignWalletStartupScreen(
+                sovereignWalletViewModel = sovereignWalletViewModel,
+                onNavigateToWalletLandingPage = {
+                    navController.navigate(
+                        route = LandingRoute
+                    )
+                },
+                onNavigateToWalletIntroPage = {
+                    navController.navigate(
+                        route = LandingRoute
+                    )
+                },
+                onNavigateToWalletDashboard = {
+                    navController.navigate(
+                        route = LoadingRoute(
+                            text = "Opening Aux"
+                        )
+                    )
+                },
+                forceWalletId = null,
+            )
+        }
+        composable<LoadingRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<LoadingRoute>()
+
+            LoadingScreen(
+                text = route.text
+            )
         }
         composable<LandingRoute> {
             LandingScreen(
@@ -250,37 +300,32 @@ fun AuxNavHost(
             )
         }
         composable<CreateProfileRoute> {
-            val walletManager = navigationViewModel.activeWalletInUI.value?.business?.walletManager
-
-            if (walletManager != null) {
-                CreateProfileScreen(
-                    onNavigateToSocialPreconditionRoute = {
-                        navController.navigate(
-                            route = SocialPreconditionRoute
-                        )
-                    },
-                    onNavigateToEndThis = {
-                        navController.navigate(
-                            route = BlankRoute
-                        ) {
-                            popUpTo(0)
-                        }
-                    },
-                    nostrRepository = databaseNostrRepository,
-                    walletManager = walletManager,
-                    writeSeed = { words ->
-                        navigationViewModel.writeSeed(
-                            words,
-                            isRestoringWallet = false,
-                            onSeedWritten = { walletId ->
-
-                            }
-                        )
+            CreateProfileScreen(
+                onNavigateToEndThis = {
+                    navController.navigate(
+                        route = BlankRoute
+                    ) {
+                        popUpTo(0)
                     }
-                )
-            } else {
-                ImplementationPendingScreen("Something went wrong")
-            }
+                },
+                nostrRepository = databaseNostrRepository,
+                writeSeed = { words ->
+                    sovereignWalletViewModel.writeSeed(
+                        words,
+                        isRestoringWallet = false,
+                        onSeedWritten = { walletId ->
+
+                            sovereignWalletViewModel.loadSovereignData(walletId)
+                            sovereignWalletViewModel.listAvailableWallets {
+                                sovereignWalletViewModel.switchToWallet(walletId)
+                                navController.navigate(
+                                    route = SovereignWalletStartupRoute
+                                )
+                            }
+                        }
+                    )
+                }
+            )
 
         }
         composable<WriteNewNoteRoute> { backStackEntry ->
@@ -340,11 +385,14 @@ fun AuxNavHost(
 
             UnannouncedProfileScreen()
         }
-        composable<SocialPreconditionRoute> {
+        composable<SocialPreconditionRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SocialPreconditionRoute>()
             SocialPreconditionScreen(
                 onNavigateToSkipForNow = {
                     navController.navigate(
-                        route = FeedRoute
+                        route = FeedRoute(
+                            activeUserPublicKey = route.activeUserPubkey
+                        )
                     )
                 },
                 onNavigateToInviteFriend = {
