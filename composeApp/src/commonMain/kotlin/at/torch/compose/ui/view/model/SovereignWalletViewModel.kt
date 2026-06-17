@@ -211,7 +211,7 @@ class SovereignWalletViewModel(
     }
 
     fun getGlobalPrefs(): GlobalPrefs {
-        return _root_ide_package_.ac.cord.compose.extensions.getGlobalPrefs(
+        return _root_ide_package_.at.torch.compose.extensions.getGlobalPrefs(
             phoenixGlobal
         )
     }

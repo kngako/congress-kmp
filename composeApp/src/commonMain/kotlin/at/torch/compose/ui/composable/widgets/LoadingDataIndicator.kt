@@ -57,7 +57,7 @@ fun LoadingDataIndicator(
 @Preview
 @Composable
 private fun TransferHistoryScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             LoadingDataIndicator(
                 text = "Starting up"

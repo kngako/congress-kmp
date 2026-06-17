@@ -50,7 +50,7 @@ fun UnsignedProfileScreen() {
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -65,7 +65,7 @@ fun UnsignedProfileScreen() {
 @Preview
 @Composable
 private fun UnsignedProfileScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

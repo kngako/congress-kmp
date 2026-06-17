@@ -88,7 +88,7 @@ fun WriteNewNoteScreen(
 
                 when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState) {
                     is at.torch.compose.ui.view.state.WriteNewNoteUIState.Loading -> {
-                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator()
+                        _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
                     }
                     is at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt -> {
 
@@ -167,7 +167,7 @@ fun WriteNewNoteScreen(
                                             )
                                         },
                                         leadingIcon = {
-                                            _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                                 profile = writeNewNoteUIState.localProfile.profile,
                                                 size = 35.dp
                                             )
@@ -228,7 +228,7 @@ fun WriteNewNoteScreen(
                                                     )
                                                 },
                                                 leadingIcon = {
-                                                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                                    _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                                         profile = profile
                                                     )
                                                 },
@@ -331,7 +331,7 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
-                                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                    _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                         profile = writeNewNoteUIState.localProfile.profile
                                     )
 
@@ -343,9 +343,9 @@ fun WriteNewNoteScreen(
                                         )
                                     }
 
-                                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.content.RichContent(
+                                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.RichContent(
                                         // Hack to have the thing rendered for a preview...
-                                        nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                                        nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                                             id = "",
                                             content = writeNewNoteUIState.text,
                                             sig = "",
@@ -356,8 +356,8 @@ fun WriteNewNoteScreen(
                                         ),
                                         localQuotedNostrEvent = null,
                                         mentionedProfiles = writeNewNoteViewModel.mentionableProfiles.map {
-                                            _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalMention(
-                                                mention = _root_ide_package_.ac.cord.compose.database.model.Mention(
+                                            _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalMention(
+                                                mention = _root_ide_package_.at.torch.compose.database.model.Mention(
                                                     mentionedPublicKey = it.publicKey,
                                                     mentioningNostrEventId = ""
                                                 ),
@@ -452,7 +452,7 @@ fun WriteNewNoteScreen(
 @Preview
 @Composable
 private fun WriteNewNoteScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -463,8 +463,8 @@ private fun WriteNewNoteScreenPreview() {
                 initialWriteNewNoteUIState =
                     _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt(
 //                        text = "Yes, I did it. So WHAT?!",
-                        inReplyToNostrEvent = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalNostrEvent(
-                            nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                        inReplyToNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
+                            nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                                 id = "eventId",
                                 pubKey = "publicKey",
                                 content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -476,14 +476,14 @@ It has survived not only five centuries, but also the leap into electronic types
                                 sig = "",
                                 kind = TextNoteEvent.KIND
                             ),
-                            profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                            profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                                 publicKey = "pubKey",
                                 displayName = "John Doe",
                                 nostrEventId = "nostrEventId"
                             ),
                         ),
-                        localProfile = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalProfileWithFollowing(
-                            nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                        localProfile = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing(
+                            nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                                 id = "eventId",
                                 pubKey = "publicKey",
                                 content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -495,7 +495,7 @@ It has survived not only five centuries, but also the leap into electronic types
                                 sig = "",
                                 kind = TextNoteEvent.KIND
                             ),
-                            profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                            profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                                 publicKey = "pubKey",
                                 displayName = "John Doe",
                                 nip05 = "john@doe.com",

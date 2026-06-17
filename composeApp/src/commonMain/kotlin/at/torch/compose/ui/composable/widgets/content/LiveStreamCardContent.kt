@@ -131,7 +131,7 @@ internal fun LiveStreamCardContent(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 6.dp)
                 ) {
-                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                    _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                         profile = profile,
                         publicKey = event.pubKey,
                         size = 20.dp

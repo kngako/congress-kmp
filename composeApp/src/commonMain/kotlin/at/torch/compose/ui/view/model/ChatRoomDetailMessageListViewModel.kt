@@ -98,7 +98,7 @@ class ChatRoomDetailMessageListViewModel(
                     // Sync messages from this relay...
                     Pair(
                         chatMessageRelayListEvent.relays(),
-                        _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                        _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                             kinds = arrayOf(
                                 GiftWrapEvent.KIND,
                             ),
@@ -115,7 +115,7 @@ class ChatRoomDetailMessageListViewModel(
                     // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
                         _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet,
-                        _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                        _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                             kinds = arrayOf(
                                 ChatMessageRelayListEvent.KIND,
                             ),
@@ -130,7 +130,7 @@ class ChatRoomDetailMessageListViewModel(
                 logger.i("GiftWrapFilter: ${relayAndSynchronizationFilter.second}")
 
                 val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
-                    _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+                    _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
                         id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = relayAndSynchronizationFilter.second

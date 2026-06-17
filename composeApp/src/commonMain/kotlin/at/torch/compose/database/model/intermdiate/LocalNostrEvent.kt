@@ -67,7 +67,7 @@ data class LocalNostrEvent(
             ) {
                 val profile = profile
 
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                     profile = profile,
                     publicKey = nostrEvent.pubKey
                 )
@@ -88,7 +88,7 @@ data class LocalNostrEvent(
                     }
                 }
             }
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.content.RichContent(
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.content.RichContent(
                 modifier = Modifier.fillMaxWidth().padding(
                     horizontal = 20.dp
                 ),

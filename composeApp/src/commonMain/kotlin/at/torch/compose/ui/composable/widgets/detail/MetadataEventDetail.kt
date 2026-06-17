@@ -143,7 +143,7 @@ fun MetadataEventDetail(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                 size = 75.dp,
                                 profile = profile,
                                 publicKey = localNostrEvent.nostrEvent.pubKey
@@ -216,7 +216,7 @@ fun MetadataEventDetail(
                             IconButton(
                                 onClick = {
                                     onNavigateToChatRoom.invoke(
-                                        _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
+                                        _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
                                             activeUserPublicKey = activeUserPublicKey,
                                             directMessageIdentifier = localNostrEvent.nostrEvent.pubKey,
                                             relayHint = localNostrEvent.nostrEvent.relayUrl,
@@ -369,14 +369,14 @@ fun MetadataEventDetail(
 @Composable
 private fun MetadataEventEventDetailPreview() {
 
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             MetadataEventDetail(
                 activeUserPublicKey = "",
-                localNostrEvent = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalNostrEvent(
-                    nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                localNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
+                    nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                         id = "eventId",
                         pubKey = "publicKey",
                         content = """Profile""".trimIndent(),
@@ -384,7 +384,7 @@ private fun MetadataEventEventDetailPreview() {
                         sig = "",
                         kind = MetadataEvent.KIND
                     ),
-                    profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                         publicKey = "pubKey",
                         displayName = "John Doe",
                         nip05 = "john@doe.com",

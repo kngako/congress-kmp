@@ -18,7 +18,7 @@ fun LoadingScreen(
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                 text = text
             )
         }
@@ -28,7 +28,7 @@ fun LoadingScreen(
 @Preview
 @Composable
 private fun LoadingScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

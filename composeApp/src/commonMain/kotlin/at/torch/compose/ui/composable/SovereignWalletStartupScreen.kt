@@ -56,7 +56,7 @@ fun SovereignWalletStartupScreen(
     ) {
         when (sovereignWalletViewModel.listWalletState.value) {
             is ListWalletState.Init -> {
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                     text = "Decrypting..."
                 )
             }
@@ -84,17 +84,17 @@ fun SovereignWalletStartupScreen(
                 when {
                     availableWallets.isEmpty() -> {
                         LaunchedEffect(Unit) { onNavigateToWalletLandingPage.invoke() }
-                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                        _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                             text = "Initializing..."
                         )
                     }
                     availableWalletMetadata == null || defaultWallet.value == null -> {
-                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                        _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                             text = "Preparing wallet..."
                         )
                     }
                     activeWallet != null -> {
-                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                        _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                             text = "Opening Wallet"
                         )
                         LaunchedEffect(Unit) {
@@ -119,7 +119,7 @@ fun SovereignWalletStartupScreen(
                                 }
                                 when (val wallet = loadingWallet) {
                                     null -> {
-                                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.wallet.WalletsSelector(
+                                        _root_ide_package_.at.torch.compose.ui.composable.widgets.wallet.WalletsSelector(
                                             wallets = availableWallets,
                                             globalPrefs = globalPrefs,
                                             walletsMetadata = availableWalletMetadata,
@@ -171,12 +171,12 @@ fun SovereignWalletStartupScreen(
                                 }
                             }
                             is at.torch.compose.ui.view.model.StartupViewState.StartingBusiness -> {
-                                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                                     text = "Starting wallet"
                                 )
                             }
                             is at.torch.compose.ui.view.model.StartupViewState.BusinessActive -> {
-                                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                                     text = "Opening wallet"
                                 )
                             }
@@ -238,10 +238,10 @@ private fun BoxScope.LoadWallet(
 
     when (isScreenLockRequired.value) {
         null -> {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(text = "Loading preferences...")
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(text = "Loading preferences...")
         }
         true -> {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(text = "Unlock to continue")
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(text = "Unlock to continue")
             ScreenLockPrompt(
                 walletId = userWallet.walletId,
                 walletName = metadata.nameOrDefault(),
@@ -253,7 +253,7 @@ private fun BoxScope.LoadWallet(
             )
         }
         false -> {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(text = "Starting wallet...")
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(text = "Starting wallet...")
             LaunchedEffect(Unit) {
                 doLoadWallet(userWallet)
             }

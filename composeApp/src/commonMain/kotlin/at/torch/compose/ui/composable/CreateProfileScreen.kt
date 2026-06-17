@@ -307,7 +307,7 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = _root_ide_package_.ac.cord.compose.ui.theme.RedPill,
+                                containerColor = _root_ide_package_.at.torch.compose.ui.theme.RedPill,
                                 contentColor = Color.White
                             ),
                             onClick = {
@@ -325,7 +325,7 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = _root_ide_package_.ac.cord.compose.ui.theme.BluePill,
+                                containerColor = _root_ide_package_.at.torch.compose.ui.theme.BluePill,
                                 contentColor = Color.DarkGray
                             ),
                             onClick = {
@@ -352,7 +352,7 @@ fun CreateProfileScreen(
 @Preview
 @Composable
 fun CreateAccountScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -386,7 +386,7 @@ fun CreateAccountScreenPreview() {
 //                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
 //                    ),
                     _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.ProfileReady(
-                        profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                             publicKey = "",
                             nostrEventId = "",
                             displayName = "Alan Turing",

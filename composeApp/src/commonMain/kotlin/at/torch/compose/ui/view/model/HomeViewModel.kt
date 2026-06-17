@@ -76,7 +76,7 @@ class HomeViewModel(
 
         return when (homeScreenType) {
             HomeScreenType.Following -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     authors = profileWithFollowing.following.map { it.publicKey }.toTypedArray(),
                     kinds = arrayOf(
                         TextNoteEvent.KIND,
@@ -88,7 +88,7 @@ class HomeViewModel(
                 )
             }
             HomeScreenType.Mentions -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         TextNoteEvent.KIND,
                         RepostEvent.KIND,
@@ -109,7 +109,7 @@ class HomeViewModel(
                 )
             }
             HomeScreenType.Messages -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         GiftWrapEvent.KIND,
                     ),

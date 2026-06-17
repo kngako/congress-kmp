@@ -154,7 +154,7 @@ fun SearchScreen(
                                         IconButton(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
-                                                    _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
                                                         textFieldState.text.toString()
                                                     )
@@ -170,7 +170,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     textFieldState.text.toString()
                                                 )
@@ -193,7 +193,7 @@ fun SearchScreen(
                                         IconButton(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
-                                                    _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
                                                         query = "#${
                                                             textFieldState.text.toString()
@@ -212,7 +212,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     "#${
                                                         textFieldState.text.toString()
@@ -243,7 +243,7 @@ fun SearchScreen(
                                         )
                                     },
                                     leadingContent = {
-                                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                        _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                             profile = profile,
                                             publicKey = profile.publicKey
                                         )
@@ -251,7 +251,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToProfile.invoke(
-                                                _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     profile.nostrEventId
                                                 )
@@ -294,14 +294,14 @@ fun SearchScreen(
                                                                 .size(IconButtonDefaults.mediumContainerSize()),
                                                             onClick = {
                                                                 onNavigateToProfile.invoke(
-                                                                    _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                                         activeUserPublicKey = activeUserPublicKey,
                                                                         profile.nostrEventId
                                                                     )
                                                                 )
                                                             }
                                                         ) {
-                                                            _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                                                 size = 70.dp,
                                                                 profile = profile,
                                                                 publicKey = profile.publicKey
@@ -356,7 +356,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     query = recentSearch.query
                                                 )
@@ -404,7 +404,7 @@ fun SearchScreen(
 @Preview
 @Composable
 private fun SearchScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

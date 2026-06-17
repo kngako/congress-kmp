@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 class SignInToProfileViewModel(
     initialWriteNewNoteUIState: at.torch.compose.ui.view.state.SignInToProfileUIState,
-    val signInToProfileFormState: at.torch.compose.ui.view.state.form.SignInToProfileFormState = _root_ide_package_.ac.cord.compose.ui.view.state.form.SignInToProfileFormState(),
+    val signInToProfileFormState: at.torch.compose.ui.view.state.form.SignInToProfileFormState = _root_ide_package_.at.torch.compose.ui.view.state.form.SignInToProfileFormState(),
     val nostrRepository: at.torch.compose.repository.NostrRepository
 ): ViewModel() {
     companion object {

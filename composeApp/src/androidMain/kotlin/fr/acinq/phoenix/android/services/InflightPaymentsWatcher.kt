@@ -16,7 +16,7 @@
 
 package fr.acinq.phoenix.android.services
 
-import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.BuildConfig
 import at.torch.android.TorchApplication
 import android.content.Context
 import android.os.Build

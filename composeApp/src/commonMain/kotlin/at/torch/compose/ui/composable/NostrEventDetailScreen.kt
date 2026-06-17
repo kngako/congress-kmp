@@ -63,7 +63,7 @@ fun NostrEventDetailScreen(
 
             when(feedListUIState.localNostrEvent.nostrEvent.kind) {
                 MetadataEvent.KIND -> {
-                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.detail.MetadataEventDetail(
+                    _root_ide_package_.at.torch.compose.ui.composable.widgets.detail.MetadataEventDetail(
                         activeUserPublicKey = activeUserPublicKey,
                         localNostrEvent = feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
@@ -74,7 +74,7 @@ fun NostrEventDetailScreen(
                     )
                 }
                 TextNoteEvent.KIND -> {
-                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.detail.TextNoteEventDetail(
+                    _root_ide_package_.at.torch.compose.ui.composable.widgets.detail.TextNoteEventDetail(
                         feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToWriteAReply = onNavigateToWriteAReply,
@@ -114,7 +114,7 @@ fun NostrEventDetailScreen(
             }
         }
         _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading -> {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator()
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
 
             LaunchedEffect(true) {
                 nostrEventDetailViewModel.loadNostrFeed()
@@ -135,14 +135,14 @@ fun NostrEventDetailScreen(
 @Preview
 @Composable
 private fun NostrEventDetailScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             NostrEventDetailScreen(
                 initialNostrEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
-                    localNostrEvent = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalNostrEvent(
-                        nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    localNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
+                        nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                             id = "eventId",
                             pubKey = "publicKey",
                             content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -154,7 +154,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             sig = "",
                             kind = TextNoteEvent.KIND
                         ),
-                        profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                             publicKey = "pubKey",
                             displayName = "John Doe",
                             nostrEventId = "nostrEventId"

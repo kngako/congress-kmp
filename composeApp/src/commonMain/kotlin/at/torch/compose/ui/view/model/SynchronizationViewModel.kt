@@ -43,9 +43,9 @@ class SynchronizationViewModel(
     val scope: CoroutineScope,
 ): ViewModel() {
 
-    val relaysSocketManager = _root_ide_package_.ac.cord.compose.network.relays.RelaysSocketManager(
+    val relaysSocketManager = _root_ide_package_.at.torch.compose.network.relays.RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
-        nostrSocketClientFactory = _root_ide_package_.ac.cord.compose.network.sockets.NostrSocketClientFactory,
+        nostrSocketClientFactory = _root_ide_package_.at.torch.compose.network.sockets.NostrSocketClientFactory,
         cachingImportRepository = _root_ide_package_.at.torch.compose.repository.CachingImportRepository.Companion.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
     )
@@ -306,10 +306,10 @@ class SynchronizationViewModel(
                                                 // Schedule a sync from this relay...
                                                 nostrRepository.queueSynchronizeNostrEvent(
                                                     listOf(
-                                                        _root_ide_package_.ac.cord.compose.database.model.SynchronizeNostrEventRequest(
+                                                        _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                                                             purpose = negentropySynchronizeRequest.purpose,
                                                             synchronizationFilters = arrayOf(
-                                                                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                                                                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                                                                     ids = result.needIds.map { it.toHexString() }
                                                                         .toTypedArray()
                                                                 )
@@ -322,7 +322,7 @@ class SynchronizationViewModel(
                                             }
                                             val eventIds = events.map { it.id }
                                             val broadcastNostrEventRequests = result.sendIds.filter { it.toHexString() in eventIds }.map { sendId ->
-                                                _root_ide_package_.ac.cord.compose.database.model.BroadcastNostrEventRequest(
+                                                _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventRequest(
                                                     nostrEventId = sendId.toHexString(),
                                                     relayURL = negentropySynchronizeRequest.relayURL
                                                 )

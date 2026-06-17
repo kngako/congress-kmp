@@ -46,7 +46,7 @@ class FeedListViewModel(
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
     val negentropySynchronizeRequests = _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
-        _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+        _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
             id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                 normalizedRelayUrl.url,
                 synchronizationFilter = synchronizationFilter
@@ -149,7 +149,7 @@ class FeedListViewModel(
                                 localNostrEvent.ListView(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
-                                            _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                            _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )

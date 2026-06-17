@@ -53,7 +53,7 @@ fun UnqueuedProfileScreen() {
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -71,7 +71,7 @@ fun UnqueuedProfileScreen() {
 @Preview
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

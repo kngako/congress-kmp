@@ -26,7 +26,7 @@ fun at.torch.compose.database.model.UnsignedNostrEvent.signOrThrow(hexPrivateKey
         tags = this.tags,
         content = this.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: this.content
     )
-    return _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+    return NostrEvent(
         id = event.id,
         pubKey = event.pubKey,
         kind = event.kind,

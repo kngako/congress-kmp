@@ -83,7 +83,7 @@ internal class NostrSocketClientImpl(
             logger.w("NostrSocketClient::acquireWebSocketSession($socketUrl) failed.", error)
             close()
             onSocketConnectionClosed?.invoke(socketUrl, error)
-            throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException(cause = error)
+            throw _root_ide_package_.at.torch.compose.exceptions.NetworkException(cause = error)
         }
     }
 

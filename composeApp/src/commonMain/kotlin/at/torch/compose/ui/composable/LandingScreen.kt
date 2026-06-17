@@ -36,7 +36,7 @@ fun LandingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Aux",
+                    text = "Torch",
                     style = MaterialTheme.typography.headlineLarge
                 )
 
@@ -101,7 +101,7 @@ fun LandingScreen(
 @Preview
 @Composable
 private fun LandingScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

@@ -105,7 +105,7 @@ class DatabaseNostrRepository(
         )
 
         val unsignedNostrEvents = mutableListOf(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
@@ -120,7 +120,7 @@ class DatabaseNostrRepository(
                 followUsers.map { it.toTagArray() }
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = ContactListEvent.KIND,
                 tags = contactListTagList.toTypedArray(),
@@ -131,7 +131,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = ChatMessageRelayListEvent.KIND,
                 tags = ChatMessageRelayListEvent.createTagArray(
@@ -142,7 +142,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = AdvertisedRelayListEvent.KIND,
                 tags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultNIP65List.map { it.toTagArray() }
@@ -154,7 +154,7 @@ class DatabaseNostrRepository(
 
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = SearchRelayListEvent.KIND,
                 tags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultSearchRelayList.map {
@@ -171,7 +171,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = IndexerRelayListEvent.KIND,
                 tags = arrayOf(AltTag.assemble(IndexerRelayListEvent.ALT)),
@@ -185,7 +185,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = ChannelListEvent.KIND,
                 tags = arrayOf(
@@ -200,7 +200,7 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = RelayFeedsListEvent.KIND,
                 tags = arrayOf(
@@ -224,13 +224,13 @@ class DatabaseNostrRepository(
         val profileEventTemplate = MetadataEvent.createNew()
 
         saveUnsignedNostrEvent(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,
                 content = profileEventTemplate.content,
-                signedAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT // This will keep us from trying to sign this event... but we should automatically sync the npub profile
+                signedAt = _root_ide_package_.at.torch.compose.database.GENESIS_AT // This will keep us from trying to sign this event... but we should automatically sync the npub profile
             )
         )
     }
@@ -329,7 +329,7 @@ class DatabaseNostrRepository(
 
 
         val unsignedNostrEvent = saveUnsignedNostrEvent(
-            _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = textNote.kind,
                 createdAt = Instant.fromEpochSeconds(textNote.createdAt),
@@ -407,7 +407,7 @@ class DatabaseNostrRepository(
 
         if (status == "published") {
             val broadcastNostrEventReceiptId = database.broadcastNostrEventReceiptDao().upsert(
-                _root_ide_package_.ac.cord.compose.database.model.BroadcastNostrEventReceipt(
+                _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventReceipt(
                     nostrEventId = broadcastNostrEventRequest.nostrEventId,
                     unsignedNostrEventId = broadcastNostrEventRequest.unsignedNostrEventId,
                     isAccepted = true,
@@ -420,7 +420,7 @@ class DatabaseNostrRepository(
             )?.let { chatMessageBroadcastNostrEventRequestRelation ->
                 // This is actually a chatMessage related broadcast event...
                 database.chatMessageBroadcastNostrEventReceiptRelationDao().upsert(
-                    _root_ide_package_.ac.cord.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation(
+                    _root_ide_package_.at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation(
                         chatMessageId = chatMessageBroadcastNostrEventRequestRelation.chatMessageId,
                         broadcastNostrEventReceiptId = broadcastNostrEventReceiptId
                     )
@@ -616,7 +616,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         search = synchronizationFilter.search,
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -629,7 +629,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -641,7 +641,7 @@ class DatabaseNostrRepository(
                     logger.d("getNostrEventsByIds($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getNostrEventsByIds(
                         ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -654,7 +654,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getAuthoredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         authors = synchronizationFilter.authors,
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -680,7 +680,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getPublicKeyMentionedNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         publicKey = synchronizationFilter.tags["p"]?.first()!!,
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -694,7 +694,7 @@ class DatabaseNostrRepository(
                         kinds = arrayOf(
                             TextNoteEvent.KIND,
                         ),
-                        since = synchronizationFilter.since ?: _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -743,7 +743,7 @@ class DatabaseNostrRepository(
         synchronizationFilterArray: at.torch.compose.database.model.typealiases.SynchronizationFilterArray?
     ) {
         database.recentSearchDao().upsert(
-            _root_ide_package_.ac.cord.compose.database.model.RecentSearch(
+            _root_ide_package_.at.torch.compose.database.model.RecentSearch(
                 query = query,
                 synchronizationFilters = synchronizationFilterArray
             )

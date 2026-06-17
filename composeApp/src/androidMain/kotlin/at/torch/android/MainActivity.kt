@@ -1,7 +1,5 @@
 package at.torch.android
 
-import at.torch.auxiliary.compose.AuxApp
-import at.torch.auxiliary.compose.AuxGlobal
 import at.torch.compose.PlatformContext
 import android.content.Intent
 import android.nfc.NfcAdapter
@@ -10,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
+import at.torch.compose.TorchApp
+import at.torch.compose.TorchGlobal
 import com.machankura.compose.ui.composable.widgets.nfc.NfcState
 import com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository
 import fr.acinq.phoenix.PhoenixGlobal
@@ -26,9 +26,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
-            AuxApp(
+            TorchApp(
                 navController = navController,
-                auxGlobal = AuxGlobal(
+                torchGlobal = TorchGlobal(
                     platformContext = PlatformContext(
                         applicationContext = applicationContext
                     )

@@ -114,7 +114,7 @@ fun SocialPreconditionScreen(
 @Preview
 @Composable
 private fun SocialPreconditionScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

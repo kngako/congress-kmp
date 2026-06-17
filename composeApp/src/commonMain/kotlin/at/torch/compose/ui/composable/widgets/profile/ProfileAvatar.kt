@@ -60,18 +60,18 @@ fun ProfileAvatar(
     } else {
         // Load image...
         val placeHolderGraphic =
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.coil.forwardingPainter(
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.Face5),
                 colorFilter = ColorFilter.tint(tintColor)
             )
 
         val fallbackGraphic =
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.coil.forwardingPainter(
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.Face5),
                 colorFilter = ColorFilter.tint(tintColor)
             )
         val errorGraphic =
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.coil.forwardingPainter(
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.FaceRetouchingOff),
                 colorFilter = ColorFilter.tint(tintColor)
             )
@@ -93,13 +93,13 @@ fun ProfileAvatar(
 @Preview
 @Composable
 fun ProfileAvatarPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             ProfileAvatar(
                 publicKey = "hwgwefwase",
-                profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk",

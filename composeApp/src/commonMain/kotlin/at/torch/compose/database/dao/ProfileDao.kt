@@ -11,7 +11,7 @@ import kotlin.time.Instant
 @Dao
 interface ProfileDao {
     @Query("SELECT * FROM Profile WHERE createdAt > :createdAt LIMIT :limit")
-    fun  getAllProfiles(limit: Int = 21, createdAt: Instant = _root_ide_package_.ac.cord.compose.database.GENESIS_AT): List<at.torch.compose.database.model.Profile>
+    fun  getAllProfiles(limit: Int = 21, createdAt: Instant = _root_ide_package_.at.torch.compose.database.GENESIS_AT): List<at.torch.compose.database.model.Profile>
 
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND content LIKE '%' || :searchTerm || '%' LIMIT :limit")
     fun  filterProfiles(searchTerm: String, limit: Int = 21): List<at.torch.compose.database.model.intermdiate.LocalProfile>

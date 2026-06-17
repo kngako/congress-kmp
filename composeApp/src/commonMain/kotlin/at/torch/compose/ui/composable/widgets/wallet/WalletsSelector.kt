@@ -117,7 +117,7 @@ private fun AvailableWalletView(
 ) {
     var showWalletEditDialog by remember { mutableStateOf(false) }
     if (showWalletEditDialog) {
-        _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+        _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
             text = "Edit function coming soon"
         )
 //        EditWalletDialog(

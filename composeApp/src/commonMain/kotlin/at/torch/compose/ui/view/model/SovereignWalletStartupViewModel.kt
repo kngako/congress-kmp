@@ -51,11 +51,11 @@ class SovereignWalletStartupViewModel(
             state.value = StartupViewState.StartingBusiness(walletId)
 
             val startResult: StartBusinessResult =
-                _root_ide_package_.ac.cord.compose.extensions.platformStartupLogic(
+                _root_ide_package_.at.torch.compose.extensions.platformStartupLogic(
                     words
                 )
 
-            _root_ide_package_.ac.cord.compose.extensions.schedulePlatformLogic(
+            _root_ide_package_.at.torch.compose.extensions.schedulePlatformLogic(
                 phoenixGlobal = phoenixGlobal,
             )
             when (startResult) {
@@ -72,7 +72,7 @@ class SovereignWalletStartupViewModel(
     }
 
     fun getShowIntroFlow(): Flow<Boolean> {
-        return _root_ide_package_.ac.cord.compose.extensions.getShowIntroFlow(phoenixGlobal)
+        return _root_ide_package_.at.torch.compose.extensions.getShowIntroFlow(phoenixGlobal)
     }
 
     companion object {

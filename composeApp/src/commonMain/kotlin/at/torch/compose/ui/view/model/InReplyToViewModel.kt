@@ -81,7 +81,7 @@ class InReplyToViewModel(
 
             nostrRepository.queueNegentropySynchronizeRequest(
                 publicRelays.take(3).map { normalizedRelayUrl ->
-                    _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+                    _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
                         id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
@@ -156,7 +156,7 @@ class InReplyToViewModel(
                                 localNostrEvent.ListView(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
-                                            _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                            _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
@@ -199,7 +199,7 @@ class InReplyToViewModel(
             profile: at.torch.compose.database.model.Profile?,
             createdAt: Instant,
             initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
-            synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter = _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter = _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 kinds = arrayOf(
                     TextNoteEvent.KIND,
                     ReactionEvent.KIND,

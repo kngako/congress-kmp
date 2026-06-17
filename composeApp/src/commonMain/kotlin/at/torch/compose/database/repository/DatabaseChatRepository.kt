@@ -70,7 +70,7 @@ class DatabaseChatRepository(
             authors = arrayOf(
                 publicKey
             ),
-            since = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+            since = _root_ide_package_.at.torch.compose.database.GENESIS_AT,
             limit = 5
         ).firstOrNull()?.let { nostrEvent ->
             if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
@@ -106,7 +106,7 @@ class DatabaseChatRepository(
         }
 
         val giftWrapPayloadId = database.giftWrapPayloadDao().upsert(
-            _root_ide_package_.ac.cord.compose.database.model.GiftWrapPayload(
+            _root_ide_package_.at.torch.compose.database.model.GiftWrapPayload(
                 kind = messageType,
                 tags = receiverTags.toTypedArray(),
                 content = text,
@@ -115,7 +115,7 @@ class DatabaseChatRepository(
             )
         )
         database.chatMessageDao().upsert(
-            _root_ide_package_.ac.cord.compose.database.model.ChatMessage(
+            _root_ide_package_.at.torch.compose.database.model.ChatMessage(
                 content = text,
                 chatRoomId = localChatRoom.chatRoom.id,
                 senderPublicKey = localChatRoom.chatRoom.userPublicKey,

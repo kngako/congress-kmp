@@ -241,7 +241,7 @@ fun ChatRoomDetailScreen(
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -262,7 +262,7 @@ fun ChatRoomDetailScreen(
 @Preview
 @Composable
 private fun ChatRoomDetailScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -271,8 +271,8 @@ private fun ChatRoomDetailScreenPreview() {
                 publicKey = "publicKey",
                 relayHint = null,
                 initialChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
-                    localChatRoom = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalChatRoom(
-                        chatRoom = _root_ide_package_.ac.cord.compose.database.model.ChatRoom(
+                    localChatRoom = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(
+                        chatRoom = _root_ide_package_.at.torch.compose.database.model.ChatRoom(
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",

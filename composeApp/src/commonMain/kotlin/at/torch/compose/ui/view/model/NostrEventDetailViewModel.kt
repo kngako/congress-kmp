@@ -39,10 +39,10 @@ class NostrEventDetailViewModel(
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
                 _root_ide_package_.at.torch.compose.nostr.Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
-                    _root_ide_package_.ac.cord.compose.database.model.SynchronizeNostrEventRequest(
+                    _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "detail",
                         synchronizationFilters = arrayOf(
-                            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                                 kinds = arrayOf(
                                     TextNoteEvent.KIND,
                                     RepostEvent.KIND,

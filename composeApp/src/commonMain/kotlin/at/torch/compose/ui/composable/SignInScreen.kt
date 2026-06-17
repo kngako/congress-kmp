@@ -254,7 +254,7 @@ fun SignInToProfileScreen(
 @Preview
 @Composable
 private fun SignInToProfileScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

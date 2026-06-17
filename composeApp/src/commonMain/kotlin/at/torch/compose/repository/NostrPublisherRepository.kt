@@ -40,7 +40,7 @@ class NostrPublisherRepository(
                 relaysSocketManager.publishEvent(
                     nostrEvent = signedNostrEvent,
                     relays = outboxRelays.map {
-                        _root_ide_package_.ac.cord.compose.network.dto.RelayDTO(
+                        _root_ide_package_.at.torch.compose.network.dto.RelayDTO(
                             url = it,
                             read = false,
                             write = true

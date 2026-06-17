@@ -96,7 +96,7 @@ class MetadataEventDetailViewModel(
         metadataEventDetailType: MetadataEventDetailType
     ) = when (metadataEventDetailType) {
         MetadataEventDetailType.Posts -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -108,7 +108,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Replies -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -121,7 +121,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Articles -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -132,7 +132,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Followers -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -144,7 +144,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Following -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -155,7 +155,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Zaps -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -167,7 +167,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Photos -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -178,7 +178,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Shorts -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -189,7 +189,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Videos -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -200,7 +200,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Bookmarks -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -211,7 +211,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Reports -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -222,7 +222,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Relays -> {
-            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -267,7 +267,7 @@ class MetadataEventDetailViewModel(
                     followUsers.map { it }
 
             nostrRepository.saveUnsignedNostrEvent(
-                _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+                _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                     pubKey = activeUserPublicKey,
                     kind = ContactListEvent.KIND,
                     tags = contactListTagList.toTypedArray(),
@@ -294,7 +294,7 @@ class MetadataEventDetailViewModel(
                     logger.d("User is not being followed so no need to unfollow: $eventPublicKey")
                 } else {
                     nostrRepository.saveUnsignedNostrEvent(
-                        _root_ide_package_.ac.cord.compose.database.model.UnsignedNostrEvent(
+                        _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
                             pubKey = activeUserPublicKey,
                             kind = ContactListEvent.KIND,
                             tags = contactListEvent.tags.filter { it.size > 1 && it[1] != eventPublicKey }

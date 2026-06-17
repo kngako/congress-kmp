@@ -1,6 +1,6 @@
 package at.torch.compose
 
-import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.BuildConfig
 
 actual object AppVersion {
     actual val versionName: String

@@ -1,8 +1,6 @@
 package fr.acinq.phoenix.data
 
 import androidx.compose.runtime.Composable
-import aux.composeapp.generated.resources.Res
-import aux.composeapp.generated.resources.*
 import fr.acinq.lightning.db.AutomaticLiquidityPurchasePayment
 import fr.acinq.lightning.db.Bolt11IncomingPayment
 import fr.acinq.lightning.db.Bolt12IncomingPayment
@@ -20,6 +18,8 @@ import fr.acinq.phoenix.data.lnurl.LnurlPay
 import fr.acinq.phoenix.utils.converters.AmountFormatter.toPrettyString
 import fr.acinq.phoenix.utils.extensions.desc
 import org.jetbrains.compose.resources.stringResource
+import torch.composeapp.generated.resources.Res
+import torch.composeapp.generated.resources.*
 
 /**
  * Represents a payment & its associated metadata.

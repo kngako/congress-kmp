@@ -58,10 +58,10 @@ class UnqueuedProfileSynchronizationViewModel(
 
             nostrRepository.queueSynchronizeNostrEvent(
                 _root_ide_package_.at.torch.compose.nostr.Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
-                    _root_ide_package_.ac.cord.compose.database.model.SynchronizeNostrEventRequest(
+                    _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "sign-in",
                         synchronizationFilters = arrayOf(
-                            _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                            _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                                 authors = arrayOf(profilePublicKey),
                                 kinds = arrayOf(
                                     MetadataEvent.KIND,

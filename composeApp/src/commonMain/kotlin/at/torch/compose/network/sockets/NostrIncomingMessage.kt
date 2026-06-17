@@ -52,11 +52,11 @@ sealed class NostrIncomingMessage {
 
 fun NostrIncomingMessage?.verifyOrThrow(subscriptionId: String) {
     if (this == null) {
-        throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException("No messages received.")
+        throw _root_ide_package_.at.torch.compose.exceptions.NetworkException("No messages received.")
     }
 
     if (this is NostrIncomingMessage.NoticeMessage) {
-        throw _root_ide_package_.ac.cord.compose.exceptions.NostrNoticeException(
+        throw _root_ide_package_.at.torch.compose.exceptions.NostrNoticeException(
             reason = this.message,
             subscriptionId = subscriptionId,
         )

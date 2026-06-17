@@ -16,9 +16,9 @@
 
 package fr.acinq.phoenix.utils
 
-import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.BuildConfig
 import at.torch.android.MainActivity
-import at.torch.auxiliary.android.R
+import at.torch.android.R
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager

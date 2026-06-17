@@ -17,8 +17,8 @@
 package fr.acinq.phoenix.android
 
 import at.torch.android.TorchApplication
-import at.torch.auxiliary.compose.AppVersion
-import at.torch.auxiliary.compose.ui.composable.widgets.wallet.WalletAvatars
+import at.torch.compose.AppVersion
+import at.torch.compose.ui.composable.widgets.wallet.WalletAvatars
 import android.content.Context
 import android.text.format.DateUtils
 import fr.acinq.lightning.LiquidityEvents

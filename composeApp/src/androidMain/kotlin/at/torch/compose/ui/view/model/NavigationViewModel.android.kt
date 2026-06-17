@@ -1,7 +1,7 @@
 package at.torch.compose.ui.view.model
 
 import at.torch.android.TorchApplication
-import at.torch.auxiliary.compose.AppVersion
+import at.torch.compose.AppVersion
 import co.touchlab.kermit.Logger
 import fr.acinq.bitcoin.MnemonicCode
 import fr.acinq.lightning.crypto.LocalKeyManager

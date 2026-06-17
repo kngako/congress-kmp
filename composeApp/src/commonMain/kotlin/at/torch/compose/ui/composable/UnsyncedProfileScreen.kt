@@ -52,7 +52,7 @@ fun UnsyncedProfileScreen(
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -67,7 +67,7 @@ fun UnsyncedProfileScreen(
 @Preview
 @Composable
 private fun UnsyncedProfileScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

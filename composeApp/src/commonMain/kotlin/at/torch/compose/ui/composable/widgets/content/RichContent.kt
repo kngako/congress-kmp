@@ -403,7 +403,7 @@ fun RichContent(
 @Preview
 @Composable
 private fun RichContentPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
@@ -412,7 +412,7 @@ private fun RichContentPreview() {
             ) {
                 RichContent(
                     modifier = Modifier.padding(10.dp),
-                    nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                         id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                         content = "Something something something nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nhttps://www.brainyquote.com/authors/steven-biko-quotes\nnostr:nevent1qqspcusnzxx5u97xht2udvg3yhcq2cvmc0jrxa90lwwdvjplve0atespzpmhxue69uhkummnw3ezuamfdejsyg8h5g639qhuv803hzwexfwhyud6t6suxfu364anddqvrmn9j4cahvxksr8q",
                         pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
@@ -420,8 +420,8 @@ private fun RichContentPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    localQuotedNostrEvent = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalQuotedNostrEvent(
-                        nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    localQuotedNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalQuotedNostrEvent(
+                        nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                             id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
                             content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
                             pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
@@ -429,24 +429,24 @@ private fun RichContentPreview() {
                             sig = "hexsig",
                             tags = emptyArray()
                         ),
-                        quotedRelation = _root_ide_package_.ac.cord.compose.database.model.QuotedRelation(
+                        quotedRelation = _root_ide_package_.at.torch.compose.database.model.QuotedRelation(
                             quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                             quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
                         ),
-                        profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                             publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             nostrEventId = "referenced",
                             displayName = "Steve Biko"
                         ),
                     ),
                     mentionedProfiles = listOf(
-                        _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalMention(
-                            mention = _root_ide_package_.ac.cord.compose.database.model.Mention(
+                        _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalMention(
+                            mention = _root_ide_package_.at.torch.compose.database.model.Mention(
                                 id = 1,
                                 mentionedPublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             ),
-                            profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                            profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                                 publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                                 nostrEventId = "referenced",
                                 displayName = "Frank Talk"

@@ -39,7 +39,7 @@ fun ImplementationPendingScreen(
 @Preview
 @Composable
 private fun ImplementationPendingScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

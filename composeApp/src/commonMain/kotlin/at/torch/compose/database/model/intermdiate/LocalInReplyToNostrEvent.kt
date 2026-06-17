@@ -50,7 +50,7 @@ data class LocalInReplyToNostrEvent(
             ) {
                 val profile = profile
 
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                     profile = profile,
                     publicKey = nostrEvent.pubKey
                 )

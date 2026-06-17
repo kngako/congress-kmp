@@ -190,7 +190,7 @@ class RelayPool(
         val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw _root_ide_package_.at.torch.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         return coroutineScope {
             val eventFlow =  nostrSocketClient.queryAsFlow(reqCommand.subId)
@@ -214,7 +214,7 @@ class RelayPool(
         val negentropySyncRequest = OptimizedJsonMapper.toJson(negOpenCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw _root_ide_package_.at.torch.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         return coroutineScope {
             val eventFlow =  nostrSocketClient.queryAsFlow(negOpenCmd.subId)
@@ -237,7 +237,7 @@ class RelayPool(
         val closeSubscription = OptimizedJsonMapper.toJson(closeCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw _root_ide_package_.at.torch.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         coroutineScope {
             with(nostrSocketClient) {
@@ -259,7 +259,7 @@ class RelayPool(
         val closeNegentropySubscription = OptimizedJsonMapper.toJson(negCloseCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.ac.cord.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw _root_ide_package_.at.torch.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         coroutineScope {
             with(nostrSocketClient) {
@@ -337,7 +337,7 @@ class RelayPool(
             .transform {
                 when (it) {
                     is at.torch.compose.network.sockets.NostrIncomingMessage.OkMessage -> emit(it)
-                    is at.torch.compose.network.sockets.NostrIncomingMessage.NoticeMessage -> throw _root_ide_package_.ac.cord.compose.exceptions.NostrNoticeException(
+                    is at.torch.compose.network.sockets.NostrIncomingMessage.NoticeMessage -> throw _root_ide_package_.at.torch.compose.exceptions.NostrNoticeException(
                         reason = it.message
                     )
                     else -> error("$it is not allowed")

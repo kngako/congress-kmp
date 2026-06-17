@@ -207,7 +207,7 @@ fun TextNoteEventDetail(
                         ) {
                             val profile = localNostrEvent.profile
 
-                            _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                 profile = localNostrEvent.profile,
                                 publicKey = localNostrEvent.nostrEvent.pubKey
                             )
@@ -254,7 +254,7 @@ fun TextNoteEventDetail(
                             }
                         }
 
-                        _root_ide_package_.ac.cord.compose.ui.composable.widgets.content.RichContent(
+                        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.RichContent(
                             modifier = Modifier.fillMaxWidth().padding(
                                 horizontal = 20.dp
                             ),
@@ -385,13 +385,13 @@ fun TextNoteEventDetail(
 @Composable
 private fun TextNoteEventDetailPreview() {
 
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             TextNoteEventDetail(
-                localNostrEvent = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalNostrEvent(
-                    nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                localNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
+                    nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                         id = "eventId",
                         pubKey = "publicKey",
                         content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -403,7 +403,7 @@ It has survived not only five centuries, but also the leap into electronic types
                         sig = "",
                         kind = TextNoteEvent.KIND
                     ),
-                    profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                         publicKey = "pubKey",
                         displayName = "John Doe",
                         nip05 = "john@doe.me",

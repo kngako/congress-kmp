@@ -134,7 +134,7 @@ data class Profile(
             ),
             onClick = {
                 onNavigateToEvent.invoke(
-                    _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                         activeUserPublicKey = activeUserPublicKey,
                         nostrEventId
                     )
@@ -152,7 +152,7 @@ data class Profile(
                 Column(
                     modifier = Modifier.padding(4.dp)
                 ) {
-                    _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                    _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                         publicKey = publicKey,
                         profile = this@Profile
                     )
@@ -196,7 +196,7 @@ fun ProfileRenderAsListItemPreview(
         about = "I am the stone that the builder refused.",
         nostrEventId = "nostrEventId"
     )
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

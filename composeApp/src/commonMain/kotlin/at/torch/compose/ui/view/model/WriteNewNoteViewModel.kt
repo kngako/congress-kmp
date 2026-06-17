@@ -26,7 +26,7 @@ class WriteNewNoteViewModel(
     val quotedNostrEventId: HexKey?,
 
     initialWriteNewNoteUIState: at.torch.compose.ui.view.state.WriteNewNoteUIState,
-    val writeNewNoteFormState: at.torch.compose.ui.view.state.form.WriteNewNoteFormState = _root_ide_package_.ac.cord.compose.ui.view.state.form.WriteNewNoteFormState(),
+    val writeNewNoteFormState: at.torch.compose.ui.view.state.form.WriteNewNoteFormState = _root_ide_package_.at.torch.compose.ui.view.state.form.WriteNewNoteFormState(),
     val nostrRepository: at.torch.compose.repository.NostrRepository
 ): ViewModel() {
     companion object {

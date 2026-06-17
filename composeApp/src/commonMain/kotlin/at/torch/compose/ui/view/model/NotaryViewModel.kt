@@ -94,7 +94,7 @@ class NotaryViewModel(
 
                             nostrRepository.publishNostrEvent(
                                 unsignedNostrEvent,
-                                _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                                _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                                     id = event.id,
                                     pubKey = event.pubKey,
                                     kind = event.kind,

@@ -66,6 +66,6 @@ fun String.extractKeyPairFromPrivateKeyOrThrow(): Pair<String, String> {
         nsec to pubkey.toNpub()
     } catch (error: IllegalArgumentException) {
         Logger.withTag("String.extractKeyPairFromPrivateKeyOrThrow").w(error) { error.message ?: "" }
-        throw _root_ide_package_.ac.cord.compose.exceptions.InvalidNostrPrivateKeyException()
+        throw _root_ide_package_.at.torch.compose.exceptions.InvalidNostrPrivateKeyException()
     }
 }

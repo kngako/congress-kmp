@@ -56,7 +56,7 @@ class SearchResultViewModel(
         logger.d("initiateSearchResults")
         val synchronizationFilter = when (searchResultType) {
             SearchResultType.Posts -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         TextNoteEvent.KIND,
                         RepostEvent.KIND,
@@ -68,7 +68,7 @@ class SearchResultViewModel(
                 )
             }
             SearchResultType.Profiles -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         MetadataEvent.KIND,
                     ),
@@ -77,7 +77,7 @@ class SearchResultViewModel(
                 )
             }
             SearchResultType.Articles -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         LongTextNoteEvent.KIND,
                     ),
@@ -86,7 +86,7 @@ class SearchResultViewModel(
                 )
             }
             SearchResultType.Photos -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         PictureEvent.KIND,
                     ),
@@ -96,7 +96,7 @@ class SearchResultViewModel(
                 )
             }
             SearchResultType.Videos -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         VideoNormalEvent.KIND,
                     ),
@@ -106,7 +106,7 @@ class SearchResultViewModel(
                 )
             }
             SearchResultType.Shorts -> {
-                _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                     kinds = arrayOf(
                         VideoShortEvent.KIND,
                     ),
@@ -140,7 +140,7 @@ class SearchResultViewModel(
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
                 _root_ide_package_.at.torch.compose.nostr.Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Search all relays instead of the first
-                    _root_ide_package_.ac.cord.compose.database.model.SynchronizeNostrEventRequest(
+                    _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
                             synchronizationFilter

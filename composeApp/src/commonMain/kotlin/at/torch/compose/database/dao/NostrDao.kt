@@ -77,7 +77,7 @@ abstract class NostrDao(
 
         relayURLs.forEach { relayURL ->
             database.broadcastNostrEventRequestDao().upsert(
-                _root_ide_package_.ac.cord.compose.database.model.BroadcastNostrEventRequest(
+                BroadcastNostrEventRequest(
                     nostrEventId = nostrEvent.id,
                     unsignedNostrEventId = nostrEvent.unsignedNostrEventId,
                     relayURL = relayURL
@@ -109,7 +109,7 @@ abstract class NostrDao(
         } else {
             // Nothing else needs to be done
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
-            if (profile?.createdAt == _root_ide_package_.ac.cord.compose.database.GENESIS_AT && nostrEvent.kind == MetadataEvent.KIND) {
+            if (profile?.createdAt == GENESIS_AT && nostrEvent.kind == MetadataEvent.KIND) {
                 logger.i("This is a placeholder profile might need to get synced...: ${profile.publicKey}")
                 // Setup the sync here...
             } else {
@@ -118,7 +118,7 @@ abstract class NostrDao(
         }
 
         database.nostrEventRelayDao().upsert(
-            _root_ide_package_.ac.cord.compose.database.model.NostrEventRelay(
+            NostrEventRelay(
                 relayURL = relayURL,
                 nostrEventId = nostrEvent.id
             )
@@ -150,10 +150,10 @@ abstract class NostrDao(
             val profile = database.profileDao().getProfileByPublicKey(nostrEvent.pubKey)
 
             if (profile == null) {
-                val placeHolderProfile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                val placeHolderProfile = Profile(
                     displayName = "LOADING...",
                     publicKey = nostrEvent.pubKey,
-                    createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                    createdAt = GENESIS_AT,
                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                 )
                 database.profileDao().insertPlaceholderProfile(placeHolderProfile)
@@ -161,7 +161,7 @@ abstract class NostrDao(
                     profilePublicKeysToSync[relayURL] = mutableSetOf()
                 }
                 profilePublicKeysToSync[relayURL]?.add(nostrEvent.pubKey)
-            } else if (profile.createdAt == _root_ide_package_.ac.cord.compose.database.GENESIS_AT && level == 0) {
+            } else if (profile.createdAt == GENESIS_AT && level == 0) {
                 logger.i("This is a placeholder profile... that might need to get synced...: $profile")
                 if (profilePublicKeysToSync[relayURL] == null) {
                     profilePublicKeysToSync[relayURL] = mutableSetOf()
@@ -186,7 +186,7 @@ abstract class NostrDao(
 
                 database.nostrEventDao().insert(
                     if (containedPost != null) {
-                        _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                        NostrEvent(
                             id = containedPost.id,
                             content = containedPost.content,
                             createdAt = Instant.fromEpochSeconds(containedPost.createdAt),
@@ -196,10 +196,10 @@ abstract class NostrDao(
                             tags = containedPost.tags
                         )
                     } else {
-                        _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                        NostrEvent(
                             id = repostedRelation.repostedNostrEventId,
                             content = "Pending Sync",
-                            createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                            createdAt = GENESIS_AT,
                             pubKey = nostrEvent.pubKey,
                             sig = "",
                             kind = nostrEvent.kind,
@@ -217,10 +217,10 @@ abstract class NostrDao(
 
             if (repostedProfilePublicKey != null && repostedProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
-                    _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    Profile(
                         displayName = "LOADING...",
                         publicKey = repostedProfilePublicKey,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                 )
@@ -238,10 +238,10 @@ abstract class NostrDao(
             val taggedNostrEvent = database.nostrEventDao().getNostrEventById(taggedEvent.eventId)
             if (taggedNostrEvent == null) {
                 database.nostrEventDao().insert(
-                    _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    NostrEvent(
                         id = taggedEvent.eventId,
                         content = "Pending Sync... ",
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         pubKey = nostrEvent.pubKey,
                         sig = "",
                         kind = nostrEvent.kind,
@@ -274,17 +274,17 @@ abstract class NostrDao(
             if (taggedProfile == null) {
                 // Save a placeholder
                 database.profileDao().insertPlaceholderProfile(
-                    _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    Profile(
                         displayName = "LOADING...",
                         publicKey = taggedUser.pubKey,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                 )
             }
 
             database.mentionDao().insert(
-                _root_ide_package_.ac.cord.compose.database.model.Mention(
+                Mention(
                     mentionedPublicKey = taggedUser.pubKey,
                     mentioningNostrEventId = nostrEvent.id,
                     relayUrl = taggedUser.relayHint?.url
@@ -316,10 +316,10 @@ abstract class NostrDao(
             if (giftWrapReceiverProfile == null) {
                 // Save a placeholder
                 database.profileDao().insertPlaceholderProfile(
-                    _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    Profile(
                         displayName = "LOADING...",
                         publicKey = giftWrapMessage.receiverPublicKey,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                 )
@@ -544,7 +544,7 @@ abstract class NostrDao(
                 activeKeyPair
             ).let { giftWrapSeal ->
                 if (giftWrapSeal == null) {
-                    throw _root_ide_package_.ac.cord.compose.exceptions.GiftWrapUnsealException("Failed to unseal ${nostrEvent.id} from the giftWrap")
+                    throw GiftWrapUnsealException("Failed to unseal ${nostrEvent.id} from the giftWrap")
                 } else {
                     database.giftWrapSealDao().upsert(
                         giftWrapSeal
@@ -554,13 +554,13 @@ abstract class NostrDao(
                         activeKeyPair.privKey!!
                     ).let { decryptedGiftWrapPayload ->
                         if (decryptedGiftWrapPayload == null) {
-                            throw _root_ide_package_.ac.cord.compose.exceptions.GiftWrapSealDecryptionException(
+                            throw GiftWrapSealDecryptionException(
                                 "Failed to decrypt sealed ${giftWrapSeal.id} payload"
                             )
                         } else {
                             if (giftWrapSeal.publicKey.lowercase() != decryptedGiftWrapPayload.publicKey.lowercase()) {
                                 val giftWrapImpersonation =
-                                    _root_ide_package_.ac.cord.compose.exceptions.GiftWrapImpersonationException(
+                                    GiftWrapImpersonationException(
                                         "Seal pubkey (${giftWrapSeal.publicKey}) and payload pubkey (${decryptedGiftWrapPayload.publicKey}) needs to be the same for the giftWrap ${nostrEvent.id}"
                                     )
                                 logger.e("Impersonation", giftWrapImpersonation)
@@ -591,7 +591,7 @@ abstract class NostrDao(
                                 if (localChatRoom == null) {
                                     val userPublicKey = activeKeyPair.pubKey.toHex()
                                     database.chatRoomDao().upsert(
-                                        _root_ide_package_.ac.cord.compose.database.model.ChatRoom(
+                                        ChatRoom(
                                             id = chatRoomId,
                                             userPublicKey = userPublicKey,
                                             subject = decryptedGiftWrapPayload.parseSubject(),
@@ -604,7 +604,7 @@ abstract class NostrDao(
                                     val participants = giftWrapPayload.participantPTags(
                                         NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
                                     ).map {
-                                        _root_ide_package_.ac.cord.compose.database.model.Participant(
+                                        Participant(
                                             participantPublicKey = it.pubKey,
                                             chatRoomId = chatRoomId,
                                             relayHint = it.relayHint?.url
@@ -620,10 +620,10 @@ abstract class NostrDao(
                                         if (giftWrapParticipantProfile == null) {
                                             // Save a placeholder
                                             database.profileDao().insertPlaceholderProfile(
-                                                _root_ide_package_.ac.cord.compose.database.model.Profile(
+                                                Profile(
                                                     displayName = "LOADING...",
                                                     publicKey = participant.participantPublicKey,
-                                                    createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                                                    createdAt = GENESIS_AT,
                                                     nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                                                 )
                                             )
@@ -668,7 +668,7 @@ abstract class NostrDao(
                                                         authors = arrayOf(
                                                             publicKey
                                                         ),
-                                                        since = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                                                        since = GENESIS_AT,
                                                         limit = 5
                                                     ).firstOrNull()?.let { nostrEvent ->
                                                         if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
@@ -689,7 +689,7 @@ abstract class NostrDao(
                                             if (chatMessageRelayListEvent != null) {
                                                 // Sync messages from this relay that were sent by us
                                                 val synchronizationFilter =
-                                                    _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                                                    SynchronizationFilter(
                                                         kinds = arrayOf(
                                                             GiftWrapEvent.KIND,
                                                         ),
@@ -708,8 +708,8 @@ abstract class NostrDao(
                                                     .insert(
                                                         chatMessageRelayListEvent.relays()
                                                             .map { normalizedRelayUrl ->
-                                                                _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
-                                                                    id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                                                                NegentropySynchronizeRequest(
+                                                                    id = NegentropySynchronizeRequest.Companion.computeId(
                                                                         relayURL = normalizedRelayUrl.url,
                                                                         synchronizationFilter = synchronizationFilter
                                                                     ),
@@ -749,7 +749,7 @@ abstract class NostrDao(
                                 }
 
                                 val chatMessageId = database.chatMessageDao().upsert(
-                                    _root_ide_package_.ac.cord.compose.database.model.ChatMessage(
+                                    ChatMessage(
                                         giftWrapPayloadId = giftWrapPayload.id,
                                         senderPublicKey = giftWrapPayload.publicKey,
                                         isUserMessage = activeKeyPair.pubKey.toHex() == giftWrapPayload.publicKey,
@@ -761,7 +761,7 @@ abstract class NostrDao(
 
                                 val broadcastNostrEventReceiptId =
                                     database.broadcastNostrEventReceiptDao().upsert(
-                                        _root_ide_package_.ac.cord.compose.database.model.BroadcastNostrEventReceipt(
+                                        BroadcastNostrEventReceipt(
                                             nostrEventId = nostrEvent.id,
                                             isAccepted = true,
                                             isSync = true,
@@ -771,7 +771,7 @@ abstract class NostrDao(
 
                                 database.chatMessageBroadcastNostrEventReceiptRelationDao()
                                     .upsert(
-                                        _root_ide_package_.ac.cord.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation(
+                                        ChatMessageBroadcastNostrEventReceiptRelation(
                                             broadcastNostrEventReceiptId = broadcastNostrEventReceiptId,
                                             chatMessageId = chatMessageId
                                         )
@@ -794,9 +794,9 @@ abstract class NostrDao(
                     // Persist PlaceHolder and sync
                     // TODO: Get replyingToAuthorPublicKey
                     database.postDao().insert(
-                        _root_ide_package_.ac.cord.compose.database.model.Post(
+                        Post(
                             id = post.replyToId,
-                            createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                            createdAt = GENESIS_AT,
                             nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                             content = post.replyToId,
                             profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
@@ -814,9 +814,9 @@ abstract class NostrDao(
             if (replyingToPost == null) {
                 // Persist PlaceHolder and sync
                 database.postDao().insert(
-                    _root_ide_package_.ac.cord.compose.database.model.Post(
+                    Post(
                         id = reaction.replyToId,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id, // Will get overwriting by sync handled by tagged events...
                         content = reaction.replyToId,
                         profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync handled by tagged events...
@@ -836,10 +836,10 @@ abstract class NostrDao(
                 eventIdsToSync[relayURL]?.add(quotedRelation.quotedNostrEventId)
 
                 database.nostrEventDao().insert(
-                    _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    NostrEvent(
                         id = quotedRelation.quotedNostrEventId,
                         content = "Pending Sync",
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         pubKey = nostrEvent.pubKey,
                         sig = "",
                         kind = nostrEvent.kind,
@@ -856,10 +856,10 @@ abstract class NostrDao(
 
             if (quotedProfilePublicKey != null && quotedProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
-                    _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    Profile(
                         displayName = "LOADING...",
                         publicKey = quotedProfilePublicKey,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                 )
@@ -884,10 +884,10 @@ abstract class NostrDao(
                 eventIdsToSync[relayURL]?.add(inReplyToRelation.inReplyToNostrEventId)
 
                 database.nostrEventDao().insert(
-                    _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    NostrEvent(
                         id = inReplyToRelation.inReplyToNostrEventId,
                         content = "Pending Sync",
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         pubKey = nostrEvent.pubKey,
                         sig = "",
                         kind = nostrEvent.kind,
@@ -918,10 +918,10 @@ abstract class NostrDao(
 
             if (inReplyToRootProfilePublicKey != null && inReplyToProfile == null) {
                 database.profileDao().insertPlaceholderProfile(
-                    _root_ide_package_.ac.cord.compose.database.model.Profile(
+                    Profile(
                         displayName = "LOADING...",
                         publicKey = inReplyToRootProfilePublicKey,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                     )
                 )
@@ -942,9 +942,9 @@ abstract class NostrDao(
             if (zappedPost == null) {
                 // Persist PlaceHolder and sync
                 database.postDao().insert(
-                    _root_ide_package_.ac.cord.compose.database.model.Post(
+                    Post(
                         id = zap.postId,
-                        createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                        createdAt = GENESIS_AT,
                         nostrEventId = nostrEvent.id, // Will get overwriting by sync,
                         content = zap.postId,
                         profilePublicKey = nostrEvent.pubKey // Will get overwriting by sync,
@@ -979,10 +979,10 @@ abstract class NostrDao(
 
                 if (profile == null) {
                     val placeHolderProfile =
-                        _root_ide_package_.ac.cord.compose.database.model.Profile(
+                        Profile(
                             displayName = "LOADING...",
                             publicKey = followedHexKEys,
-                            createdAt = _root_ide_package_.ac.cord.compose.database.GENESIS_AT,
+                            createdAt = GENESIS_AT,
                             nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
                         )
                     database.profileDao().insertPlaceholderProfile(placeHolderProfile)
@@ -990,7 +990,7 @@ abstract class NostrDao(
                         profilePublicKeysToSync[relayURL] = mutableSetOf()
                     }
                     profilePublicKeysToSync[relayURL]?.add(followedHexKEys)
-                } else if (profile.createdAt == _root_ide_package_.ac.cord.compose.database.GENESIS_AT && level == 0) {
+                } else if (profile.createdAt == GENESIS_AT && level == 0) {
                     logger.i("${level} This is a placeholder profile... that might need to get synced...: $profile")
 
                     if (profilePublicKeysToSync[relayURL] == null) {
@@ -1001,7 +1001,7 @@ abstract class NostrDao(
 
                 // Save profile connections...
                 database.connectionDao().upsert(
-                    _root_ide_package_.ac.cord.compose.database.model.Connection(
+                    Connection(
                         sourcePublicKey = nostrEvent.pubKey,
                         destinationPublicKey = followedHexKEys,
                         nostrEventId = nostrEvent.id
@@ -1012,15 +1012,15 @@ abstract class NostrDao(
         }
 
         if (level == 0) {
-            val negentropySynchronizeRequests = mutableListOf<at.torch.compose.database.model.NegentropySynchronizeRequest>()
+            val negentropySynchronizeRequests = mutableListOf<NegentropySynchronizeRequest>()
             profilePublicKeysToSync.forEach { relayUrlProfilePublicKey ->
                 val synchronizationFilter =
-                    _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                    SynchronizationFilter(
                         authors = relayUrlProfilePublicKey.value.toTypedArray(),
                         kinds = profileEventKinds
                     )
                 negentropySynchronizeRequests.add(
-                    _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+                    NegentropySynchronizeRequest(
                         id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                             relayUrlProfilePublicKey.key,
                             synchronizationFilter
@@ -1036,12 +1036,12 @@ abstract class NostrDao(
             eventIdsToSync.forEach { relayUrlEventIds ->
                 // TODO: Hash relayUrl + synchronicationFilter + ephocMinutes
                 val synchronizationFilter =
-                    _root_ide_package_.ac.cord.compose.database.model.types.SynchronizationFilter(
+                    SynchronizationFilter(
                         ids = relayUrlEventIds.value.toTypedArray(),
                     )
                 Clock.System.now().toEpochMilliseconds()
                 negentropySynchronizeRequests.add(
-                    _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+                    NegentropySynchronizeRequest(
                         id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                             relayUrlEventIds.key,
                             synchronizationFilter

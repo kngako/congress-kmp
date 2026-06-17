@@ -105,14 +105,14 @@ fun HomeScreen(
                             IconButton(
                                 onClick = {
                                     onNavigateToEvent.invoke(
-                                        _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                        _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                             activeUserPublicKey = activeUserPublicKey,
                                             nostrEventId = homeScreenUIState.profileWithFollowing.nostrEvent.id
                                         )
                                     )
                                 }
                             ) {
-                                _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                                     profile = homeScreenUIState.profileWithFollowing.profile,
                                     publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey
                                 )
@@ -238,7 +238,7 @@ fun HomeScreen(
             }
         }
         _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loading -> {
-            _root_ide_package_.ac.cord.compose.ui.composable.widgets.LoadingDataIndicator()
+            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
         }
     }
 
@@ -250,15 +250,15 @@ fun HomeScreen(
 @Preview
 @Composable
 private fun HomeScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             HomeScreen(
                 activeUserPublicKey = "",
                 initialHomeScreenUIState = _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
-                    profileWithFollowing = _root_ide_package_.ac.cord.compose.database.model.intermdiate.LocalProfileWithFollowing(
-                        nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                    profileWithFollowing = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing(
+                        nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                             id = "eventId",
                             pubKey = "publicKey",
                             content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -270,7 +270,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             sig = "",
                             kind = TextNoteEvent.KIND
                         ),
-                        profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                             publicKey = "pubKey",
                             displayName = "John Doe",
                             nostrEventId = "nostrEventId"

@@ -69,7 +69,7 @@ class ChatRoomListViewModel(
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
                 _root_ide_package_.at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
-                    _root_ide_package_.ac.cord.compose.database.model.NegentropySynchronizeRequest(
+                    _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
                         id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
@@ -131,7 +131,7 @@ class ChatRoomListViewModel(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
                                             onNavigateToDirectMessageDetail.invoke(
-                                                _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
                                                     activeUserPublicKey = publicKey,
                                                     directMessageIdentifier = localChatRoom.chatRoom.id,
                                                     relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint

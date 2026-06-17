@@ -258,7 +258,7 @@ fun SearchResultScreen(
                                                 localNostrEvent.ListView(
                                                     onNavigateToEvent = { nostrEventId ->
                                                         onNavigateToEvent.invoke(
-                                                            _root_ide_package_.ac.cord.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                            _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                                 activeUserPublicKey = activeUserPublicKey,
                                                                 nostrEventId = nostrEventId
                                                             )
@@ -305,7 +305,7 @@ fun SearchResultScreen(
 @Preview
 @Composable
 private fun SearchResultScreenPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

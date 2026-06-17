@@ -6,7 +6,7 @@ class AuxDatabaseManager(
     torchGlobal: at.torch.compose.TorchGlobal
 ) {
     val auxDatabase by lazy {
-        _root_ide_package_.ac.cord.compose.database.builder.getRoomDatabase(
+        _root_ide_package_.at.torch.compose.database.builder.getRoomDatabase(
             _root_ide_package_.at.torch.compose.database.builder.PlatformDatabaseBuilder.getDatabaseBuilder(
                 torchGlobal.platformContext
             )
@@ -19,7 +19,7 @@ class AuxDatabaseManager(
      * We may also decide to just use the normal DB and manage what's saved better...
      */
     val inMemoryAuxDatabase by lazy {
-        _root_ide_package_.ac.cord.compose.database.builder.getRoomDatabase(
+        _root_ide_package_.at.torch.compose.database.builder.getRoomDatabase(
             _root_ide_package_.at.torch.compose.database.builder.PlatformDatabaseBuilder.getInMemoryDatabaseBuilder(
                 torchGlobal.platformContext
             )

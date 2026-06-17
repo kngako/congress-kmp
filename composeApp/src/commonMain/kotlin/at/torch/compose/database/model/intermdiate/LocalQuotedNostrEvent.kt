@@ -61,7 +61,7 @@ data class LocalQuotedNostrEvent(
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.profile.ProfileAvatar(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
                     publicKey = nostrEvent.pubKey,
                     profile = profile
                 )
@@ -88,7 +88,7 @@ data class LocalQuotedNostrEvent(
                     horizontal = 10.dp
                 )
             ) {
-                _root_ide_package_.ac.cord.compose.ui.composable.widgets.content.RichContent(
+                _root_ide_package_.at.torch.compose.ui.composable.widgets.content.RichContent(
                     nostrEvent = nostrEvent,
                     localQuotedNostrEvent = null,
                     mentionedProfiles = mentionedProfiles,
@@ -112,12 +112,12 @@ data class LocalQuotedNostrEvent(
 @Preview
 @Composable
 private fun LocalQuotedNostrEventPreview() {
-    _root_ide_package_.ac.cord.compose.ui.theme.AuxTheme {
+    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             LocalQuotedNostrEvent(
-                nostrEvent = _root_ide_package_.ac.cord.compose.database.model.NostrEvent(
+                nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                     id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
                     content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
                     pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
@@ -125,12 +125,12 @@ private fun LocalQuotedNostrEventPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                quotedRelation = _root_ide_package_.ac.cord.compose.database.model.QuotedRelation(
+                quotedRelation = _root_ide_package_.at.torch.compose.database.model.QuotedRelation(
                     quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                     quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                     quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
                 ),
-                profile = _root_ide_package_.ac.cord.compose.database.model.Profile(
+                profile = _root_ide_package_.at.torch.compose.database.model.Profile(
                     publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                     nostrEventId = "referenced",
                     displayName = "Steve Biko"
