@@ -16,8 +16,8 @@
 
 package fr.acinq.phoenix.android.services
 
-import ac.cord.auxiliary.android.BuildConfig
-import ac.cord.auxiliary.android.InomboloApplication
+import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.TorchApplication
 import android.content.Context
 import android.os.Build
 import androidx.work.CoroutineWorker
@@ -95,7 +95,7 @@ class InflightPaymentsWatcher(context: Context, workerParams: WorkerParameters) 
         }
 
         val watchResult = userWallets.map { (walletId, wallet) ->
-            val walletMetadata = (applicationContext as InomboloApplication).globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
+            val walletMetadata = (applicationContext as TorchApplication).globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
             watchWallet(walletId, walletMetadata, wallet.words)
         }
 

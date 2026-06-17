@@ -1,4 +1,4 @@
-rootProject.name = "Aux"
+rootProject.name = "Torch"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

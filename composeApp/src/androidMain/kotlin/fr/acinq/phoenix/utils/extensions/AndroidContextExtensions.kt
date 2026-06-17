@@ -16,7 +16,7 @@
 
 package fr.acinq.phoenix.utils.extensions
 
-import ac.cord.auxiliary.android.MainActivity
+import at.torch.android.MainActivity
 import android.content.Context
 import android.content.ContextWrapper
 

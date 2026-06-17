@@ -119,14 +119,14 @@ kotlin {
 }
 
 android {
-    namespace = "ac.cord.auxiliary.android"
+    namespace = "at.torch.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     buildFeatures {
         buildConfig = true
     }
     defaultConfig {
-        applicationId = "ac.cord.auxiliary.android"
+        applicationId = "at.torch.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -187,11 +187,11 @@ sqldelight {
 
 compose.desktop {
     application {
-        mainClass = "ac.cord.auxiliary.desktop.MainKt"
+        mainClass = "at.torch.desktop.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ac.cord.auxiliary.desktop"
+            packageName = "at.torch.desktop"
             packageVersion = "1.0.0"
         }
     }

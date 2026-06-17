@@ -1,16 +1,12 @@
 package fr.acinq.phoenix.android.services
 
-import ac.cord.auxiliary.android.BuildConfig
-import ac.cord.auxiliary.android.InomboloApplication
-import android.app.Notification
+import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.TorchApplication
 import android.app.Service
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.PhoenixGlobal
@@ -104,7 +100,7 @@ class PaymentsForegroundService : Service() {
                     is DecryptSeedResult.Failure -> {
                         log.info("unable to read seed, ignoring background message (reason=$reason)")
                         serviceScope.launch {
-                            val walletMetadataMap = (application as InomboloApplication).globalPrefs.getAvailableWalletsMeta.first()
+                            val walletMetadataMap = (application as TorchApplication).globalPrefs.getAvailableWalletsMeta.first()
                             val metadata = walletMetadataMap.getByWalletIdOrDefault(walletId)
                             when (reason) {
                                 "IncomingPayment" -> SystemNotificationHelper.notifyPaymentMissedAppUnavailable(applicationContext, metadata)

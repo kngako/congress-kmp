@@ -16,7 +16,7 @@
 
 package fr.acinq.phoenix.android.services
 
-import ac.cord.auxiliary.android.BuildConfig
+import at.torch.auxiliary.android.BuildConfig
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy

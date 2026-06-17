@@ -16,9 +16,9 @@
 
 package fr.acinq.phoenix.android
 
-import ac.cord.auxiliary.android.InomboloApplication
-import ac.cord.auxiliary.compose.AppVersion
-import ac.cord.auxiliary.compose.ui.composable.widgets.wallet.WalletAvatars
+import at.torch.android.TorchApplication
+import at.torch.auxiliary.compose.AppVersion
+import at.torch.auxiliary.compose.ui.composable.widgets.wallet.WalletAvatars
 import android.content.Context
 import android.text.format.DateUtils
 import fr.acinq.lightning.LiquidityEvents
@@ -34,10 +34,8 @@ import fr.acinq.phoenix.data.StartupParams
 import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.data.inFlightPaymentsCount
 import fr.acinq.phoenix.managers.AppConnectionsDaemon
-import fr.acinq.phoenix.managers.DataStoreManager
 import fr.acinq.phoenix.managers.NodeParamsManager
 import fr.acinq.phoenix.managers.PeerManager
-import fr.acinq.phoenix.managers.WalletManager
 import fr.acinq.phoenix.managers.global.CurrencyManager
 import fr.acinq.phoenix.utils.MnemonicLanguage
 import fr.acinq.phoenix.utils.SystemNotificationHelper
@@ -47,7 +45,6 @@ import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +67,7 @@ object BusinessManager {
 
     // No memory leaks because this can only contain the application context.
     private lateinit var appContext: Context
-    private val application by lazy { appContext as InomboloApplication }
+    private val application by lazy { appContext as TorchApplication }
 
     /** A map of (walletId -> active businesses) */
     private val _businessFlow = MutableStateFlow<Map<WalletId, BusinessRunning>>(emptyMap())

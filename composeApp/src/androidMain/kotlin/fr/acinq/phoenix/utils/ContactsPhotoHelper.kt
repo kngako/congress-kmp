@@ -1,6 +1,6 @@
 package fr.acinq.phoenix.utils
 
-import ac.cord.auxiliary.android.BuildConfig
+import at.torch.auxiliary.android.BuildConfig
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

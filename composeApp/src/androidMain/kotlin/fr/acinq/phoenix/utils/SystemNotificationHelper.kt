@@ -16,12 +16,11 @@
 
 package fr.acinq.phoenix.utils
 
-import ac.cord.auxiliary.android.BuildConfig
-import ac.cord.auxiliary.android.MainActivity
-import ac.cord.auxiliary.android.R
+import at.torch.auxiliary.android.BuildConfig
+import at.torch.android.MainActivity
+import at.torch.auxiliary.android.R
 import android.Manifest
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
