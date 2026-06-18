@@ -154,9 +154,7 @@ fun ChatRoomCreationScreen(
                 Button(
                     onClick = {
                         chatRoomCreationViewModel.createChatRoom(
-                            onNavigateToChatRoom =  {
-
-                            }
+                            onNavigateToChatRoom = onNavigateToChatRoom
                         )
                     }
                 ) {
