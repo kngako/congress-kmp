@@ -81,13 +81,13 @@ fun ChatRoomCreationScreen(
                     ),
                     label = {
                         Text(
-                            text = "Name (eg. Alan Turin)",
+                            text = "Name (eg. Group Discussions)",
                             maxLines = 1,
                         )
                     },
                     placeholder = {
                         Text(
-                            text = "Enter the name you want to use for your profile",
+                            text = "Enter the name you want to use for your groupd",
                             maxLines = 1,
                         )
                     },
@@ -100,7 +100,7 @@ fun ChatRoomCreationScreen(
                 )
 
                 Text(
-                    text = "This will be the display name for your profile and also important for search.",
+                    text = "This will be the display name for this chat room.",
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
@@ -125,7 +125,7 @@ fun ChatRoomCreationScreen(
                     ),
                     label = {
                         Text(
-                            text = "Introduce yourself",
+                            text = "What will be discussed in this chat room.",
                             maxLines = 1,
 
                             )
@@ -145,7 +145,7 @@ fun ChatRoomCreationScreen(
                 )
 
                 Text(
-                    text = "This will be shown when people open your profile.",
+                    text = "This will be shown when people open the chat for more details.",
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )

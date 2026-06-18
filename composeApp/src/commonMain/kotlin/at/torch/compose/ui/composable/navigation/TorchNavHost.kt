@@ -297,9 +297,16 @@ fun TorchNavHost(
             val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
 
             ChatRoomCreationScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                 nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository
+                chatRepository = databaseChatRepository,
+                onNavigateToChatRoom = { chatRoomResultRoute ->
+                    navController.navigate(
+                        chatRoomResultRoute
+                    ) {
+                        popUpTo(route)
+                    }
+                }
             )
         }
         composable<WriteNewNoteRoute> { backStackEntry ->

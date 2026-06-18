@@ -20,6 +20,8 @@ import at.torch.compose.ui.view.state.form.ChatRoomCreationFormState
 import at.torch.compose.ui.view.state.form.CreateProfileFormState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
+import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
+import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519KeyPair
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -77,31 +79,33 @@ class ChatRoomCreationViewModel(
 
             val extras = listOf(metadata.toExtension())
 
-            val group = MlsGroup.create(keyPair.pubKey, keyPair.privKey, extras)
+            nostrPrivateKey.value.toByteArray().let { privateKey ->
+                val signingKeyPair = Ed25519.generateKeyPair()
+//              TODO: Use nostrPrivateKey  Ed25519.publicFromPrivate(privateKey).let { ed25519pubKey ->
+//                    Ed25519KeyPair(privateKey, ed25519pubKey)
+//                }
+                val group = MlsGroup.create(keyPair.pubKey, signingKeyPair.privateKey, extras)
 
-            viewModelScope.launch(Dispatchers.IO) {
-                val localChatRoom = chatRepository.getOrCreateChatRoom(
-                    chatRoomId = group.groupId.toHex(),
-                    activeUserPublicKey = keyPair.pubKey.toHexKey(),
-                    relayHint = null,
-                    defaultSubject = null,
-                    mlsGroupState = group.saveState().encodeTls().toHex()
-                )
+                viewModelScope.launch(Dispatchers.IO) {
+                    val localChatRoom = chatRepository.getOrCreateChatRoom(
+                        chatRoomId = group.groupId.toHex(),
+                        activeUserPublicKey = keyPair.pubKey.toHexKey(),
+                        relayHint = null,
+                        defaultSubject = null,
+                        mlsGroupState = group.saveState().encodeTls().toHex()
+                    )
 
-                if (localChatRoom == null) {
-                    onNavigateToChatRoom.invoke(
-                        ImplementationPendingRoute("Something went wrong")
-                    )
-                } else {
-                    onNavigateToChatRoom.invoke(
-                        ImplementationPendingRoute("Chat Room view ${localChatRoom.chatRoom.id}")
-                    )
+                    if (localChatRoom == null) {
+                        onNavigateToChatRoom.invoke(
+                            ImplementationPendingRoute("Something went wrong")
+                        )
+                    } else {
+                        onNavigateToChatRoom.invoke(
+                            ImplementationPendingRoute("Chat Room view ${localChatRoom.chatRoom.id}")
+                        )
+                    }
                 }
-
             }
-
-
-
         }
     }
 

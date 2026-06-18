@@ -578,6 +578,7 @@ abstract class NostrDao(
                                 decryptedGiftWrapPayload
                             }
 
+                            // TODO: Handle MLS message/groups
                             val chatRoomId =
                                 giftWrapPayload.aggregatedParticipantsPublicKey()
                             logger.d("ChatRoomId: $chatRoomId")
@@ -596,7 +597,8 @@ abstract class NostrDao(
                                             userPublicKey = userPublicKey,
                                             subject = decryptedGiftWrapPayload.parseSubject(),
                                             createdAt = decryptedGiftWrapPayload.createdAt,
-                                            initialGiftWrapPayloadId = giftWrapPayload.id
+                                            initialGiftWrapPayloadId = giftWrapPayload.id,
+                                            mlsGroupState = null
                                         )
                                     )
 

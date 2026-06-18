@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6f2020861ae05ebf5290388d73772039",
+    "identityHash": "8e399a485acb36b98a516cf3d7480d8c",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -608,7 +608,7 @@
       },
       {
         "tableName": "ChatRoom",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `initialGiftWrapPayloadId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -625,6 +625,11 @@
           {
             "fieldPath": "subject",
             "columnName": "subject",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mlsGroupState",
+            "columnName": "mlsGroupState",
             "affinity": "TEXT"
           },
           {
@@ -2869,7 +2874,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6f2020861ae05ebf5290388d73772039')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8e399a485acb36b98a516cf3d7480d8c')"
     ]
   }
 }
