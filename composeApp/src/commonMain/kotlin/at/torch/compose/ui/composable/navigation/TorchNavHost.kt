@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.composable
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
+import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import co.touchlab.kermit.Logger
@@ -435,9 +436,9 @@ fun TorchNavHost(
         composable<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.ChatRoomDetailScreen(
+            ChatRoomDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
-                publicKey = route.directMessageIdentifier,
+                chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository

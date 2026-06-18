@@ -1,8 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.database.model.ChatRoom
-import at.torch.compose.database.model.intermdiate.LocalChatRoom
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,21 +37,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.ui.view.model.ChatRoomDetailViewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomDetailScreen(
     activeUserPublicKey: HexKey,
-    publicKey: String,
+    chatRoomId: String,
     relayHint: String?,
     initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading,
     nostrRepository: at.torch.compose.repository.NostrRepository,
     chatRepository: at.torch.compose.repository.ChatRepository
 ) {
-    val chatRoomDetailViewModel: at.torch.compose.ui.view.model.ChatRoomDetailViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.ChatRoomDetailViewModel.Companion.factory(
-            publicKey = publicKey,
+    val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
+        factory = ChatRoomDetailViewModel.factory(
+            chatRoomId = chatRoomId,
             relayHint = relayHint,
             initialChatRoomDetailUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
@@ -92,6 +91,18 @@ fun ChatRoomDetailScreen(
                     TopAppBar(
                         title = {
                             chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = {
+                                    // TODO: Navigate to the invite user screen...
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonAdd,
+                                    contentDescription = "Invite memeber"
+                                )
+                            }
                         }
                     )
                 }
@@ -268,7 +279,7 @@ private fun ChatRoomDetailScreenPreview() {
         ) {
             ChatRoomDetailScreen(
                 activeUserPublicKey = "",
-                publicKey = "publicKey",
+                chatRoomId = "publicKey",
                 relayHint = null,
                 initialChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
                     localChatRoom = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(

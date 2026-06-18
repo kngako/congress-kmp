@@ -1,9 +1,7 @@
 package at.torch.compose.ui.view.model
 
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,23 +11,17 @@ import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
-import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import at.torch.compose.ui.view.state.form.ChatRoomCreationFormState
-import at.torch.compose.ui.view.state.form.CreateProfileFormState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
-import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519KeyPair
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
-import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.utils.RandomInstance
-import fr.acinq.bitcoin.Crypto
 import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.nostrPrivateKey
 import kotlinx.coroutines.Dispatchers
@@ -101,7 +93,11 @@ class ChatRoomCreationViewModel(
                         )
                     } else {
                         onNavigateToChatRoom.invoke(
-                            ImplementationPendingRoute("Chat Room view ${localChatRoom.chatRoom.id}")
+                            ChatRoomDetailRoute(
+                                activeUserPublicKey = keyPair.pubKey.toHexKey(),
+                                chatRoomId = localChatRoom.chatRoom.id,
+                                relayHint = null
+                            )
                         )
                     }
                 }

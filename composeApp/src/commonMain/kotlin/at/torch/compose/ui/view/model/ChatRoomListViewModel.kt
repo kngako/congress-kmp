@@ -1,7 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.NegentropySynchronizeRequest
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -133,7 +131,7 @@ class ChatRoomListViewModel(
                                             onNavigateToDirectMessageDetail.invoke(
                                                 _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
                                                     activeUserPublicKey = publicKey,
-                                                    directMessageIdentifier = localChatRoom.chatRoom.id,
+                                                    chatRoomId = localChatRoom.chatRoom.id,
                                                     relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint
                                                 )
                                             )

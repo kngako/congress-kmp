@@ -1,10 +1,5 @@
 package at.torch.compose.ui.composable.widgets.detail
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.intermdiate.LocalNostrEvent
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -218,7 +213,7 @@ fun MetadataEventDetail(
                                     onNavigateToChatRoom.invoke(
                                         _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
                                             activeUserPublicKey = activeUserPublicKey,
-                                            directMessageIdentifier = localNostrEvent.nostrEvent.pubKey,
+                                            chatRoomId = localNostrEvent.nostrEvent.pubKey,
                                             relayHint = localNostrEvent.nostrEvent.relayUrl,
                                         )
                                     )

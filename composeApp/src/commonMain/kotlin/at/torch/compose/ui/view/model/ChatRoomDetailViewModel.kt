@@ -12,13 +12,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.bitcoin.Crypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailViewModel(
-    val directMessageId: String,
+    val chatRoomId: String,
     val activeUserPublicKey: HexKey,
     val relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
@@ -36,10 +35,10 @@ class ChatRoomDetailViewModel(
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
 
     fun initiateChatRoomDetail() {
-        logger.d("compressed (most likely chat room): $directMessageId")
+        logger.d("compressed (most likely chat room): $chatRoomId")
         // Get ChatRoomById
         viewModelScope.launch(Dispatchers.IO) {
-            val localChatRoom = chatRepository.getChatRoomByIdentifier(directMessageId)
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
             chatRoomDetailUIState = if (localChatRoom == null) {
                 ChatRoomDetailUIState.Error
@@ -57,7 +56,7 @@ class ChatRoomDetailViewModel(
 
         fun factory(
             activeUserPublicKey: HexKey,
-            publicKey: String,
+            chatRoomId: String,
             relayHint: String?,
             initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
             nostrRepository: at.torch.compose.repository.NostrRepository,
@@ -66,7 +65,7 @@ class ChatRoomDetailViewModel(
             initializer {
                 ChatRoomDetailViewModel(
                     activeUserPublicKey = activeUserPublicKey,
-                    directMessageId = publicKey,
+                    chatRoomId = chatRoomId,
                     relayHint = relayHint,
                     initialChatRoomDetailUIState = initialChatRoomDetailUIState,
                     nostrRepository = nostrRepository,
