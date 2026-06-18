@@ -276,7 +276,8 @@ private fun ChatRoomDetailScreenPreview() {
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",
-                            initialGiftWrapPayloadId = 0
+                            initialGiftWrapPayloadId = 0,
+                            mlsGroupState = null
                         ),
                     )
                 ),

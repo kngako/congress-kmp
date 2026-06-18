@@ -4,6 +4,7 @@ import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.GiftWrapPayload
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -45,16 +46,18 @@ class DatabaseChatRepository(
 
 
     override suspend fun getOrCreateChatRoom(
+        chatRoomId: String,
         activeUserPublicKey: HexKey,
-        publicKey: String,
         relayHint: String?,
-        defaultSubject: String?
+        defaultSubject: String?,
+        mlsGroupState: String?
     ): at.torch.compose.database.model.intermdiate.LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
+            chatRoomId = chatRoomId,
             activeUserPublicKey = activeUserPublicKey,
-            publicKey = publicKey,
             relayHint = relayHint,
-            defaultSubject = defaultSubject
+            defaultSubject = defaultSubject,
+            mlsGroupState = mlsGroupState
         )
     } catch (e: Throwable) {
         logger.e("Error getting or creating chat", e)

@@ -28,36 +28,36 @@ abstract class NostrNip17Dao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    open suspend fun getOrCreateChatRoom(activeUserPublicKey: HexKey, publicKey: String, relayHint: String?, defaultSubject: String? = null): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
-        logger.d("getOrCreateChatRoom: $publicKey")
+    open suspend fun getOrCreateChatRoom(chatRoomId: String, activeUserPublicKey: HexKey, relayHint: String?, defaultSubject: String? = null, mlsGroupState: String? = null): LocalChatRoom? {
+        logger.d("getOrCreateChatRoom: $chatRoomId")
 
 
         val hexKeys = setOf(
             activeUserPublicKey,
-            publicKey
+//            publicKey
         )
 
-        val chatRoomId = _root_ide_package_.at.torch.compose.database.model.ChatRoom.Companion.deriveChatRoomId(hexKeys)
-        logger.d("chatRoomId: $chatRoomId")
         val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
 
         if (localChatRoom != null) {
+            // TODO: might want to update the mlsGroupState?
             return localChatRoom
         } else {
             val profiles = database.profileDao().getProfileByPublicKeys(hexKeys.toList())
 
             if (profiles.isNotEmpty()) {
                 // Create new chatRoom
-                val chatRoom = _root_ide_package_.at.torch.compose.database.model.ChatRoom(
+                val chatRoom = ChatRoom(
                     id = chatRoomId,
                     userPublicKey = activeUserPublicKey,
                     subject = defaultSubject,
+                    mlsGroupState = mlsGroupState
                 )
                 database.chatRoomDao().upsert(chatRoom)
 
                 database.participantDao().upsert(
                     profiles.map {
-                        _root_ide_package_.at.torch.compose.database.model.Participant(
+                        Participant(
                             participantPublicKey = it.publicKey,
                             chatRoomId = chatRoomId,
                             relayHint = relayHint
@@ -65,7 +65,7 @@ abstract class NostrNip17Dao(
                     }
                 )
 
-                return _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(
+                return LocalChatRoom(
                     chatRoom = chatRoom
                 )
             }
@@ -81,7 +81,7 @@ abstract class NostrNip17Dao(
         giftWrapEvent: GiftWrapEvent,
         receiverPublicKey: PTag
     ) {
-        val nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
+        val nostrEvent = NostrEvent(
             id = giftWrapEvent.id,
             content = giftWrapEvent.content,
             createdAt = Instant.fromEpochSeconds(giftWrapEvent.createdAt),
@@ -99,7 +99,7 @@ abstract class NostrNip17Dao(
 
         chatMessage?.let {
             database.chatMessageNostrEventRelationDao().upsert(
-                _root_ide_package_.at.torch.compose.database.model.ChatMessageNostrEventRelation(
+                ChatMessageNostrEventRelation(
                     chatMessageId = it.id,
                     nostrEventId = nostrEvent.id
                 )
@@ -112,7 +112,7 @@ abstract class NostrNip17Dao(
             authors = arrayOf(
                 receiverPublicKey.pubKey
             ),
-            since = _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+            since = GENESIS_AT,
             limit = 5
         )
         logger.d("Found messageRelayLists: $chatMessageRelayListEvents")
@@ -134,7 +134,7 @@ abstract class NostrNip17Dao(
                 logger.d("Submit BroadcastNostrEventRequest to $relayUrl")
                 val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
                     listOf(
-                        _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventRequest(
+                        BroadcastNostrEventRequest(
                             nostrEventId = nostrEvent.id,
                             relayURL = relayUrl.url
                         )
@@ -144,7 +144,7 @@ abstract class NostrNip17Dao(
                 chatMessage?.let {
                     broadcastNostrEventRequestIds.forEach {
                         database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
-                            _root_ide_package_.at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation(
+                            ChatMessageBroadcastNostrEventRequestRelation(
                                 chatMessageId = chatMessage.id,
                                 broadcastNostrEventRequestId = it
                             )
@@ -159,7 +159,7 @@ abstract class NostrNip17Dao(
 
 
         database.giftWrapMessageDao().upsert(
-            _root_ide_package_.at.torch.compose.database.model.GiftWrapMessage(
+            GiftWrapMessage(
                 id = giftWrapEvent.id,
                 nostrEventId = nostrEvent.id,
                 content = giftWrapEvent.content,
@@ -173,7 +173,7 @@ abstract class NostrNip17Dao(
         )
 
         database.giftWrapSealDao().upsert(
-            _root_ide_package_.at.torch.compose.database.model.GiftWrapSeal(
+            GiftWrapSeal(
                 id = sealedRumorEvent.id,
                 publicKey = sealedRumorEvent.pubKey,
                 content = sealedRumorEvent.content,

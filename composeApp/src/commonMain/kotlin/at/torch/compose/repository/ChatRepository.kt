@@ -20,9 +20,11 @@ interface ChatRepository {
     suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatMessage>>
 
     suspend fun getOrCreateChatRoom(
+        chatRoomId: String,
         activeUserPublicKey: HexKey,
-        publicKey: String, relayHint: String?,
-        defaultSubject: String? = null
+        relayHint: String?,
+        defaultSubject: String?,
+        mlsGroupState: String?
     ): at.torch.compose.database.model.intermdiate.LocalChatRoom?
 
     suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
@@ -63,10 +65,11 @@ interface ChatRepository {
             }
 
             override suspend fun getOrCreateChatRoom(
+                chatRoomId: String,
                 activeUserPublicKey: HexKey,
-                publicKey: String,
                 relayHint: String?,
-                defaultSubject: String?
+                defaultSubject: String?,
+                mlsGroupState: String?
             ): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
                 return null
             }

@@ -14,6 +14,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.composable
+import at.torch.compose.ui.composable.ChatRoomCreationScreen
+import at.torch.compose.ui.composable.HomeScreen
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -290,6 +293,15 @@ fun TorchNavHost(
             )
 
         }
+        composable<ChatRoomCreationRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
+
+            ChatRoomCreationScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository
+            )
+        }
         composable<WriteNewNoteRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<WriteNewNoteRoute>()
             _root_ide_package_.at.torch.compose.ui.composable.WriteNewNoteScreen(
@@ -375,16 +387,16 @@ fun TorchNavHost(
         }
         composable<at.torch.compose.ui.composable.navigation.routes.FeedRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.FeedRoute>()
-            _root_ide_package_.at.torch.compose.ui.composable.HomeScreen(
+            HomeScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 onNavigateToEvent = { eventRoute ->
                     navController.navigate(
                         route = eventRoute
                     )
                 },
-                onNavigateToWriteNewNote = {
+                onNavigateToChatRoomCreation = {
                     navController.navigate(
-                        route = WriteNewNoteRoute(
+                        route = ChatRoomCreationRoute(
                             activeUserPublicKey = route.activeUserPublicKey
                         )
                     )

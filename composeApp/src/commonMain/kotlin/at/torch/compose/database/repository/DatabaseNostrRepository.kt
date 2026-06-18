@@ -8,6 +8,7 @@ import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
@@ -161,10 +162,11 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
-                kind = AdvertisedRelayListEvent.KIND,
-                tags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultNIP65List.map { it.toTagArray() }
+                kind = KeyPackageRelayListEvent.KIND,
+                tags = Relays.DefaultDMRelayList.map { arrayOf("relay", it.url) }
+                    .plusElement(AltTag.assemble(KeyPackageRelayListEvent.ALT_DESCRIPTION))
                     .toTypedArray(),
                 content = ""
             )
@@ -173,10 +175,10 @@ class DatabaseNostrRepository(
 
 
         unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = SearchRelayListEvent.KIND,
-                tags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultSearchRelayList.map {
+                tags = Relays.DefaultSearchRelayList.map {
                     RelayTag.assemble(
                         it
                     )
@@ -185,35 +187,6 @@ class DatabaseNostrRepository(
                         SearchRelayListEvent.ALT_TAG
                     ).toTypedArray(),
                 privateTags = emptyArray(),
-                content = ""
-            )
-        )
-
-        unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
-                pubKey = publicKey,
-                kind = IndexerRelayListEvent.KIND,
-                tags = arrayOf(AltTag.assemble(IndexerRelayListEvent.ALT)),
-                privateTags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultIndexerRelayList.map {
-                    RelayTag.assemble(
-                        it
-                    )
-                }.toTypedArray(),
-                content = ""
-            )
-        )
-
-        unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
-                pubKey = publicKey,
-                kind = ChannelListEvent.KIND,
-                tags = arrayOf(
-                    AltTag.assemble(
-                        ChannelListEvent.ALT
-                    )
-                ),
-                privateTags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultChannels.map { it.toTagArray() }
-                    .toTypedArray(),
                 content = ""
             )
         )

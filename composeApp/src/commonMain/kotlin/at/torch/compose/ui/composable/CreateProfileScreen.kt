@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.ui.view.state.CreateProfileUIState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -358,7 +359,7 @@ fun CreateAccountScreenPreview() {
         ) {
             CreateProfileScreen(
                 initialCreateProfileUIState =
-//                    CreateProfileUIState.InputPrompt,
+                    CreateProfileUIState.InputPrompt,
 //                    CreateProfileUIState.Error,
 //                    CreateProfileUIState.ConfirmInput(
 //                        name = "Alan Turing",
@@ -385,14 +386,14 @@ fun CreateAccountScreenPreview() {
 //                        name = "Alan Turing",
 //                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
 //                    ),
-                    _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.ProfileReady(
-                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
-                            publicKey = "",
-                            nostrEventId = "",
-                            displayName = "Alan Turing",
-                            about = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
-                        )
-                    ),
+//                    _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.ProfileReady(
+//                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
+//                            publicKey = "",
+//                            nostrEventId = "",
+//                            displayName = "Alan Turing",
+//                            about = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
+//                        )
+//                    ),
                 onNavigateToEndThis = {},
                 writeSeed = {},
                 nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY

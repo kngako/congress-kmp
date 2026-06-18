@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.bitcoin.Crypto
@@ -20,12 +21,12 @@ class ChatRoomDetailViewModel(
     val directMessageId: String,
     val activeUserPublicKey: HexKey,
     val relayHint: String?,
-    initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState,
+    initialChatRoomDetailUIState: ChatRoomDetailUIState,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
     val chatRepository: at.torch.compose.repository.ChatRepository
 ): ViewModel() {
 
-    var chatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState by mutableStateOf(initialChatRoomDetailUIState)
+    var chatRoomDetailUIState: ChatRoomDetailUIState by mutableStateOf(initialChatRoomDetailUIState)
         private set
 
 
@@ -35,38 +36,17 @@ class ChatRoomDetailViewModel(
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
 
     fun initiateChatRoomDetail() {
-        if (Crypto.isPubKeyCompressed(directMessageId.hexToByteArray())) {
-            logger.d("compressed (most likely chat room): $directMessageId")
-            // Get ChatRoomById
-            viewModelScope.launch(Dispatchers.IO) {
-                val localChatRoom = chatRepository.getChatRoomByIdentifier(directMessageId)
+        logger.d("compressed (most likely chat room): $directMessageId")
+        // Get ChatRoomById
+        viewModelScope.launch(Dispatchers.IO) {
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(directMessageId)
 
-                chatRoomDetailUIState = if (localChatRoom == null) {
-                    _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Error
-                } else {
-                    _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
-                        localChatRoom = localChatRoom
-                    )
-                }
-
-            }
-        } else {
-            logger.d("Uncompressed publicKey (most likely npub): $directMessageId")
-            viewModelScope.launch(Dispatchers.IO) {
-                // We need to get or create a chat with the user on this publicKey...
-                val localChatRoom = chatRepository.getOrCreateChatRoom(
-                    activeUserPublicKey = activeUserPublicKey,
-                    publicKey = directMessageId,
-                    relayHint = relayHint
+            chatRoomDetailUIState = if (localChatRoom == null) {
+                ChatRoomDetailUIState.Error
+            } else {
+                ChatRoomDetailUIState.Loaded(
+                    localChatRoom = localChatRoom
                 )
-
-                chatRoomDetailUIState = if (localChatRoom == null) {
-                    _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Error
-                } else {
-                    _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
-                        localChatRoom = localChatRoom
-                    )
-                }
             }
         }
     }
@@ -79,7 +59,7 @@ class ChatRoomDetailViewModel(
             activeUserPublicKey: HexKey,
             publicKey: String,
             relayHint: String?,
-            initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading,
+            initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             chatRepository: at.torch.compose.repository.ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {

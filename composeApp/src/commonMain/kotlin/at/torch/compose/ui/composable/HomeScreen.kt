@@ -1,11 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing
-import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -50,7 +44,7 @@ fun HomeScreen(
     initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState = _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loading,
     onNavigateToEvent: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
     onNavigateToDirectMessageDetail: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
-    onNavigateToWriteNewNote: () -> Unit,
+    onNavigateToChatRoomCreation: () -> Unit,
     onNavigateToSearch: () -> Unit,
     nostrRepository: at.torch.compose.repository.NostrRepository,
     chatRepository: at.torch.compose.repository.ChatRepository
@@ -136,15 +130,15 @@ fun HomeScreen(
                 },
                 floatingActionButton = {
                     ExtendedFloatingActionButton(
-                        onClick = onNavigateToWriteNewNote,
+                        onClick = onNavigateToChatRoomCreation,
                         icon = {
                             Icon(
-                                Icons.Default.Create,
-                                contentDescription = "Write"
+                                Icons.Default.Add,
+                                contentDescription = "New Chat"
                             )
                         },
                         text = {
-                            Text("Write")
+                            Text("New Chat")
                         }
                     )
                 }
@@ -182,8 +176,8 @@ fun HomeScreen(
                         HorizontalPager(
                             state = homeScreenViewModel.pagerState,
                         ) { pageIndex ->
-                            when (val homeScreenTypeType = _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.entries[pageIndex]) {
-                                _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.Messages -> {
+                            when (val homeScreenTypeType = HomeScreenType.entries[pageIndex]) {
+                                HomeScreenType.Messages -> {
                                     val chatRoomListViewModel: at.torch.compose.ui.view.model.ChatRoomListViewModel = viewModel(
                                         key = homeScreenTypeType.name,
                                         factory = _root_ide_package_.at.torch.compose.ui.view.model.ChatRoomListViewModel.Companion.factory(
@@ -256,7 +250,7 @@ It has survived not only five centuries, but also the leap into electronic types
                     )
                 ),
                 onNavigateToEvent = {},
-                onNavigateToWriteNewNote = {},
+                onNavigateToChatRoomCreation = {},
                 onNavigateToSearch = {},
                 onNavigateToDirectMessageDetail = {},
                 nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
