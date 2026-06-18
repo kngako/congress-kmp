@@ -83,23 +83,28 @@ class ChatRoomCreationViewModel(
                         chatRoomId = group.groupId.toHex(),
                         activeUserPublicKey = keyPair.pubKey.toHexKey(),
                         relayHint = null,
-                        defaultSubject = null,
+                        defaultSubject = name.toString(),
                         mlsGroupState = group.saveState().encodeTls().toHex()
                     )
 
-                    if (localChatRoom == null) {
-                        onNavigateToChatRoom.invoke(
-                            ImplementationPendingRoute("Something went wrong")
-                        )
-                    } else {
-                        onNavigateToChatRoom.invoke(
-                            ChatRoomDetailRoute(
-                                activeUserPublicKey = keyPair.pubKey.toHexKey(),
-                                chatRoomId = localChatRoom.chatRoom.id,
-                                relayHint = null
+                    viewModelScope.launch(Dispatchers.Main) {
+                        if (localChatRoom != null) {
+                            // TODO: Broadcast the thing...
+                            // TODO: Navigate to invitation screen...
+                            onNavigateToChatRoom.invoke(
+                                ChatRoomDetailRoute(
+                                    activeUserPublicKey = keyPair.pubKey.toHexKey(),
+                                    chatRoomId = localChatRoom.chatRoom.id,
+                                    relayHint = null
+                                )
                             )
-                        )
+                        } else {
+                            onNavigateToChatRoom.invoke(
+                                ImplementationPendingRoute("Something went wrong")
+                            )
+                        }
                     }
+
                 }
             }
         }

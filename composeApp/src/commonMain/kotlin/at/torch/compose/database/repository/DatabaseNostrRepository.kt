@@ -213,6 +213,8 @@ class DatabaseNostrRepository(
         val identity = publicKey.hexToByteArray()
         val bundle = generateKeyPackage(identity, dTag)
 
+        // TODO: Save the bundle?
+
         val keyPackageBytes = bundle.keyPackage.toTlsBytes()
         val keyPackageBase64 = Base64.encode(keyPackageBytes)
         val keyPackageRef = bundle.keyPackage.reference().toHexKey()
