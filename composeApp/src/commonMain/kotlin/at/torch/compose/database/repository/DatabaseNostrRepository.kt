@@ -1,9 +1,6 @@
 package at.torch.compose.database.repository
 
-import at.torch.compose.database.GENESIS_AT
-import at.torch.compose.database.model.BroadcastNostrEventReceipt
-import at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation
-import at.torch.compose.database.model.RecentSearch
+import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
@@ -11,6 +8,7 @@ import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
+import com.vitorpamplona.quartz.marmot.mls.codec.TlsWriter
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
 import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
 import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
@@ -48,14 +46,11 @@ import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.quotes
 import com.vitorpamplona.quartz.nip21UriScheme.toNostrUri
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
-import com.vitorpamplona.quartz.nip28PublicChat.list.ChannelListEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
-import com.vitorpamplona.quartz.nip51Lists.relayLists.IndexerRelayListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
-import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -118,7 +113,7 @@ class DatabaseNostrRepository(
         publicKey: HexKey,
         name: String?,
         biography: String?
-    ) {
+    ): KeyPackageBundle {
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
             about = biography,
@@ -213,8 +208,6 @@ class DatabaseNostrRepository(
         val identity = publicKey.hexToByteArray()
         val bundle = generateKeyPackage(identity, dTag)
 
-        // TODO: Save the bundle?
-
         val keyPackageBytes = bundle.keyPackage.toTlsBytes()
         val keyPackageBase64 = Base64.encode(keyPackageBytes)
         val keyPackageRef = bundle.keyPackage.reference().toHexKey()
@@ -236,6 +229,8 @@ class DatabaseNostrRepository(
         )
 
         saveUnsignedNostrEvents(unsignedNostrEvents)
+
+        return bundle
     }
 
     private fun generateKeyPackage(

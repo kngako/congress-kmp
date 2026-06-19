@@ -90,6 +90,7 @@ class ChatRoomCreationViewModel(
                     viewModelScope.launch(Dispatchers.Main) {
                         if (localChatRoom != null) {
                             // TODO: Broadcast the thing...
+
                             // TODO: Navigate to invitation screen...
                             onNavigateToChatRoom.invoke(
                                 ChatRoomDetailRoute(

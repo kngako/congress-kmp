@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.ui.view.state.form.CreateProfileFormState
 import androidx.lifecycle.viewModelScope
+import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
 import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.MnemonicCode
@@ -18,6 +19,7 @@ import fr.acinq.lightning.Lightning
 import fr.acinq.lightning.crypto.LocalKeyManager
 import fr.acinq.phoenix.managers.NodeParamsManager
 import fr.acinq.phoenix.managers.nostrPublicKey
+import fr.acinq.phoenix.managers.nsecPassword
 import fr.acinq.phoenix.utils.MnemonicLanguage
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
@@ -27,19 +29,22 @@ import kotlinx.coroutines.launch
 class CreateProfileViewModel(
     val initialCreateProfileUIState: CreateProfileUIState,
     val createProfileFormState: CreateProfileFormState = CreateProfileFormState(),
-    val nostrRepository: NostrRepository
+    val nostrRepository: NostrRepository,
+    val marmotRepository: MarmotRepository
 ): ViewModel() {
     companion object {
         private const val TAG = "CreateAccountViewModel"
 
         fun factory(
             initialCreateProfileUIState: CreateProfileUIState,
-            nostrRepository: NostrRepository
+            nostrRepository: NostrRepository,
+            marmotRepository: MarmotRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 CreateProfileViewModel(
                     initialCreateProfileUIState,
-                    nostrRepository = nostrRepository
+                    nostrRepository = nostrRepository,
+                    marmotRepository = marmotRepository
                 )
             }
         }
@@ -100,11 +105,16 @@ class CreateProfileViewModel(
             )
 
             val pubkey = localKeyManager.nostrPublicKey()
-            logger.d("NostrKey: $pubkey")
-            nostrRepository.createNewProfile(
+            val keyPackageBundle = nostrRepository.createNewProfile(
                 pubkey,
                 name = createProfileFormState.nameField.textFieldState.text.toString(),
                 biography = createProfileFormState.biographyField.textFieldState.text.toString()
+            )
+
+            marmotRepository.saveMarmotKeyPackageBundle(
+                publicKey = pubkey,
+                keyPackageBundle,
+                nsecPassword = localKeyManager.nsecPassword()
             )
         }
     }

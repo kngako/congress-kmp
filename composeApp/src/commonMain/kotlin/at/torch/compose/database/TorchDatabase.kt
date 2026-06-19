@@ -5,45 +5,50 @@ import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
+import at.torch.compose.database.dao.MarmotKeyPackageBundleDao
+import at.torch.compose.database.dao.MarmotKeyPackageDao
+import at.torch.compose.database.model.MarmotKeyPackageBundle
 import kotlin.time.Instant
 
 val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
 
 @Database(
     entities = [
-        _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventReceipt::class,
-        _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventRequest::class,
-        _root_ide_package_.at.torch.compose.database.model.Connection::class,
-        _root_ide_package_.at.torch.compose.database.model.ChatMessage::class,
-        _root_ide_package_.at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.ChatMessageNostrEventRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.ChatRoom::class,
-        _root_ide_package_.at.torch.compose.database.model.InReplyToRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.GiftWrapMessage::class,
-        _root_ide_package_.at.torch.compose.database.model.GiftWrapSeal::class,
-        _root_ide_package_.at.torch.compose.database.model.GiftWrapPayload::class,
-        _root_ide_package_.at.torch.compose.database.model.Mention::class,
-        _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest::class,
-        _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeResult::class,
-        _root_ide_package_.at.torch.compose.database.model.NostrEvent::class,
-        _root_ide_package_.at.torch.compose.database.model.NostrEventRelay::class,
-        _root_ide_package_.at.torch.compose.database.model.Participant::class,
-        _root_ide_package_.at.torch.compose.database.model.Post::class,
-        _root_ide_package_.at.torch.compose.database.model.Profile::class,
-        _root_ide_package_.at.torch.compose.database.model.QuotedRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.Reaction::class,
-        _root_ide_package_.at.torch.compose.database.model.RecentSearch::class,
-        _root_ide_package_.at.torch.compose.database.model.Relay::class,
-        _root_ide_package_.at.torch.compose.database.model.RepostedRelation::class,
-        _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest::class,
-        _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventResult::class,
-        _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent::class,
-        _root_ide_package_.at.torch.compose.database.model.Zap::class
+        at.torch.compose.database.model.BroadcastNostrEventReceipt::class,
+        at.torch.compose.database.model.BroadcastNostrEventRequest::class,
+        at.torch.compose.database.model.Connection::class,
+        at.torch.compose.database.model.ChatMessage::class,
+        at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation::class,
+        at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation::class,
+        at.torch.compose.database.model.ChatMessageNostrEventRelation::class,
+        at.torch.compose.database.model.ChatRoom::class,
+        at.torch.compose.database.model.GiftWrapMessage::class,
+        at.torch.compose.database.model.GiftWrapSeal::class,
+        at.torch.compose.database.model.GiftWrapPayload::class,
+        at.torch.compose.database.model.InReplyToRelation::class,
+        at.torch.compose.database.model.MarmotKeyPackage::class,
+        at.torch.compose.database.model.MarmotKeyPackageBundle::class,
+        at.torch.compose.database.model.Mention::class,
+        at.torch.compose.database.model.NegentropySynchronizeRequest::class,
+        at.torch.compose.database.model.NegentropySynchronizeResult::class,
+        at.torch.compose.database.model.NostrEvent::class,
+        at.torch.compose.database.model.NostrEventRelay::class,
+        at.torch.compose.database.model.Participant::class,
+        at.torch.compose.database.model.Post::class,
+        at.torch.compose.database.model.Profile::class,
+        at.torch.compose.database.model.QuotedRelation::class,
+        at.torch.compose.database.model.Reaction::class,
+        at.torch.compose.database.model.RecentSearch::class,
+        at.torch.compose.database.model.Relay::class,
+        at.torch.compose.database.model.RepostedRelation::class,
+        at.torch.compose.database.model.SynchronizeNostrEventRequest::class,
+        at.torch.compose.database.model.SynchronizeNostrEventResult::class,
+        at.torch.compose.database.model.UnsignedNostrEvent::class,
+        at.torch.compose.database.model.Zap::class
     ],
     version = 1
 )
-@TypeConverters(_root_ide_package_.at.torch.compose.database.converters.AuxConverters::class)
+@TypeConverters(at.torch.compose.database.converters.AuxConverters::class)
 abstract class TorchDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): at.torch.compose.database.dao.BroadcastNostrEventReceiptDao
     abstract fun broadcastNostrEventRequestDao(): at.torch.compose.database.dao.BroadcastNostrEventRequestDao
@@ -67,6 +72,10 @@ abstract class TorchDatabase: RoomDatabase() {
     abstract fun giftWrapPayloadDao(): at.torch.compose.database.dao.GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): at.torch.compose.database.dao.InReplyToRelationDao
+
+    abstract fun marmotKeyPackageDao(): MarmotKeyPackageDao
+
+    abstract fun marmotKeyPackageBundleDao(): MarmotKeyPackageBundleDao
 
     abstract fun mentionDao(): at.torch.compose.database.dao.MentionDao
 

@@ -102,6 +102,12 @@ fun LocalKeyManager.nostrPrivateKey(): PrivateKey {
     return derivePrivateKey(path).privateKey
 }
 
+fun LocalKeyManager.nsecPassword(): String {
+    return Crypto.hash160(
+        nostrPrivateKey().value
+    ).byteVector().toHex()
+}
+
 fun LocalKeyManager.nostrPublicKey(): HexKey {
     return KeyPair(
         privKey = nostrPrivateKey().value.toByteArray()
