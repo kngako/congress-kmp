@@ -35,20 +35,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.repository.MarmotRepository
 import at.torch.compose.ui.view.state.CreateProfileUIState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CreateProfileScreen(
-    initialCreateProfileUIState: at.torch.compose.ui.view.state.CreateProfileUIState = _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.Declaration,
+    initialCreateProfileUIState: CreateProfileUIState = CreateProfileUIState.Declaration,
     onNavigateToEndThis: () -> Unit,
     nostrRepository: at.torch.compose.repository.NostrRepository,
+    marmotRepository: MarmotRepository,
     writeSeed: (List<String>) -> Unit
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
         factory = CreateProfileViewModel.factory(
             initialCreateProfileUIState,
-            nostrRepository
+            nostrRepository,
+            marmotRepository = marmotRepository
         )
     )
     Scaffold { innerPadding ->
@@ -396,7 +399,8 @@ fun CreateAccountScreenPreview() {
 //                    ),
                 onNavigateToEndThis = {},
                 writeSeed = {},
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                marmotRepository = MarmotRepository.NO_OP_MARMOT_KEY_PACKAGE_BUNDLE
             )
         }
     }

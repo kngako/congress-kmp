@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.composable
+import at.torch.compose.database.repository.DatabaseMarmotRepository
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
@@ -58,6 +59,11 @@ fun TorchNavHost(
             database = auxDatabaseManager.auxDatabase,
             applicationIOScope
         )
+
+    val databaseMarmotRepository = DatabaseMarmotRepository(
+        database = auxDatabaseManager.auxDatabase,
+        applicationIOScope
+    )
 
     val searchRepository =
         _root_ide_package_.at.torch.compose.database.repository.DatabaseSearchRepository(
@@ -275,6 +281,7 @@ fun TorchNavHost(
                     }
                 },
                 nostrRepository = databaseNostrRepository,
+                marmotRepository = databaseMarmotRepository,
                 writeSeed = { words ->
                     sovereignWalletViewModel.writeSeed(
                         words,

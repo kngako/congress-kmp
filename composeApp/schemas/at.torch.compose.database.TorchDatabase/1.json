@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "8e399a485acb36b98a516cf3d7480d8c",
+    "identityHash": "f7045a56c021b062dd142cc9cd8513a3",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -698,131 +698,6 @@
         ]
       },
       {
-        "tableName": "InReplyToRelation",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`replyingNostrEventId` TEXT NOT NULL, `inReplyToNostrEventId` TEXT NOT NULL, `inReplyToProfilePublicKey` TEXT, `inReplyToRootNostrEventId` TEXT, `inReplyToRootProfilePublicKey` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`replyingNostrEventId`, `inReplyToNostrEventId`), FOREIGN KEY(`inReplyToProfilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToRootProfilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`replyingNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToRootNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "replyingNostrEventId",
-            "columnName": "replyingNostrEventId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "inReplyToNostrEventId",
-            "columnName": "inReplyToNostrEventId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "inReplyToProfilePublicKey",
-            "columnName": "inReplyToProfilePublicKey",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "inReplyToRootNostrEventId",
-            "columnName": "inReplyToRootNostrEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "inReplyToRootProfilePublicKey",
-            "columnName": "inReplyToRootProfilePublicKey",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "savedAt",
-            "columnName": "savedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "viewedAt",
-            "columnName": "viewedAt",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "deletedAt",
-            "columnName": "deletedAt",
-            "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "replyingNostrEventId",
-            "inReplyToNostrEventId"
-          ]
-        },
-        "foreignKeys": [
-          {
-            "table": "Profile",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "inReplyToProfilePublicKey"
-            ],
-            "referencedColumns": [
-              "publicKey"
-            ]
-          },
-          {
-            "table": "Profile",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "inReplyToRootProfilePublicKey"
-            ],
-            "referencedColumns": [
-              "publicKey"
-            ]
-          },
-          {
-            "table": "NostrEvent",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "replyingNostrEventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "NostrEvent",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "inReplyToNostrEventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "NostrEvent",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "inReplyToRootNostrEventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
         "tableName": "GiftWrapMessage",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `receiverPublicKey` TEXT NOT NULL, `receiverRelayHit` TEXT, `content` TEXT NOT NULL, `signature` TEXT NOT NULL, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
@@ -1111,6 +986,291 @@
             ],
             "referencedColumns": [
               "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "InReplyToRelation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`replyingNostrEventId` TEXT NOT NULL, `inReplyToNostrEventId` TEXT NOT NULL, `inReplyToProfilePublicKey` TEXT, `inReplyToRootNostrEventId` TEXT, `inReplyToRootProfilePublicKey` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`replyingNostrEventId`, `inReplyToNostrEventId`), FOREIGN KEY(`inReplyToProfilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToRootProfilePublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`replyingNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`inReplyToRootNostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "replyingNostrEventId",
+            "columnName": "replyingNostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToNostrEventId",
+            "columnName": "inReplyToNostrEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inReplyToProfilePublicKey",
+            "columnName": "inReplyToProfilePublicKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inReplyToRootNostrEventId",
+            "columnName": "inReplyToRootNostrEventId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "inReplyToRootProfilePublicKey",
+            "columnName": "inReplyToRootProfilePublicKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "viewedAt",
+            "columnName": "viewedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "replyingNostrEventId",
+            "inReplyToNostrEventId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToProfilePublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToRootProfilePublicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "replyingNostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToNostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "NostrEvent",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "inReplyToRootNostrEventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "MarmotKeyPackage",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` BLOB NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publicKey",
+            "columnName": "publicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tlsEncodedMarmotKeyPackage",
+            "columnName": "tlsEncodedMarmotKeyPackage",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "publicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "MarmotKeyPackageBundle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publicKey",
+            "columnName": "publicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tlsEncodedMarmotKeyPackage",
+            "columnName": "tlsEncodedMarmotKeyPackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ncryptsecInitPrivateKey",
+            "columnName": "ncryptsecInitPrivateKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ncryptsecEncryptionPrivateKey",
+            "columnName": "ncryptsecEncryptionPrivateKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ncryptsecSignaturePrivateKey",
+            "columnName": "ncryptsecSignaturePrivateKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "broadcastedAt",
+            "columnName": "broadcastedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "Profile",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "publicKey"
+            ],
+            "referencedColumns": [
+              "publicKey"
             ]
           }
         ]
@@ -2874,7 +3034,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8e399a485acb36b98a516cf3d7480d8c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f7045a56c021b062dd142cc9cd8513a3')"
     ]
   }
 }

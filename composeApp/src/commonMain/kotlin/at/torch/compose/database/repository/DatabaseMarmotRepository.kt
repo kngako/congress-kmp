@@ -8,9 +8,11 @@ import com.vitorpamplona.quartz.marmot.mls.codec.TlsWriter
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip49PrivKeyEnc.Nip49
+import kotlinx.coroutines.CoroutineScope
 
 class DatabaseMarmotRepository(
-    val database: TorchDatabase
+    val database: TorchDatabase,
+    val scope: CoroutineScope
 ): MarmotRepository {
     override suspend fun saveMarmotKeyPackageBundle(
         publicKey: HexKey,

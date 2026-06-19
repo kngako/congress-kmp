@@ -12,7 +12,7 @@ interface MarmotRepository {
     )
 
     companion object {
-        private val NO_OP_MARMOT_KEY_PACKAGE_BUNDLE = object: MarmotRepository {
+        val NO_OP_MARMOT_KEY_PACKAGE_BUNDLE = object: MarmotRepository {
             override suspend fun saveMarmotKeyPackageBundle(
                 publicKey: HexKey,
                 keyPackageBundle: KeyPackageBundle,
