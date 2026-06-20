@@ -1,7 +1,8 @@
 package fr.acinq.phoenix.db
 
-import fr.acinq.phoenix.db.payments.*
-import kotlinx.coroutines.*
+import fr.acinq.phoenix.db.payments.CloudKitInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 
 class CloudKitDb(
     appDb: SqliteAppDb,

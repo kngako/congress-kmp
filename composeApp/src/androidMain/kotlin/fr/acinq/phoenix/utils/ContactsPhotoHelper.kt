@@ -1,6 +1,5 @@
 package fr.acinq.phoenix.utils
 
-import at.torch.android.BuildConfig
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,6 +9,7 @@ import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.FileProvider
+import at.torch.android.BuildConfig
 import fr.acinq.lightning.utils.currentTimestampMillis
 import org.slf4j.LoggerFactory
 import java.io.File

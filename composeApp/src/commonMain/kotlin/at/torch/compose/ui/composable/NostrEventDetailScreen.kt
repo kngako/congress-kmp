@@ -1,11 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.intermdiate.LocalNostrEvent
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
-import at.torch.compose.ui.composable.widgets.detail.MetadataEventDetail
-import at.torch.compose.ui.composable.widgets.detail.TextNoteEventDetail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize

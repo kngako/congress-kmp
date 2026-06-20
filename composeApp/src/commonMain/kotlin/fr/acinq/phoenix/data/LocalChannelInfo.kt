@@ -20,12 +20,18 @@ import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.TxId
 import fr.acinq.lightning.MilliSatoshi
-import fr.acinq.lightning.channel.states.*
+import fr.acinq.lightning.channel.states.Aborted
+import fr.acinq.lightning.channel.states.ChannelState
+import fr.acinq.lightning.channel.states.ChannelStateWithCommitments
+import fr.acinq.lightning.channel.states.Closed
+import fr.acinq.lightning.channel.states.Closing
+import fr.acinq.lightning.channel.states.Normal
+import fr.acinq.lightning.channel.states.Syncing
 import fr.acinq.lightning.json.JsonSerializers
 import fr.acinq.lightning.utils.msat
 import fr.acinq.phoenix.managers.PeerManager
-import fr.acinq.phoenix.utils.extensions.*
-import kotlinx.serialization.encodeToString
+import fr.acinq.phoenix.utils.extensions.isTerminated
+import fr.acinq.phoenix.utils.extensions.localBalance
 
 /**
  * This class exposes a channel's more important information in an easy-to-consume format.

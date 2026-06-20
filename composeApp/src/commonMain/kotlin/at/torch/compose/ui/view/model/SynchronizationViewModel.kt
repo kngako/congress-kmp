@@ -1,15 +1,10 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.BroadcastNostrEventRequest
-import at.torch.compose.database.model.SynchronizeNostrEventRequest
-import at.torch.compose.database.model.types.SynchronizationFilter
-import at.torch.compose.network.relays.RelaysSocketManager
-import at.torch.compose.network.sockets.NostrSocketClientFactory
-import at.torch.compose.network.dto.toRelayDTO
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.network.dto.toRelayDTO
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.negentropy.Negentropy
 import com.vitorpamplona.negentropy.storage.StorageVector

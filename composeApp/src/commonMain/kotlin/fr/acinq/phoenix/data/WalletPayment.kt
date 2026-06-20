@@ -19,7 +19,13 @@ import fr.acinq.phoenix.utils.converters.AmountFormatter.toPrettyString
 import fr.acinq.phoenix.utils.extensions.desc
 import org.jetbrains.compose.resources.stringResource
 import torch.composeapp.generated.resources.Res
-import torch.composeapp.generated.resources.*
+import torch.composeapp.generated.resources.paymentdetails_desc_closing_channel
+import torch.composeapp.generated.resources.paymentdetails_desc_cpfp
+import torch.composeapp.generated.resources.paymentdetails_desc_liquidity_automated
+import torch.composeapp.generated.resources.paymentdetails_desc_liquidity_manual
+import torch.composeapp.generated.resources.paymentdetails_desc_splice_out
+import torch.composeapp.generated.resources.paymentdetails_desc_swapin
+import torch.composeapp.generated.resources.paymentdetails_desc_swapout
 
 /**
  * Represents a payment & its associated metadata.

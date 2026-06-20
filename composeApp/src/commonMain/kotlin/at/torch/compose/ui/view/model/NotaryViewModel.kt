@@ -1,6 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.NostrEvent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer

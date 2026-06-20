@@ -1,12 +1,12 @@
 package at.torch.compose.database.model
 
-import at.torch.compose.database.model.traits.NostrEventEntity
-import at.torch.compose.database.model.traits.TimestampedEntity
-import at.torch.compose.database.model.traits.UnsignedNostrEventEntity
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import at.torch.compose.database.model.traits.NostrEventEntity
+import at.torch.compose.database.model.traits.TimestampedEntity
+import at.torch.compose.database.model.traits.UnsignedNostrEventEntity
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant

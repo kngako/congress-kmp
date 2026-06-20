@@ -1,8 +1,8 @@
 package at.torch.compose.network.sockets
 
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.serialization.json.JsonObject
+import kotlin.coroutines.cancellation.CancellationException
 
 interface NostrSocketClient {
     val socketUrl: String

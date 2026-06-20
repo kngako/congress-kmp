@@ -1,11 +1,5 @@
 package at.torch.compose.database.model.intermdiate
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.QuotedRelation
-import at.torch.compose.ui.composable.widgets.content.RichContent
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
-import at.torch.compose.extensions.toFormattedTimeAndDateString
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.room3.Embedded
 import androidx.room3.Relation
+import at.torch.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 data class LocalQuotedNostrEvent(

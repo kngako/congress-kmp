@@ -1,6 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.extensions.getGlobalPrefs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,7 +33,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.String
 
 sealed class WritingSeedState {
     data object Init : WritingSeedState()

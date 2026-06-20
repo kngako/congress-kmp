@@ -1,8 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.NegentropySynchronizeRequest
-import at.torch.compose.database.model.types.SynchronizationFilter
-import at.torch.compose.extensions.toFormattedTimeAndDateString
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -45,6 +42,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.extensions.toFormattedTimeAndDateString
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent

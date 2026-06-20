@@ -1,6 +1,7 @@
 package fr.acinq.phoenix.db.cloud
 
-import io.ktor.util.*
+import io.ktor.util.decodeBase64Bytes
+import io.ktor.util.encodeBase64
 
 // Kotlin wants to encode a ByteArray like this: {
 //   "fail": [123,34,112,97,121,109,101,110,116,82,101,113,117]

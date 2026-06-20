@@ -19,7 +19,6 @@ package fr.acinq.phoenix.utils.converters
 import android.annotation.SuppressLint
 import android.text.format.DateUtils
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date

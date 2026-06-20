@@ -5,7 +5,6 @@ import com.machankura.compose.AppVersion
 import com.machankura.compose.ui.composable.widgets.wallet.WalletAvatars
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.PaymentEvents
-import fr.acinq.lightning.logging.LoggerFactory
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.lightning.utils.currentTimestampMillis
 import fr.acinq.phoenix.BusinessMonitorJobs
@@ -40,8 +39,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import platform.Foundation.NSBundle
-import kotlin.time.Duration.Companion.hours
 
 object BusinessManager {
     private val log = Logger.withTag("BusinessManager")

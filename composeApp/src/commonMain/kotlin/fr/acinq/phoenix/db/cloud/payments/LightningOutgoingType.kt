@@ -9,7 +9,6 @@ import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.msat
 import fr.acinq.lightning.utils.sat
 import fr.acinq.phoenix.db.cloud.UUIDSerializer
-import fr.acinq.phoenix.db.cloud.cborSerializer
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingDetailsData
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingDetailsTypeVersion
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingStatusData
@@ -18,7 +17,6 @@ import fr.acinq.phoenix.utils.migrations.LegacyChannelCloseHelper
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.decodeFromByteArray
 
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)

@@ -1,7 +1,5 @@
 package at.torch.compose.ui.composable.widgets.profile
 
-import at.torch.compose.database.model.Profile
-import at.torch.compose.ui.composable.widgets.coil.forwardingPainter
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape

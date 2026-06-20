@@ -2,10 +2,13 @@ package fr.acinq.phoenix.controllers
 
 import fr.acinq.lightning.logging.LoggerFactory
 import fr.acinq.lightning.logging.debug
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 
 abstract class AppController<M : MVI.Model, I : MVI.Intent>(

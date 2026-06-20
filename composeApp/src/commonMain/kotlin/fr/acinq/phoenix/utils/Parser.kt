@@ -16,16 +16,23 @@
 
 package fr.acinq.phoenix.utils
 
-import fr.acinq.bitcoin.*
+import fr.acinq.bitcoin.Bitcoin
+import fr.acinq.bitcoin.BitcoinError
+import fr.acinq.bitcoin.ByteVector
+import fr.acinq.bitcoin.Chain
+import fr.acinq.bitcoin.Script
+import fr.acinq.bitcoin.byteVector
 import fr.acinq.bitcoin.utils.Either
 import fr.acinq.bitcoin.utils.Try
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.utils.sat
 import fr.acinq.lightning.wire.OfferTypes
-import fr.acinq.phoenix.data.*
+import fr.acinq.phoenix.data.BitcoinUri
+import fr.acinq.phoenix.data.BitcoinUriError
 import fr.acinq.phoenix.data.lnurl.Lnurl
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.ParametersBuilder
+import io.ktor.http.Url
+import io.ktor.util.filter
 
 object Parser {
 

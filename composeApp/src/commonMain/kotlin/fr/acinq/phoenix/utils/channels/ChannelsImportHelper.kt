@@ -1,16 +1,6 @@
 package fr.acinq.phoenix.utils.channels
 
-import fr.acinq.bitcoin.ByteVector
 import fr.acinq.lightning.channel.states.PersistedChannelState
-import fr.acinq.lightning.serialization.channel.Encryption.from
-import fr.acinq.lightning.serialization.channel.Serialization
-import fr.acinq.phoenix.PhoenixBusiness
-import fr.acinq.lightning.logging.error
-import fr.acinq.lightning.logging.info
-import fr.acinq.phoenix.db.SqliteChannelsDb
-import fr.acinq.secp256k1.Hex
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 
 
 object ChannelsImportHelper {

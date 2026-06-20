@@ -23,9 +23,9 @@ package fr.acinq.phoenix.db.migrations.v11.types.liquidityads
 
 import fr.acinq.bitcoin.TxId
 import fr.acinq.lightning.MilliSatoshi
+import fr.acinq.lightning.wire.LiquidityAds
 import fr.acinq.phoenix.db.migrations.v10.json.MilliSatoshiSerializer
 import fr.acinq.phoenix.db.migrations.v10.json.TxIdSerializer
-import fr.acinq.lightning.wire.LiquidityAds
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

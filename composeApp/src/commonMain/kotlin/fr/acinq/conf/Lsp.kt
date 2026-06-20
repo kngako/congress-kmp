@@ -2,7 +2,13 @@ package fr.acinq.phoenixd.conf
 
 import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.PublicKey
-import fr.acinq.lightning.*
+import fr.acinq.lightning.CltvExpiryDelta
+import fr.acinq.lightning.DefaultSwapInParams
+import fr.acinq.lightning.InvoiceDefaultRoutingFees
+import fr.acinq.lightning.NodeUri
+import fr.acinq.lightning.SwapInParams
+import fr.acinq.lightning.TrampolineFees
+import fr.acinq.lightning.WalletParams
 import fr.acinq.lightning.utils.msat
 import fr.acinq.lightning.utils.sat
 

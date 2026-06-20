@@ -1,8 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.extensions.getShowIntroFlow
-import at.torch.compose.extensions.platformStartupLogic
-import at.torch.compose.extensions.schedulePlatformLogic
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

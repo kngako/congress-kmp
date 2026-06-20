@@ -16,25 +16,29 @@
 
 package fr.acinq.phoenix.utils.migrations
 
-import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.TxId
-import fr.acinq.bitcoin.byteVector
-import fr.acinq.lightning.Feature
 import fr.acinq.lightning.MilliSatoshi
 import fr.acinq.lightning.blockchain.fee.FeeratePerKw
 import fr.acinq.lightning.channel.ChannelCommand
-import fr.acinq.lightning.channel.states.*
+import fr.acinq.lightning.channel.states.ChannelState
+import fr.acinq.lightning.channel.states.ChannelStateWithCommitments
+import fr.acinq.lightning.channel.states.Closed
+import fr.acinq.lightning.channel.states.Closing
+import fr.acinq.lightning.channel.states.Negotiating
+import fr.acinq.lightning.channel.states.Offline
+import fr.acinq.lightning.channel.states.ShuttingDown
+import fr.acinq.lightning.channel.states.Syncing
 import fr.acinq.lightning.io.WrappedChannelCommand
+import fr.acinq.lightning.logging.info
+import fr.acinq.lightning.logging.warning
 import fr.acinq.lightning.utils.msat
 import fr.acinq.lightning.utils.sum
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.data.LocalChannelInfo
+import fr.acinq.phoenix.managers.phoenixSwapInWallet
 import fr.acinq.phoenix.utils.Parser
 import fr.acinq.phoenix.utils.extensions.isBeingCreated
-import fr.acinq.lightning.logging.info
-import fr.acinq.lightning.logging.warning
-import fr.acinq.phoenix.managers.phoenixSwapInWallet
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull

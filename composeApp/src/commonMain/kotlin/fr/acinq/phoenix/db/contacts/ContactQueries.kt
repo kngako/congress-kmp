@@ -9,8 +9,6 @@ import fr.acinq.phoenix.db.didDeleteContact
 import fr.acinq.phoenix.db.didSaveContact
 import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
 class ContactQueries(val database: PaymentsDatabase) {

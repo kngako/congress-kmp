@@ -1,6 +1,5 @@
 package at.torch.compose.database.dao
 
-import at.torch.compose.database.GENESIS_AT
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query

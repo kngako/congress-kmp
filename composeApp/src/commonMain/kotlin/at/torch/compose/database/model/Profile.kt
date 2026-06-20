@@ -1,7 +1,5 @@
 package at.torch.compose.database.model
 
-import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

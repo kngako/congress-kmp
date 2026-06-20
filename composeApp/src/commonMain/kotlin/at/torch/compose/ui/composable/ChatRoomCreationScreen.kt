@@ -1,7 +1,6 @@
 package at.torch.compose.ui.composable
 
 import androidx.compose.foundation.layout.Arrangement
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,8 +29,6 @@ import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.model.ChatRoomCreationViewModel
-import at.torch.compose.ui.view.state.form.TextField
-import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

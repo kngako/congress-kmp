@@ -6,9 +6,16 @@ import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.managers.global.NetworkMonitor
 import fr.acinq.phoenix.managers.global.NetworkState
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
 import fr.acinq.phoenix.utils.extensions.plus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 
 data class Connections(
     val internet: Connection = Connection.CLOSED(reason = null),

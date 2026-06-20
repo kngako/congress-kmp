@@ -22,7 +22,6 @@ import androidx.compose.runtime.collectAsState
 import fr.acinq.phoenix.data.BitcoinUnit
 import fr.acinq.phoenix.data.FiatCurrency
 import fr.acinq.phoenix.data.PreferredFiatCurrencies
-import fr.acinq.phoenix.managers.AppConfigurationManager
 import kotlinx.coroutines.flow.flowOf
 
 @Composable

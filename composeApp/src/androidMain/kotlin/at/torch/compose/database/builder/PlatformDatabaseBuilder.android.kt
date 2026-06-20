@@ -1,9 +1,9 @@
 package at.torch.compose.database.builder
 
-import at.torch.compose.PlatformContext
-import at.torch.compose.database.TorchDatabase
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import at.torch.compose.PlatformContext
+import at.torch.compose.database.TorchDatabase
 
 actual object PlatformDatabaseBuilder {
     actual fun getDatabaseBuilder(platformContext: PlatformContext): RoomDatabase.Builder<TorchDatabase> {

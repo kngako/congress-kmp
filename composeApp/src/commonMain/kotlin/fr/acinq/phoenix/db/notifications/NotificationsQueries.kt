@@ -23,8 +23,8 @@ import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.currentTimestampMillis
 import fr.acinq.phoenix.data.Notification
 import fr.acinq.phoenix.data.WatchTowerOutcome
-import fr.acinq.phoenix.db.sqldelight.AppDatabase
 import fr.acinq.phoenix.db.notifications.NotificationData.Companion.encodeAsDb
+import fr.acinq.phoenix.db.sqldelight.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow

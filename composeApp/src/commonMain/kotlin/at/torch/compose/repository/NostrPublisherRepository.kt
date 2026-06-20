@@ -1,6 +1,5 @@
 package at.torch.compose.repository
 
-import at.torch.compose.network.dto.RelayDTO
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

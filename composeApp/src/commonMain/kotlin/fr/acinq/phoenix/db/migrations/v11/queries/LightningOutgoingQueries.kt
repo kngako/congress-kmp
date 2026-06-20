@@ -22,7 +22,10 @@ import fr.acinq.lightning.MilliSatoshi
 import fr.acinq.lightning.ShortChannelId
 import fr.acinq.lightning.db.LightningOutgoingPayment
 import fr.acinq.lightning.db.OutgoingPayment
-import fr.acinq.lightning.utils.*
+import fr.acinq.lightning.utils.UUID
+import fr.acinq.lightning.utils.msat
+import fr.acinq.lightning.utils.sat
+import fr.acinq.lightning.utils.toByteVector32
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingDetailsData
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingDetailsTypeVersion
 import fr.acinq.phoenix.db.migrations.v11.types.OutgoingPartClosingInfoTypeVersion

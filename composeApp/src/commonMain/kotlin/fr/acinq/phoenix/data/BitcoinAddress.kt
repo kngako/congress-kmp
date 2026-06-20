@@ -22,7 +22,9 @@ import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.wire.OfferTypes
-import io.ktor.http.*
+import io.ktor.http.Parameters
+import io.ktor.http.formUrlEncode
+import io.ktor.http.plus
 
 data class BitcoinUri(
     val chain: Chain,

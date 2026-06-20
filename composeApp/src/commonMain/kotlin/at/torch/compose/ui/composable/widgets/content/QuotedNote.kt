@@ -1,9 +1,5 @@
 package at.torch.compose.ui.composable.widgets.content
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.QuotedRelation
-import at.torch.compose.database.model.intermdiate.LocalQuotedNostrEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row

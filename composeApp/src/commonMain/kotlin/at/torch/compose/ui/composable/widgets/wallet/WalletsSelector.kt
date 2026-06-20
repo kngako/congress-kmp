@@ -16,7 +16,6 @@
 
 package at.torch.compose.ui.composable.widgets.wallet
 
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize

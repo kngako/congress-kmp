@@ -8,6 +8,7 @@ import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.data.DecryptSeedResult
 import fr.acinq.phoenix.data.UserWallet
 import fr.acinq.phoenix.data.WalletId
+import fr.acinq.phoenix.managers.SeedManager.loadAndDecrypt
 import fr.acinq.phoenix.security.EncryptedSeed
 import fr.acinq.phoenix.utils.extensions.gracefulMultiSeedDecryption
 import fr.acinq.phoenix.utils.extensions.gracefulSingleSeedDecryption

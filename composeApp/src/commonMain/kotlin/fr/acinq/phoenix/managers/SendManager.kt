@@ -1,14 +1,11 @@
 package fr.acinq.phoenix.managers
 
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import fr.acinq.bitcoin.BitcoinError
 import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.PrivateKey
 import fr.acinq.bitcoin.utils.Either
 import fr.acinq.lightning.Lightning
 import fr.acinq.lightning.MilliSatoshi
-import fr.acinq.lightning.TrampolineFees
 import fr.acinq.lightning.db.LightningOutgoingPayment
 import fr.acinq.lightning.io.OfferInvoiceReceived
 import fr.acinq.lightning.io.OfferNotPaid

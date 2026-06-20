@@ -1,6 +1,5 @@
 package at.torch.android
 
-import at.torch.compose.PlatformContext
 import android.content.Intent
 import android.nfc.NfcAdapter
 import android.os.Bundle
@@ -8,10 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
+import at.torch.compose.PlatformContext
 import at.torch.compose.TorchApp
 import at.torch.compose.TorchGlobal
-import com.machankura.compose.ui.composable.widgets.nfc.NfcState
-import com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.android.services.HceService
 

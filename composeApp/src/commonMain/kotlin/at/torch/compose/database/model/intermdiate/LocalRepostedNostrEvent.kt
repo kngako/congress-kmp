@@ -1,7 +1,5 @@
 package at.torch.compose.database.model.intermdiate
 
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
-import at.torch.compose.extensions.toFormattedTimeAndDateString
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.room3.Embedded
 import androidx.room3.Relation
+import at.torch.compose.extensions.toFormattedTimeAndDateString
 
 data class LocalRepostedNostrEvent(
     @Embedded val repostedRelation: at.torch.compose.database.model.RepostedRelation,

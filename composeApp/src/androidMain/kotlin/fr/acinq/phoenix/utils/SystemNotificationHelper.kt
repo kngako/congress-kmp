@@ -16,9 +16,6 @@
 
 package fr.acinq.phoenix.utils
 
-import at.torch.android.BuildConfig
-import at.torch.android.MainActivity
-import at.torch.android.R
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
@@ -33,6 +30,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.TaskStackBuilder
 import androidx.core.net.toUri
+import at.torch.android.BuildConfig
+import at.torch.android.MainActivity
+import at.torch.android.R
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.MilliSatoshi

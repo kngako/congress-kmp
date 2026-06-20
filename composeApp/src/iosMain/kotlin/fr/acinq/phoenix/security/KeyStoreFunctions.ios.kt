@@ -1,7 +1,6 @@
 package fr.acinq.phoenix.security
 
 import fr.acinq.lightning.Lightning
-import platform.CoreCrypto.CCPseudoRandomAlgorithmVar
 
 actual fun keyStoreDecryption(
     keyName: String,

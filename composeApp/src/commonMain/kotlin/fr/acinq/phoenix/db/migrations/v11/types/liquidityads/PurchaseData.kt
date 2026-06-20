@@ -23,10 +23,10 @@ package fr.acinq.phoenix.db.migrations.v11.types.liquidityads
 
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.lightning.MilliSatoshi
-import fr.acinq.phoenix.db.migrations.v11.types.liquidityads.PaymentDetailsData.Companion.asCanonical
-import fr.acinq.phoenix.db.migrations.v10.json.SatoshiSerializer
-import fr.acinq.phoenix.db.migrations.v10.json.MilliSatoshiSerializer
 import fr.acinq.lightning.wire.LiquidityAds
+import fr.acinq.phoenix.db.migrations.v10.json.MilliSatoshiSerializer
+import fr.acinq.phoenix.db.migrations.v10.json.SatoshiSerializer
+import fr.acinq.phoenix.db.migrations.v11.types.liquidityads.PaymentDetailsData.Companion.asCanonical
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

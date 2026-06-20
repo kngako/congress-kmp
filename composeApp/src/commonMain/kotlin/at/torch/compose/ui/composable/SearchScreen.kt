@@ -1,8 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
-import at.torch.compose.ui.composable.navigation.routes.SearchResultRoute
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

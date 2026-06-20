@@ -16,7 +16,6 @@
 
 package fr.acinq.phoenix.android.services
 
-import at.torch.android.BuildConfig
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -26,6 +25,7 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import at.torch.android.BuildConfig
 import fr.acinq.lightning.channel.states.Closing
 import fr.acinq.lightning.utils.currentTimestampMillis
 import fr.acinq.phoenix.PhoenixGlobal

@@ -23,8 +23,8 @@ import fr.acinq.lightning.db.OutgoingPayment
 import fr.acinq.lightning.db.OutgoingPaymentsDb
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.phoenix.data.WalletPaymentMetadata
-import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import fr.acinq.phoenix.db.didSaveWalletPayment
+import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import fr.acinq.phoenix.managers.PaymentMetadataQueue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

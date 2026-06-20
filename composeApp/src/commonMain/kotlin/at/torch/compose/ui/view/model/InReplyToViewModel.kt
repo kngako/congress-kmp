@@ -1,9 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.NegentropySynchronizeRequest
-import at.torch.compose.database.model.types.SynchronizationFilter
-import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
-import at.torch.compose.ui.composable.widgets.feed.ListView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +24,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.ui.composable.widgets.feed.ListView
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent

@@ -2,15 +2,25 @@ package fr.acinq.phoenix.db
 
 import app.cash.sqldelight.Transacter
 import app.cash.sqldelight.coroutines.asFlow
-import fr.acinq.lightning.db.*
+import fr.acinq.lightning.db.IncomingPayment
+import fr.acinq.lightning.db.OutgoingPayment
+import fr.acinq.lightning.db.WalletPayment
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.currentTimestampMillis
 import fr.acinq.phoenix.data.WalletPaymentInfo
 import fr.acinq.phoenix.data.WalletPaymentMetadata
-import fr.acinq.phoenix.db.payments.*
-import kotlin.collections.List
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import fr.acinq.phoenix.db.payments.SqliteIncomingPaymentsDb
+import fr.acinq.phoenix.db.payments.SqliteOutgoingPaymentsDb
+import fr.acinq.phoenix.db.payments.WalletPaymentMetadataRow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CloudKitPaymentsDb(
     private val paymentsDb: SqlitePaymentsDb

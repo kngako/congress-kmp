@@ -16,8 +16,6 @@
 
 package fr.acinq.phoenix.android.services
 
-import at.torch.android.BuildConfig
-import at.torch.android.TorchApplication
 import android.content.Context
 import android.os.Build
 import androidx.work.CoroutineWorker
@@ -28,17 +26,19 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import at.torch.android.BuildConfig
+import at.torch.android.TorchApplication
 import fr.acinq.lightning.channel.states.Syncing
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.android.BusinessManager
-import fr.acinq.phoenix.data.StartBusinessResult
-import fr.acinq.phoenix.managers.SeedManager
 import fr.acinq.phoenix.data.LocalChannelInfo
+import fr.acinq.phoenix.data.StartBusinessResult
 import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.data.inFlightPaymentsCount
 import fr.acinq.phoenix.managers.DataStoreManager
 import fr.acinq.phoenix.managers.NodeParamsManager.Companion.chain
+import fr.acinq.phoenix.managers.SeedManager
 import fr.acinq.phoenix.utils.PlatformContext
 import fr.acinq.phoenix.utils.SystemNotificationHelper
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata

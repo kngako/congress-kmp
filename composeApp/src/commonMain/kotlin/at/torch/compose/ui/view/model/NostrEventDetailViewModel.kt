@@ -1,7 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.SynchronizeNostrEventRequest
-import at.torch.compose.database.model.types.SynchronizationFilter
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue

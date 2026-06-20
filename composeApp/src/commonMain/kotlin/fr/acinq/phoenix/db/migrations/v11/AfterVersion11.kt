@@ -17,7 +17,6 @@
 package fr.acinq.phoenix.db.migrations.v11
 
 import app.cash.sqldelight.EnumColumnAdapter
-import app.cash.sqldelight.TransacterImpl
 import app.cash.sqldelight.db.AfterVersion
 import app.cash.sqldelight.db.QueryResult
 import fr.acinq.bitcoin.ByteVector32

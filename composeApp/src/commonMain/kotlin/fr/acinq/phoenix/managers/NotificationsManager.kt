@@ -18,13 +18,13 @@ package fr.acinq.phoenix.managers
 
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.logging.LoggerFactory
+import fr.acinq.lightning.logging.debug
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.currentTimestampMillis
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.data.Notification
 import fr.acinq.phoenix.data.WatchTowerOutcome
 import fr.acinq.phoenix.db.SqliteAppDb
-import fr.acinq.lightning.logging.debug
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow

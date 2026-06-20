@@ -1,7 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.UnsignedNostrEvent
-import at.torch.compose.database.model.types.SynchronizationFilter
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue

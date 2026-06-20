@@ -32,7 +32,18 @@ import fr.acinq.lightning.logging.LoggerFactory
 import fr.acinq.lightning.logging.error
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.phoenix.data.ContactInfo
-import fr.acinq.phoenix.db.sqldelight.*
+import fr.acinq.phoenix.db.sqldelight.ChannelsDatabase
+import fr.acinq.phoenix.db.sqldelight.Cloudkit_payments_metadata
+import fr.acinq.phoenix.db.sqldelight.Cloudkit_payments_queue
+import fr.acinq.phoenix.db.sqldelight.Contacts
+import fr.acinq.phoenix.db.sqldelight.Htlc_infos
+import fr.acinq.phoenix.db.sqldelight.Link_lightning_outgoing_payment_parts
+import fr.acinq.phoenix.db.sqldelight.Local_channels
+import fr.acinq.phoenix.db.sqldelight.On_chain_txs
+import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
+import fr.acinq.phoenix.db.sqldelight.Payments_incoming
+import fr.acinq.phoenix.db.sqldelight.Payments_metadata
+import fr.acinq.phoenix.db.sqldelight.Payments_outgoing
 import fr.acinq.phoenix.managers.PaymentMetadataQueue
 import fr.acinq.phoenix.utils.extensions.toByteArray
 

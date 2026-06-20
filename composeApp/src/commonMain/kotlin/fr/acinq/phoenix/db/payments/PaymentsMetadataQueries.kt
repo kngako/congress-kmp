@@ -3,11 +3,12 @@ package fr.acinq.phoenix.db.payments
 import fr.acinq.lightning.MilliSatoshi
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.currentTimestampMillis
-import fr.acinq.phoenix.data.*
+import fr.acinq.phoenix.data.LnurlPayMetadata
+import fr.acinq.phoenix.data.WalletPaymentMetadata
 import fr.acinq.phoenix.data.lnurl.LnurlPay
-import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import fr.acinq.phoenix.db.didUpdateWalletPaymentMetadata
-import io.ktor.http.*
+import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
+import io.ktor.http.Url
 
 class PaymentsMetadataQueries(val database: PaymentsDatabase) {
 

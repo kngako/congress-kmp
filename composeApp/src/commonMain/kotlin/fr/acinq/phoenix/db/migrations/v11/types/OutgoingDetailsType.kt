@@ -29,6 +29,7 @@ import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.phoenix.db.migrations.v10.json.ByteVector32Serializer
 import fr.acinq.phoenix.db.migrations.v10.json.SatoshiSerializer
+import fr.acinq.phoenix.db.migrations.v11.types.OutgoingDetailsData.Companion.deserializeLegacyClosingDetails
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

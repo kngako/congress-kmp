@@ -20,7 +20,17 @@ import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.bitcoin.TxId
 import fr.acinq.lightning.MilliSatoshi
-import fr.acinq.lightning.db.*
+import fr.acinq.lightning.db.AutomaticLiquidityPurchasePayment
+import fr.acinq.lightning.db.Bolt11IncomingPayment
+import fr.acinq.lightning.db.ChannelCloseOutgoingPayment
+import fr.acinq.lightning.db.LegacyPayToOpenIncomingPayment
+import fr.acinq.lightning.db.LegacySwapInIncomingPayment
+import fr.acinq.lightning.db.LightningIncomingPayment
+import fr.acinq.lightning.db.LightningOutgoingPayment
+import fr.acinq.lightning.db.ManualLiquidityPurchasePayment
+import fr.acinq.lightning.db.OnChainIncomingPayment
+import fr.acinq.lightning.db.SpliceCpfpOutgoingPayment
+import fr.acinq.lightning.db.SpliceOutgoingPayment
 import fr.acinq.lightning.db.WalletPayment
 import fr.acinq.lightning.utils.UUID
 import fr.acinq.lightning.utils.msat
@@ -28,8 +38,8 @@ import fr.acinq.lightning.utils.sat
 import fr.acinq.lightning.utils.sum
 import fr.acinq.lightning.utils.toMilliSatoshi
 import fr.acinq.phoenix.data.WalletPaymentMetadata
-import kotlin.time.Instant
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 class WalletPaymentCsvWriter(val configuration: Configuration) : CsvWriter() {
 

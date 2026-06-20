@@ -1,6 +1,5 @@
 package fr.acinq.phoenix.controllers.main
 
-import co.touchlab.kermit.Logger
 import fr.acinq.lightning.logging.LoggerFactory
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.controllers.AppController

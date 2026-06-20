@@ -1,7 +1,5 @@
 package at.torch.compose.managers
 
-import at.torch.compose.database.builder.getRoomDatabase
-
 class AuxDatabaseManager(
     torchGlobal: at.torch.compose.TorchGlobal
 ) {

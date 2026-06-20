@@ -1,7 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
-import at.torch.compose.ui.composable.widgets.wallet.WalletsSelector
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +25,6 @@ import fr.acinq.phoenix.utils.preferences.UserPrefs
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
 import kotlinx.coroutines.flow.first
-import kotlin.collections.get
 
 @Composable
 fun SovereignWalletStartupScreen(

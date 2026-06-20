@@ -20,7 +20,10 @@ package fr.acinq.phoenix.utils.converters
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.lightning.MilliSatoshi
 import fr.acinq.lightning.utils.toMilliSatoshi
-import fr.acinq.phoenix.data.*
+import fr.acinq.phoenix.data.BitcoinUnit
+import fr.acinq.phoenix.data.CurrencyUnit
+import fr.acinq.phoenix.data.ExchangeRate
+import fr.acinq.phoenix.data.FiatCurrency
 import fr.acinq.phoenix.utils.converters.AmountConverter.toFiat
 import fr.acinq.phoenix.utils.converters.AmountConverter.toUnit
 

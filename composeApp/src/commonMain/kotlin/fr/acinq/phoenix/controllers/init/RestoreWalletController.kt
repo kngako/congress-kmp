@@ -1,6 +1,5 @@
 package fr.acinq.phoenix.controllers.init
 
-import co.touchlab.kermit.Logger
 import fr.acinq.bitcoin.MnemonicCode
 import fr.acinq.lightning.logging.LoggerFactory
 import fr.acinq.phoenix.PhoenixBusiness

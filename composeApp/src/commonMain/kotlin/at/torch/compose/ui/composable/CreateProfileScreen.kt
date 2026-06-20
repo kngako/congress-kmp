@@ -1,9 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.database.model.Profile
-import at.torch.compose.ui.theme.BluePill
-import at.torch.compose.ui.theme.RedPill
-import at.torch.compose.ui.view.model.CreateProfileViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import at.torch.compose.repository.MarmotRepository
+import at.torch.compose.ui.view.model.CreateProfileViewModel
 import at.torch.compose.ui.view.state.CreateProfileUIState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

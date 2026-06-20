@@ -24,7 +24,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlin.collections.plus
 
 
 actual fun updateBusinessActiveInUI(walletId: WalletId) {

@@ -1,6 +1,8 @@
 package fr.acinq.phoenix.controllers
 
-import fr.acinq.phoenix.controllers.config.*
+import fr.acinq.phoenix.controllers.config.CloseChannelsConfiguration
+import fr.acinq.phoenix.controllers.config.Configuration
+import fr.acinq.phoenix.controllers.config.ElectrumConfiguration
 import fr.acinq.phoenix.controllers.init.Initialization
 import fr.acinq.phoenix.controllers.init.RestoreWallet
 import fr.acinq.phoenix.controllers.main.Content

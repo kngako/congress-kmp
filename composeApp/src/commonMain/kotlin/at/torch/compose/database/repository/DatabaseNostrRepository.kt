@@ -1,6 +1,5 @@
 package at.torch.compose.database.repository
 
-import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
@@ -8,7 +7,6 @@ import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
-import com.vitorpamplona.quartz.marmot.mls.codec.TlsWriter
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
 import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
 import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
@@ -57,8 +55,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.collections.emptyMap
-import kotlin.collections.plus
 import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 import kotlin.time.Instant

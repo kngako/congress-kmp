@@ -1,6 +1,5 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.database.model.NegentropySynchronizeRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

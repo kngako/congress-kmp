@@ -16,7 +16,6 @@
 
 package fr.acinq.phoenix.utils.extensions
 
-import fr.acinq.lightning.Feature
 import fr.acinq.lightning.payment.Bolt11Invoice
 import fr.acinq.lightning.payment.Bolt12Invoice
 import fr.acinq.lightning.payment.OfferPaymentMetadata

@@ -5,7 +5,6 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import kotlin.String
 import kotlin.time.Clock
 import kotlin.time.Instant
 

@@ -16,13 +16,18 @@
 
 package fr.acinq.phoenix.data.lnurl
 
-import fr.acinq.bitcoin.*
+import fr.acinq.bitcoin.ByteVector
+import fr.acinq.bitcoin.ByteVector32
+import fr.acinq.bitcoin.Crypto
+import fr.acinq.bitcoin.DeterministicWallet
+import fr.acinq.bitcoin.KeyPath
+import fr.acinq.bitcoin.PrivateKey
+import fr.acinq.bitcoin.PublicKey
 import fr.acinq.bitcoin.crypto.Digest
 import fr.acinq.bitcoin.crypto.Pack
 import fr.acinq.bitcoin.crypto.hmac
 import fr.acinq.lightning.crypto.LocalKeyManager
-import fr.acinq.lightning.logging.debug
-import io.ktor.http.*
+import io.ktor.http.Url
 
 data class LnurlAuth(
     override val initialUrl: Url,

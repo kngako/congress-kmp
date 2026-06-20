@@ -17,9 +17,7 @@
 package fr.acinq.phoenix.utils.extensions
 
 import fr.acinq.lightning.SwapInParams
-import fr.acinq.lightning.blockchain.electrum.FinalWallet
 import fr.acinq.lightning.blockchain.electrum.WalletState
-import fr.acinq.lightning.utils.getValue
 import kotlin.math.ceil
 
 /** Number of confirmation during which a utxo is locked between the swap window closing and the refund delay. */

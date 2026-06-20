@@ -1,11 +1,5 @@
 package at.torch.compose.ui.composable.widgets.detail
 
-import at.torch.compose.database.model.NostrEvent
-import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.intermdiate.LocalNostrEvent
-import at.torch.compose.ui.composable.widgets.content.RichContent
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
-import at.torch.compose.extensions.toFormattedTimeAndDateString
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +44,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 

@@ -1,6 +1,5 @@
 package at.torch.compose.ui.composable
 
-import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding

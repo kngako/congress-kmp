@@ -1,12 +1,12 @@
 package at.torch.compose.database.model
 
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.PrimaryKey
 import at.torch.compose.database.model.traits.LocalStoreEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
-import androidx.room3.Entity
-import androidx.room3.ForeignKey
-import androidx.room3.PrimaryKey
 import kotlin.time.Clock
 import kotlin.time.Instant
 

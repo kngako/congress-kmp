@@ -18,26 +18,8 @@ package fr.acinq.phoenix.utils.channels
 
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector64
-import fr.acinq.bitcoin.Crypto
 import fr.acinq.bitcoin.PublicKey
-import fr.acinq.bitcoin.Satoshi
-import fr.acinq.bitcoin.SigHash
-import fr.acinq.bitcoin.SigVersion
-import fr.acinq.bitcoin.Script
-import fr.acinq.bitcoin.Transaction
 import fr.acinq.bitcoin.TxId
-import fr.acinq.bitcoin.byteVector
-import fr.acinq.lightning.channel.states.ChannelStateWithCommitments
-import fr.acinq.lightning.channel.states.PersistedChannelState
-import fr.acinq.lightning.logging.error
-import fr.acinq.lightning.serialization.channel.Encryption.from
-import fr.acinq.lightning.serialization.channel.Serialization
-import fr.acinq.lightning.transactions.Scripts
-import fr.acinq.lightning.transactions.Transactions
-import fr.acinq.phoenix.PhoenixBusiness
-import fr.acinq.secp256k1.Hex
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 
 object SpendChannelAddressHelper {
 

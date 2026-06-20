@@ -1,10 +1,10 @@
 package at.torch.compose.database.model
 
-import at.torch.compose.network.serialization.encodeToJsonString
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import at.torch.compose.network.serialization.encodeToJsonString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.utils.sha256.sha256
 import io.ktor.utils.io.core.toByteArray

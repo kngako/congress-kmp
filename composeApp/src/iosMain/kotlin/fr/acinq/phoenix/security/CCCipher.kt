@@ -1,8 +1,41 @@
 package fr.acinq.phoenix.security
 
-import kotlinx.cinterop.*
-import platform.CoreCrypto.*
-import platform.posix.*
+import kotlinx.cinterop.ByteVar
+import kotlinx.cinterop.CValuesRef
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.MemScope
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.convert
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.pin
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.refTo
+import kotlinx.cinterop.value
+import platform.CoreCrypto.CCAlgorithm
+import platform.CoreCrypto.CCCryptorCreateWithMode
+import platform.CoreCrypto.CCCryptorFinal
+import platform.CoreCrypto.CCCryptorGetOutputLength
+import platform.CoreCrypto.CCCryptorRefVar
+import platform.CoreCrypto.CCCryptorRelease
+import platform.CoreCrypto.CCCryptorStatus
+import platform.CoreCrypto.CCCryptorUpdate
+import platform.CoreCrypto.CCMode
+import platform.CoreCrypto.CCOperation
+import platform.CoreCrypto.CCPadding
+import platform.CoreCrypto.ccPKCS7Padding
+import platform.CoreCrypto.kCCAlgorithmAES
+import platform.CoreCrypto.kCCAlignmentError
+import platform.CoreCrypto.kCCBufferTooSmall
+import platform.CoreCrypto.kCCDecodeError
+import platform.CoreCrypto.kCCDecrypt
+import platform.CoreCrypto.kCCEncrypt
+import platform.CoreCrypto.kCCMemoryFailure
+import platform.CoreCrypto.kCCModeCBC
+import platform.CoreCrypto.kCCParamError
+import platform.CoreCrypto.kCCSuccess
+import platform.CoreCrypto.kCCUnimplemented
+import platform.posix.size_tVar
 
 @OptIn(ExperimentalForeignApi::class)
 private val almostEmptyArrayPinned = ByteArray(1).pin()

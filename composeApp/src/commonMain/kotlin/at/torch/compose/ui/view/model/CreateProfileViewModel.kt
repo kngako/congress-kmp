@@ -1,16 +1,16 @@
 package at.torch.compose.ui.view.model
 
-import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.view.state.CreateProfileUIState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import at.torch.compose.ui.view.state.form.CreateProfileFormState
-import androidx.lifecycle.viewModelScope
 import at.torch.compose.repository.MarmotRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.view.state.CreateProfileUIState
+import at.torch.compose.ui.view.state.form.CreateProfileFormState
 import co.touchlab.kermit.Logger
 import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.MnemonicCode

@@ -17,7 +17,7 @@
 package fr.acinq.phoenix.data.lnurl
 
 import fr.acinq.lightning.MilliSatoshi
-import io.ktor.http.*
+import io.ktor.http.Url
 
 data class LnurlWithdraw(
     override val initialUrl: Url,

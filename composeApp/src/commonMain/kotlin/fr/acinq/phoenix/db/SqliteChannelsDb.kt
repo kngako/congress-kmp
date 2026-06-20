@@ -22,7 +22,6 @@ import fr.acinq.lightning.CltvExpiry
 import fr.acinq.lightning.channel.states.PersistedChannelState
 import fr.acinq.lightning.db.ChannelsDb
 import fr.acinq.phoenix.db.sqldelight.ChannelsDatabase
-import kotlin.collections.List
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

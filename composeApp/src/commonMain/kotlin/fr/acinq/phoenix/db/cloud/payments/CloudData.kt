@@ -8,7 +8,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 // Architecture & Notes:

@@ -1,8 +1,5 @@
 package at.torch.compose.network.sockets
 
-import at.torch.compose.exceptions.NetworkException
-import at.torch.compose.exceptions.NostrNoticeException
-
 sealed class NostrIncomingMessage {
 
     data class EventMessage(

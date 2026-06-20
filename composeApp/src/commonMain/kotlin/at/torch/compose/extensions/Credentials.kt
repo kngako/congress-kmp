@@ -1,6 +1,5 @@
 package at.torch.compose.extensions
 
-import at.torch.compose.exceptions.InvalidNostrPrivateKeyException
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip19Bech32.bech32.Bech32
 import fr.acinq.bitcoin.PrivateKey

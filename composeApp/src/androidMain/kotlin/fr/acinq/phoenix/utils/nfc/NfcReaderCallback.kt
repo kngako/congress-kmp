@@ -20,9 +20,9 @@ import android.nfc.NdefMessage
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
-import fr.acinq.lightning.utils.toByteVector
 import com.machankura.compose.ui.composable.widgets.nfc.NfcState
 import com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository
+import fr.acinq.lightning.utils.toByteVector
 import fr.acinq.phoenix.android.services.HceService
 import org.slf4j.LoggerFactory
 

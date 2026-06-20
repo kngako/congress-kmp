@@ -1,21 +1,21 @@
 package fr.acinq.phoenix.android.services
 
-import at.torch.android.BuildConfig
-import at.torch.android.TorchApplication
 import android.app.Service
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationManagerCompat
+import at.torch.android.BuildConfig
+import at.torch.android.TorchApplication
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.android.BusinessManager
-import fr.acinq.phoenix.data.StartBusinessResult
 import fr.acinq.phoenix.data.DecryptSeedResult
+import fr.acinq.phoenix.data.StartBusinessResult
 import fr.acinq.phoenix.data.WalletId
-import fr.acinq.phoenix.managers.SeedManager
 import fr.acinq.phoenix.managers.AppConnectionsDaemon
+import fr.acinq.phoenix.managers.SeedManager
 import fr.acinq.phoenix.utils.PlatformContext
 import fr.acinq.phoenix.utils.SystemNotificationHelper
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault

@@ -17,8 +17,23 @@
 package fr.acinq.phoenix.utils.extensions
 
 import fr.acinq.lightning.MilliSatoshi
-import fr.acinq.lightning.channel.*
-import fr.acinq.lightning.channel.states.*
+import fr.acinq.lightning.channel.Commitment
+import fr.acinq.lightning.channel.states.Aborted
+import fr.acinq.lightning.channel.states.ChannelState
+import fr.acinq.lightning.channel.states.ChannelStateWithCommitments
+import fr.acinq.lightning.channel.states.Closed
+import fr.acinq.lightning.channel.states.Closing
+import fr.acinq.lightning.channel.states.Negotiating
+import fr.acinq.lightning.channel.states.Offline
+import fr.acinq.lightning.channel.states.Syncing
+import fr.acinq.lightning.channel.states.WaitForAcceptChannel
+import fr.acinq.lightning.channel.states.WaitForChannelReady
+import fr.acinq.lightning.channel.states.WaitForFundingConfirmed
+import fr.acinq.lightning.channel.states.WaitForFundingCreated
+import fr.acinq.lightning.channel.states.WaitForFundingSigned
+import fr.acinq.lightning.channel.states.WaitForInit
+import fr.acinq.lightning.channel.states.WaitForOpenChannel
+import fr.acinq.lightning.channel.states.WaitForRemotePublishFutureCommitment
 import fr.acinq.lightning.utils.msat
 
 

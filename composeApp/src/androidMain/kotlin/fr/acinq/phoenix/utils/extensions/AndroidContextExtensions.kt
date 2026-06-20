@@ -16,9 +16,9 @@
 
 package fr.acinq.phoenix.utils.extensions
 
-import at.torch.android.MainActivity
 import android.content.Context
 import android.content.ContextWrapper
+import at.torch.android.MainActivity
 
 fun Context.findActivitySafe(): MainActivity? {
     var context = this

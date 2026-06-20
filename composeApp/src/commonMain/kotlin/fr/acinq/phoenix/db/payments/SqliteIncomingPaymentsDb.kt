@@ -25,9 +25,9 @@ import fr.acinq.lightning.db.LightningIncomingPayment
 import fr.acinq.lightning.db.OnChainIncomingPayment
 import fr.acinq.lightning.wire.LiquidityAds
 import fr.acinq.phoenix.data.WalletPaymentMetadata
-import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import fr.acinq.phoenix.db.didDeleteWalletPayment
 import fr.acinq.phoenix.db.didSaveWalletPayment
+import fr.acinq.phoenix.db.sqldelight.PaymentsDatabase
 import fr.acinq.phoenix.managers.PaymentMetadataQueue
 import fr.acinq.phoenix.utils.extensions.deriveUUID
 import kotlinx.coroutines.Dispatchers

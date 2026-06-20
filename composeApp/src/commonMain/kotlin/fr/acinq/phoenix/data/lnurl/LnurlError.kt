@@ -16,7 +16,7 @@
 
 package fr.acinq.phoenix.data.lnurl
 
-import io.ktor.http.*
+import io.ktor.http.HttpStatusCode
 
 sealed class LnurlError(override val message: String? = null) : RuntimeException(message) {
     val details: String by lazy { "Lnurl error=${message ?: this::class.simpleName ?: "N/A"} in url=" }

@@ -22,8 +22,13 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation.NavController
 import fr.acinq.phoenix.controllers.ControllerFactory
-import fr.acinq.phoenix.data.*
-import fr.acinq.phoenix.utils.preferences.GlobalPrefs
+import fr.acinq.phoenix.data.BitcoinUnit
+import fr.acinq.phoenix.data.CurrencyUnit
+import fr.acinq.phoenix.data.ExchangeRate
+import fr.acinq.phoenix.data.FiatCurrency
+import fr.acinq.phoenix.data.PreferredFiatCurrencies
+import fr.acinq.phoenix.data.UserTheme
+import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.utils.preferences.InternalPrefs
 import fr.acinq.phoenix.utils.preferences.PreferredBitcoinUnits
 import fr.acinq.phoenix.utils.preferences.UserPrefs

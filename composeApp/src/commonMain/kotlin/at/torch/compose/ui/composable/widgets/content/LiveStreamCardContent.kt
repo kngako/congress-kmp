@@ -1,6 +1,5 @@
 package at.torch.compose.ui.composable.widgets.content
 
-import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

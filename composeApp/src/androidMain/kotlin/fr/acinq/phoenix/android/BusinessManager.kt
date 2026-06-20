@@ -16,11 +16,11 @@
 
 package fr.acinq.phoenix.android
 
+import android.content.Context
+import android.text.format.DateUtils
 import at.torch.android.TorchApplication
 import at.torch.compose.AppVersion
 import at.torch.compose.ui.composable.widgets.wallet.WalletAvatars
-import android.content.Context
-import android.text.format.DateUtils
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.PaymentEvents
 import fr.acinq.lightning.utils.Connection

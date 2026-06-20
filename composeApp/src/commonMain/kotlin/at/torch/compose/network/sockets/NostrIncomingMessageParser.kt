@@ -1,6 +1,5 @@
 package at.torch.compose.network.sockets
 
-import at.torch.compose.network.serialization.SocketsJson
 import at.torch.compose.network.serialization.decodeFromStringOrNull
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event

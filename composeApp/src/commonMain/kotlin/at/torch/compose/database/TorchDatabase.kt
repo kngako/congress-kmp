@@ -7,7 +7,6 @@ import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import at.torch.compose.database.dao.MarmotKeyPackageBundleDao
 import at.torch.compose.database.dao.MarmotKeyPackageDao
-import at.torch.compose.database.model.MarmotKeyPackageBundle
 import kotlin.time.Instant
 
 val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
