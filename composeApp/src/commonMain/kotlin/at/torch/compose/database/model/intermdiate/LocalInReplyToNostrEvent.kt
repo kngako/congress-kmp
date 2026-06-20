@@ -33,7 +33,7 @@ data class LocalInReplyToNostrEvent(
     val profile: at.torch.compose.database.model.Profile?,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.Mention::class,
+        entity = at.torch.compose.database.model.Mention::class,
         parentColumns = ["inReplyToNostrEventId"],
         entityColumns = ["mentioningNostrEventId"],
     )

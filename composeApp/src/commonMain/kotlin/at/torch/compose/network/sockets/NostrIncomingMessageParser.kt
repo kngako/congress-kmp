@@ -74,7 +74,7 @@ private fun JsonArray.takeAsEventIncomingMessage(): NostrIncomingMessage? {
 
     if (subscriptionId == null || kind == null) return null
 
-    val nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent.Companion.fromEvent(
+    val nostrEvent = at.torch.compose.database.model.NostrEvent.fromEvent(
         Event.fromJson(
             event.toString()
         )
@@ -95,7 +95,7 @@ private fun JsonArray.takeAsEventsIncomingMessage(): NostrIncomingMessage? {
     val nostrEvents = mutableListOf<at.torch.compose.database.model.NostrEvent>()
 
     events.map { it.jsonObject }.forEach { jsonEvent ->
-        _root_ide_package_.at.torch.compose.database.model.NostrEvent.Companion.fromEvent(
+        at.torch.compose.database.model.NostrEvent.fromEvent(
             Event.fromJson(
                 jsonEvent.toString()
             )

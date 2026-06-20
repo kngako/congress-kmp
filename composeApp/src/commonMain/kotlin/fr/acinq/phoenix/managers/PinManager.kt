@@ -56,7 +56,7 @@ object PinManager {
 
     fun getLockPinMapFromDisk(): Map<WalletId, String> {
         val encryptedPin = getEncryptedPinFromDisk( LOCK_PIN_FILE_NAME)?.let {
-            EncryptedPinLock.Companion.deserialize(it)
+            EncryptedPinLock.deserialize(it)
         }
         return when (encryptedPin) {
             is EncryptedPinLock.SingleWallet -> {
@@ -70,7 +70,7 @@ object PinManager {
 
     fun getSpendingPinMapFromDisk(): Map<WalletId, String> {
         val encryptedPin = getEncryptedPinFromDisk(SPENDING_PIN_FILE_NAME)?.let {
-            EncryptedPinSpending.Companion.deserialize(it)
+            EncryptedPinSpending.deserialize(it)
         }
         return when (encryptedPin) {
             is EncryptedPinSpending.SingleWallet -> {
@@ -83,7 +83,7 @@ object PinManager {
     }
 
     fun writeLockPinMapToDisk(pinMap: Map<WalletId, String>) {
-        val encryptedPin = EncryptedPinLock.Companion.encrypt(pinMap)
+        val encryptedPin = EncryptedPinLock.encrypt(pinMap)
         val datadir = getDataDir()
         val temp = datadir.resolve("temporary_pin.dat")
 
@@ -99,7 +99,7 @@ object PinManager {
     }
 
     fun writeSpendingPinMapToDisk(pinMap: Map<WalletId, String>) {
-        val encryptedPin = EncryptedPinSpending.Companion.encrypt(pinMap)
+        val encryptedPin = EncryptedPinSpending.encrypt(pinMap)
         val datadir = getDataDir()
 
         val temp = datadir.resolve("temporary_pin.dat")
@@ -128,7 +128,7 @@ object PinManager {
         }
 
         val encryptedSpendingPin = getEncryptedPinFromDisk( SPENDING_PIN_FILE_NAME)?.let {
-            EncryptedPinSpending.Companion.deserialize(it)
+            EncryptedPinSpending.deserialize(it)
         }
         when (encryptedSpendingPin) {
             is EncryptedPinSpending.SingleWallet -> {

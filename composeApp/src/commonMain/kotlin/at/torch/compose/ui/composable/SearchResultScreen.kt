@@ -65,8 +65,8 @@ fun SearchResultScreen(
     val scope = rememberCoroutineScope()
 
     val searchViewModel: at.torch.compose.ui.view.model.SearchResultViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.SearchResultViewModel.Companion.factory(
-            initialSearchResultType = _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Profiles,
+        factory = at.torch.compose.ui.view.model.SearchResultViewModel.factory(
+            initialSearchResultType = at.torch.compose.ui.view.model.SearchResultType.Profiles,
             searchQuery = searchQuery,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
@@ -154,14 +154,14 @@ fun SearchResultScreen(
                     },
                     windowInsets = TopAppBarDefaults.windowInsets
                 ) {
-                    val pagerState = rememberPagerState { _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.entries.size }
+                    val pagerState = rememberPagerState { at.torch.compose.ui.view.model.SearchResultType.entries.size }
 
                     PrimaryScrollableTabRow(
                         modifier = Modifier,
                         edgePadding = 10.dp,
                         selectedTabIndex = searchViewModel.searchResultType.ordinal,
                     ) {
-                        _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.entries.forEach { searchResultType ->
+                        at.torch.compose.ui.view.model.SearchResultType.entries.forEach { searchResultType ->
                             Tab(
                                 selected = searchViewModel.searchResultType == searchResultType,
                                 onClick = {
@@ -194,14 +194,14 @@ fun SearchResultScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            when(_root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.entries[pageIndex]) {
-                                _root_ide_package_.at.torch.compose.ui.view.model.SearchResultType.Profiles -> {
+                            when(at.torch.compose.ui.view.model.SearchResultType.entries[pageIndex]) {
+                                at.torch.compose.ui.view.model.SearchResultType.Profiles -> {
                                     Text("Profiles")
                                 }
                             }
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
-                                _root_ide_package_.at.torch.compose.ui.view.state.SearchResultListUIState.Error -> {
+                                at.torch.compose.ui.view.state.SearchResultListUIState.Error -> {
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally
@@ -254,7 +254,7 @@ fun SearchResultScreen(
                                     }
 
                                 }
-                                _root_ide_package_.at.torch.compose.ui.view.state.SearchResultListUIState.Loading -> {
+                                at.torch.compose.ui.view.state.SearchResultListUIState.Loading -> {
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally
@@ -296,8 +296,8 @@ private fun SearchResultScreenPreview() {
             SearchResultScreen(
                 activeUserPublicKey = "",
                 searchQuery = "What happened...",
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
-                searchRepository = _root_ide_package_.at.torch.compose.repository.SearchRepository.Companion.NO_OP_SEARCH_REPOSITORY,
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                searchRepository = at.torch.compose.repository.SearchRepository.NO_OP_SEARCH_REPOSITORY,
                 onNavigateBack = {},
                 onNavigateToEvent = {}
             )

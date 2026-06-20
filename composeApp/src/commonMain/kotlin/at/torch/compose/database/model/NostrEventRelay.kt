@@ -32,7 +32,4 @@ data class NostrEventRelay(
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
-): NostrEventEntity, TimestampedEntity {
-
-
-}
+): NostrEventEntity, TimestampedEntity

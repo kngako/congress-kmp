@@ -55,7 +55,7 @@ class FollowersListViewModel(
             nostrRepository.observeProfileWithFollowers(
                 publicKey
             ).collect { localFollowers ->
-                followersListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowersListUIState.Loaded(
+                followersListUIState = at.torch.compose.ui.view.state.FollowersListUIState.Loaded(
                     followers = localFollowers?.followers ?: emptyList()
                 )
             }
@@ -67,9 +67,9 @@ class FollowersListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+                at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
                         ),
@@ -104,7 +104,7 @@ class FollowersListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val followersListUIState = followersListUIState) {
-                _root_ide_package_.at.torch.compose.ui.view.state.FollowersListUIState.Error -> {
+                at.torch.compose.ui.view.state.FollowersListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -149,7 +149,7 @@ class FollowersListViewModel(
                     }
 
                 }
-                _root_ide_package_.at.torch.compose.ui.view.state.FollowersListUIState.Loading -> {
+                at.torch.compose.ui.view.state.FollowersListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -176,7 +176,7 @@ class FollowersListViewModel(
         const val TAG = "FollowersListViewModel"
 
         fun factory(
-            initialFeedListUIState: at.torch.compose.ui.view.state.FollowersListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowersListUIState.Loading,
+            initialFeedListUIState: at.torch.compose.ui.view.state.FollowersListUIState = at.torch.compose.ui.view.state.FollowersListUIState.Loading,
             publicKey: String,
             synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
             nostrRepository: at.torch.compose.repository.NostrRepository,

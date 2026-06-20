@@ -5,5 +5,4 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UnsignedProfileRoute(
     val unsignedNostrEventId: Long,
-): Route() {
-}
+): Route()

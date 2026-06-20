@@ -88,7 +88,7 @@ sealed class CloudData {
          * This function exists because the Kotlin-generated
          * copy function doesn't translate to iOS very well.
          */
-        fun copyWithPadding(padding: ByteArray): CloudData.V0 {
+        fun copyWithPadding(padding: ByteArray): V0 {
             return this.copy(padding = padding)
         }
 

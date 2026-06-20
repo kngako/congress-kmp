@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 
-@kotlin.OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ImageWithContextMenu(meta: MediaMeta, onFullScreen: () -> Unit) {
     val url = meta.url

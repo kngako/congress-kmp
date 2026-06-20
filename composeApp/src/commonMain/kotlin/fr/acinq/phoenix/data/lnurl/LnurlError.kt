@@ -22,18 +22,18 @@ sealed class LnurlError(override val message: String? = null) : RuntimeException
     val details: String by lazy { "Lnurl error=${message ?: this::class.simpleName ?: "N/A"} in url=" }
 
     sealed class Auth(override val message: String?) : LnurlError(message) {
-        object MissingK1 : Auth("missing k1 parameter")
+        class MissingK1 : Auth("missing k1 parameter")
     }
 
     sealed class Withdraw(override val message: String?) : LnurlError(message) {
-        object MissingK1 : Withdraw("missing k1 parameter in auth metadata")
+        class MissingK1 : Withdraw("missing k1 parameter in auth metadata")
     }
 
     sealed class Pay : LnurlError() {
         sealed class Intent(override val message: String?) : LnurlError(message) {
-            object InvalidMin : Intent("invalid minimum amount")
-            object MissingMax : Intent("missing maximum amount parameter")
-            object MissingMetadata : Intent("missing metadata parameter")
+            class InvalidMin : Intent("invalid minimum amount")
+            class MissingMax : Intent("missing maximum amount parameter")
+            class MissingMetadata : Intent("missing metadata parameter")
             data class InvalidMetadata(val meta: String) : Intent("invalid meta=$meta")
         }
 
@@ -50,10 +50,10 @@ sealed class LnurlError(override val message: String? = null) : RuntimeException
     }
 
     data class Invalid(override val cause: Throwable?) : LnurlError("cannot be parsed as a bech32 or as a human readable lnurl")
-    object NoTag : LnurlError("no tag field found")
+    class NoTag : LnurlError("no tag field found")
     data class UnhandledTag(val tag: String) : LnurlError("unhandled tag=$tag")
-    object UnsafeResource : LnurlError("resource should be https")
-    object MissingCallback : LnurlError("missing callback in metadata response")
+    class UnsafeResource : LnurlError("resource should be https")
+    class MissingCallback : LnurlError("missing callback in metadata response")
 
     sealed class RemoteFailure(override val message: String) : LnurlError(message) {
         abstract val origin: String

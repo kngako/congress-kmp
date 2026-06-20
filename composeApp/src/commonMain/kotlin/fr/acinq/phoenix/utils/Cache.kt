@@ -116,7 +116,7 @@ class Cache<Key, Value>(sizeLimit: Int) {
         }
     }
 
-    operator fun set(key: Key, value: Value): Unit {
+    operator fun set(key: Key, value: Value) {
 
         val existingItem = _map[key]
         if (existingItem != null) {
@@ -192,7 +192,7 @@ class Cache<Key, Value>(sizeLimit: Int) {
         }
     }
 
-    fun remove(key: Key): Unit {
+    fun remove(key: Key) {
 
         _map[key]?.let { item ->
 
@@ -212,7 +212,7 @@ class Cache<Key, Value>(sizeLimit: Int) {
         }
     }
 
-    fun clear(): Unit {
+    fun clear() {
 
         var item = leastRecentCacheItem
         while (item != null) {

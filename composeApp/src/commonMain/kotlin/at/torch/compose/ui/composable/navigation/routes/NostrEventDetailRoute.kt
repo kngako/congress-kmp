@@ -6,5 +6,4 @@ import kotlinx.serialization.Serializable
 data class NostrEventDetailRoute(
     val activeUserPublicKey: String,
     val nostrEventId: String,
-): Route() {
-}
+): Route()

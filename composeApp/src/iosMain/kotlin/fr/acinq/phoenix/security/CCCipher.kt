@@ -41,7 +41,7 @@ import platform.posix.size_tVar
 private val almostEmptyArrayPinned = ByteArray(1).pin()
 
 @ExperimentalForeignApi
-public fun ByteArray.safeRefTo(index: Int): CValuesRef<ByteVar> {
+fun ByteArray.safeRefTo(index: Int): CValuesRef<ByteVar> {
     if (index == size) return almostEmptyArrayPinned.addressOf(0)
     return refTo(index)
 }

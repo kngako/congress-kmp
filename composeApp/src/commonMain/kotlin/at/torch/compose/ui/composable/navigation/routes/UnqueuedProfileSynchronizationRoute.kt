@@ -6,5 +6,4 @@ import kotlinx.serialization.Serializable
 data class UnqueuedProfileSynchronizationRoute(
     val publicKey: String,
     val unsignedNostrEventId: Long,
-): Route() {
-}
+): Route()

@@ -65,7 +65,7 @@ fun CreateProfileScreen(
             ) {
 
                 when (val createAccountUIState = createProfileViewModel.createProfileUIState.value) {
-                    is at.torch.compose.ui.view.state.CreateProfileUIState.Declaration -> {
+                    is CreateProfileUIState.Declaration -> {
 
                         Text(
                             "Create Profile",
@@ -91,7 +91,7 @@ fun CreateProfileScreen(
                         Button(
                             onClick = {
 
-                                createProfileViewModel.createProfileUIState.value = _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.InputPrompt
+                                createProfileViewModel.createProfileUIState.value = CreateProfileUIState.InputPrompt
                             }
                         ) {
                             Text(
@@ -99,7 +99,7 @@ fun CreateProfileScreen(
                             )
                         }
                     }
-                    is at.torch.compose.ui.view.state.CreateProfileUIState.InputPrompt -> {
+                    is CreateProfileUIState.InputPrompt -> {
                         Text(
                             "Create Profile",
                             style = MaterialTheme.typography.headlineSmall
@@ -204,7 +204,7 @@ fun CreateProfileScreen(
                                 createProfileViewModel.validateInput().let { isInputValid ->
                                     if (isInputValid) {
                                         createProfileViewModel.createProfileUIState.value =
-                                            _root_ide_package_.at.torch.compose.ui.view.state.CreateProfileUIState.ConfirmInput(
+                                            CreateProfileUIState.ConfirmInput(
                                                 name = createProfileViewModel.createProfileFormState.nameField.textFieldState.text.toString(),
                                                 bio = createProfileViewModel.createProfileFormState.biographyField.textFieldState.text.toString()
                                             )
@@ -220,7 +220,7 @@ fun CreateProfileScreen(
                         }
 
                     }
-                    is at.torch.compose.ui.view.state.CreateProfileUIState.ConfirmInput -> {
+                    is CreateProfileUIState.ConfirmInput -> {
 
                         Text(
                             text = "Name",
@@ -278,7 +278,7 @@ fun CreateProfileScreen(
                         }
 
                     }
-                    is at.torch.compose.ui.view.state.CreateProfileUIState.Error -> {
+                    is CreateProfileUIState.Error -> {
                         Spacer(
                             modifier = Modifier.weight(1f)
                         )
@@ -291,7 +291,7 @@ fun CreateProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    is at.torch.compose.ui.view.state.CreateProfileUIState.ProfileReady -> {
+                    is CreateProfileUIState.ProfileReady -> {
 
                         Spacer(
                             modifier = Modifier.weight(1f)

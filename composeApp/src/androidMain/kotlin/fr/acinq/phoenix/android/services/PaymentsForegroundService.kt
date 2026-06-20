@@ -135,7 +135,7 @@ class PaymentsForegroundService : Service() {
         }
 
         // show a notification -- this is mandatory!
-        val notif = SystemNotificationHelper.notifyRunningHeadless(applicationContext)
+        SystemNotificationHelper.notifyRunningHeadless(applicationContext)
 //        startForeground(notif)
 
         // service will automatically shutdown -- delay is short if the message is ignored

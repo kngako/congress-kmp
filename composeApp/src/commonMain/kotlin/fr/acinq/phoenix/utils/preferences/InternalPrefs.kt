@@ -43,7 +43,7 @@ class InternalPrefs(private val internalData: DataStore<Preferences>) {
         private val LAST_REJECTED_ONCHAIN_SWAP_TIMESTAMP = longPreferencesKey("LAST_REJECTED_ONCHAIN_SWAP_TIMESTAMP")
         private val SEED_MANUAL_BACKUP_DONE = booleanPreferencesKey("SEED_MANUAL_BACKUP_DONE")
         private val SEED_LOSS_DISCLAIMER_READ = booleanPreferencesKey("SEED_LOSS_DISCLAIMER_READ")
-        internal val CHANNELS_WATCHER_OUTCOME = stringPreferencesKey("CHANNELS_WATCHER_RESULT")
+        val CHANNELS_WATCHER_OUTCOME = stringPreferencesKey("CHANNELS_WATCHER_RESULT")
         private val LAST_USED_SWAP_INDEX = intPreferencesKey("LAST_USED_SWAP_INDEX")
         private val INFLIGHT_PAYMENTS_COUNT = intPreferencesKey("INFLIGHT_PAYMENTS_COUNT")
         private val SHOW_SPLICEOUT_CAPACITY_DISCLAIMER = booleanPreferencesKey("SHOW_SPLICEOUT_CAPACITY_DISCLAIMER")

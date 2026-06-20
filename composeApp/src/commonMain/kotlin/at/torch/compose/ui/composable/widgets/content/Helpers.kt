@@ -16,7 +16,7 @@ internal object Helpers {
         return try {
             val uri = Url(url)
             val path = uri.fullPath ?: return false
-            _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.blossomPathRegex.matches(path)
+            Constants.blossomPathRegex.matches(path)
         } catch (_: Exception) {
             false
         }
@@ -33,23 +33,21 @@ internal object Helpers {
         val after = content.substring(matchRange.last + 1)
         val lineEnd = after.indexOf('\n')
         val suffix = if (lineEnd == -1) after else after.substring(0, lineEnd)
-        if (suffix.isNotBlank()) return false
-
-        return true
+        return suffix.isBlank()
     }
 
 
     fun classifyByMime(mime: String): String? = when {
-        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.imageMimeTypes.any { mime.startsWith(it) } -> "image"
-        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.videoMimeTypes.any { mime.startsWith(it) } -> "video"
-        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.audioMimeTypes.any { mime.startsWith(it) } -> "audio"
+        Constants.imageMimeTypes.any { mime.startsWith(it) } -> "image"
+        Constants.videoMimeTypes.any { mime.startsWith(it) } -> "video"
+        Constants.audioMimeTypes.any { mime.startsWith(it) } -> "audio"
         else -> null
     }
 
     fun splitTextForEmojis(text: String, emojiMap: Map<String, String>): List<ContentSegment> {
         val result = mutableListOf<ContentSegment>()
         var lastEnd = 0
-        for (match in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.emojiShortcodeRegex.findAll(text)) {
+        for (match in Constants.emojiShortcodeRegex.findAll(text)) {
             val shortcode = match.groupValues[1]
             val url = emojiMap[shortcode] ?: continue
             if (match.range.first > lastEnd) {
@@ -67,7 +65,7 @@ internal object Helpers {
     }
 
     fun splitTextForInvoices(text: String): List<ContentSegment> {
-        val matches = _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.bolt11Regex.findAll(text).toList()
+        val matches = Constants.bolt11Regex.findAll(text).toList()
         if (matches.isEmpty()) return listOf(ContentSegment.TextSegment(text))
         val result = mutableListOf<ContentSegment>()
         var lastEnd = 0
@@ -111,7 +109,7 @@ internal object Helpers {
     }
 
     suspend fun fetchOgData(url: String): OgData? = withContext(Dispatchers.IO) {
-        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.ogCache.get(url)?.let { return@withContext it }
+        Constants.ogCache.get(url)?.let { return@withContext it }
 
         null
         // TODO: YouTube blocks bot User-Agents; use their oEmbed API instead

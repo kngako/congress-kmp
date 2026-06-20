@@ -172,7 +172,7 @@ data class Profile(
                         Text(
                             text = staticIdentifier,
                             style = MaterialTheme.typography.labelMedium,
-                            color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(publicKey)
+                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(publicKey)
                         )
                     }
 

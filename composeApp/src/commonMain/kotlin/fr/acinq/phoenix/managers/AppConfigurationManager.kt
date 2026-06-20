@@ -83,7 +83,7 @@ class AppConfigurationManager(
     // Tor configuration
     private val _isTorEnabled = MutableStateFlow<Boolean?>(null)
     val isTorEnabled get(): StateFlow<Boolean?> = _isTorEnabled.asStateFlow()
-    fun updateTorUsage(enabled: Boolean): Unit {
+    fun updateTorUsage(enabled: Boolean) {
         _isTorEnabled.value = enabled
     }
 

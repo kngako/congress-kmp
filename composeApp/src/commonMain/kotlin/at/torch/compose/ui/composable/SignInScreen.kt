@@ -34,11 +34,11 @@ import com.vitorpamplona.quartz.nip19Bech32.entities.NSec
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SignInToProfileScreen(
-    initialSignInToProfileUIState: at.torch.compose.ui.view.state.SignInToProfileUIState = _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.InputPrompt,
+    initialSignInToProfileUIState: at.torch.compose.ui.view.state.SignInToProfileUIState = at.torch.compose.ui.view.state.SignInToProfileUIState.InputPrompt,
     nostrRepository: at.torch.compose.repository.NostrRepository
 ) {
     val signInToProfileViewModel: at.torch.compose.ui.view.model.SignInToProfileViewModel =  viewModel (
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.SignInToProfileViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.SignInToProfileViewModel.factory(
             initialSignInToProfileUIState,
             nostrRepository
         )
@@ -106,19 +106,19 @@ fun SignInToProfileScreen(
                                 signInToProfileViewModel.signInToProfileUIState.value = signInToProfileViewModel.validateCredential().let { credentialEntity ->
                                     when (credentialEntity) {
                                         is NSec -> {
-                                            _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNsecSignIn(
+                                            at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNsecSignIn(
                                                 nsec = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }
                                         is NPub -> {
-                                            _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNpubSignIn(
+                                            at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNpubSignIn(
                                                 npub = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }
                                         else -> {
-                                            _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.Error
+                                            at.torch.compose.ui.view.state.SignInToProfileUIState.Error
                                         }
                                     }
                                 }
@@ -260,7 +260,7 @@ private fun SignInToProfileScreenPreview() {
         ) {
             SignInToProfileScreen(
                 initialSignInToProfileUIState =
-                    _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.InputPrompt,
+                    at.torch.compose.ui.view.state.SignInToProfileUIState.InputPrompt,
 //                    SignInToProfileUIState.Error,
 //                    SignInToProfileUIState.ConfirmNpubSignIn(
 //                        npub = "npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx",
@@ -270,7 +270,7 @@ private fun SignInToProfileScreenPreview() {
 //                        nsec = "nsecthingsaretobekeptsecret",
 //                        hexKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522"
 //                    ),
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

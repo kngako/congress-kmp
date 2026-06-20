@@ -6,4 +6,4 @@ class AndroidPlatform : Platform {
     override val name: String = "Android ${Build.VERSION.SDK_INT}"
 }
 
-actual fun getPlatform(): Platform = _root_ide_package_.at.torch.compose.AndroidPlatform()
+actual fun getPlatform(): Platform = AndroidPlatform()

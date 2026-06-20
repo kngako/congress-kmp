@@ -89,7 +89,7 @@ class DatabaseNostrRepository(
         database.connectionDao().delete(connection)
     }
 
-    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<at.torch.compose.database.model.UnsignedNostrEvent?> {
+    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 
@@ -131,7 +131,7 @@ class DatabaseNostrRepository(
                 followUsers.map { it.toTagArray() }
 
         unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = ContactListEvent.KIND,
                 tags = contactListTagList.toTypedArray(),
@@ -142,11 +142,11 @@ class DatabaseNostrRepository(
         )
 
         unsignedNostrEvents.add(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = ChatMessageRelayListEvent.KIND,
                 tags = ChatMessageRelayListEvent.createTagArray(
-                    _root_ide_package_.at.torch.compose.nostr.Relays.DefaultDMRelayList
+                    Relays.DefaultDMRelayList
                 ),
                 content = ""
             )
@@ -189,7 +189,7 @@ class DatabaseNostrRepository(
                 tags = arrayOf(
                     AltTag.assemble(RelayFeedsListEvent.ALT)
                 ),
-                privateTags = _root_ide_package_.at.torch.compose.nostr.Relays.DefaultGlobalRelays.map {
+                privateTags = Relays.DefaultGlobalRelays.map {
                     RelayTag.assemble(
                         it
                     )
@@ -199,7 +199,7 @@ class DatabaseNostrRepository(
         )
 
         // KeyPackage...
-        val slot = KeyPackageUtils.PRIMARY_SLOT
+        KeyPackageUtils.PRIMARY_SLOT
         val dTag = KeyPackageUtils.generateRandomDTag() // TODO: Persist this...
         val identity = publicKey.hexToByteArray()
         val bundle = generateKeyPackage(identity, dTag)
@@ -312,7 +312,7 @@ class DatabaseNostrRepository(
         val profileEventTemplate = MetadataEvent.createNew()
 
         saveUnsignedNostrEvent(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = profileEventTemplate.kind,
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
@@ -417,7 +417,7 @@ class DatabaseNostrRepository(
 
 
         val unsignedNostrEvent = saveUnsignedNostrEvent(
-            _root_ide_package_.at.torch.compose.database.model.UnsignedNostrEvent(
+            UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = textNote.kind,
                 createdAt = Instant.fromEpochSeconds(textNote.createdAt),
@@ -441,7 +441,7 @@ class DatabaseNostrRepository(
         }
     }
 
-    override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: at.torch.compose.database.model.UnsignedNostrEvent): at.torch.compose.database.model.UnsignedNostrEvent? = try {
+    override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? = try {
         logger.d("Save unsigned: ${unsignedNostrEvent.kind}")
         // TODO: We can actually check the unsignedNostrEvent.pubKey for support... if it's writeable
         if (unsignedNostrEvent.kind == MetadataEvent.KIND){
@@ -456,7 +456,7 @@ class DatabaseNostrRepository(
         null
     }
 
-    override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<at.torch.compose.database.model.UnsignedNostrEvent>) {
+    override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) {
         logger.d("saveUnsignedNostrEvents: $unsignedNostrEvents")
         delay(2_100)
 
@@ -470,7 +470,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun publishNostrEvent(
-        unsignedNostrEvent: at.torch.compose.database.model.UnsignedNostrEvent,
+        unsignedNostrEvent: UnsignedNostrEvent,
         nostrEvent: at.torch.compose.database.model.NostrEvent,
         relayURLs: List<String>,
         activeKeyPair: KeyPair

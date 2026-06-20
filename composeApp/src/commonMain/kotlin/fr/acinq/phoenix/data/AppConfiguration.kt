@@ -203,12 +203,12 @@ enum class FiatCurrency(override val displayCode: String, val flag: String = "ğŸ
     suspend fun getLabel(): Pair<String, String> {
         val fullName = when {
             // use the free market rates as default. Name for official rates gets a special tag, as those rates are usually inaccurate.
-            this == FiatCurrency.ARS -> getString(Res.string.currency_ars_official)
-            this == FiatCurrency.ARS_BM -> getString(Res.string.currency_ars_bm)
-            this == FiatCurrency.CUP -> getString(Res.string.currency_cup_official)
-            this == FiatCurrency.CUP_FM -> getString(Res.string.currency_cup_fm)
-            this == FiatCurrency.LBP -> getString(Res.string.currency_lbp_official)
-            this == FiatCurrency.LBP_BM -> getString(Res.string.currency_lbp_bm)
+            this == ARS -> getString(Res.string.currency_ars_official)
+            this == ARS_BM -> getString(Res.string.currency_ars_bm)
+            this == CUP -> getString(Res.string.currency_cup_official)
+            this == CUP_FM -> getString(Res.string.currency_cup_fm)
+            this == LBP -> getString(Res.string.currency_lbp_official)
+            this == LBP_BM -> getString(Res.string.currency_lbp_bm)
             // use the JVM API otherwise to get the name
             this.displayCode.length == 3 -> try {
                 this.name

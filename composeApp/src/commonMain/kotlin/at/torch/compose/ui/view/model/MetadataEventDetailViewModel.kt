@@ -38,7 +38,7 @@ enum class MetadataEventDetailType {
 }
 
 class MetadataEventDetailViewModel(
-    initialMetadataEventDetailUIState: at.torch.compose.ui.view.state.MetadataEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loading,
+    initialMetadataEventDetailUIState: at.torch.compose.ui.view.state.MetadataEventDetailUIState = at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loading,
     val activeUserPublicKey: HexKey,
     val eventPublicKey: HexKey,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
@@ -66,7 +66,7 @@ class MetadataEventDetailViewModel(
             ).collect { relations ->
                 logger.d("We found relations: $relations")
 
-                metadataEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loaded(
+                metadataEventDetailUIState = at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loaded(
                     isActiveUser = isActiveUser(activeUserPublicKey),
                     followingActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == eventPublicKey && connection.destinationPublicKey == activeUserPublicKey },
                     followedByActiveUserConnection = relations.find { connection -> connection.sourcePublicKey == activeUserPublicKey && connection.destinationPublicKey == eventPublicKey }

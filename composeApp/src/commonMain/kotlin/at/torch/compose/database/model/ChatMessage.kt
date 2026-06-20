@@ -46,5 +46,4 @@ data class ChatMessage(
     override val savedAt: Instant = Clock.System.now(),
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
-): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity  {
-}
+): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity

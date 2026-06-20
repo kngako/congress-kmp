@@ -55,7 +55,7 @@ class UnqueuedProfileSynchronizationViewModel(
             delay(2_000)
 
             nostrRepository.queueSynchronizeNostrEvent(
-                _root_ide_package_.at.torch.compose.nostr.Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
+                at.torch.compose.nostr.Relays.eventPublishRelaySet.map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "sign-in",
                         synchronizationFilters = arrayOf(

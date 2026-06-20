@@ -56,7 +56,7 @@ fun FullScreenImageViewer(
         }
 
         val clipboardManager = LocalClipboardManager.current
-        val scope = rememberCoroutineScope()
+        rememberCoroutineScope()
 
         Box(
             modifier = Modifier

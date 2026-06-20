@@ -37,6 +37,4 @@ data class MarmotKeyPackageBundle(
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity {
-
-}
+): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity

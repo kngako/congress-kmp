@@ -157,7 +157,7 @@ class RelayPool(
             )
         }
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: at.torch.compose.database.model.NostrEvent, relays: Set<at.torch.compose.network.dto.RelayDTO> = emptySet()): Flow<NostrPublishResult> {
         val relayUrls = relays.map { NormalizedRelayUrl(it.url).displayUrl() }
 

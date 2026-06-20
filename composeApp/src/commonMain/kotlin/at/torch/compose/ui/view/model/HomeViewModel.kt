@@ -46,11 +46,11 @@ class HomeViewModel(
                 activeUserPublicKey
             ).collect { profileWithFollowing ->
                 homeScreenUIState = if (profileWithFollowing != null) {
-                    _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
+                    at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
                         profileWithFollowing = profileWithFollowing
                     )
                 } else {
-                    _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Error
+                    at.torch.compose.ui.view.state.HomeScreenUIState.Error
                 }
             }
         }
@@ -61,8 +61,8 @@ class HomeViewModel(
         profileWithFollowing: at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing,
     ): at.torch.compose.database.model.types.SynchronizationFilter {
 
-        val twelveHoursAgo = Clock.System.now().minus(12.hours)
-        val now = Clock.System.now()
+        Clock.System.now().minus(12.hours)
+        Clock.System.now()
 
         return when (homeScreenType) {
             HomeScreenType.Messages -> {

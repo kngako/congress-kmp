@@ -17,7 +17,7 @@ data class LocalProfileWithFollowing(
         parentColumns = ["pubKey"],
         entityColumns = ["publicKey"],
         associateBy = Junction(
-            value = _root_ide_package_.at.torch.compose.database.model.Connection::class,
+            value = at.torch.compose.database.model.Connection::class,
             parentColumns = ["sourcePublicKey"],
             entityColumns = ["destinationPublicKey"]
         )

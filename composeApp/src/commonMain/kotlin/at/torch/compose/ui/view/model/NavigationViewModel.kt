@@ -66,19 +66,19 @@ class NavigationViewModel(
                 logger.d("Active Wallet: $activeWallet")
                 if (activeWallet ==  null) {
                     _navigationUIState.getAndUpdate {
-                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.StartupPhoenix
+                        at.torch.compose.ui.view.state.NavigationUIState.StartupPhoenix
                     }
                 } else {
                     if (activeWallet.business == null) {
                         _navigationUIState.getAndUpdate {
-                            _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.StartupPhoenix
+                            at.torch.compose.ui.view.state.NavigationUIState.StartupPhoenix
                         }
                     } else {
                         val activeUserPublicKey = activeWallet.business.walletManager.keyManager.value?.nostrPublicKey()
 
                         if (activeUserPublicKey == null) {
                             _navigationUIState.getAndUpdate {
-                                _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.Loading(text = "Couldn't get the nostrKey")
+                                at.torch.compose.ui.view.state.NavigationUIState.Loading(text = "Couldn't get the nostrKey")
                             }
                         } else {
 
@@ -91,48 +91,48 @@ class NavigationViewModel(
                                 _navigationUIState.getAndUpdate {
                                     if (localProfile == null) {
                                         logger.i("We need to be on the landing screen so user creates account")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.Landing
+                                        at.torch.compose.ui.view.state.NavigationUIState.Landing
                                     } else if (localProfile.unsignedNostrEvent == null) {
                                         logger.i("We need to be on the landing screen so user creates account")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.Landing
+                                        at.torch.compose.ui.view.state.NavigationUIState.Landing
                                     } else if (localProfile.broadcastNostrEventReceipt != null) {
                                         logger.i("We have a broadcast receipt: ${localProfile.profile}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.ProfileLoaded(
+                                        at.torch.compose.ui.view.state.NavigationUIState.ProfileLoaded(
                                             publicKey = localProfile.unsignedNostrEvent.pubKey
                                         )
                                     } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.profile != null) {
                                         logger.i("We have successfully synced a profile: ${localProfile.profile}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.ProfileLoaded(
+                                        at.torch.compose.ui.view.state.NavigationUIState.ProfileLoaded(
                                             publicKey = localProfile.unsignedNostrEvent.pubKey
                                         )
                                     } else if (localProfile.broadcastNostrEventRequest != null) {
                                         logger.i("We have a broadcast request: ${localProfile.broadcastNostrEventRequest}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnannouncedProfile(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnannouncedProfile(
                                             broadcastNostrEventRequest = localProfile.broadcastNostrEventRequest
                                         )
                                     }  else if (localProfile.profile != null) {
                                         logger.i("We have a profile that needs to queued for broadcast: ${localProfile.profile}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfile(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfile(
                                             profile = localProfile.profile
                                         )
                                     } else if (localProfile.nostrEvent != null) {
                                         logger.i("Nostr event with the profile needs to be indexed: ${localProfile.nostrEvent}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnindexedProfile(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnindexedProfile(
                                             nostrEvent = localProfile.nostrEvent
                                         )
                                     } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
                                         logger.i("We should request to sync profile: ${localProfile.unsignedNostrEvent}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfileSynchronization(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfileSynchronization(
                                             unsignedNostrEvent = localProfile.unsignedNostrEvent
                                         )
                                     }  else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
                                         logger.i("We should be syncing the profile: ${localProfile.unsignedNostrEvent}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnsyncedProfile(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnsyncedProfile(
                                             unsignedNostrEvent = localProfile.unsignedNostrEvent
                                         )
                                     } else {
                                         logger.i("We have an unsigned profile: ${localProfile.unsignedNostrEvent}")
-                                        _root_ide_package_.at.torch.compose.ui.view.state.NavigationUIState.UnsignedProfile(
+                                        at.torch.compose.ui.view.state.NavigationUIState.UnsignedProfile(
                                             unsignedNostrEvent = localProfile.unsignedNostrEvent
                                         )
                                     }

@@ -75,7 +75,7 @@ class HceService : HostApduService() {
                 }
             }
         }
-        return Service.START_NOT_STICKY
+        return START_NOT_STICKY
     }
 
     @OptIn(ExperimentalStdlibApi::class)

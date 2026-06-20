@@ -53,7 +53,7 @@ abstract class NostrDao(
     @Transaction
     open suspend fun publishNostrEvent(
         unsignedNostrEvent: at.torch.compose.database.model.UnsignedNostrEvent,
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         relayURLs: List<String>,
         activeKeyPair: KeyPair
     ) {
@@ -88,7 +88,7 @@ abstract class NostrDao(
 
     @Transaction
     open suspend fun storeNostrEvent(
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         relayURL: String,
         synchronizationRelayURLs: List<String>,
         level: Int,
@@ -136,7 +136,7 @@ abstract class NostrDao(
     }
 
     private suspend fun indexNostrEvent(
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         relayURL: String,
         synchronizationRelayURLs: List<String>,
         level: Int,
@@ -711,7 +711,7 @@ abstract class NostrDao(
                                                         chatMessageRelayListEvent.relays()
                                                             .map { normalizedRelayUrl ->
                                                                 NegentropySynchronizeRequest(
-                                                                    id = NegentropySynchronizeRequest.Companion.computeId(
+                                                                    id = NegentropySynchronizeRequest.computeId(
                                                                         relayURL = normalizedRelayUrl.url,
                                                                         synchronizationFilter = synchronizationFilter
                                                                     ),
@@ -1023,7 +1023,7 @@ abstract class NostrDao(
                     )
                 negentropySynchronizeRequests.add(
                     NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = NegentropySynchronizeRequest.computeId(
                             relayUrlProfilePublicKey.key,
                             synchronizationFilter
                         ),
@@ -1044,7 +1044,7 @@ abstract class NostrDao(
                 Clock.System.now().toEpochMilliseconds()
                 negentropySynchronizeRequests.add(
                     NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = NegentropySynchronizeRequest.computeId(
                             relayUrlEventIds.key,
                             synchronizationFilter
                         ),

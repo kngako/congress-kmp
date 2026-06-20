@@ -40,8 +40,8 @@ class SynchronizationViewModel(
 
     val relaysSocketManager = _root_ide_package_.at.torch.compose.network.relays.RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
-        nostrSocketClientFactory = _root_ide_package_.at.torch.compose.network.sockets.NostrSocketClientFactory,
-        cachingImportRepository = _root_ide_package_.at.torch.compose.repository.CachingImportRepository.Companion.NO_OP_CACHING_IMPORT_REPOSITORY,
+        nostrSocketClientFactory = at.torch.compose.network.sockets.NostrSocketClientFactory,
+        cachingImportRepository = at.torch.compose.repository.CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
     )
 
@@ -382,7 +382,7 @@ class SynchronizationViewModel(
                         scope.launch(Dispatchers.IO) {
                             relaysSocketManager.publishEvent(
                                 localBroadcastNostrEventRequest.nostrEvent
-                            ).timeout(_root_ide_package_.at.torch.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT.milliseconds).catch {
+                            ).timeout(at.torch.compose.network.relays.RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
                                 // Timeout...
                             }.collect { nostrPublishResult ->
                                 if (nostrPublishResult.error != null) {
@@ -409,7 +409,7 @@ class SynchronizationViewModel(
                             setOf(
                                 localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL.toRelayDTO()
                             )
-                        ).timeout(_root_ide_package_.at.torch.compose.network.relays.RelayPool.Companion.PUBLISH_TIMEOUT.milliseconds).catch {
+                        ).timeout(at.torch.compose.network.relays.RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
                             // Timeout...
                         }.collect { nostrPublishResult ->
                             if (nostrPublishResult.error != null) {

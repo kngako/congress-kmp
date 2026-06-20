@@ -48,7 +48,7 @@ import kotlin.time.Clock
 @Composable
 fun WriteNewNoteScreen(
     activeUserPublicKey: HexKey,
-    initialWriteNewNoteUIState: at.torch.compose.ui.view.state.WriteNewNoteUIState = _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.Loading,
+    initialWriteNewNoteUIState: at.torch.compose.ui.view.state.WriteNewNoteUIState = at.torch.compose.ui.view.state.WriteNewNoteUIState.Loading,
     replyToNostrEventId: HexKey?,
     quotedNostrEventId: HexKey?,
     onNostrEventPublished: () -> Unit,
@@ -56,7 +56,7 @@ fun WriteNewNoteScreen(
     nostrRepository: at.torch.compose.repository.NostrRepository
 ) {
     val writeNewNoteViewModel: at.torch.compose.ui.view.model.WriteNewNoteViewModel =  viewModel (
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.WriteNewNoteViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.WriteNewNoteViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             replyToNostrEventId = replyToNostrEventId,
             quotedNostrEventId = quotedNostrEventId,
@@ -175,7 +175,7 @@ fun WriteNewNoteScreen(
                                         },
                                         outputTransformation = OutputTransformation {
                                             val content = originalText.toString()
-                                            val nostrProfiles = _root_ide_package_.at.torch.compose.ui.composable.widgets.content.ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
+                                            val nostrProfiles = at.torch.compose.ui.composable.widgets.content.ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
                                                 .filterIsInstance<at.torch.compose.ui.composable.widgets.content.ContentSegment.NostrProfileSegment>()
                                                 // TODO: We might want to order these profiles by the startIndex so that we can replace the better
 
@@ -192,7 +192,7 @@ fun WriteNewNoteScreen(
 
                                                         addStyle(
                                                             SpanStyle(
-                                                                color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(mentionedProfile.publicKey)
+                                                                color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(mentionedProfile.publicKey)
                                                             ),
                                                             nostrProfile.startIndex,
                                                             nostrProfile.startIndex + profileMention.length
@@ -452,7 +452,7 @@ private fun WriteNewNoteScreenPreview() {
                 replyToNostrEventId = null,
                 quotedNostrEventId = null,
                 initialWriteNewNoteUIState =
-                    _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt(
+                    at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt(
 //                        text = "Yes, I did it. So WHAT?!",
                         inReplyToNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
                             nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
@@ -497,7 +497,7 @@ It has survived not only five centuries, but also the leap into electronic types
                     ),
                 onNostrEventPublished = {},
                 onNavigateToNostrEvent = {},
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

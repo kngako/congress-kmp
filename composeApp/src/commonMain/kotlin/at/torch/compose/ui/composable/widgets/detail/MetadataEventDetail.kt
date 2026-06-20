@@ -63,11 +63,11 @@ fun MetadataEventDetail(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     val metadataEventDetailViewModel: at.torch.compose.ui.view.model.MetadataEventDetailViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.MetadataEventDetailViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             publicKey = localNostrEvent.nostrEvent.pubKey,
             nostrRepository = nostrRepository,
-            pagerState = rememberPagerState { _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.entries.size }
+            pagerState = rememberPagerState { at.torch.compose.ui.view.model.MetadataEventDetailType.entries.size }
         ),
     )
 
@@ -150,7 +150,7 @@ fun MetadataEventDetail(
                             )
 
                             when(val metadataEventDetailUIState = metadataEventDetailViewModel.metadataEventDetailUIState) {
-                                _root_ide_package_.at.torch.compose.ui.view.state.MetadataEventDetailUIState.Error -> {
+                                at.torch.compose.ui.view.state.MetadataEventDetailUIState.Error -> {
                                     Icon(
                                         Icons.Default.Error,
                                         contentDescription = "Something went wrong"
@@ -203,7 +203,7 @@ fun MetadataEventDetail(
 
 
                                 }
-                                _root_ide_package_.at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loading -> {
+                                at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loading -> {
                                     LoadingIndicator()
                                 }
                             }
@@ -246,7 +246,7 @@ fun MetadataEventDetail(
                         edgePadding = 10.dp,
                         selectedTabIndex = metadataEventDetailViewModel.pagerState.currentPage,
                     ) {
-                        _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.entries.forEachIndexed { index, destination ->
+                        at.torch.compose.ui.view.model.MetadataEventDetailType.entries.forEachIndexed { index, destination ->
                             Tab(
                                 selected = metadataEventDetailViewModel.pagerState.currentPage == index,
                                 onClick = {
@@ -273,17 +273,17 @@ fun MetadataEventDetail(
                         HorizontalPager(
                             state = metadataEventDetailViewModel.pagerState,
                         ) { pageIndex ->
-                            val metadataEventDetailType = _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.entries[pageIndex]
+                            val metadataEventDetailType = at.torch.compose.ui.view.model.MetadataEventDetailType.entries[pageIndex]
 
                             when (metadataEventDetailType) {
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Posts, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Replies,
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Articles, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Zaps,
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Photos, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Shorts, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Videos,
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Bookmarks, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Reports, _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Relays -> {
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Posts, at.torch.compose.ui.view.model.MetadataEventDetailType.Replies,
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Articles, at.torch.compose.ui.view.model.MetadataEventDetailType.Zaps,
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Photos, at.torch.compose.ui.view.model.MetadataEventDetailType.Shorts, at.torch.compose.ui.view.model.MetadataEventDetailType.Videos,
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Bookmarks, at.torch.compose.ui.view.model.MetadataEventDetailType.Reports, at.torch.compose.ui.view.model.MetadataEventDetailType.Relays -> {
                                     val feedListViewModel: at.torch.compose.ui.view.model.FeedListViewModel = viewModel(
                                         key = metadataEventDetailType.name,
-                                        factory = _root_ide_package_.at.torch.compose.ui.view.model.FeedListViewModel.Companion.factory(
-                                            initialFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
+                                        factory = at.torch.compose.ui.view.model.FeedListViewModel.factory(
+                                            initialFeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
                                             synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
                                             nostrRepository = nostrRepository
                                         ),
@@ -301,11 +301,11 @@ fun MetadataEventDetail(
                                     }
                                 }
                                 // TODO: Support gallery feeds...
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Following -> {
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Following -> {
                                     val followingListViewModel: at.torch.compose.ui.view.model.FollowingListViewModel = viewModel(
                                         key = metadataEventDetailType.name,
-                                        factory = _root_ide_package_.at.torch.compose.ui.view.model.FollowingListViewModel.Companion.factory(
-                                            initialFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowingListUIState.Loading,
+                                        factory = at.torch.compose.ui.view.model.FollowingListViewModel.factory(
+                                            initialFeedListUIState = at.torch.compose.ui.view.state.FollowingListUIState.Loading,
                                             publicKey = localNostrEvent.nostrEvent.pubKey,
                                             synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
                                             nostrRepository = nostrRepository
@@ -324,11 +324,11 @@ fun MetadataEventDetail(
                                         followingListViewModel.initiate()
                                     }
                                 }
-                                _root_ide_package_.at.torch.compose.ui.view.model.MetadataEventDetailType.Followers -> {
+                                at.torch.compose.ui.view.model.MetadataEventDetailType.Followers -> {
                                     val followersListViewModel: at.torch.compose.ui.view.model.FollowersListViewModel = viewModel(
                                         key = metadataEventDetailType.name,
-                                        factory = _root_ide_package_.at.torch.compose.ui.view.model.FollowersListViewModel.Companion.factory(
-                                            initialFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowersListUIState.Loading,
+                                        factory = at.torch.compose.ui.view.model.FollowersListViewModel.factory(
+                                            initialFeedListUIState = at.torch.compose.ui.view.state.FollowersListUIState.Loading,
                                             publicKey = localNostrEvent.nostrEvent.pubKey,
                                             synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
                                             nostrRepository = nostrRepository
@@ -391,7 +391,7 @@ private fun MetadataEventEventDetailPreview() {
                 onNavigateToEvent = {},
                 onNavigateToEditProfile = {},
                 onNavigateToChatRoom = {},
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

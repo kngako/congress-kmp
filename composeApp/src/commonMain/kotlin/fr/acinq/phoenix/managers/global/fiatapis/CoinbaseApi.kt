@@ -39,7 +39,7 @@ class CoinbaseAPI(loggerFactory: LoggerFactory) : ExchangeRateApi {
 
     override val name = "coinbase"
     override val refreshDelay = 60.minutes
-    override val fiatCurrencies = FiatCurrency.Companion.values.filter {
+    override val fiatCurrencies = FiatCurrency.values.filter {
         // bascially, everything except USD, EURO, and special markets
         !ExchangeRateApi.highLiquidityMarkets.contains(it) && !ExchangeRateApi.specialMarkets.contains(it) && !ExchangeRateApi.missingFromCoinbase.contains(it)
     }.toSet()

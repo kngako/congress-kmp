@@ -103,7 +103,7 @@ class NotaryViewModel(
                                     sig = event.sig,
                                     unsignedNostrEventId = unsignedNostrEvent.id
                                 ),
-                                relayURLs = _root_ide_package_.at.torch.compose.nostr.Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url },
+                                relayURLs = at.torch.compose.nostr.Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url },
                                 activeKeyPair = keyPair
                             )
                         }

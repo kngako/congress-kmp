@@ -27,7 +27,7 @@ import kotlinx.coroutines.sync.withLock
  *
  * https://github.com/PrimalHQ/primal-android-app/blob/6db2e6862239335dede4162338d7c4f10ad35031/app/src/main/kotlin/net/primal/android/networking/relays/RelaysSocketManager.kt
  */
-class RelaysSocketManager constructor(
+class RelaysSocketManager(
     private val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     private val nostrSocketClientFactory: at.torch.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: at.torch.compose.repository.CachingImportRepository,
@@ -101,7 +101,7 @@ class RelaysSocketManager constructor(
             relayPool.closePool()
         }
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: at.torch.compose.database.model.NostrEvent): Flow<NostrPublishResult> {
         return if (userRelays.isNotEmpty()) {
             relayPool.publishEvent(
@@ -116,7 +116,7 @@ class RelaysSocketManager constructor(
         }
     }
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class)
     suspend fun publishEvent(nostrEvent: at.torch.compose.database.model.NostrEvent, relays: Set<at.torch.compose.network.dto.RelayDTO>): Flow<NostrPublishResult> {
         logger.d("publishEvent: $nostrEvent")
         return relayPool.publishEvent(

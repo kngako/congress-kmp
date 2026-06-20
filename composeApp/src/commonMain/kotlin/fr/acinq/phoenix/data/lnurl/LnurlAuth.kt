@@ -166,7 +166,7 @@ data class LnurlAuth(
 
             /** Get the legacy domain for the given [Url] if eligible, or the full domain name otherwise (i.e. specs compliant). */
             fun filterDomain(url: Url): String {
-                return entries.firstOrNull() { it.host == url.host }?.legacyCompatDomain ?: url.host
+                return entries.firstOrNull { it.host == url.host }?.legacyCompatDomain ?: url.host
             }
         }
     }

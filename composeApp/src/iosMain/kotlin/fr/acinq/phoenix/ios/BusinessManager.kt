@@ -225,7 +225,7 @@ object BusinessManager {
             nodeParamsManager.nodeParams.filterNotNull().first().nodeEvents
         ) { nextTimeout, nodeEvent ->
             nextTimeout to nodeEvent
-        }.collect { (nextTimeout, event) ->
+        }.collect { (_, event) ->
             // TODO: click on notif must deeplink to the notification screen
             when (event) {
                 is LiquidityEvents.Rejected -> {
@@ -246,7 +246,7 @@ object BusinessManager {
                             internalPrefs.saveLastRejectedOnchainSwap(event)
                         }
                     }
-                    val walletMetadata = globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
+                    globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
                     when (val reason = event.reason) {
                         is LiquidityEvents.Rejected.Reason.PolicySetToDisabled -> {
                             // TODO: SystemNotificationHelper.notifyPaymentRejectedPolicyDisabled(appContext, walletId, walletMetadata, event.source, event.amount, nextTimeout?.second)

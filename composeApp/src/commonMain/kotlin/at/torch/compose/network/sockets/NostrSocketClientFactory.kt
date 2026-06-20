@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 
 internal val defaultSocketsHttpClient by lazy {
 
-    HttpClient() {
+    HttpClient {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(Json {
                 isLenient = true

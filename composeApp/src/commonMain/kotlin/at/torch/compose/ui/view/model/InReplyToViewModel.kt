@@ -61,7 +61,7 @@ class InReplyToViewModel(
             nostrRepository.observeNostrFeed(
                 synchronizationFilter
             ).distinctUntilChanged().collect { localNostrEvents ->
-                inReplyToFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loaded(
+                inReplyToFeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }
@@ -74,12 +74,12 @@ class InReplyToViewModel(
             // Sync Notifications... might want to also run this in the background
             val publicRelays = profile?.profilePublicRelays(
                 nostrRepository
-            ) ?: _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet
+            ) ?: at.torch.compose.nostr.Relays.negentropicRelaySet
 
             nostrRepository.queueNegentropySynchronizeRequest(
                 publicRelays.take(3).map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
                         ),
@@ -114,7 +114,7 @@ class InReplyToViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val feedListUIState = inReplyToFeedListUIState) {
-                _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Error -> {
+                at.torch.compose.ui.view.state.FeedListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -165,7 +165,7 @@ class InReplyToViewModel(
                     }
 
                 }
-                _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
+                at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -195,7 +195,7 @@ class InReplyToViewModel(
             nostrEvent: at.torch.compose.database.model.NostrEvent,
             profile: at.torch.compose.database.model.Profile?,
             createdAt: Instant,
-            initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
+            initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
             synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter = _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                 kinds = arrayOf(
                     TextNoteEvent.KIND,

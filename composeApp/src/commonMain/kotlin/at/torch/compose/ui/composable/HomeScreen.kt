@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     activeUserPublicKey: HexKey,
-    initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState = _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loading,
+    initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState = at.torch.compose.ui.view.state.HomeScreenUIState.Loading,
     onNavigateToEvent: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
     onNavigateToDirectMessageDetail: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
     onNavigateToChatRoomCreation: () -> Unit,
@@ -52,16 +52,16 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
 
     val homeScreenViewModel: at.torch.compose.ui.view.model.HomeViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.HomeViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.HomeViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             initialHomeScreenUIState = initialHomeScreenUIState,
             nostrRepository = nostrRepository,
-            pagerState = rememberPagerState { _root_ide_package_.at.torch.compose.ui.view.model.HomeScreenType.entries.size }
+            pagerState = rememberPagerState { HomeScreenType.entries.size }
         ),
     )
 
     when(val homeScreenUIState = homeScreenViewModel.homeScreenUIState) {
-        _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Error -> {
+        at.torch.compose.ui.view.state.HomeScreenUIState.Error -> {
             Scaffold { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding).fillMaxSize(),
@@ -180,8 +180,8 @@ fun HomeScreen(
                                 HomeScreenType.Messages -> {
                                     val chatRoomListViewModel: at.torch.compose.ui.view.model.ChatRoomListViewModel = viewModel(
                                         key = homeScreenTypeType.name,
-                                        factory = _root_ide_package_.at.torch.compose.ui.view.model.ChatRoomListViewModel.Companion.factory(
-                                            initialChatRoomListUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
+                                        factory = at.torch.compose.ui.view.model.ChatRoomListViewModel.factory(
+                                            initialChatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
                                             publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
                                             synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
                                                 homeScreenTypeType,
@@ -208,7 +208,7 @@ fun HomeScreen(
                 }
             }
         }
-        _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loading -> {
+        at.torch.compose.ui.view.state.HomeScreenUIState.Loading -> {
             _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
         }
     }
@@ -227,7 +227,7 @@ private fun HomeScreenPreview() {
         ) {
             HomeScreen(
                 activeUserPublicKey = "",
-                initialHomeScreenUIState = _root_ide_package_.at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
+                initialHomeScreenUIState = at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
                     profileWithFollowing = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing(
                         nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                             id = "eventId",
@@ -253,8 +253,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToChatRoomCreation = {},
                 onNavigateToSearch = {},
                 onNavigateToDirectMessageDetail = {},
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = _root_ide_package_.at.torch.compose.repository.ChatRepository.Companion.NO_OP_CHAT_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                chatRepository = at.torch.compose.repository.ChatRepository.NO_OP_CHAT_REPOSITORY
             )
         }
     }

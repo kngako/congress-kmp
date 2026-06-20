@@ -48,6 +48,4 @@ data class RepostedRelation(
     at.torch.compose.database.model.traits.LocalStoreEntity,
     at.torch.compose.database.model.traits.UserViewableEntity,
     at.torch.compose.database.model.traits.BroadcastableEntity,
-    at.torch.compose.database.model.traits.SoftDeletableEntity {
-
-}
+    at.torch.compose.database.model.traits.SoftDeletableEntity

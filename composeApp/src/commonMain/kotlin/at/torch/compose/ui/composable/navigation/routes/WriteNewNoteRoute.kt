@@ -7,5 +7,4 @@ data class WriteNewNoteRoute(
     val activeUserPublicKey: String,
     val inReplyToEventId: String? = null,
     val quotedEventId: String? = null,
-): Route() {
-}
+): Route()

@@ -78,7 +78,7 @@ class SignInToProfileViewModel(
                     }
                     else -> {
                         // TODO: Might want to give reasons for the error.
-                        signInToProfileUIState.value = _root_ide_package_.at.torch.compose.ui.view.state.SignInToProfileUIState.Error
+                        signInToProfileUIState.value = at.torch.compose.ui.view.state.SignInToProfileUIState.Error
                     }
                 }
 

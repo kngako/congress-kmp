@@ -72,9 +72,9 @@ class SendManager(
     private val log = loggerFactory.newLogger(this::class)
 
     sealed class BadRequestReason : Exception() {
-        data object UnknownFormat : BadRequestReason()
-        data object AlreadyPaidInvoice : BadRequestReason()
-        data object PaymentPending : BadRequestReason()
+        class UnknownFormat : BadRequestReason()
+        class AlreadyPaidInvoice : BadRequestReason()
+        class PaymentPending : BadRequestReason()
         data class Expired(val timestampSeconds: Long, val expirySeconds: Long) : BadRequestReason()
         data class ChainMismatch(val expected: Chain) : BadRequestReason()
         data class ServiceError(val url: Url, val error: LnurlError.RemoteFailure) : BadRequestReason()
@@ -173,7 +173,7 @@ class SendManager(
             } ?: run {
                 ParseResult.BadRequest(
                     request = request,
-                    reason = BadRequestReason.UnknownFormat
+                    reason = BadRequestReason.UnknownFormat()
                 )
             }
         } catch (e: Exception) {
@@ -185,7 +185,7 @@ class SendManager(
             } else {
                 ParseResult.BadRequest(
                     request = request,
-                    reason = BadRequestReason.UnknownFormat
+                    reason = BadRequestReason.UnknownFormat()
                 )
             }
         }
@@ -224,9 +224,9 @@ class SendManager(
         // FIXME: this check should be done in lightning-kmp, not in Phoenix
         return when {
             similarPayments.any { it.status is LightningOutgoingPayment.Status.Succeeded || it.parts.any { part -> part.status is LightningOutgoingPayment.Part.Status.Succeeded } } ->
-                BadRequestReason.AlreadyPaidInvoice
+                BadRequestReason.AlreadyPaidInvoice()
             similarPayments.any { it.status is LightningOutgoingPayment.Status.Pending || it.parts.any { part -> part.status is LightningOutgoingPayment.Part.Status.Pending } } ->
-                BadRequestReason.PaymentPending
+                BadRequestReason.PaymentPending()
             else -> null
         }
     }
@@ -418,7 +418,7 @@ class SendManager(
                     address.isNotBlank() -> ParseResult.Uri(uri = result.value)
                     bolt11 != null -> ParseResult.Bolt11Invoice(request = input, invoice = bolt11)
                     bolt12 != null -> ParseResult.Bolt12Offer(offer = bolt12, lightningAddress = null)
-                    else -> ParseResult.BadRequest(request = input, reason = BadRequestReason.UnknownFormat)
+                    else -> ParseResult.BadRequest(request = input, reason = BadRequestReason.UnknownFormat())
                 }
             }
             is Either.Left -> {
@@ -426,7 +426,7 @@ class SendManager(
                 if (error is BitcoinUriError.InvalidScript && error.error is BitcoinError.ChainHashMismatch) {
                     ParseResult.BadRequest(request = input, reason = BadRequestReason.ChainMismatch(expected = chain))
                 } else {
-                    ParseResult.BadRequest(request = input, reason = BadRequestReason.UnknownFormat)
+                    ParseResult.BadRequest(request = input, reason = BadRequestReason.UnknownFormat())
                 }
             }
         }

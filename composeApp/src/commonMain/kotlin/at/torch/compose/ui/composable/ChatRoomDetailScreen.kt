@@ -46,7 +46,7 @@ fun ChatRoomDetailScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     relayHint: String?,
-    initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading,
+    initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState = at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading,
     nostrRepository: at.torch.compose.repository.NostrRepository,
     chatRepository: at.torch.compose.repository.ChatRepository
 ) {
@@ -62,7 +62,7 @@ fun ChatRoomDetailScreen(
     )
 
     when (val chatRoomDetailUIState = chatRoomDetailViewModel.chatRoomDetailUIState) {
-        _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Error -> {
+        at.torch.compose.ui.view.state.ChatRoomDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -79,7 +79,7 @@ fun ChatRoomDetailScreen(
             val textFieldState = rememberTextFieldState()
 
             val chatRoomDetailMessageListViewModel: at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel = viewModel(
-                factory = _root_ide_package_.at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel.Companion.factory(
+                factory = at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel.factory(
                     localChatRoom = chatRoomDetailUIState.localChatRoom,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
@@ -228,7 +228,7 @@ fun ChatRoomDetailScreen(
                 }
             }
         }
-        _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading -> {
+        at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -264,7 +264,7 @@ fun ChatRoomDetailScreen(
     }
 
     LaunchedEffect(true) {
-        if (initialChatRoomDetailUIState == _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading) {
+        if (initialChatRoomDetailUIState == at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading) {
             chatRoomDetailViewModel.initiateChatRoomDetail()
         }
     }
@@ -281,7 +281,7 @@ private fun ChatRoomDetailScreenPreview() {
                 activeUserPublicKey = "",
                 chatRoomId = "publicKey",
                 relayHint = null,
-                initialChatRoomDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
+                initialChatRoomDetailUIState = at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
                     localChatRoom = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(
                         chatRoom = _root_ide_package_.at.torch.compose.database.model.ChatRoom(
                             id = "",
@@ -292,8 +292,8 @@ private fun ChatRoomDetailScreenPreview() {
                         ),
                     )
                 ),
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = _root_ide_package_.at.torch.compose.repository.ChatRepository.Companion.NO_OP_CHAT_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                chatRepository = at.torch.compose.repository.ChatRepository.NO_OP_CHAT_REPOSITORY
             )
         }
     }

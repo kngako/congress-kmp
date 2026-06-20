@@ -12,7 +12,7 @@ data class LocalChatRoom(
     @Embedded val chatRoom: at.torch.compose.database.model.ChatRoom,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.Participant::class,
+        entity = at.torch.compose.database.model.Participant::class,
         parentColumns = ["id"],
         entityColumns = ["chatRoomId"],
     )
@@ -23,7 +23,7 @@ data class LocalChatRoom(
         if (chatRoom.subject != null) {
             Text(
                 text = chatRoom.subject,
-                color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(chatRoom.id)
+                color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(chatRoom.id)
             )
         } else {
             if (localParticipants.size == 1) {
@@ -33,7 +33,7 @@ data class LocalChatRoom(
             } else {
                 // Remove the active user publicKey from participants...
                 val participantNames = localParticipants.filter { it.participant.participantPublicKey != chatRoom.userPublicKey }.map { buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
+                    withStyle(style = SpanStyle(color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
                         append(it.profile?.humanReadableNameOrPubkey() ?: "unknown participant")
                     }
                 } }

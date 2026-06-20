@@ -60,7 +60,7 @@ fun at.torch.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                     Text(
                         text = profile?.humanReadableNameOrPubkey() ?: nostrEvent.pubKey,
                         style = MaterialTheme.typography.labelSmall,
-                        color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
+                        color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
                     )
                     Text(
                         text = "reposted",

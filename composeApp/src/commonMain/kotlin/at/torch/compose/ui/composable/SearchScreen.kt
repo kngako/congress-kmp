@@ -63,7 +63,7 @@ fun SearchScreen(
     onNavigateToProfile: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit
 ) {
     val searchViewModel: at.torch.compose.ui.view.model.SearchViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.SearchViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.SearchViewModel.factory(
             initialSearchUIState = initialSearchUIState,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
@@ -235,7 +235,7 @@ fun SearchScreen(
                                     supportingContent = {
                                         Text(
                                             text = profile.staticIdentifier() ?: "",
-                                            color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
+                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
                                             maxLines = 1,
                                         )
                                     },
@@ -307,7 +307,7 @@ fun SearchScreen(
 
                                                         Text(
                                                             text = profile.humanReadableNameOrPubkey(),
-                                                            color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
+                                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
                                                             overflow = TextOverflow.Ellipsis,
                                                             maxLines = 1,
                                                             style = MaterialTheme.typography.labelSmall
@@ -407,9 +407,9 @@ private fun SearchScreenPreview() {
         ) {
             SearchScreen(
                 activeUserPublicKey = "",
-                initialSearchUIState = _root_ide_package_.at.torch.compose.ui.view.state.SearchUIState.Prompt,
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
-                searchRepository = _root_ide_package_.at.torch.compose.repository.SearchRepository.Companion.NO_OP_SEARCH_REPOSITORY,
+                initialSearchUIState = at.torch.compose.ui.view.state.SearchUIState.Prompt,
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                searchRepository = at.torch.compose.repository.SearchRepository.NO_OP_SEARCH_REPOSITORY,
                 onNavigateToSearchResult = {},
                 onNavigateToProfile = {}
             )

@@ -35,7 +35,7 @@ fun NostrEventDetailScreen(
     onNavigateToQuoteNostrEvent: (String) -> Unit,
 ) {
     val nostrEventDetailViewModel: at.torch.compose.ui.view.model.NostrEventDetailViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.NostrEventDetailViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.NostrEventDetailViewModel.factory(
             nostrEventId = nostrEventId,
             initialNostrEventDetailUIState = initialNostrEventDetailUIState,
             nostrRepository = nostrRepository,
@@ -44,7 +44,7 @@ fun NostrEventDetailScreen(
     )
 
     when(val feedListUIState = nostrEventDetailViewModel.nostrEventDetailUIState) {
-        _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Error -> {
+        at.torch.compose.ui.view.state.NostrEventDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -107,14 +107,14 @@ fun NostrEventDetailScreen(
                 }
             }
         }
-        _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading -> {
+        at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading -> {
             _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
 
             LaunchedEffect(true) {
                 nostrEventDetailViewModel.loadNostrFeed()
             }
         }
-        _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.NotFound -> {
+        at.torch.compose.ui.view.state.NostrEventDetailUIState.NotFound -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -134,7 +134,7 @@ private fun NostrEventDetailScreenPreview() {
             modifier = Modifier.padding(20.dp)
         ) {
             NostrEventDetailScreen(
-                initialNostrEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
+                initialNostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
                     localNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
                         nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
                             id = "eventId",
@@ -157,7 +157,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 ),
                 nostrEventId = "",
                 activeUserPublicKey = "",
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY,
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {},
                 onNavigateToEvent = {},
                 onNavigateToWriteAReply = {},

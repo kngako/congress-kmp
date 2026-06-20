@@ -27,13 +27,13 @@ import io.ktor.http.Url
 
 @Composable
 internal fun LinkPreview(url: String) {
-    var ogData by remember(url) { mutableStateOf(_root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.ogCache.get(url)) }
+    var ogData by remember(url) { mutableStateOf(Constants.ogCache.get(url)) }
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(url) {
         if (ogData == null) {
             ogData =
-                _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.fetchOgData(
+                Helpers.fetchOgData(
                     url
                 )
         }

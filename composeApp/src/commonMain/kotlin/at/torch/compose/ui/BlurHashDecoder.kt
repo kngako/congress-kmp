@@ -16,7 +16,7 @@ object BlurHashDecoder {
         if (blurHash.length != 4 + 2 * nx * ny) return null
 
         val maxAc = (decode83(blurHash, 1, 2) + 1) / 166f
-        val colors = Array(nx * ny) { i ->
+        Array(nx * ny) { i ->
             if (i == 0) {
                 val color83 = decode83(blurHash, 2, 6)
                 decodeDc(color83)

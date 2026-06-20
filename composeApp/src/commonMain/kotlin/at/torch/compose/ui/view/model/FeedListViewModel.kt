@@ -43,9 +43,9 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
-    val negentropySynchronizeRequests = _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+    val negentropySynchronizeRequests = at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
         _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-            id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+            id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                 normalizedRelayUrl.url,
                 synchronizationFilter = synchronizationFilter
             ),
@@ -70,7 +70,7 @@ class FeedListViewModel(
             nostrRepository.observeNostrFeed(
                 synchronizationFilter
             ).distinctUntilChanged().first().let { localNostrEvents ->
-                feedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loaded(
+                feedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }
@@ -108,7 +108,7 @@ class FeedListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val feedListUIState = feedListUIState) {
-                _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Error -> {
+                at.torch.compose.ui.view.state.FeedListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -159,7 +159,7 @@ class FeedListViewModel(
                     }
 
                 }
-                _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
+                at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -186,7 +186,7 @@ class FeedListViewModel(
         const val TAG = "FeedListViewModel"
 
         fun factory(
-            initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
+            initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
             synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
             nostrRepository: at.torch.compose.repository.NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {

@@ -54,7 +54,7 @@ class FollowingListViewModel(
             nostrRepository.observeProfileWithFollowing(
                 publicKey
             ).collect { localFollowing ->
-                followingListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowingListUIState.Loaded(
+                followingListUIState = at.torch.compose.ui.view.state.FollowingListUIState.Loaded(
                     following = localFollowing?.following ?: emptyList()
                 )
             }
@@ -66,9 +66,9 @@ class FollowingListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+                at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
                         ),
@@ -103,7 +103,7 @@ class FollowingListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val feedListUIState = followingListUIState) {
-                _root_ide_package_.at.torch.compose.ui.view.state.FollowingListUIState.Error -> {
+                at.torch.compose.ui.view.state.FollowingListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -148,7 +148,7 @@ class FollowingListViewModel(
                     }
 
                 }
-                _root_ide_package_.at.torch.compose.ui.view.state.FollowingListUIState.Loading -> {
+                at.torch.compose.ui.view.state.FollowingListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -175,7 +175,7 @@ class FollowingListViewModel(
         const val TAG = "FollowingListViewModel"
 
         fun factory(
-            initialFeedListUIState: at.torch.compose.ui.view.state.FollowingListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FollowingListUIState.Loading,
+            initialFeedListUIState: at.torch.compose.ui.view.state.FollowingListUIState = at.torch.compose.ui.view.state.FollowingListUIState.Loading,
             publicKey: String,
             synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
             nostrRepository: at.torch.compose.repository.NostrRepository,

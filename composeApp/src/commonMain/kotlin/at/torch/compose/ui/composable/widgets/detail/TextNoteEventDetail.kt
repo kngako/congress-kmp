@@ -61,10 +61,10 @@ fun TextNoteEventDetail(
 
     val inReplyToNostrEventFeedListViewModel: at.torch.compose.ui.view.model.InReplyToViewModel = viewModel(
         key = "replies-${localNostrEvent.nostrEvent.id}",
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.InReplyToViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.InReplyToViewModel.factory(
             nostrEvent = localNostrEvent.nostrEvent,
             profile = localNostrEvent.profile,
-            initialFeedListUIState = _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading,
+            initialFeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
             nostrRepository = nostrRepository,
             createdAt = localNostrEvent.nostrEvent.createdAt
         ),
@@ -118,7 +118,7 @@ fun TextNoteEventDetail(
                         Icon(
                             Icons.Default.Person,
                             contentDescription = "User profile",
-                            tint = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey("profile")
+                            tint = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey("profile")
                         )
 //                                    ProfileAvatar(
 //                                        profile = localProfile.profile,
@@ -219,7 +219,7 @@ fun TextNoteEventDetail(
                                     Text(
                                         text = staticIdentifier,
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(
+                                        color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(
                                             profile
                                         )
                                     )
@@ -354,14 +354,14 @@ fun TextNoteEventDetail(
                             }
                         }
                     }
-                    _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Error -> {
+                    at.torch.compose.ui.view.state.FeedListUIState.Error -> {
                         item {
                             Text(
                                 text = "Something went wrong"
                             )
                         }
                     }
-                    _root_ide_package_.at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
+                    at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
                         item {
                             LoadingIndicator()
                         }
@@ -408,7 +408,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateBack = {},
                 onNavigateToWriteAReply = {},
                 onNavigateToNostrEvent = {},
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

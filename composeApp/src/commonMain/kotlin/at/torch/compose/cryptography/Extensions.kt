@@ -8,12 +8,12 @@ import com.vitorpamplona.quartz.nip19Bech32.bech32.Bech32
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
 import kotlin.time.Instant
 
-fun at.torch.compose.database.model.UnsignedNostrEvent.signOrThrow(nsec: String): at.torch.compose.database.model.NostrEvent {
+fun at.torch.compose.database.model.UnsignedNostrEvent.signOrThrow(nsec: String): NostrEvent {
     val hexPrivateKey = Bech32.decodeBytes(nsec).second
     return this.signOrThrow(hexPrivateKey)
 }
 
-fun at.torch.compose.database.model.UnsignedNostrEvent.signOrThrow(hexPrivateKey: ByteArray): at.torch.compose.database.model.NostrEvent {
+fun at.torch.compose.database.model.UnsignedNostrEvent.signOrThrow(hexPrivateKey: ByteArray): NostrEvent {
     val tempSigner = NostrSignerSync(
         KeyPair(
             privKey = hexPrivateKey

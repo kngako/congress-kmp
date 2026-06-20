@@ -76,7 +76,7 @@ class SearchViewModel(
         const val TAG = "SearchViewModel"
 
         fun factory(
-            initialSearchUIState: at.torch.compose.ui.view.state.SearchUIState = _root_ide_package_.at.torch.compose.ui.view.state.SearchUIState.Prompt,
+            initialSearchUIState: at.torch.compose.ui.view.state.SearchUIState = at.torch.compose.ui.view.state.SearchUIState.Prompt,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             searchRepository: at.torch.compose.repository.SearchRepository,
         ): ViewModelProvider.Factory = viewModelFactory {

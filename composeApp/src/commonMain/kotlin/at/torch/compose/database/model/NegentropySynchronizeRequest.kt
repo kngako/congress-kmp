@@ -21,7 +21,7 @@ import kotlin.uuid.Uuid
             entity = NostrEvent::class,
             parentColumns = ["id"],
             childColumns = ["nostrEventId"],
-            onDelete = ForeignKey.Companion.CASCADE,
+            onDelete = ForeignKey.CASCADE,
         ),
     ],
     indices = [

@@ -46,9 +46,9 @@ class MainActivity : ComponentActivity() {
     }
 
     fun stopNfcReader() {
-        if (_root_ide_package_.com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.isReading()) {
-            _root_ide_package_.com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.updateState(
-                _root_ide_package_.com.machankura.compose.ui.composable.widgets.nfc.NfcState.Inactive)
+        if (com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.isReading()) {
+            com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.updateState(
+                com.machankura.compose.ui.composable.widgets.nfc.NfcState.Inactive)
         }
         nfcAdapter?.disableReaderMode(this@MainActivity)
     }

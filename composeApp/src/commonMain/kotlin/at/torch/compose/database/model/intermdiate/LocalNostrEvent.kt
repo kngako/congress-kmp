@@ -26,28 +26,28 @@ data class LocalNostrEvent(
     val profile: at.torch.compose.database.model.Profile?,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.RepostedRelation::class,
+        entity = at.torch.compose.database.model.RepostedRelation::class,
         parentColumns = ["id"],
         entityColumns = ["repostingNostrEventId"]
     )
     val localRepostedNostrEvent: LocalRepostedNostrEvent? = null,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.QuotedRelation::class,
+        entity = at.torch.compose.database.model.QuotedRelation::class,
         parentColumns = ["id"],
         entityColumns = ["quotingNostrEventId"]
     )
     val localQuotedNostrEvent: LocalQuotedNostrEvent? = null,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.InReplyToRelation::class,
+        entity = at.torch.compose.database.model.InReplyToRelation::class,
         parentColumns = ["id"],
         entityColumns = ["replyingNostrEventId"]
     )
     val localInReplyToNostrEvent: LocalInReplyToNostrEvent? = null,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.Mention::class,
+        entity = at.torch.compose.database.model.Mention::class,
         parentColumns = ["id"],
         entityColumns = ["mentioningNostrEventId"],
     )

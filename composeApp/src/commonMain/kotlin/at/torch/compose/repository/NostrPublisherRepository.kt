@@ -30,7 +30,7 @@ class NostrPublisherRepository(
         }
     }
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class)
     private suspend fun publishAndImportEvent(signedNostrEvent: at.torch.compose.database.model.NostrEvent, outboxRelays: List<String> = emptyList()) {
         relaysSocketManager.publishEvent(signedNostrEvent)
         importEvent(signedNostrEvent)
@@ -52,7 +52,7 @@ class NostrPublisherRepository(
         }
     }
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class, _root_ide_package_.at.torch.compose.exceptions.SignatureException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class, at.torch.compose.exceptions.SignatureException::class)
     suspend fun signPublishImportNostrEvent(
         unsignedNostrEvent: at.torch.compose.database.model.UnsignedNostrEvent,
         outboxRelays: List<String>,
@@ -63,7 +63,7 @@ class NostrPublisherRepository(
     }
 
 
-    @Throws(_root_ide_package_.at.torch.compose.exceptions.NostrPublishException::class, _root_ide_package_.at.torch.compose.exceptions.SignatureException::class)
+    @Throws(at.torch.compose.exceptions.NostrPublishException::class, at.torch.compose.exceptions.SignatureException::class)
     suspend fun publishRelayList(userId: String, relays: List<at.torch.compose.network.dto.RelayDTO>): at.torch.compose.database.model.NostrEvent {
         val signedNostrEvent = nostrNotary.signRelayListMetadata(userId = userId, relays = relays).unwrapOrThrow()
         relaysSocketManager.publishEvent(nostrEvent = signedNostrEvent, relays = relays.toSet())

@@ -4,5 +4,3 @@ class SigningKeyNotFoundException(message: String? = null, cause: Throwable? = n
     message,
     cause,
 )
-{
-}

@@ -7,5 +7,4 @@ data class ChatRoomDetailRoute(
     val activeUserPublicKey: String,
     val chatRoomId: String, // TODO: have this as a publicKey
     val relayHint: String?
-): Route() {
-}
+): Route()

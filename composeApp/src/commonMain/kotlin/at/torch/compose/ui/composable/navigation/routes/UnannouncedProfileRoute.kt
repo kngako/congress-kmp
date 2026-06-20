@@ -5,5 +5,4 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UnannouncedProfileRoute(
     val nostrEventId: String,
-): Route() {
-}
+): Route()

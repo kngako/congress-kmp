@@ -5,7 +5,7 @@ class AuxDatabaseManager(
 ) {
     val auxDatabase by lazy {
         _root_ide_package_.at.torch.compose.database.builder.getRoomDatabase(
-            _root_ide_package_.at.torch.compose.database.builder.PlatformDatabaseBuilder.getDatabaseBuilder(
+            at.torch.compose.database.builder.PlatformDatabaseBuilder.getDatabaseBuilder(
                 torchGlobal.platformContext
             )
         )
@@ -18,7 +18,7 @@ class AuxDatabaseManager(
      */
     val inMemoryAuxDatabase by lazy {
         _root_ide_package_.at.torch.compose.database.builder.getRoomDatabase(
-            _root_ide_package_.at.torch.compose.database.builder.PlatformDatabaseBuilder.getInMemoryDatabaseBuilder(
+            at.torch.compose.database.builder.PlatformDatabaseBuilder.getInMemoryDatabaseBuilder(
                 torchGlobal.platformContext
             )
         )

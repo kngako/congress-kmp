@@ -34,7 +34,7 @@ data class LocalQuotedNostrEvent(
     val profile: at.torch.compose.database.model.Profile?,
 
     @Relation(
-        entity = _root_ide_package_.at.torch.compose.database.model.Mention::class,
+        entity = at.torch.compose.database.model.Mention::class,
         parentColumns = ["quotedNostrEventId"],
         entityColumns = ["mentioningNostrEventId"],
     )
@@ -73,7 +73,7 @@ data class LocalQuotedNostrEvent(
                         Text(
                             text = staticIdentifier,
                             style = MaterialTheme.typography.bodySmall,
-                            color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(profile)
+                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(profile)
                         )
                     }
                 }

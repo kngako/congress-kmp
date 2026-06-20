@@ -5,5 +5,4 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UnsyncedProfileRoute(
     val publicKey: String,
-): Route() {
-}
+): Route()

@@ -82,16 +82,16 @@ class SovereignWalletViewModel(
         .stateIn(viewModelScope, started = SharingStarted.Lazily, initialValue = emptyList())
 
     var walletUIState: at.torch.compose.ui.view.state.SovereignWalletUIState by mutableStateOf(
-        _root_ide_package_.at.torch.compose.ui.view.state.SovereignWalletUIState.Loading)
+        at.torch.compose.ui.view.state.SovereignWalletUIState.Loading)
         private set
 
     fun retryLoad() {
-        walletUIState = _root_ide_package_.at.torch.compose.ui.view.state.SovereignWalletUIState.Loading
+        walletUIState = at.torch.compose.ui.view.state.SovereignWalletUIState.Loading
     }
 
 
     fun loadSovereignData(walletId: WalletId) {
-        walletUIState = _root_ide_package_.at.torch.compose.ui.view.state.SovereignWalletUIState.Success(
+        walletUIState = at.torch.compose.ui.view.state.SovereignWalletUIState.Success(
             publicKey = walletId.nodeIdHash,
             balanceInSatoshis = 0 // TODO: Get balance...
         )
@@ -154,7 +154,7 @@ class SovereignWalletViewModel(
                                 phoenixGlobal = phoenixGlobal,
                                 walletId = walletId,
                                 name = null,
-                                avatar = _root_ide_package_.at.torch.compose.ui.composable.widgets.wallet.WalletAvatars.list.random(),
+                                avatar = at.torch.compose.ui.composable.widgets.wallet.WalletAvatars.list.random(),
                                 isHidden = false
                             )
                         }

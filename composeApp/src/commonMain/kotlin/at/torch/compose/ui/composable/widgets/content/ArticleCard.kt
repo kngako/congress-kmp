@@ -41,7 +41,7 @@ private fun ArticleCard(
 
     val title = remember(event) { event.tags?.firstOrNull { it.size >= 2 && it[0] == "title" }?.get(1) }
     val summary = remember(event) { event.tags?.firstOrNull { it.size >= 2 && it[0] == "summary" }?.get(1) }
-    val image = remember(event) { event.tags?.firstOrNull { it.size >= 2 && it[0] == "image" }?.get(1) }
+    remember(event) { event.tags?.firstOrNull { it.size >= 2 && it[0] == "image" }?.get(1) }
     val publishedAt = remember(event) { event.tags?.firstOrNull { it.size >= 2 && it[0] == "published_at" }?.get(1)?.toLongOrNull() }
 
     Surface(
@@ -146,7 +146,7 @@ private fun ArticleCard(
                         if (publishedAt != null) {
                             Text(
                                 text = " \u00b7 ${
-                                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.formatQuotedTimestamp(
+                                    Helpers.formatQuotedTimestamp(
                                         publishedAt
                                     )
                                 }",

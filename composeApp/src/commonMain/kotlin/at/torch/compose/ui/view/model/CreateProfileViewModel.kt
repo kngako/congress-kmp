@@ -77,7 +77,7 @@ class CreateProfileViewModel(
     }
 
 
-    public fun createAccount(
+    fun createAccount(
         writeSeed: (List<String>) -> Unit
 //        onNavigateToUnsignedProfile: (UnsignedProfileRoute) -> Unit,
 //        onNavigateToUnannouncedProfile: (UnannouncedProfileRoute) -> Unit

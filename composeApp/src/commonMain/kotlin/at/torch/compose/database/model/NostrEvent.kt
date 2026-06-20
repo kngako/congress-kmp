@@ -333,7 +333,7 @@ data class NostrEvent(
             }
         }
 
-        val quotedNotes = _root_ide_package_.at.torch.compose.ui.composable.widgets.content.ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
+        val quotedNotes = at.torch.compose.ui.composable.widgets.content.ContentParser.parse(content.trimEnd('\n', '\r'), emptyMap(), emptyMap(), trimBlankLines = true)
             .filterIsInstance<at.torch.compose.ui.composable.widgets.content.ContentSegment.NostrNoteSegment>()
             .firstOrNull()
 
@@ -386,7 +386,7 @@ data class NostrEvent(
     }
     fun toZap(): Zap? = try {
         if (kind == LnZapEvent.KIND) {
-            val zapEvent = EventFactory.create<LnZapEvent>(
+            EventFactory.create<LnZapEvent>(
                 id = id,
                 pubKey = pubKey,
                 createdAt = createdAt.epochSeconds,
@@ -441,7 +441,7 @@ data class NostrEvent(
 
         fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {
             // TODO: Check for unsupported kind
-            val taggedEvent = event.firstTaggedEvent()
+            event.firstTaggedEvent()
 
             val quotedEvent = when (val taggedQuote = event.firstTaggedQuote()) {
                 is QEventTag -> {

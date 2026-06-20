@@ -178,6 +178,6 @@ object SeedManager {
         FileSystem.SYSTEM.delete(temp)
     }
 
-    object WriteErrorCheckDontMatch : RuntimeException("failed to write the seed to disk: temporary file do not match")
+    class WriteErrorCheckDontMatch : RuntimeException("failed to write the seed to disk: temporary file do not match")
     class UnreadableSeed(msg: String) : RuntimeException(msg)
 }

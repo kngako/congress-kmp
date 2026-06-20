@@ -31,7 +31,7 @@ internal object ContentParser {
                 val url = "https://$bareDomainCapture"
                 val meta = imetaMap[url]
                 val imetaMime = meta?.mime?.let {
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.classifyByMime(
+                    Helpers.classifyByMime(
                         it
                     )
                 }
@@ -40,13 +40,13 @@ internal object ContentParser {
                     imetaMime == "image" -> segments.add(ContentSegment.ImageSegment(meta!!))
                     imetaMime == "video" -> segments.add(ContentSegment.VideoSegment(meta!!))
                     imetaMime == "audio" -> segments.add(ContentSegment.AudioSegment(meta!!))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.imageExtensions -> segments.add(ContentSegment.ImageSegment(meta ?: MediaMeta(url)))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.videoExtensions -> segments.add(ContentSegment.VideoSegment(meta ?: MediaMeta(url)))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.audioExtensions -> segments.add(ContentSegment.AudioSegment(meta ?: MediaMeta(url)))
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.isBlossomUrl(
+                    ext in Constants.imageExtensions -> segments.add(ContentSegment.ImageSegment(meta ?: MediaMeta(url)))
+                    ext in Constants.videoExtensions -> segments.add(ContentSegment.VideoSegment(meta ?: MediaMeta(url)))
+                    ext in Constants.audioExtensions -> segments.add(ContentSegment.AudioSegment(meta ?: MediaMeta(url)))
+                    Helpers.isBlossomUrl(
                         url
                     ) -> segments.add(ContentSegment.UnknownMediaSegment(meta ?: MediaMeta(url)))
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.isStandaloneUrl(
+                    Helpers.isStandaloneUrl(
                         content,
                         match.range
                     ) -> segments.add(ContentSegment.LinkSegment(url))
@@ -97,7 +97,7 @@ internal object ContentParser {
                 val isWebSocket = url.startsWith("wss://") || url.startsWith("ws://")
                 val meta = imetaMap[url]
                 val imetaMime = meta?.mime?.let {
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.classifyByMime(
+                    Helpers.classifyByMime(
                         it
                     )
                 }
@@ -106,9 +106,9 @@ internal object ContentParser {
                     imetaMime == "image" -> segments.add(ContentSegment.ImageSegment(meta!!))
                     imetaMime == "video" -> segments.add(ContentSegment.VideoSegment(meta!!))
                     imetaMime == "audio" -> segments.add(ContentSegment.AudioSegment(meta!!))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.imageExtensions -> segments.add(ContentSegment.ImageSegment(meta ?: MediaMeta(url)))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.videoExtensions -> segments.add(ContentSegment.VideoSegment(meta ?: MediaMeta(url)))
-                    ext in _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.audioExtensions -> segments.add(ContentSegment.AudioSegment(meta ?: MediaMeta(url)))
+                    ext in Constants.imageExtensions -> segments.add(ContentSegment.ImageSegment(meta ?: MediaMeta(url)))
+                    ext in Constants.videoExtensions -> segments.add(ContentSegment.VideoSegment(meta ?: MediaMeta(url)))
+                    ext in Constants.audioExtensions -> segments.add(ContentSegment.AudioSegment(meta ?: MediaMeta(url)))
                     // TODO: Support websockets
 //                    isWebSocket && '\'' in url -> {
 //                        val parsed = Nip29.parseGroupIdentifier(url)
@@ -116,10 +116,10 @@ internal object ContentParser {
 //                        else segments.add(ContentSegment.InlineLinkSegment(url))
 //                    }
                     isWebSocket -> segments.add(ContentSegment.InlineLinkSegment(url))
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.isBlossomUrl(
+                    Helpers.isBlossomUrl(
                         url
                     ) -> segments.add(ContentSegment.UnknownMediaSegment(meta ?: MediaMeta(url)))
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.isStandaloneUrl(
+                    Helpers.isStandaloneUrl(
                         content,
                         match.range
                     ) -> segments.add(ContentSegment.LinkSegment(url))
@@ -141,7 +141,7 @@ internal object ContentParser {
             for (segment in segments) {
                 if (segment is ContentSegment.TextSegment) {
                     result.addAll(
-                        _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.splitTextForEmojis(
+                        Helpers.splitTextForEmojis(
                             segment.text,
                             emojiMap
                         )
@@ -158,7 +158,7 @@ internal object ContentParser {
         for (segment in afterEmoji) {
             if (segment is ContentSegment.TextSegment) {
                 finalResult.addAll(
-                    _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Helpers.splitTextForInvoices(
+                    Helpers.splitTextForInvoices(
                         segment.text
                     )
                 )

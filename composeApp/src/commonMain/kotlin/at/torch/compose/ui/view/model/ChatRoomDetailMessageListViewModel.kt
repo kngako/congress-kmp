@@ -76,7 +76,7 @@ class ChatRoomDetailMessageListViewModel(
                 localChatRoom.chatRoom.id
             ).distinctUntilChanged().collect { chatMessages ->
                 logger.d("getChatMessageListByChatRoomId: $chatMessages")
-                chatRoomDetailMessageListUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loaded(
+                chatRoomDetailMessageListUIState = at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loaded(
                     chatMessageList = chatMessages
                 )
             }
@@ -112,7 +112,7 @@ class ChatRoomDetailMessageListViewModel(
                     isReceiverChatMessageRelayListMissing.value = true
                     // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
-                        _root_ide_package_.at.torch.compose.nostr.Relays.negentropicRelaySet,
+                        at.torch.compose.nostr.Relays.negentropicRelaySet,
                         _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                             kinds = arrayOf(
                                 ChatMessageRelayListEvent.KIND,
@@ -129,7 +129,7 @@ class ChatRoomDetailMessageListViewModel(
 
                 val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest.Companion.computeId(
+                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = relayAndSynchronizationFilter.second
                         ),
@@ -161,7 +161,7 @@ class ChatRoomDetailMessageListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val chatRoomDetailMessageListUIState = this@ChatRoomDetailMessageListViewModel.chatRoomDetailMessageListUIState) {
-                _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Error -> {
+                at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -286,7 +286,7 @@ class ChatRoomDetailMessageListViewModel(
                                                             text = localChatMessage.profile?.humanReadableNameOrPubkey() ?: localChatMessage.chatMessage.senderPublicKey,
                                                             maxLines = 1,
                                                             overflow = TextOverflow.MiddleEllipsis,
-                                                            color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
+                                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
                                                     }
@@ -342,7 +342,7 @@ class ChatRoomDetailMessageListViewModel(
                         }
                     }
                 }
-                _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading -> {
+                at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -384,7 +384,7 @@ class ChatRoomDetailMessageListViewModel(
         const val TAG = "ChatRoomDetailMessageListViewModel"
 
         fun factory(
-            initialChatRoomDetailMessageListUIState: at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState = _root_ide_package_.at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading,
+            initialChatRoomDetailMessageListUIState: at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState = at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading,
             localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             chatRepository: at.torch.compose.repository.ChatRepository

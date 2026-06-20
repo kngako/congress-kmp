@@ -115,7 +115,7 @@ sealed interface Lnurl {
                 Tag.Auth -> {
                     val k1 = url.parameters["k1"]
                     if (k1.isNullOrBlank()) {
-                        throw LnurlError.Auth.MissingK1
+                        throw LnurlError.Auth.MissingK1()
                     } else {
                         LnurlAuth(url, k1)
                     }
@@ -129,7 +129,7 @@ sealed interface Lnurl {
             val (_, data) = Bech32.decode(source)
             val payload = Bech32.five2eight(data, 0).decodeToString()
             val url = URLBuilder(payload).build()
-            if (!url.protocol.isSecure()) throw LnurlError.UnsafeResource
+            if (!url.protocol.isSecure()) throw LnurlError.UnsafeResource()
             return url
         }
 
@@ -141,7 +141,7 @@ sealed interface Lnurl {
                 // this url contains a lnurl fallback which takes priority - and must be bech32 encoded
                 parseBech32Url(lightningParam)
             } else {
-                if (!urlBuilder.protocol.isSecure()) throw LnurlError.UnsafeResource
+                if (!urlBuilder.protocol.isSecure()) throw LnurlError.UnsafeResource()
                 urlBuilder.build()
             }
         }
@@ -217,12 +217,12 @@ sealed interface Lnurl {
 
         /** Converts a lnurl JSON response to a [Lnurl] object. */
         fun parseLnurlJson(url: Url, json: JsonObject): Lnurl {
-            val callback = URLBuilder(json["callback"]?.jsonPrimitive?.content ?: throw LnurlError.MissingCallback).build()
-            if (!callback.protocol.isSecure()) throw LnurlError.UnsafeResource
-            val tag = json["tag"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: throw LnurlError.NoTag
+            val callback = URLBuilder(json["callback"]?.jsonPrimitive?.content ?: throw LnurlError.MissingCallback()).build()
+            if (!callback.protocol.isSecure()) throw LnurlError.UnsafeResource()
+            val tag = json["tag"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: throw LnurlError.NoTag()
             return when (tag) {
                 Tag.Withdraw.label -> {
-                    val k1 = json["k1"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: throw LnurlError.Withdraw.MissingK1
+                    val k1 = json["k1"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() } ?: throw LnurlError.Withdraw.MissingK1()
                     val minWithdrawable = json["minWithdrawable"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0f }?.toLong()?.msat
                         ?: json["minWithdrawable"]?.jsonPrimitive?.long?.takeIf { it > 0 }?.msat
                         ?: 0.msat
@@ -242,11 +242,11 @@ sealed interface Lnurl {
                 Tag.Pay.label -> {
                     val minSendable = json["minSendable"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0f }?.toLong()?.msat
                         ?: json["minSendable"]?.jsonPrimitive?.longOrNull?.takeIf { it > 0 }?.msat
-                        ?: throw LnurlError.Pay.Intent.InvalidMin
+                        ?: throw LnurlError.Pay.Intent.InvalidMin()
                     val maxSendable = json["maxSendable"]?.jsonPrimitive?.doubleOrNull?.takeIf { it > 0f }?.toLong()?.msat
                         ?: json["maxSendable"]?.jsonPrimitive?.longOrNull?.coerceAtLeast(minSendable.msat)?.msat
-                        ?: throw LnurlError.Pay.Intent.MissingMax
-                    val metadata = LnurlPay.parseMetadata(json["metadata"]?.jsonPrimitive?.content ?: throw LnurlError.Pay.Intent.MissingMetadata)
+                        ?: throw LnurlError.Pay.Intent.MissingMax()
+                    val metadata = LnurlPay.parseMetadata(json["metadata"]?.jsonPrimitive?.content ?: throw LnurlError.Pay.Intent.MissingMetadata())
                     val maxCommentLength = json["commentAllowed"]?.jsonPrimitive?.longOrNull?.takeIf { it > 0 }
                     LnurlPay.Intent(
                         initialUrl = url,

@@ -92,7 +92,7 @@ class CurrencyManager(
     val ratesFlow: StateFlow<List<ExchangeRate>> by lazy {
         appDb.listBitcoinRates().stateIn(
             scope = scope,
-            started = SharingStarted.Companion.Eagerly,
+            started = SharingStarted.Eagerly,
             initialValue = listOf()
         )
     }
@@ -287,9 +287,9 @@ class CurrencyManager(
                 .filter { targets.contains(it.fiatCurrency) }
             for (fiatCurrency in targets) {
                 val lastRefresh = dbValues.firstOrNull { it.fiatCurrency == fiatCurrency }?.let {
-                    Instant.Companion.fromEpochMilliseconds(it.timestampMillis)
+                    Instant.fromEpochMilliseconds(it.timestampMillis)
                 } ?: run {
-                    Instant.Companion.fromEpochMilliseconds(0)
+                    Instant.fromEpochMilliseconds(0)
                 }
                 refreshList[fiatCurrency] = RefreshInfo(
                     lastRefresh = lastRefresh,
@@ -307,7 +307,7 @@ class CurrencyManager(
 
         val now = Clock.System.now()
         return if (nextRefresh == null || nextRefresh <= now) {
-            Duration.Companion.ZERO
+            Duration.ZERO
         } else {
             nextRefresh - now
         }
@@ -397,8 +397,8 @@ class CurrencyManager(
         val failCount: Int
     ) {
         constructor() : this(
-            lastRefresh = Instant.Companion.fromEpochMilliseconds(0),
-            nextRefresh = Instant.Companion.fromEpochMilliseconds(0),
+            lastRefresh = Instant.fromEpochMilliseconds(0),
+            nextRefresh = Instant.fromEpochMilliseconds(0),
             failCount = 0
         )
 

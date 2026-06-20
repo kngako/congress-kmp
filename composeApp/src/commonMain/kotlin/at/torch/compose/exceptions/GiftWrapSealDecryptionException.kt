@@ -1,4 +1,3 @@
 package at.torch.compose.exceptions
 
-open class GiftWrapSealDecryptionException(message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
-}
+open class GiftWrapSealDecryptionException(message: String? = null, cause: Throwable? = null) : Exception(message, cause)

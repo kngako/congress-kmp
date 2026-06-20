@@ -180,7 +180,7 @@ sealed class LnurlPay : Lnurl.Qualified {
         }
 
         /** Decode a serialized [Lnurl.Pay.Metadata] object. */
-        fun parseMetadata(raw: String): LnurlPay.Intent.Metadata = try {
+        fun parseMetadata(raw: String): Intent.Metadata = try {
             val array = format.decodeFromString<JsonArray>(raw)
             var plainText: String? = null
             var longDesc: String? = null
@@ -204,7 +204,7 @@ sealed class LnurlPay : Lnurl.Qualified {
                     Logger.w("LnurlPay") { "could not decode raw lnurlpay-meta=$it: ${e.message}" }
                 }
             }
-            LnurlPay.Intent.Metadata(
+            Intent.Metadata(
                 raw = raw,
                 plainText = plainText!!,
                 longDesc = longDesc,

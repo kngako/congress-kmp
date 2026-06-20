@@ -59,7 +59,7 @@ internal fun TextNoteFeedItem(
                         }
                     ),
                     style = MaterialTheme.typography.labelLargeEmphasized,
-                    color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localInReplyToNostrEvent.nostrEvent.pubKey),
+                    color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localInReplyToNostrEvent.nostrEvent.pubKey),
                     text = localInReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "loading information..."
                 )
             }
@@ -105,7 +105,7 @@ internal fun TextNoteFeedItem(
                                 Text(
                                     text = staticIdentifier,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(profile)
+                                    color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromProfile(profile)
                                 )
                             }
                         }

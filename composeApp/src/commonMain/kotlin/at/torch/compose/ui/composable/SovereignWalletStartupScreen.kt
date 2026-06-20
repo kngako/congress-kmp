@@ -35,7 +35,7 @@ fun SovereignWalletStartupScreen(
     forceWalletId: WalletId?,
 ) {
     val sovereignWalletStartupViewModel = viewModel<at.torch.compose.ui.view.model.SovereignWalletStartupViewModel>(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.SovereignWalletStartupViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.SovereignWalletStartupViewModel.factory(
             phoenixGlobal = sovereignWalletViewModel.phoenixGlobal,
         )
     )

@@ -56,8 +56,7 @@ sealed class EncryptedPinLock: EncryptedPin.KeystoreEncrypted() {
 
         fun deserialize(serialized: ByteArray): EncryptedPinLock {
             val stream = Buffer().write(serialized)
-            val version = stream.readByte()
-            when (version) {
+            when (val version = stream.readByte()) {
                 SINGLE_WALLET_VERSION, MULTIPLE_WALLET_VERSION -> {
                     val (iv, ciphertext) = deserialize(stream)
                     return when (version) {

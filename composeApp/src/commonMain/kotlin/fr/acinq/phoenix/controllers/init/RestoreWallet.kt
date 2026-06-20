@@ -28,8 +28,7 @@ object RestoreWallet {
                 if (this === other) return true
                 if (other == null || this::class != other::class) return false
                 other as ValidMnemonics
-                if (!seed.contentEquals(other.seed)) return false
-                return true
+                return seed.contentEquals(other.seed)
             }
 
             override fun hashCode(): Int {

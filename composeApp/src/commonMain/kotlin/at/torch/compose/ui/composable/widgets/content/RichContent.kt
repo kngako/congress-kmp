@@ -170,7 +170,7 @@ fun RichContent(
                                 }
                                 is ContentSegment.CustomEmojiSegment -> {
                                     pushStringAnnotation(
-                                        tag = _root_ide_package_.at.torch.compose.ui.composable.widgets.content.Constants.INLINE_CONTENT_TAG,
+                                        tag = Constants.INLINE_CONTENT_TAG,
                                         annotation = seg.shortcode
                                     )
                                     append(":${seg.shortcode}:")
@@ -197,7 +197,7 @@ fun RichContent(
                                             onProfileClick?.invoke(pubkey)
                                         }
                                     ) {
-                                        withStyle(SpanStyle(color = _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(seg.pubkey), textDecoration = linkDecoration)) {
+                                        withStyle(SpanStyle(color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(seg.pubkey), textDecoration = linkDecoration)) {
                                             append("@${displayName.trimEnd()}")
                                         }
                                     }
@@ -244,8 +244,7 @@ fun RichContent(
 
                     Text(text = annotated, style = style, inlineContent = emojiInlineContent)
                 } else {
-                    val segment = group as ContentSegment
-                    when (segment) {
+                    when (val segment = group as ContentSegment) {
                         is ContentSegment.ImageSegment -> {
                             ImageWithContextMenu(
                                 meta = segment.meta,

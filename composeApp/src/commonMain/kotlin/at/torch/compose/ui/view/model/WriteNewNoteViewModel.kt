@@ -121,13 +121,13 @@ class WriteNewNoteViewModel(
                 activePublicKey
             ).collect { profileWithFollowing ->
                 writeNewNoteUIState = if (profileWithFollowing != null) {
-                    _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt(
+                    at.torch.compose.ui.view.state.WriteNewNoteUIState.InputPrompt(
                         localProfile = profileWithFollowing,
                         inReplyToNostrEvent = nostrEventBeingRepliedTo,
                         quotedNostrEvent = nostrEventBeingQuoted
                     )
                 } else {
-                    _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.Error
+                    at.torch.compose.ui.view.state.WriteNewNoteUIState.Error
                 }
             }
         }
@@ -141,7 +141,7 @@ class WriteNewNoteViewModel(
         validateInput().let { isInputValid ->
             if (isInputValid) {
                 writeNewNoteUIState =
-                    _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.ConfirmNote(
+                    at.torch.compose.ui.view.state.WriteNewNoteUIState.ConfirmNote(
                         localProfile = localProfile,
                         inReplyToNostrEvent = inReplyToNostrEvent,
                         quotedNostrEvent = quotedNostrEvent,
@@ -172,7 +172,7 @@ class WriteNewNoteViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val mentionedPublicKeys = _root_ide_package_.at.torch.compose.ui.composable.widgets.content.ContentParser.parse(
+            val mentionedPublicKeys = at.torch.compose.ui.composable.widgets.content.ContentParser.parse(
                 writeNewNoteFormState.textField.textFieldState.text.toString(),
             ).filterIsInstance<at.torch.compose.ui.composable.widgets.content.ContentSegment.NostrProfileSegment>().map { it.pubkey }
 
@@ -183,7 +183,7 @@ class WriteNewNoteViewModel(
                 inReplyToNostrEvent = inReplyToNostrEvent,
                 quotedNostrEvent = quotedNostrEvent,
                 onError = {
-                    writeNewNoteUIState = _root_ide_package_.at.torch.compose.ui.view.state.WriteNewNoteUIState.Error
+                    writeNewNoteUIState = at.torch.compose.ui.view.state.WriteNewNoteUIState.Error
                 },
                 onSuccess = onNostrEventPublished
             )

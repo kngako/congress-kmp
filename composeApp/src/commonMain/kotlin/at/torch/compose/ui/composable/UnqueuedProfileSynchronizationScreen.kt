@@ -28,7 +28,7 @@ fun UnqueuedProfileSynchronizationScreen(
     nostrRepository: at.torch.compose.repository.NostrRepository
 ) {
     val unqueuedProfileSynchronizationViewModel: at.torch.compose.ui.view.model.UnqueuedProfileSynchronizationViewModel = viewModel(
-        factory = _root_ide_package_.at.torch.compose.ui.view.model.UnqueuedProfileSynchronizationViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.UnqueuedProfileSynchronizationViewModel.factory(
             unsignedNostrEventId = unsignedNostrEventId,
             profilePublicKey = profilePublicKey,
             nostrRepository = nostrRepository
@@ -89,7 +89,7 @@ private fun UnqueuedProfileSynchronizationScreenPreview() {
             UnqueuedProfileSynchronizationScreen(
                 unsignedNostrEventId = 2,
                 profilePublicKey = "npub is for living.",
-                nostrRepository = _root_ide_package_.at.torch.compose.repository.NostrRepository.Companion.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

@@ -28,7 +28,7 @@ class NostrEventDetailViewModel(
         private set
 
     fun retryLoad() {
-        nostrEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading
+        nostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading
         loadNostrFeed()
     }
 
@@ -36,7 +36,7 @@ class NostrEventDetailViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
-                _root_ide_package_.at.torch.compose.nostr.Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
+                at.torch.compose.nostr.Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
                     _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "detail",
                         synchronizationFilters = arrayOf(
@@ -69,11 +69,11 @@ class NostrEventDetailViewModel(
                 nostrEventId
             ).collectLatest { localNostrEvent ->
                 nostrEventDetailUIState = if (localNostrEvent != null) {
-                    _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
+                    at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
                         localNostrEvent = localNostrEvent
                     )
                 } else {
-                    _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Error
+                    at.torch.compose.ui.view.state.NostrEventDetailUIState.Error
                 }
             }
         }
@@ -85,7 +85,7 @@ class NostrEventDetailViewModel(
         fun factory(
             nostrEventId: HexKey,
             activeUserPublicKey: HexKey,
-            initialNostrEventDetailUIState: at.torch.compose.ui.view.state.NostrEventDetailUIState = _root_ide_package_.at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading,
+            initialNostrEventDetailUIState: at.torch.compose.ui.view.state.NostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading,
             nostrRepository: at.torch.compose.repository.NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {

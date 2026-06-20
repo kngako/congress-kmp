@@ -149,7 +149,7 @@ object SystemNotificationHelper {
 //                amountIncoming.toPrettyString(BitcoinUnit.Sat, withUnit = true)),
             message = when {
                 source == LiquidityEvents.Source.OnChainWallet && nextTimeoutRemainingBlocks != null && nextTimeoutRemainingBlocks < SWAP_TIMEOUT_THRESHOLD_IN_BLOCKS -> {
-                    val remainingTimeMillis = nextTimeoutRemainingBlocks * 10 * DateUtils.MINUTE_IN_MILLIS
+                    nextTimeoutRemainingBlocks * 10 * DateUtils.MINUTE_IN_MILLIS
 //                  TODO:  context.getString(R.string.notif_rejected_policy_disabled_timeout, (currentTimestampMillis() + remainingTimeMillis).toAbsoluteDateString())
                     "Rejected policy disabled timeout"
                 }

@@ -70,7 +70,7 @@ class NostrNotaryRepository(
             walletManager.keyManager.value?.nostrPrivateKey()?.value?.toByteArray()?.toNsec()
         }.getOrNull() ?: throw _root_ide_package_.at.torch.compose.exceptions.SigningKeyNotFoundException()
 
-    private fun signNostrEvent(publicKey: String, event: at.torch.compose.database.model.UnsignedNostrEvent): at.torch.compose.database.model.NostrEvent? {
+    private fun signNostrEvent(publicKey: String, event: at.torch.compose.database.model.UnsignedNostrEvent): at.torch.compose.database.model.NostrEvent {
         val isExternalSignerLogin = runCatching {
 //            credentialsStore.isExternalSignerCredential(npub = publicKey.hexToNpubHrp())
             false
@@ -100,7 +100,7 @@ class NostrNotaryRepository(
                         }
                     )
                 }
-                    .toTypedArray() + listOf(_root_ide_package_.at.torch.compose.network.UserAgent.CLIENT_NAME.asClientTag()),
+                    .toTypedArray() + listOf(at.torch.compose.network.UserAgent.CLIENT_NAME.asClientTag()),
             ),
         )
     }

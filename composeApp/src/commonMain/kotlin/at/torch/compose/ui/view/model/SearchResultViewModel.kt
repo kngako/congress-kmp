@@ -31,11 +31,11 @@ class SearchResultViewModel(
         private set
 
     var searchResultListUIState: at.torch.compose.ui.view.state.SearchResultListUIState by mutableStateOf(
-        _root_ide_package_.at.torch.compose.ui.view.state.SearchResultListUIState.Loading)
+        at.torch.compose.ui.view.state.SearchResultListUIState.Loading)
         private set
 
     fun updateSearchResultType (searchResultType: SearchResultType) {
-        searchResultListUIState = _root_ide_package_.at.torch.compose.ui.view.state.SearchResultListUIState.Loading
+        searchResultListUIState = at.torch.compose.ui.view.state.SearchResultListUIState.Loading
 
         this.searchResultType = searchResultType
 
@@ -78,7 +78,7 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
-                _root_ide_package_.at.torch.compose.nostr.Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Search all relays instead of the first
+                at.torch.compose.nostr.Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Search all relays instead of the first
                     _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
@@ -97,7 +97,7 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // This is something not taking into consideration the results we are actually looking for...
             nostrRepository.observeNostrFeed(synchronizationFilter).distinctUntilChanged().collect { localNostrEvents ->
-                searchResultListUIState = _root_ide_package_.at.torch.compose.ui.view.state.SearchResultListUIState.Loaded(
+                searchResultListUIState = at.torch.compose.ui.view.state.SearchResultListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }
