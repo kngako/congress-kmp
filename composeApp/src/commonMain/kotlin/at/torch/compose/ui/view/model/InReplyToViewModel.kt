@@ -74,7 +74,7 @@ class InReplyToViewModel(
             // Sync Notifications... might want to also run this in the background
             val publicRelays = profile?.profilePublicRelays(
                 nostrRepository
-            ) ?: at.torch.compose.nostr.Relays.negentropicRelaySet
+            ) ?: at.torch.compose.nostr.Relays.DefaultDMRelayList
 
             nostrRepository.queueNegentropySynchronizeRequest(
                 publicRelays.take(3).map { normalizedRelayUrl ->

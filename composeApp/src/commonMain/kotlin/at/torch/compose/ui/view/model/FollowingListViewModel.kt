@@ -66,7 +66,7 @@ class FollowingListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
-                at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+                at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
                     _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
                         id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,

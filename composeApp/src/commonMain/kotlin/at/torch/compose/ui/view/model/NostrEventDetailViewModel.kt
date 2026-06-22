@@ -36,7 +36,7 @@ class NostrEventDetailViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
-                at.torch.compose.nostr.Relays.eventPublishRelaySet.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
+                at.torch.compose.nostr.Relays.DefaultDMRelayList.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
                     _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "detail",
                         synchronizationFilters = arrayOf(

@@ -112,7 +112,7 @@ class ChatRoomDetailMessageListViewModel(
                     isReceiverChatMessageRelayListMissing.value = true
                     // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
-                        at.torch.compose.nostr.Relays.negentropicRelaySet,
+                        at.torch.compose.nostr.Relays.DefaultDMRelayList,
                         _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
                             kinds = arrayOf(
                                 ChatMessageRelayListEvent.KIND,

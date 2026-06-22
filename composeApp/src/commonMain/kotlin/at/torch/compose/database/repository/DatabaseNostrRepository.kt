@@ -170,7 +170,7 @@ class DatabaseNostrRepository(
             UnsignedNostrEvent(
                 pubKey = publicKey,
                 kind = SearchRelayListEvent.KIND,
-                tags = Relays.DefaultSearchRelayList.map {
+                tags = Relays.DefaultDMRelayList.map {
                     RelayTag.assemble(
                         it
                     )
@@ -190,7 +190,7 @@ class DatabaseNostrRepository(
                 tags = arrayOf(
                     AltTag.assemble(RelayFeedsListEvent.ALT)
                 ),
-                privateTags = Relays.DefaultGlobalRelays.map {
+                privateTags = Relays.DefaultDMRelayList.map {
                     RelayTag.assemble(
                         it
                     )

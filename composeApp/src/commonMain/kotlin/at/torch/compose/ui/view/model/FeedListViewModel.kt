@@ -43,7 +43,7 @@ class FeedListViewModel(
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
-    val negentropySynchronizeRequests = at.torch.compose.nostr.Relays.negentropicRelaySet.shuffled().map { normalizedRelayUrl ->
+    val negentropySynchronizeRequests = at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
         _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
             id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
                 normalizedRelayUrl.url,

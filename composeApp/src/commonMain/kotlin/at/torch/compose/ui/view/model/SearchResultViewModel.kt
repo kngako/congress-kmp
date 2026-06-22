@@ -78,7 +78,7 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
-                at.torch.compose.nostr.Relays.eventFinderRelaySet.take(1).map { normalizedRelay -> // TODO: Search all relays instead of the first
+                at.torch.compose.nostr.Relays.eventFinderRelaySet.map { normalizedRelay -> // TODO: Search all relays instead of the first
                     _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
