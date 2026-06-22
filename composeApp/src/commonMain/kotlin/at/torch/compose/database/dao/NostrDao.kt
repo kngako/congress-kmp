@@ -44,7 +44,7 @@ abstract class NostrDao(
     val profileEventKinds = arrayOf(
         MetadataEvent.KIND,
 //        ContactListEvent.KIND, // TODO: Might want to get contacts for the social graph...
-//        ChatMessageRelayListEvent.KIND,
+        ChatMessageRelayListEvent.KIND,
         KeyPackageEvent.KIND,
         KeyPackageRelayListEvent.KIND,
 //        AdvertisedRelayListEvent.KIND,
