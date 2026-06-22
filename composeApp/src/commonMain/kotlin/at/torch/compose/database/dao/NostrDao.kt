@@ -22,6 +22,8 @@ import at.torch.compose.exceptions.GiftWrapSealDecryptionException
 import at.torch.compose.exceptions.GiftWrapUnsealException
 import at.torch.compose.extensions.toHex
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
@@ -41,8 +43,10 @@ abstract class NostrDao(
 
     val profileEventKinds = arrayOf(
         MetadataEvent.KIND,
-        ContactListEvent.KIND,
-        ChatMessageRelayListEvent.KIND,
+//        ContactListEvent.KIND,
+//        ChatMessageRelayListEvent.KIND,
+        KeyPackageEvent.KIND,
+        KeyPackageRelayListEvent.KIND,
 //        AdvertisedRelayListEvent.KIND,
 //        SearchRelayListEvent.KIND,
 //        IndexerRelayListEvent.KIND,
