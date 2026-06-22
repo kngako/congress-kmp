@@ -30,6 +30,7 @@ data class MarmotKeyPackageBundle(
     val id: Long = 0,
 
     val publicKey: HexKey,
+    // TODO: have the keyPackageEventId
 
     val tlsEncodedMarmotKeyPackage: String,
     val ncryptsecInitPrivateKey: String,

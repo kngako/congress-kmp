@@ -3,10 +3,8 @@ package at.torch.compose.database.dao
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import at.torch.compose.database.GENESIS_AT
-import at.torch.compose.database.model.BroadcastNostrEventReceipt
 import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessage
-import at.torch.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.Connection
 import at.torch.compose.database.model.Mention
@@ -20,10 +18,20 @@ import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.exceptions.GiftWrapImpersonationException
 import at.torch.compose.exceptions.GiftWrapSealDecryptionException
 import at.torch.compose.exceptions.GiftWrapUnsealException
+import at.torch.compose.exceptions.MarmotMissingKeyPackageEventIdException
+import at.torch.compose.exceptions.MarmotMissingNostrGroupDataExtension
+import at.torch.compose.exceptions.MarmotNoMatchingKeyPackageBundleException
+import at.torch.compose.exceptions.MarmotWelcomeMismatchedGroupId
 import at.torch.compose.extensions.toHex
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
+import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
+import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
+import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
@@ -32,6 +40,8 @@ import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import kotlin.io.encoding.Base64
+import kotlin.math.sign
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -313,6 +323,7 @@ abstract class NostrDao(
             database.profileDao().upsert(profile)
         }
 
+        // TODO: Support MLSGroupEvent handling...
         nostrEvent.toGiftWrapMessageWithReceiverPTag()?.let { giftWrapMessage ->
             logger.d("giftWrapMessage: $giftWrapMessage")
             val giftWrapReceiverProfile = database.profileDao().getProfileByPublicKey(giftWrapMessage.receiverPublicKey)
@@ -350,200 +361,6 @@ abstract class NostrDao(
                 giftWrapMessage
             )
 
-            // TODO: Might want to process this somewhere else where privateKey is available...
-//            SeedManager.activeKeyPair().let { activeKeyPair ->
-//                giftWrapMessage.decryptGiftWrapSeal(
-//                    activeKeyPair
-//                )?.let { giftWrapSeal ->
-//                    database.giftWrapSealDao().upsert(
-//                        giftWrapSeal
-//                    )
-//
-//                    giftWrapSeal.decryptGiftWrapPayload(
-//                        activeKeyPair.privKey!!
-//                    )?.let { decryptedGiftWrapPayload ->
-//                        if (giftWrapSeal.publicKey.lowercase() != decryptedGiftWrapPayload.publicKey.lowercase()) {
-//                            val giftWrapImpersonation = GiftWrapImpersonationException(
-//                                "Seal pubkey (${giftWrapSeal.publicKey}) and payload pubkey (${decryptedGiftWrapPayload.publicKey}) needs to be the same for the giftWrap ${nostrEvent.id}"
-//                            )
-//                            logger.e("Impersonation", giftWrapImpersonation)
-//                            throw giftWrapImpersonation // Once this is thrown the database transaction fails and nothing gets saved to the DB...
-//                        }
-//                        val result = database.giftWrapPayloadDao().upsert(
-//                            decryptedGiftWrapPayload
-//                        )
-//
-//                        val giftWrapPayload = if (result != -1L) {
-//                            decryptedGiftWrapPayload.copy(
-//                                id = result
-//                            )
-//                        } else {
-//                            decryptedGiftWrapPayload
-//                        }
-//
-//                        val chatRoomId = giftWrapPayload.aggregatedParticipantsPublicKey()
-//                        logger.d("ChatRoomId: $chatRoomId")
-//
-//                        if (chatRoomId != null) {
-//                            // Find or create chatRoom
-//                            val localChatRoom = database.chatRoomDao().findChatRoomById(
-//                                chatRoomId
-//                            )
-//
-//                            if (localChatRoom == null) {
-//                                val userPublicKey = SeedManager.activeKeyPair().pubKey.toHex()
-//                                database.chatRoomDao().upsert(
-//                                    ChatRoom(
-//                                        id = chatRoomId,
-//                                        userPublicKey = userPublicKey,
-//                                        subject = decryptedGiftWrapPayload.parseSubject(),
-//                                        createdAt = decryptedGiftWrapPayload.createdAt,
-//                                        initialGiftWrapPayloadId = giftWrapPayload.id
-//                                    )
-//                                )
-//
-//                                // Add participants...
-//                                val participants = giftWrapPayload.participantPTags(
-//                                    NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
-//                                ).map {
-//                                    Participant(
-//                                        participantPublicKey = it.pubKey,
-//                                        chatRoomId = chatRoomId,
-//                                        relayHint = it.relayHint?.url
-//                                    )
-//                                }
-//
-//                                // Sync missing participant profiles...
-//                                participants.forEach { participant ->
-//                                    val giftWrapParticipantProfile = database.profileDao().getProfileByPublicKey(participant.participantPublicKey)
-//
-//                                    if (giftWrapParticipantProfile == null) {
-//                                        // Save a placeholder
-//                                        database.profileDao().insertPlaceholderProfile(
-//                                            Profile(
-//                                                displayName = "LOADING...",
-//                                                publicKey = participant.participantPublicKey,
-//                                                createdAt = GENESIS_AT,
-//                                                nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
-//                                            )
-//                                        )
-//
-//                                        val recommendRelayUrl = giftWrapMessage.receiverRelayHit
-//
-//                                        if (recommendRelayUrl != null) {
-//                                            if (profilePublicKeysToSync[recommendRelayUrl] == null) {
-//                                                profilePublicKeysToSync[recommendRelayUrl] = mutableSetOf()
-//                                            }
-//                                            profilePublicKeysToSync[recommendRelayUrl]?.add(participant.participantPublicKey)
-//                                        } else {
-//                                            if (profilePublicKeysToSync[relayURL] == null) {
-//                                                profilePublicKeysToSync[relayURL] = mutableSetOf()
-//                                            }
-//                                            profilePublicKeysToSync[relayURL]?.add(
-//                                                participant.participantPublicKey
-//                                            )
-//                                        }
-//                                    }
-//                                }
-//
-//                                database.participantDao().upsert(
-//                                    participants
-//                                )
-//
-//                                participants.filter { it.participantPublicKey != userPublicKey }.forEach { participant ->
-//                                    val publicKey = participant.participantPublicKey
-//
-//                                    val chatMessageRelayListEvent = database.nostrEventDao().getAuthoredNostrEvents(
-//                                        kinds = arrayOf(
-//                                            ChatMessageRelayListEvent.KIND
-//                                        ),
-//                                        authors = arrayOf(
-//                                            publicKey
-//                                        ),
-//                                        since = GENESIS_AT,
-//                                        limit = 5
-//                                    ).firstOrNull()?.let { nostrEvent ->
-//                                        if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
-//                                            logger.e("getAuthoredNostrEvents returned invalid ChatMessageRelayListEvent for ${publicKey}: $nostrEvent")
-//                                            null
-//                                        } else {
-//                                            ChatMessageRelayListEvent(
-//                                                id = nostrEvent.id,
-//                                                tags = nostrEvent.tags,
-//                                                pubKey = nostrEvent.pubKey,
-//                                                content = nostrEvent.content,
-//                                                createdAt = nostrEvent.createdAt.epochSeconds,
-//                                                sig = nostrEvent.sig
-//                                            )
-//                                        }
-//                                    }
-//
-//                                    if (chatMessageRelayListEvent != null) {
-//                                        // Sync messages from this relay that were sent by us
-//                                        val synchronizationFilter = SynchronizationFilter(
-//                                            kinds = arrayOf(
-//                                                GiftWrapEvent.KIND,
-//                                            ),
-//                                            authors = arrayOf(
-//                                                userPublicKey
-//                                            ),
-//                                            tags = mapOf(
-//                                                Pair("p", listOf(participant.participantPublicKey))
-//                                            ),
-//                                            limit = 50
-//                                        )
-//                                        database.negentropySynchronizeRequestDao().insert(
-//                                            chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
-//                                                NegentropySynchronizeRequest(
-//                                                    id = NegentropySynchronizeRequest.computeId(
-//                                                        relayURL = normalizedRelayUrl.url,
-//                                                        synchronizationFilter = synchronizationFilter
-//                                                    ),
-//                                                    purpose = "sent-messages",
-//                                                    synchronizationFilter = synchronizationFilter,
-//                                                    relayURL = normalizedRelayUrl.url,
-//                                                    level = 0
-//                                                )
-//                                            }
-//                                        )
-//                                    } else {
-//                                        logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
-//
-//                                        // Sync ChatMessageRelayListEvent publicKey...
-//                                        // TODO: Get relayHint form participant...
-//                                        if (profilePublicKeysToSync.containsKey(relayURL)) {
-//                                            profilePublicKeysToSync[relayURL] = mutableSetOf()
-//                                        }
-//                                        profilePublicKeysToSync[relayURL]?.add(participant.participantPublicKey)
-//                                    }
-//                                }
-//                            } else {
-//                                giftWrapPayload.parseSubject()?.let { subject ->
-//                                    database.chatRoomDao().upsert(
-//                                        localChatRoom.chatRoom.copy(
-//                                            subject = subject,
-//                                            updatedAt = giftWrapPayload.createdAt
-//                                        )
-//                                    )
-//                                }
-//                            }
-//
-//                            database.chatMessageDao().upsert(
-//                                ChatMessage(
-//                                    giftWrapPayloadId = giftWrapPayload.id,
-//                                    senderPublicKey = giftWrapPayload.publicKey,
-//                                    isUserMessage = SeedManager.activePublicKey().toHex() == giftWrapPayload.publicKey,
-//                                    chatRoomId = chatRoomId,
-//                                    createdAt = giftWrapPayload.createdAt,
-//                                    content = giftWrapPayload.content,
-//                                )
-//                            )
-//                        } else {
-//                            logger.w("Failed to setup chatRoom for message")
-//                        }
-//                    }
-//                }
-//            }
             giftWrapMessage.decryptGiftWrapSeal(
                 activeKeyPair
             ).let { giftWrapSeal ->
@@ -583,207 +400,230 @@ abstract class NostrDao(
                             }
 
                             // TODO: Handle MLS message/groups
-                            val chatRoomId =
-                                giftWrapPayload.aggregatedParticipantsPublicKey()
-                            logger.d("ChatRoomId: $chatRoomId")
+                            if (giftWrapPayload.kind == WelcomeEvent.KIND) {
+                                logger.d("Welcome Event")
 
-                            if (chatRoomId != null) {
-                                // Find or create chatRoom
-                                val localChatRoom = database.chatRoomDao().findChatRoomById(
-                                    chatRoomId
+                                val welcomeEvent = WelcomeEvent(
+                                    id = "", // TODO: Need the ID as string in decryptedGiftWrapPayload...
+                                    pubKey = decryptedGiftWrapPayload.publicKey,
+                                    content = decryptedGiftWrapPayload.content,
+                                    createdAt = decryptedGiftWrapPayload.createdAt.epochSeconds,
+                                    tags = decryptedGiftWrapPayload.tags,
+                                    sig = ""
                                 )
 
-                                if (localChatRoom == null) {
-                                    val userPublicKey = activeKeyPair.pubKey.toHex()
-                                    database.chatRoomDao().upsert(
-                                        ChatRoom(
-                                            id = chatRoomId,
-                                            userPublicKey = userPublicKey,
-                                            subject = decryptedGiftWrapPayload.parseSubject(),
-                                            createdAt = decryptedGiftWrapPayload.createdAt,
-                                            initialGiftWrapPayloadId = giftWrapPayload.id,
-                                            mlsGroupState = null
-                                        )
+                                welcomeEvent.nostrGroupId()?.let { chatRoomId ->
+                                    val localChatRoom = database.chatRoomDao().findChatRoomById(
+                                        chatRoomId
                                     )
 
-                                    // Add participants...
-                                    val participants = giftWrapPayload.participantPTags(
-                                        NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
-                                    ).map {
-                                        Participant(
-                                            participantPublicKey = it.pubKey,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = it.relayHint?.url
+                                    if (localChatRoom == null) {
+
+                                        val welcomeBytes = Base64.decode(
+                                            welcomeEvent.welcomeBase64()
                                         )
-                                    }
-
-                                    // Sync missing participant profiles...
-                                    participants.forEach { participant ->
-                                        val giftWrapParticipantProfile =
-                                            database.profileDao()
-                                                .getProfileByPublicKey(participant.participantPublicKey)
-
-                                        if (giftWrapParticipantProfile == null) {
-                                            // Save a placeholder
-                                            database.profileDao().insertPlaceholderProfile(
-                                                Profile(
-                                                    displayName = "LOADING...",
-                                                    publicKey = participant.participantPublicKey,
-                                                    createdAt = GENESIS_AT,
-                                                    nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
-                                                )
+                                        val keyPackageEventId = welcomeEvent.keyPackageEventId()
+                                        if (keyPackageEventId == null) {
+                                            throw MarmotMissingKeyPackageEventIdException(
+                                                "WelcomeEvent ${welcomeEvent.id} missing KeyPackage event ID tag"
                                             )
+                                        }
 
-                                            val recommendRelayUrl =
-                                                giftWrapMessage.receiverRelayHit
+                                        logger.d("processWelcome: welcomeBytes=${welcomeBytes.size}B looking up KeyPackage by ref=${keyPackageEventId.take(8)}…")
 
-                                            if (recommendRelayUrl != null) {
-                                                if (profilePublicKeysToSync[recommendRelayUrl] == null) {
-                                                    profilePublicKeysToSync[recommendRelayUrl] =
-                                                        mutableSetOf()
-                                                }
-                                                profilePublicKeysToSync[recommendRelayUrl]?.add(
-                                                    participant.participantPublicKey
+                                        // TODO: Check if we have already joined group with keyPackage
+                                        val marmotKeyPackageBundle = database.marmotKeyPackageBundleDao().getMarmotKeyPackageBundleByKeyPackageEventIdId(
+                                            keyPackageEventId
+                                        )
+
+                                        if (marmotKeyPackageBundle == null) {
+                                            // We were unable to find the keyPackageBundle for this invite...
+                                            throw MarmotNoMatchingKeyPackageBundleException(
+                                                "NO matching KeyPackageBundle for eventId=${keyPackageEventId.take(8)}…"
+                                            )
+                                        }
+
+                                        val initPrivateKey = marmotKeyPackageBundle.ncryptsecInitPrivateKey.hexToByteArray() // TODO: Decrypt
+                                        val signaturePrivateKey = marmotKeyPackageBundle.ncryptsecSignaturePrivateKey.hexToByteArray() // TODO: Decrypt
+                                        val encryptionPrivateKey = marmotKeyPackageBundle.ncryptsecEncryptionPrivateKey.hexToByteArray() // TODO: Decrypt
+
+                                        val tlsReader = TlsReader(
+                                            data = marmotKeyPackageBundle.tlsEncodedMarmotKeyPackage.hexToByteArray()
+                                        )
+
+                                        val group = MlsGroup.processWelcome(
+                                            welcomeBytes,
+                                            bundle = KeyPackageBundle(
+                                                keyPackage = MlsKeyPackage.decodeTls(
+                                                    tlsReader
+                                                ),
+                                                initPrivateKey = initPrivateKey,
+                                                signaturePrivateKey = signaturePrivateKey,
+                                                encryptionPrivateKey = encryptionPrivateKey
+                                            )
+                                        )
+
+                                        val derivedId = group.currentMarmotData()?.nostrGroupId
+
+                                        if (derivedId == null) {
+                                            throw MarmotMissingNostrGroupDataExtension(
+                                                "The WelcomeEvent ${welcomeEvent.id} is missing the nostrGroupData extension"
+                                            )
+                                        }
+
+                                        if (derivedId != chatRoomId) {
+                                            throw MarmotWelcomeMismatchedGroupId(
+                                                "The hint group Id $chatRoomId doesn't match the derived group id $derivedId"
+                                            )
+                                        }
+
+                                        // TODO: Save the chat room We can now s
+                                        val userPublicKey = activeKeyPair.pubKey.toHex()
+                                        database.chatRoomDao().upsert(
+                                            ChatRoom(
+                                                id = chatRoomId,
+                                                userPublicKey = userPublicKey,
+                                                subject = group.currentMarmotData()?.name,
+                                                initialGiftWrapPayloadId = giftWrapPayload.id,
+                                                createdAt = decryptedGiftWrapPayload.createdAt,
+                                                mlsGroupState = group.saveState().encodeTls().toHex()
+                                            )
+                                        )
+
+                                        // TODO: Add participants... by processing group.members()
+
+                                        val participants = giftWrapPayload.participantPTags(
+                                            NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
+                                        ).map {
+                                            Participant(
+                                                participantPublicKey = it.pubKey,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = it.relayHint?.url
+                                            )
+                                        }
+
+                                        // Sync missing participant profiles...
+                                        participants.forEach { participant ->
+                                            val giftWrapParticipantProfile = database.profileDao().getProfileByPublicKey(participant.participantPublicKey)
+
+                                            if (giftWrapParticipantProfile == null) {
+                                                // Save a placeholder
+                                                database.profileDao().insertPlaceholderProfile(
+                                                    Profile(
+                                                        displayName = "LOADING...",
+                                                        publicKey = participant.participantPublicKey,
+                                                        createdAt = GENESIS_AT,
+                                                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                                                    )
                                                 )
-                                            } else {
-                                                if (profilePublicKeysToSync[relayURL] == null) {
-                                                    profilePublicKeysToSync[relayURL] =
-                                                        mutableSetOf()
+
+                                                val recommendRelayUrl = giftWrapMessage.receiverRelayHit
+
+                                                if (recommendRelayUrl != null) {
+                                                    if (profilePublicKeysToSync[recommendRelayUrl] == null) {
+                                                        profilePublicKeysToSync[recommendRelayUrl] = mutableSetOf()
+                                                    }
+                                                    profilePublicKeysToSync[recommendRelayUrl]?.add(participant.participantPublicKey)
+                                                } else {
+                                                    if (profilePublicKeysToSync[relayURL] == null) {
+                                                        profilePublicKeysToSync[relayURL] = mutableSetOf()
+                                                    }
+                                                    profilePublicKeysToSync[relayURL]?.add(
+                                                        participant.participantPublicKey
+                                                    )
                                                 }
-                                                profilePublicKeysToSync[relayURL]?.add(
-                                                    participant.participantPublicKey
-                                                )
                                             }
                                         }
-                                    }
 
-                                    database.participantDao().upsert(
-                                        participants
-                                    )
+                                        database.participantDao().upsert(
+                                            participants
+                                        )
 
-                                    participants.filter { it.participantPublicKey != userPublicKey }
-                                        .forEach { participant ->
+                                        participants.filter { it.participantPublicKey != userPublicKey }.forEach { participant ->
                                             val publicKey = participant.participantPublicKey
 
-                                            val chatMessageRelayListEvent =
-                                                database.nostrEventDao()
-                                                    .getAuthoredNostrEvents(
-                                                        kinds = arrayOf(
-                                                            ChatMessageRelayListEvent.KIND
-                                                        ),
-                                                        authors = arrayOf(
-                                                            publicKey
-                                                        ),
-                                                        since = GENESIS_AT,
-                                                        limit = 5
-                                                    ).firstOrNull()?.let { nostrEvent ->
-                                                        if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
-                                                            logger.e("getAuthoredNostrEvents returned invalid ChatMessageRelayListEvent for ${publicKey}: $nostrEvent")
-                                                            null
-                                                        } else {
-                                                            ChatMessageRelayListEvent(
-                                                                id = nostrEvent.id,
-                                                                tags = nostrEvent.tags,
-                                                                pubKey = nostrEvent.pubKey,
-                                                                content = nostrEvent.content,
-                                                                createdAt = nostrEvent.createdAt.epochSeconds,
-                                                                sig = nostrEvent.sig
-                                                            )
-                                                        }
-                                                    }
+                                            val chatMessageRelayListEvent = database.nostrEventDao().getAuthoredNostrEvents(
+                                                kinds = arrayOf(
+                                                    ChatMessageRelayListEvent.KIND
+                                                ),
+                                                authors = arrayOf(
+                                                    publicKey
+                                                ),
+                                                since = GENESIS_AT,
+                                                limit = 5
+                                            ).firstOrNull()?.let { nostrEvent ->
+                                                if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
+                                                    logger.e("getAuthoredNostrEvents returned invalid ChatMessageRelayListEvent for ${publicKey}: $nostrEvent")
+                                                    null
+                                                } else {
+                                                    ChatMessageRelayListEvent(
+                                                        id = nostrEvent.id,
+                                                        tags = nostrEvent.tags,
+                                                        pubKey = nostrEvent.pubKey,
+                                                        content = nostrEvent.content,
+                                                        createdAt = nostrEvent.createdAt.epochSeconds,
+                                                        sig = nostrEvent.sig
+                                                    )
+                                                }
+                                            }
 
                                             if (chatMessageRelayListEvent != null) {
                                                 // Sync messages from this relay that were sent by us
-                                                val synchronizationFilter =
-                                                    SynchronizationFilter(
-                                                        kinds = arrayOf(
-                                                            GiftWrapEvent.KIND,
-                                                        ),
-                                                        authors = arrayOf(
-                                                            userPublicKey
-                                                        ),
-                                                        tags = mapOf(
-                                                            Pair(
-                                                                "p",
-                                                                listOf(participant.participantPublicKey)
-                                                            )
-                                                        ),
-                                                        limit = 50
-                                                    )
-                                                database.negentropySynchronizeRequestDao()
-                                                    .insert(
-                                                        chatMessageRelayListEvent.relays()
-                                                            .map { normalizedRelayUrl ->
-                                                                NegentropySynchronizeRequest(
-                                                                    id = NegentropySynchronizeRequest.computeId(
-                                                                        relayURL = normalizedRelayUrl.url,
-                                                                        synchronizationFilter = synchronizationFilter
-                                                                    ),
-                                                                    purpose = "sent-messages",
-                                                                    synchronizationFilter = synchronizationFilter,
-                                                                    relayURL = normalizedRelayUrl.url,
-                                                                    level = 0
-                                                                )
-                                                            }
-                                                    )
+                                                val synchronizationFilter = SynchronizationFilter(
+                                                    kinds = arrayOf(
+                                                        GiftWrapEvent.KIND,
+                                                    ),
+                                                    authors = arrayOf(
+                                                        userPublicKey
+                                                    ),
+                                                    tags = mapOf(
+                                                        Pair("p", listOf(participant.participantPublicKey))
+                                                    ),
+                                                    limit = 50
+                                                )
+                                                database.negentropySynchronizeRequestDao().insert(
+                                                    chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
+                                                        NegentropySynchronizeRequest(
+                                                            id = NegentropySynchronizeRequest.computeId(
+                                                                relayURL = normalizedRelayUrl.url,
+                                                                synchronizationFilter = synchronizationFilter
+                                                            ),
+                                                            purpose = "sent-messages",
+                                                            synchronizationFilter = synchronizationFilter,
+                                                            relayURL = normalizedRelayUrl.url,
+                                                            level = 0
+                                                        )
+                                                    }
+                                                )
                                             } else {
                                                 logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
                                                 // TODO: Get relayHint form participant...
-                                                if (profilePublicKeysToSync.containsKey(
-                                                        relayURL
-                                                    )
-                                                ) {
-                                                    profilePublicKeysToSync[relayURL] =
-                                                        mutableSetOf()
+                                                if (profilePublicKeysToSync.containsKey(relayURL)) {
+                                                    profilePublicKeysToSync[relayURL] = mutableSetOf()
                                                 }
-                                                profilePublicKeysToSync[relayURL]?.add(
-                                                    participant.participantPublicKey
-                                                )
+                                                profilePublicKeysToSync[relayURL]?.add(participant.participantPublicKey)
                                             }
                                         }
-                                } else {
-                                    giftWrapPayload.parseSubject()?.let { subject ->
-                                        database.chatRoomDao().upsert(
-                                            localChatRoom.chatRoom.copy(
-                                                subject = subject,
-                                                updatedAt = giftWrapPayload.createdAt
-                                            )
-                                        )
                                     }
+
+                                    // Where is the decoded welcome message...
+                                    // TODO: Sync GroupEvents/Messages...
+                                    database.chatMessageDao().upsert(
+                                        ChatMessage(
+                                            giftWrapPayloadId = giftWrapPayload.id,
+                                            senderPublicKey = giftWrapPayload.publicKey,
+                                            isUserMessage = activeKeyPair.pubKey.toHex() == giftWrapPayload.publicKey,
+                                            chatRoomId = chatRoomId,
+                                            createdAt = giftWrapPayload.createdAt,
+                                            content = "Coming soon.", // TODO: Figure out what to do here...
+                                        )
+                                    )
                                 }
-
-                                val chatMessageId = database.chatMessageDao().upsert(
-                                    ChatMessage(
-                                        giftWrapPayloadId = giftWrapPayload.id,
-                                        senderPublicKey = giftWrapPayload.publicKey,
-                                        isUserMessage = activeKeyPair.pubKey.toHex() == giftWrapPayload.publicKey,
-                                        chatRoomId = chatRoomId,
-                                        createdAt = giftWrapPayload.createdAt,
-                                        content = giftWrapPayload.content,
-                                    )
-                                )
-
-                                val broadcastNostrEventReceiptId =
-                                    database.broadcastNostrEventReceiptDao().upsert(
-                                        BroadcastNostrEventReceipt(
-                                            nostrEventId = nostrEvent.id,
-                                            isAccepted = true,
-                                            isSync = true,
-                                            relayURL = relayURL
-                                        )
-                                    )
-
-                                database.chatMessageBroadcastNostrEventReceiptRelationDao()
-                                    .upsert(
-                                        ChatMessageBroadcastNostrEventReceiptRelation(
-                                            broadcastNostrEventReceiptId = broadcastNostrEventReceiptId,
-                                            chatMessageId = chatMessageId
-                                        )
-                                    )
+                                // TODO: Check encoding...
                             } else {
-                                logger.w("Failed to setup chatRoom for message")
+                                logger.w("Unsupported event: $giftWrapPayload")
                             }
                         }
                     }
