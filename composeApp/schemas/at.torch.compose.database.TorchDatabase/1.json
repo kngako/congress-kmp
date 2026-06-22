@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f7045a56c021b062dd142cc9cd8513a3",
+    "identityHash": "6b621966e86b542862bb89991b2b3acb",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1188,7 +1188,7 @@
       },
       {
         "tableName": "MarmotKeyPackageBundle",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1261,17 +1261,15 @@
             "id"
           ]
         },
-        "foreignKeys": [
+        "indices": [
           {
-            "table": "Profile",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
+            "name": "index_MarmotKeyPackageBundle_publicKey",
+            "unique": false,
+            "columnNames": [
               "publicKey"
             ],
-            "referencedColumns": [
-              "publicKey"
-            ]
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_MarmotKeyPackageBundle_publicKey` ON `${TABLE_NAME}` (`publicKey`)"
           }
         ]
       },
@@ -3034,7 +3032,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f7045a56c021b062dd142cc9cd8513a3')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6b621966e86b542862bb89991b2b3acb')"
     ]
   }
 }

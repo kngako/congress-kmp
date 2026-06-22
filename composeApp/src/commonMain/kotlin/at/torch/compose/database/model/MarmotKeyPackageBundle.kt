@@ -2,6 +2,7 @@ package at.torch.compose.database.model
 
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import at.torch.compose.database.model.traits.BroadcastableEntity
 import at.torch.compose.database.model.traits.LocalStoreEntity
@@ -12,14 +13,17 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Entity(
-    foreignKeys = [
-        ForeignKey(
-            entity = Profile::class,
-            parentColumns = ["publicKey"],
-            childColumns = ["publicKey"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-    ]
+//    foreignKeys = [
+//        ForeignKey(
+//            entity = Profile::class,
+//            parentColumns = ["publicKey"],
+//            childColumns = ["publicKey"],
+//            onDelete = ForeignKey.CASCADE,
+//        ),
+//    ],
+    indices = [
+        Index("publicKey"),
+    ],
 )
 data class MarmotKeyPackageBundle(
     @PrimaryKey(autoGenerate = true)

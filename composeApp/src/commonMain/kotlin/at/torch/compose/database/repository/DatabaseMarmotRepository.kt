@@ -29,9 +29,9 @@ class DatabaseMarmotRepository(
             MarmotKeyPackageBundle(
                 publicKey = publicKey,
                 tlsEncodedMarmotKeyPackage = tlsWriter.toByteArray().toHex(),
-                ncryptsecInitPrivateKey = nip49.encrypt(keyPackageBundle.initPrivateKey.toHex(), nsecPassword), // TODO: ncryptSec this using the private key
-                ncryptsecEncryptionPrivateKey = nip49.encrypt(keyPackageBundle.encryptionPrivateKey.toHex(), nsecPassword), // TODO: ncryptSec this using the private key
-                ncryptsecSignaturePrivateKey = nip49.encrypt(keyPackageBundle.signaturePrivateKey.toHex(), nsecPassword) // TODO: ncryptSec this using the private key
+                ncryptsecInitPrivateKey = keyPackageBundle.initPrivateKey.toHex(), // TODO: ncryptSec this using the private key
+                ncryptsecEncryptionPrivateKey = keyPackageBundle.encryptionPrivateKey.toHex(), // TODO: ncryptSec this using the private key
+                ncryptsecSignaturePrivateKey = keyPackageBundle.signaturePrivateKey.toHex() // TODO: ncryptSec this using the private key
             )
         )
 

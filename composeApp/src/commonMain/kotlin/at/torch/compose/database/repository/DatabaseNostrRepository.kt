@@ -1,5 +1,6 @@
 package at.torch.compose.database.repository
 
+import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
