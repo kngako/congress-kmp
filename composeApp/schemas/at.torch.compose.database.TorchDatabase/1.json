@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6b621966e86b542862bb89991b2b3acb",
+    "identityHash": "f33937ebefe679fe03b71b3930472139",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1188,7 +1188,7 @@
       },
       {
         "tableName": "MarmotKeyPackageBundle",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `consumed` INTEGER NOT NULL, `rotated` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1224,6 +1224,18 @@
             "fieldPath": "ncryptsecSignaturePrivateKey",
             "columnName": "ncryptsecSignaturePrivateKey",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consumed",
+            "columnName": "consumed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotated",
+            "columnName": "rotated",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -3032,7 +3044,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6b621966e86b542862bb89991b2b3acb')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f33937ebefe679fe03b71b3930472139')"
     ]
   }
 }

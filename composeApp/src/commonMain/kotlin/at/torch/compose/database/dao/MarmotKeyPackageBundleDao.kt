@@ -7,7 +7,7 @@ import at.torch.compose.database.model.MarmotKeyPackageBundle
 
 @Dao
 interface MarmotKeyPackageBundleDao {
-    @Query("SELECT * FROM MarmotKeyPackageBundle WHERE keyPackageEventId = :keyPackageEventId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM MarmotKeyPackageBundle WHERE id = :keyPackageEventId ORDER BY createdAt DESC")
     fun getMarmotKeyPackageBundleByKeyPackageEventIdId(keyPackageEventId: String): MarmotKeyPackageBundle?
 
     @Upsert
