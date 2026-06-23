@@ -37,6 +37,9 @@ data class MarmotKeyPackageBundle(
     val ncryptsecEncryptionPrivateKey: String,
     val ncryptsecSignaturePrivateKey: String,
 
+    val consumed: Boolean = false,
+    val rotated: Boolean = false, // TODO: Should we have rotatedByID
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),
     override val savedAt: Instant = Clock.System.now(),

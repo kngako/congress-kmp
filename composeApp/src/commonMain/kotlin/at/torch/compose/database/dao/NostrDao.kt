@@ -21,7 +21,7 @@ import at.torch.compose.exceptions.GiftWrapUnsealException
 import at.torch.compose.exceptions.MarmotMissingKeyPackageEventIdException
 import at.torch.compose.exceptions.MarmotMissingNostrGroupDataExtension
 import at.torch.compose.exceptions.MarmotNoMatchingKeyPackageBundleException
-import at.torch.compose.exceptions.MarmotWelcomeMismatchedGroupId
+import at.torch.compose.exceptions.MarmotWelcomeMismatchedGroupIdException
 import at.torch.compose.extensions.toHex
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
@@ -31,6 +31,7 @@ import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
+import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -41,7 +42,6 @@ import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.io.encoding.Base64
-import kotlin.math.sign
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -324,6 +324,7 @@ abstract class NostrDao(
         }
 
         // TODO: Support MLSGroupEvent handling...
+
         nostrEvent.toGiftWrapMessageWithReceiverPTag()?.let { giftWrapMessage ->
             logger.d("giftWrapMessage: $giftWrapMessage")
             val giftWrapReceiverProfile = database.profileDao().getProfileByPublicKey(giftWrapMessage.receiverPublicKey)
@@ -472,7 +473,7 @@ abstract class NostrDao(
                                         }
 
                                         if (derivedId != chatRoomId) {
-                                            throw MarmotWelcomeMismatchedGroupId(
+                                            throw MarmotWelcomeMismatchedGroupIdException(
                                                 "The hint group Id $chatRoomId doesn't match the derived group id $derivedId"
                                             )
                                         }
@@ -490,16 +491,30 @@ abstract class NostrDao(
                                             )
                                         )
 
-                                        // TODO: Add participants... by processing group.members()
-
-                                        val participants = giftWrapPayload.participantPTags(
-                                            NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
-                                        ).map {
-                                            Participant(
-                                                participantPublicKey = it.pubKey,
-                                                chatRoomId = chatRoomId,
-                                                relayHint = it.relayHint?.url
+                                        database.marmotKeyPackageBundleDao().upsert(
+                                            marmotKeyPackageBundle.copy(
+                                                consumed = true
                                             )
+                                        )
+
+                                        // TODO: Add participants... by processing group.members()
+                                        val normalizedRelayUrl = NormalizedRelayUrl(relayURL)
+
+                                        val participants = group.members().mapNotNull { (leafIndex, leafNode) ->
+                                            val pubkey =
+                                                when (val cred = leafNode.credential) {
+                                                    is Credential.Basic -> cred.identity.toHexKey()
+                                                    else -> null
+                                                }
+                                            if (pubkey != null) {
+                                                Participant(
+                                                    participantPublicKey = pubkey,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = normalizedRelayUrl.url
+                                                )
+                                            } else {
+                                                null
+                                            }
                                         }
 
                                         // Sync missing participant profiles...
