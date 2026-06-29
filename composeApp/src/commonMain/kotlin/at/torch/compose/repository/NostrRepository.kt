@@ -1,5 +1,6 @@
 package at.torch.compose.repository
 
+import at.torch.compose.database.model.intermdiate.LocalAccount
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -7,6 +8,8 @@ import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import kotlinx.coroutines.flow.Flow
 
 interface NostrRepository {
+    suspend fun getLocalAccounts(): List<LocalAccount>
+
     suspend fun observeProfile(publicKey: HexKey): Flow<at.torch.compose.database.model.intermdiate.LocalAccount?>
 
     suspend fun observeRelation(publicKey: HexKey, activePublicKey: HexKey): Flow<List<at.torch.compose.database.model.Connection>>
@@ -121,6 +124,10 @@ interface NostrRepository {
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
+            override suspend fun getLocalAccounts(): List<LocalAccount> {
+                TODO("Not yet implemented")
+            }
+
             override suspend fun observeProfile(publicKey: HexKey): Flow<at.torch.compose.database.model.intermdiate.LocalAccount?> {
                 TODO("Not yet implemented")
             }

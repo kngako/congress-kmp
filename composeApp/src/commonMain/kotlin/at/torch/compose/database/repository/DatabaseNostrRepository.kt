@@ -1,7 +1,7 @@
 package at.torch.compose.database.repository
 
-import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.UnsignedNostrEvent
+import at.torch.compose.database.model.intermdiate.LocalAccount
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
@@ -71,6 +71,10 @@ class DatabaseNostrRepository(
     }
 
     val logger = Logger.withTag(TAG)
+
+    override suspend fun getLocalAccounts(): List<LocalAccount> {
+        return database.unsignedNostrEventDao().getLocalAccounts()
+    }
 
     override suspend fun observeProfile(publicKey: HexKey): Flow<at.torch.compose.database.model.intermdiate.LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)

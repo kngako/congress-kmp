@@ -57,7 +57,7 @@ class SovereignWalletStartupViewModel(
             )
             when (startResult) {
                 is StartBusinessResult.Success -> {
-                    state.value =StartupViewState.BusinessActive(walletId)
+                    state.value = StartupViewState.BusinessActive(walletId)
                     launch(Dispatchers.Main) {
                         onStartupSuccess(startResult.business)
                     }

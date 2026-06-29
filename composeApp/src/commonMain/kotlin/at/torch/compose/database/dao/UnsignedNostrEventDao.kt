@@ -5,6 +5,7 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
+import at.torch.compose.database.model.intermdiate.LocalAccount
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,7 +27,11 @@ interface UnsignedNostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0 AND pubKey = :publicKey")
-    fun observeProfile(publicKey: String): Flow<at.torch.compose.database.model.intermdiate.LocalAccount?>
+    fun observeProfile(publicKey: String): Flow<LocalAccount?>
+
+    @Transaction
+    @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0")
+    fun getLocalAccounts(): List<LocalAccount>
 
     @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedAt IS NULL")
     fun observeUnsignedNostrEvents(publicKey: String): Flow<at.torch.compose.database.model.UnsignedNostrEvent?>

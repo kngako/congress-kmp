@@ -95,6 +95,10 @@ class SovereignWalletViewModel(
             publicKey = walletId.nodeIdHash,
             balanceInSatoshis = 0 // TODO: Get balance...
         )
+
+        viewModelScope.launch {
+
+        }
     }
 
 

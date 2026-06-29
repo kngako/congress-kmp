@@ -18,7 +18,10 @@ import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
+import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
+import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.composable.navigation.routes.WriteNewNoteRoute
+import at.torch.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -77,7 +80,7 @@ fun TorchNavHost(
     val navigationViewModel: at.torch.compose.ui.view.model.NavigationViewModel =  viewModel (
         factory = at.torch.compose.ui.view.model.NavigationViewModel.factory(
             activeWallet = sovereignWalletViewModel.activeWalletInUI,
-            initialNavigationUIState = at.torch.compose.ui.view.state.NavigationUIState.Loading(),
+            initialNavigationUIState = NavigationUIState.Loading(),
             nostrRepository = databaseNostrRepository,
             scope = applicationIOScope
         )
@@ -85,7 +88,7 @@ fun TorchNavHost(
 
 
     val notaryViewModel: at.torch.compose.ui.view.model.NotaryViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.NotaryViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.NotaryViewModel.factory(
             activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
@@ -94,7 +97,7 @@ fun TorchNavHost(
     )
     // TODO: Produce a notary UI Element...
     val synchronizationViewModel: at.torch.compose.ui.view.model.SynchronizationViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.SynchronizationViewModel.Companion.factory(
+        factory = at.torch.compose.ui.view.model.SynchronizationViewModel.factory(
             activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
@@ -107,7 +110,7 @@ fun TorchNavHost(
     LaunchedEffect(lifecycleOwner) {
         navigationViewModel.navigationUIState.collect { state ->
             when (state) {
-                is at.torch.compose.ui.view.state.NavigationUIState.Error -> {
+                is NavigationUIState.Error -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Error screen"
@@ -116,14 +119,14 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.StartupPhoenix -> {
+                is NavigationUIState.StartupPhoenix -> {
                     navController.navigate(
-                        route = at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
+                        route = SovereignWalletStartupRoute
                     ) {
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.Loading -> {
+                is NavigationUIState.Loading -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute(
                             text = state.text
@@ -132,14 +135,14 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.Landing -> {
+                is NavigationUIState.Landing -> {
                     navController.navigate(
                         route = at.torch.compose.ui.composable.navigation.routes.LandingRoute
                     ) {
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnsignedProfile -> {
+                is NavigationUIState.UnsignedProfile -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnsignedProfileRoute(
                             state.unsignedNostrEvent.id
@@ -148,7 +151,7 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnsyncedProfile -> {
+                is NavigationUIState.UnsyncedProfile -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnsyncedProfileRoute(
                             state.unsignedNostrEvent.pubKey
@@ -157,7 +160,7 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfileSynchronization -> {
+                is NavigationUIState.UnqueuedProfileSynchronization -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute(
                             unsignedNostrEventId = state.unsignedNostrEvent.id,
@@ -167,7 +170,7 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnindexedProfile -> {
+                is NavigationUIState.UnindexedProfile -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnindexedProfileRoute(
                             state.nostrEvent.id
@@ -176,14 +179,14 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnqueuedProfile -> {
+                is NavigationUIState.UnqueuedProfile -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileRoute(
                             state.profile.nostrEventId
                         )
                     )
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.UnannouncedProfile -> {
+                is NavigationUIState.UnannouncedProfile -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnannouncedProfileRoute(
                             state.broadcastNostrEventRequest.nostrEventId
@@ -192,7 +195,7 @@ fun TorchNavHost(
                         popUpTo(0)
                     }
                 }
-                is at.torch.compose.ui.view.state.NavigationUIState.ProfileLoaded -> {
+                is NavigationUIState.ProfileLoaded -> {
                     navController.navigate(
                         route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute(
                             activeUserPubkey = state.publicKey
@@ -218,27 +221,27 @@ fun TorchNavHost(
         navController = navController,
         startDestination = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute()
     ) {
-        composable<at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute> {
+        composable<SovereignWalletStartupRoute> {
             _root_ide_package_.at.torch.compose.ui.composable.SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute(
+                        route = LoadingRoute(
                             text = "Loading Aux"
                         )
                     )
                 },
                 onNavigateToWalletIntroPage = {
                     navController.navigate(
-                        route = at.torch.compose.ui.composable.navigation.routes.LandingRoute
-                    )
-                },
-                onNavigateToWalletDashboard = {
-                    navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute(
-                            text = "Opening Aux"
+                        route = LoadingRoute(
+                            text = "Introducing... Aux"
                         )
                     )
+                },
+                onSuccessfulStartup = {
+                    applicationIOScope.launch {
+                        navigationViewModel.loadNostrProfile()
+                    }
                 },
                 forceWalletId = null,
             )
@@ -292,7 +295,7 @@ fun TorchNavHost(
                             sovereignWalletViewModel.listAvailableWallets {
                                 sovereignWalletViewModel.switchToWallet(walletId)
                                 navController.navigate(
-                                    route = at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
+                                    route = SovereignWalletStartupRoute
                                 )
                             }
                         }
