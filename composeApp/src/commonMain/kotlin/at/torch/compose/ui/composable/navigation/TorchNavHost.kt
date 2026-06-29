@@ -50,15 +50,15 @@ fun TorchNavHost(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val auxDatabaseManager =
-        _root_ide_package_.at.torch.compose.managers.AuxDatabaseManager(torchGlobal)
+        at.torch.compose.managers.AuxDatabaseManager(torchGlobal)
 
     val databaseNostrRepository =
-        _root_ide_package_.at.torch.compose.database.repository.DatabaseNostrRepository(
+        at.torch.compose.database.repository.DatabaseNostrRepository(
             database = auxDatabaseManager.auxDatabase,
             applicationIOScope
         )
     val databaseChatRepository =
-        _root_ide_package_.at.torch.compose.database.repository.DatabaseChatRepository(
+        at.torch.compose.database.repository.DatabaseChatRepository(
             database = auxDatabaseManager.auxDatabase,
             applicationIOScope
         )
@@ -69,7 +69,7 @@ fun TorchNavHost(
     )
 
     val searchRepository =
-        _root_ide_package_.at.torch.compose.database.repository.DatabaseSearchRepository(
+        at.torch.compose.database.repository.DatabaseSearchRepository(
             database = auxDatabaseManager.auxDatabase
         )
 
@@ -112,7 +112,7 @@ fun TorchNavHost(
             when (state) {
                 is NavigationUIState.Error -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Error screen"
                         )
                     ) {
@@ -128,7 +128,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.Loading -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute(
+                        route = LoadingRoute(
                             text = state.text
                         )
                     ) {
@@ -144,7 +144,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.UnsignedProfile -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnsignedProfileRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnsignedProfileRoute(
                             state.unsignedNostrEvent.id
                         )
                     ) {
@@ -153,7 +153,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.UnsyncedProfile -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnsyncedProfileRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnsyncedProfileRoute(
                             state.unsignedNostrEvent.pubKey
                         )
                     ) {
@@ -162,7 +162,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.UnqueuedProfileSynchronization -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute(
                             unsignedNostrEventId = state.unsignedNostrEvent.id,
                             publicKey = state.unsignedNostrEvent.pubKey
                         )
@@ -172,7 +172,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.UnindexedProfile -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnindexedProfileRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnindexedProfileRoute(
                             state.nostrEvent.id
                         )
                     ) {
@@ -181,14 +181,14 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.UnqueuedProfile -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileRoute(
                             state.profile.nostrEventId
                         )
                     )
                 }
                 is NavigationUIState.UnannouncedProfile -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.UnannouncedProfileRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.UnannouncedProfileRoute(
                             state.broadcastNostrEventRequest.nostrEventId
                         )
                     ) {
@@ -197,7 +197,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.ProfileLoaded -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute(
                             activeUserPubkey = state.publicKey
                         )
                     ) {
@@ -206,7 +206,7 @@ fun TorchNavHost(
                 }
                 else -> {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Unsupported $state"
                         )
                     ) {
@@ -219,10 +219,10 @@ fun TorchNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.LoadingRoute()
+        startDestination = LoadingRoute()
     ) {
         composable<SovereignWalletStartupRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.SovereignWalletStartupScreen(
+            at.torch.compose.ui.composable.SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
@@ -246,18 +246,18 @@ fun TorchNavHost(
                 forceWalletId = null,
             )
         }
-        composable<at.torch.compose.ui.composable.navigation.routes.LoadingRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.LoadingRoute>()
+        composable<LoadingRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<LoadingRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.LoadingScreen(
+            at.torch.compose.ui.composable.LoadingScreen(
                 text = route.text
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.LandingRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.LandingScreen(
+            at.torch.compose.ui.composable.LandingScreen(
                 onNavigateToLearnMore = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Learn more"
                         )
                     )
@@ -269,13 +269,13 @@ fun TorchNavHost(
                 },
                 onNavigateToCreateProfile = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.CreateProfileRoute()
+                        route = at.torch.compose.ui.composable.navigation.routes.CreateProfileRoute()
                     )
                 }
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.CreateProfileRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.CreateProfileScreen(
+            at.torch.compose.ui.composable.CreateProfileScreen(
                 onNavigateToEndThis = {
                     navController.navigate(
                         route = at.torch.compose.ui.composable.navigation.routes.BlankRoute
@@ -322,7 +322,7 @@ fun TorchNavHost(
         }
         composable<WriteNewNoteRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<WriteNewNoteRoute>()
-            _root_ide_package_.at.torch.compose.ui.composable.WriteNewNoteScreen(
+            at.torch.compose.ui.composable.WriteNewNoteScreen(
                 replyToNostrEventId = route.inReplyToEventId,
                 activeUserPublicKey = route.activeUserPublicKey,
                 quotedNostrEventId = route.quotedEventId,
@@ -333,7 +333,7 @@ fun TorchNavHost(
                 },
                 onNavigateToNostrEvent = { hexKey ->
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                             activeUserPublicKey = route.activeUserPublicKey,
                             nostrEventId = hexKey
                         )
@@ -343,14 +343,14 @@ fun TorchNavHost(
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.SignInRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.SignInToProfileScreen(
+            at.torch.compose.ui.composable.SignInToProfileScreen(
                 nostrRepository = databaseNostrRepository
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnsignedProfileRoute> { backStackEntry ->
             backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.UnsignedProfileRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.UnsignedProfileScreen()
+            at.torch.compose.ui.composable.UnsignedProfileScreen()
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnsyncedProfileRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.UnsyncedProfileRoute>()
@@ -360,43 +360,43 @@ fun TorchNavHost(
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileSynchronizationRoute>()
-            _root_ide_package_.at.torch.compose.ui.composable.UnqueuedProfileSynchronizationScreen(
+            at.torch.compose.ui.composable.UnqueuedProfileSynchronizationScreen(
                 unsignedNostrEventId = route.unsignedNostrEventId,
                 profilePublicKey = route.publicKey,
                 nostrRepository = databaseNostrRepository
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnindexedProfileRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.UnindexedProfileScreen()
+            at.torch.compose.ui.composable.UnindexedProfileScreen()
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnqueuedProfileRoute> {
-            _root_ide_package_.at.torch.compose.ui.composable.UnqueuedProfileScreen()
+            at.torch.compose.ui.composable.UnqueuedProfileScreen()
         }
         composable<at.torch.compose.ui.composable.navigation.routes.UnannouncedProfileRoute> { backStackEntry ->
             backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.UnannouncedProfileRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.UnannouncedProfileScreen()
+            at.torch.compose.ui.composable.UnannouncedProfileScreen()
         }
         composable<at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute>()
-            _root_ide_package_.at.torch.compose.ui.composable.SocialPreconditionScreen(
+            at.torch.compose.ui.composable.SocialPreconditionScreen(
                 onNavigateToSkipForNow = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.FeedRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.FeedRoute(
                             activeUserPublicKey = route.activeUserPubkey
                         )
                     )
                 },
                 onNavigateToInviteFriend = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Invite Friend"
                         )
                     )
                 },
                 onNavigateToViewInvites = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "View invites"
                         )
                     )
@@ -421,7 +421,7 @@ fun TorchNavHost(
                 },
                 onNavigateToSearch = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.SearchRoute(
                             activeUserPublicKey = route.activeUserPublicKey
                         )
                     )
@@ -457,7 +457,7 @@ fun TorchNavHost(
         composable<at.torch.compose.ui.composable.navigation.routes.SearchRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.SearchRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.SearchScreen(
+            at.torch.compose.ui.composable.SearchScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 initialSearchUIState = at.torch.compose.ui.view.state.SearchUIState.Prompt,
                 nostrRepository = databaseNostrRepository,
@@ -477,7 +477,7 @@ fun TorchNavHost(
         composable<at.torch.compose.ui.composable.navigation.routes.SearchResultRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.SearchResultRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.SearchResultScreen(
+            at.torch.compose.ui.composable.SearchResultScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 searchQuery = route.query,
                 nostrRepository = databaseNostrRepository,
@@ -495,7 +495,7 @@ fun TorchNavHost(
         composable<at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute>()
 
-            _root_ide_package_.at.torch.compose.ui.composable.NostrEventDetailScreen(
+            at.torch.compose.ui.composable.NostrEventDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 initialNostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading,
                 nostrEventId = route.nostrEventId,
@@ -518,7 +518,7 @@ fun TorchNavHost(
                 },
                 onNavigateToEditProfile = {
                     navController.navigate(
-                        route = _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
+                        route = at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute(
                             "Edit Profile"
                         )
                     )
@@ -540,7 +540,7 @@ fun TorchNavHost(
         }
         composable<at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute> { backStackEntry ->
             val route: at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute = backStackEntry.toRoute()
-            _root_ide_package_.at.torch.compose.ui.composable.ImplementationPendingScreen(
+            at.torch.compose.ui.composable.ImplementationPendingScreen(
                 route.name
             )
         }
