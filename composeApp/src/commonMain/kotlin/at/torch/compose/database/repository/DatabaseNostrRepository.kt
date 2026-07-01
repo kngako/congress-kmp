@@ -202,6 +202,8 @@ class DatabaseNostrRepository(
                 content = ""
             )
         )
+
+        saveUnsignedNostrEvents(unsignedNostrEvents)
     }
 
     override suspend fun signInToProfile(
