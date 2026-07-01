@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import at.torch.compose.database.model.intermdiate.LocalAccount
-import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.data.ActiveWallet
@@ -19,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -62,84 +59,19 @@ class NavigationViewModel(
         observeProfile()
     }
 
-    suspend fun loadInitialNostrProfile(startupRoute: SovereignWalletStartupRoute? = null) {
-        logger.d("loadInitialNostrProfile: $startupRoute")
+    suspend fun loadNostrProfile() {
         val activeUserPublicKey = nostrRepository.getLocalAccounts().firstOrNull()?.profile?.publicKey
 
         if (activeUserPublicKey == null) {
+            // TODO: We can just go directly to startup witout fear...
             _navigationUIState.getAndUpdate {
-                if (startupRoute != null) {
-                    NavigationUIState.Landing
-                } else {
-                    NavigationUIState.StartupPhoenix
-                }
+                NavigationUIState.Landing
             }
         } else {
-            if (startupRoute != null) {
-                val localAccount = nostrRepository.observeProfile(
-                    publicKey = activeUserPublicKey
-                ).firstOrNull()
-
-                processLocalAccount(localAccount)
-            } else {
-                _navigationUIState.getAndUpdate {
-                    NavigationUIState.StartupPhoenix
-                }
-            }
-        }
-    }
-
-    private fun processLocalAccount(localAccount: LocalAccount?) {
-        logger.i("processLocalAccount: $localAccount")
-
-        _navigationUIState.getAndUpdate {
-            if (localAccount == null) {
-                logger.i("We need to be on the landing screen so user creates account")
-                NavigationUIState.Landing
-            } else if (localAccount.unsignedNostrEvent == null) {
-                logger.i("We need to be on the landing screen so user creates account")
-                NavigationUIState.Landing
-            } else if (localAccount.broadcastNostrEventReceipt != null) {
-                logger.i("We have a broadcast receipt: ${localAccount.profile}")
-                NavigationUIState.ProfileLoaded(
-                    publicKey = localAccount.unsignedNostrEvent.pubKey
-                )
-            } else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.profile != null) {
-                logger.i("We have successfully synced a profile: ${localAccount.profile}")
-                NavigationUIState.ProfileLoaded(
-                    publicKey = localAccount.unsignedNostrEvent.pubKey
-                )
-            } else if (localAccount.broadcastNostrEventRequest != null) {
-                logger.i("We have a broadcast request: ${localAccount.broadcastNostrEventRequest}")
-                NavigationUIState.UnannouncedProfile(
-                    broadcastNostrEventRequest = localAccount.broadcastNostrEventRequest
-                )
-            }  else if (localAccount.profile != null) {
-                logger.i("We have a profile that needs to queued for broadcast: ${localAccount.profile}")
-                NavigationUIState.UnqueuedProfile(
-                    profile = localAccount.profile
-                )
-            } else if (localAccount.nostrEvent != null) {
-                logger.i("Nostr event with the profile needs to be indexed: ${localAccount.nostrEvent}")
-                NavigationUIState.UnindexedProfile(
-                    nostrEvent = localAccount.nostrEvent
-                )
-            } else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.synchronizeNostrEventRequests.isEmpty()) {
-                logger.i("We should request to sync profile: ${localAccount.unsignedNostrEvent}")
-                NavigationUIState.UnqueuedProfileSynchronization(
-                    unsignedNostrEvent = localAccount.unsignedNostrEvent
-                )
-            }  else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.synchronizeNostrEventRequests.isEmpty()) {
-                logger.i("We should be syncing the profile: ${localAccount.unsignedNostrEvent}")
-                NavigationUIState.UnsyncedProfile(
-                    unsignedNostrEvent = localAccount.unsignedNostrEvent
-                )
-            } else {
-                logger.i("We have an unsigned profile: ${localAccount.unsignedNostrEvent}")
-                NavigationUIState.UnsignedProfile(
-                    unsignedNostrEvent = localAccount.unsignedNostrEvent
-                )
-            }
+//            _navigationUIState.getAndUpdate {
+//                NavigationUIState.Loading(text = "Getting profile ready")
+//            }
+            loadNostrProfile(activeUserPublicKey)
         }
     }
 
@@ -147,7 +79,56 @@ class NavigationViewModel(
         nostrRepository.observeProfile(
             publicKey = activeUserPublicKey
         ).distinctUntilChanged().collect { localProfile ->
-            processLocalAccount(localProfile)
+            logger.i("Local Profile: $localProfile")
+            _navigationUIState.getAndUpdate {
+                if (localProfile == null) {
+                    logger.i("We need to be on the landing screen so user creates account")
+                    NavigationUIState.Landing
+                } else if (localProfile.unsignedNostrEvent == null) {
+                    logger.i("We need to be on the landing screen so user creates account")
+                    NavigationUIState.Landing
+                } else if (localProfile.broadcastNostrEventReceipt != null) {
+                    logger.i("We have a broadcast receipt: ${localProfile.profile}")
+                    NavigationUIState.ProfileLoaded(
+                        publicKey = localProfile.unsignedNostrEvent.pubKey
+                    )
+                } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.profile != null) {
+                    logger.i("We have successfully synced a profile: ${localProfile.profile}")
+                    NavigationUIState.ProfileLoaded(
+                        publicKey = localProfile.unsignedNostrEvent.pubKey
+                    )
+                } else if (localProfile.broadcastNostrEventRequest != null) {
+                    logger.i("We have a broadcast request: ${localProfile.broadcastNostrEventRequest}")
+                    NavigationUIState.UnannouncedProfile(
+                        broadcastNostrEventRequest = localProfile.broadcastNostrEventRequest
+                    )
+                }  else if (localProfile.profile != null) {
+                    logger.i("We have a profile that needs to queued for broadcast: ${localProfile.profile}")
+                    NavigationUIState.UnqueuedProfile(
+                        profile = localProfile.profile
+                    )
+                } else if (localProfile.nostrEvent != null) {
+                    logger.i("Nostr event with the profile needs to be indexed: ${localProfile.nostrEvent}")
+                    NavigationUIState.UnindexedProfile(
+                        nostrEvent = localProfile.nostrEvent
+                    )
+                } else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
+                    logger.i("We should request to sync profile: ${localProfile.unsignedNostrEvent}")
+                    NavigationUIState.UnqueuedProfileSynchronization(
+                        unsignedNostrEvent = localProfile.unsignedNostrEvent
+                    )
+                }  else if (localProfile.unsignedNostrEvent.signedAt != null && localProfile.synchronizeNostrEventRequests.isEmpty()) {
+                    logger.i("We should be syncing the profile: ${localProfile.unsignedNostrEvent}")
+                    NavigationUIState.UnsyncedProfile(
+                        unsignedNostrEvent = localProfile.unsignedNostrEvent
+                    )
+                } else {
+                    logger.i("We have an unsigned profile: ${localProfile.unsignedNostrEvent}")
+                    NavigationUIState.UnsignedProfile(
+                        unsignedNostrEvent = localProfile.unsignedNostrEvent
+                    )
+                }
+            }
         }
     }
 

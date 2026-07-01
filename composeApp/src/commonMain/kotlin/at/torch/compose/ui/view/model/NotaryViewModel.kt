@@ -52,7 +52,6 @@ class NotaryViewModel(
     private val logger = Logger.withTag(TAG)
 
     init {
-        logger.d("NotaryViewModel.init")
         scope.launch {
             activeWalletStateFlow.collectLatest { activeWallet ->
                 logger.d("Notary ActiveWallet: $activeWallet")
