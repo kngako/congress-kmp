@@ -229,13 +229,15 @@ fun TorchNavHost(
         navController = navController,
         startDestination = LoadingRoute()
     ) {
-        composable<SovereignWalletStartupRoute> {
+        composable<SovereignWalletStartupRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
+
             at.torch.compose.ui.composable.SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
                         route = LoadingRoute(
-                            text = "Loading Aux"
+                            text = "Loading... Aux"
                         )
                     )
                 },
@@ -245,10 +247,13 @@ fun TorchNavHost(
                             text = "Introducing... Aux"
                         )
                     )
+                    applicationIOScope.launch {
+                        navigationViewModel.loadNostrProfile(route)
+                    }
                 },
                 onSuccessfulStartup = {
                     applicationIOScope.launch {
-                        navigationViewModel.loadNostrProfile()
+                        navigationViewModel.loadNostrProfile(route)
                     }
                 },
                 forceWalletId = null,
