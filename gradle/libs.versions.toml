@@ -29,6 +29,7 @@ navigationCompose = "2.9.2"
 okhttp = "5.3.2"
 okio = "3.17.0"
 pagingCommon = "3.5.0"
+qrose = "1.1.2"
 quartz = "1.10.0"
 room3 = "3.0.0-alpha06"
 sqldelight = "2.3.2"
@@ -79,6 +80,7 @@ lightning-kmp-core = { module = "fr.acinq.lightning:lightning-kmp-core", version
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 okhttp-coroutines = { group = "com.squareup.okhttp3", name = "okhttp-coroutines", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }

@@ -94,6 +94,7 @@ kotlin {
 
             implementation(libs.okio)
 
+            implementation(libs.qrose)
 
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines.extensions)

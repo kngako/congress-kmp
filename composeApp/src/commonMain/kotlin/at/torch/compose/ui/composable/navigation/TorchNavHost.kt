@@ -13,12 +13,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import at.torch.compose.database.repository.DatabaseMarmotRepository
+import at.torch.compose.ui.composable.ActiveProfileScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
+import at.torch.compose.ui.composable.NostrEventDetailScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
+import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
+import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import at.torch.compose.ui.view.state.NavigationUIState
@@ -443,6 +447,23 @@ fun TorchNavHost(
 
             }
         }
+        composable<ActiveProfileRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<NostrEventDetailRoute>()
+
+            ActiveProfileScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                nostrEventId = route.nostrEventId,
+                nostrRepository = databaseNostrRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToRoute = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
+            )
+        }
         composable<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute>()
 
@@ -492,10 +513,10 @@ fun TorchNavHost(
                 }
             )
         }
-        composable<at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute>()
+        composable<NostrEventDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<NostrEventDetailRoute>()
 
-            at.torch.compose.ui.composable.NostrEventDetailScreen(
+            NostrEventDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 initialNostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading,
                 nostrEventId = route.nostrEventId,

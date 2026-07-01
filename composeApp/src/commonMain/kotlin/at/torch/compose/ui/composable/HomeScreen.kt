@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
+import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import at.torch.compose.ui.view.model.HomeScreenType
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
@@ -100,7 +102,7 @@ fun HomeScreen(
                             IconButton(
                                 onClick = {
                                     onNavigateToEvent.invoke(
-                                        _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                        ActiveProfileRoute(
                                             activeUserPublicKey = activeUserPublicKey,
                                             nostrEventId = homeScreenUIState.profileWithFollowing.nostrEvent.id
                                         )
