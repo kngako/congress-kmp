@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f33937ebefe679fe03b71b3930472139",
+    "identityHash": "8dd191b21e518a19f39b50a5f5b4a432",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -282,7 +282,7 @@
       },
       {
         "tableName": "ChatMessage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `giftWrapPayloadId` INTEGER NOT NULL, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `giftWrapPayloadId` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -305,7 +305,7 @@
           {
             "fieldPath": "giftWrapPayloadId",
             "columnName": "giftWrapPayloadId",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -608,7 +608,7 @@
       },
       {
         "tableName": "ChatRoom",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -635,7 +635,7 @@
           {
             "fieldPath": "initialGiftWrapPayloadId",
             "columnName": "initialGiftWrapPayloadId",
-            "affinity": "INTEGER"
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "createdAt",
@@ -893,12 +893,12 @@
       },
       {
         "tableName": "GiftWrapPayload",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `quotedEventId` TEXT, `giftWrapSealId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`giftWrapSealId`) REFERENCES `GiftWrapSeal`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `kind` INTEGER NOT NULL, `tags` TEXT NOT NULL, `content` TEXT NOT NULL, `quotedEventId` TEXT, `giftWrapSealId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`giftWrapSealId`) REFERENCES `GiftWrapSeal`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -971,7 +971,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -1117,12 +1117,12 @@
       },
       {
         "tableName": "MarmotKeyPackage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` BLOB NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` BLOB NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`publicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -1167,7 +1167,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -1188,12 +1188,12 @@
       },
       {
         "tableName": "MarmotKeyPackageBundle",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` TEXT NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `consumed` INTEGER NOT NULL, `rotated` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `tlsEncodedMarmotKeyPackage` BLOB NOT NULL, `ncryptsecInitPrivateKey` TEXT NOT NULL, `ncryptsecEncryptionPrivateKey` TEXT NOT NULL, `ncryptsecSignaturePrivateKey` TEXT NOT NULL, `consumed` INTEGER NOT NULL, `rotated` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -1205,7 +1205,7 @@
           {
             "fieldPath": "tlsEncodedMarmotKeyPackage",
             "columnName": "tlsEncodedMarmotKeyPackage",
-            "affinity": "TEXT",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -1268,7 +1268,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -3044,7 +3044,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f33937ebefe679fe03b71b3930472139')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8dd191b21e518a19f39b50a5f5b4a432')"
     ]
   }
 }

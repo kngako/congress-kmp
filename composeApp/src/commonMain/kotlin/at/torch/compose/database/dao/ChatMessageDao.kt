@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,7 +18,7 @@ interface ChatMessageDao {
     fun getChatMessagesByChatRoomId(chatRoomId: String): List<at.torch.compose.database.model.intermdiate.LocalChatMessage>
 
     @Query("SELECT * FROM ChatMessage WHERE giftWrapPayloadId = :giftWrapPayloadId ORDER BY createdAt DESC")
-    fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: Long): at.torch.compose.database.model.ChatMessage?
+    fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: HexKey): at.torch.compose.database.model.ChatMessage?
 
     @Upsert
     suspend fun upsert(chatMessage: at.torch.compose.database.model.ChatMessage): Long

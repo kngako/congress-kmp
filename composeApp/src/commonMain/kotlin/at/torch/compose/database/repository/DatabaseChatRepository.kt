@@ -1,9 +1,12 @@
 package at.torch.compose.database.repository
 
+import at.torch.compose.database.model.ChatMessage
+import at.torch.compose.database.model.GiftWrapPayload
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -14,6 +17,8 @@ import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class DatabaseChatRepository(
     private val database: at.torch.compose.database.TorchDatabase,
@@ -104,17 +109,28 @@ class DatabaseChatRepository(
             )
         }
 
-        val giftWrapPayloadId = database.giftWrapPayloadDao().upsert(
-            _root_ide_package_.at.torch.compose.database.model.GiftWrapPayload(
+        val createdAt = Clock.System.now().epochSeconds
+        val giftWrapPayloadId = EventHasher.hashId(
+            pubKey = localChatRoom.chatRoom.userPublicKey,
+            createdAt = createdAt,
+            tags = receiverTags.toTypedArray(),
+            content = text,
+            kind = messageType
+        )
+
+        database.giftWrapPayloadDao().upsert(
+            GiftWrapPayload(
+                id = giftWrapPayloadId,
                 kind = messageType,
                 tags = receiverTags.toTypedArray(),
+                createdAt = Instant.fromEpochSeconds(createdAt),
                 content = text,
                 chatRoomId = localChatRoom.chatRoom.id,
                 publicKey = localChatRoom.chatRoom.userPublicKey
             )
         )
         database.chatMessageDao().upsert(
-            _root_ide_package_.at.torch.compose.database.model.ChatMessage(
+            ChatMessage(
                 content = text,
                 chatRoomId = localChatRoom.chatRoom.id,
                 senderPublicKey = localChatRoom.chatRoom.userPublicKey,

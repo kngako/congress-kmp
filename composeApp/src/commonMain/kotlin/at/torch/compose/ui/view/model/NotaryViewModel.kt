@@ -54,7 +54,7 @@ class NotaryViewModel(
     init {
         scope.launch {
             activeWalletStateFlow.collectLatest { activeWallet ->
-                logger.d("activeWallet: $activeWallet")
+                logger.d("Notary ActiveWallet: $activeWallet")
                 activeWallet?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
 
                     val keyPair = KeyPair(

@@ -7,6 +7,7 @@ import at.torch.compose.database.model.traits.LocalStoreEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -33,7 +34,7 @@ data class ChatMessage(
     val senderPublicKey: String,
     val isUserMessage: Boolean,
 
-    val giftWrapPayloadId: Long,
+    val giftWrapPayloadId: HexKey,
     val chatRoomId: String,
 
     val replyToMessageId: Long? = null,

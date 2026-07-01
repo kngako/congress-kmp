@@ -14,5 +14,5 @@ interface GiftWrapPayloadDao {
     fun observeUnsealedGiftWrapPayloads(publicKey: String): Flow<at.torch.compose.database.model.GiftWrapPayload?>
 
     @Upsert
-    suspend fun upsert(giftWrapPayload: at.torch.compose.database.model.GiftWrapPayload): Long
+    suspend fun upsert(giftWrapPayload: at.torch.compose.database.model.GiftWrapPayload)
 }

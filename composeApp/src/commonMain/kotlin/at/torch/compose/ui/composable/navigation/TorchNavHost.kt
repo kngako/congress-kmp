@@ -25,6 +25,7 @@ import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
+import at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute
 import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import at.torch.compose.ui.view.state.NavigationUIState
@@ -101,6 +102,7 @@ fun TorchNavHost(
             scope = applicationIOScope
         )
     )
+
     // TODO: Produce a notary UI Element...
     val synchronizationViewModel: at.torch.compose.ui.view.model.SynchronizationViewModel = viewModel(
         factory = at.torch.compose.ui.view.model.SynchronizationViewModel.factory(
@@ -203,7 +205,7 @@ fun TorchNavHost(
                 }
                 is NavigationUIState.ProfileLoaded -> {
                     navController.navigate(
-                        route = at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute(
+                        route = SocialPreconditionRoute(
                             activeUserPubkey = state.publicKey
                         )
                     ) {
@@ -339,7 +341,7 @@ fun TorchNavHost(
                 },
                 onNavigateToNostrEvent = { hexKey ->
                     navController.navigate(
-                        route = at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                        route = NostrEventDetailRoute(
                             activeUserPublicKey = route.activeUserPublicKey,
                             nostrEventId = hexKey
                         )
@@ -383,8 +385,8 @@ fun TorchNavHost(
 
             at.torch.compose.ui.composable.UnannouncedProfileScreen()
         }
-        composable<at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute>()
+        composable<SocialPreconditionRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SocialPreconditionRoute>()
             at.torch.compose.ui.composable.SocialPreconditionScreen(
                 onNavigateToSkipForNow = {
                     navController.navigate(

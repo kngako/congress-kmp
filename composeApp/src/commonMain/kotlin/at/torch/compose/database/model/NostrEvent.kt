@@ -212,6 +212,7 @@ data class NostrEvent(
         }
         return null
     } catch (e: Throwable) {
+        logger.e("GiftWrapMessage error: ", e)
         return null
     }
 

@@ -1,7 +1,6 @@
 package at.torch.compose.repository
 
 import at.torch.compose.database.model.intermdiate.LocalAccount
-import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -28,7 +27,7 @@ interface NostrRepository {
         publicKey: HexKey,
         name: String?,
         biography: String?
-    ): KeyPackageBundle
+    )
 
     suspend fun signInToProfile(
         publicKey: HexKey
@@ -163,7 +162,7 @@ interface NostrRepository {
                 publicKey: HexKey,
                 name: String?,
                 biography: String?
-            ): KeyPackageBundle {
+            ) {
                 TODO("")
             }
 

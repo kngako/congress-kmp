@@ -5,6 +5,7 @@ import androidx.room3.ForeignKey
 import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
@@ -24,8 +25,8 @@ import kotlin.time.Instant
     ],
 )
 data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: HexKey,
 
     /**
      * Sender Public Key
@@ -34,7 +35,7 @@ data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
 
     val chatRoomId: String,
 
-    /**
+    /**`
      * Payload Event Kind
      */
     val kind: Kind,

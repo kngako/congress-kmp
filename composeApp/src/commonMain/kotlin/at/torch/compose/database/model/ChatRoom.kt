@@ -67,7 +67,7 @@ data class ChatRoom(
     // TODO: Add a LastChatMessageRelation
 //    val lastChatMessageId: String? = null,
     // Might want to focus on the other last messages...
-    val initialGiftWrapPayloadId: Long? = null,
+    val initialGiftWrapPayloadId: HexKey? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,

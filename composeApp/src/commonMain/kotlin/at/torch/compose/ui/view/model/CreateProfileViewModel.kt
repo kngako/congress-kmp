@@ -105,7 +105,8 @@ class CreateProfileViewModel(
             )
 
             val pubkey = localKeyManager.nostrPublicKey()
-            val keyPackageBundle = nostrRepository.createNewProfile(
+
+            nostrRepository.createNewProfile(
                 pubkey,
                 name = createProfileFormState.nameField.textFieldState.text.toString(),
                 biography = createProfileFormState.biographyField.textFieldState.text.toString()
@@ -113,7 +114,6 @@ class CreateProfileViewModel(
 
             marmotRepository.saveMarmotKeyPackageBundle(
                 publicKey = pubkey,
-                keyPackageBundle,
                 nsecPassword = localKeyManager.nsecPassword()
             )
         }

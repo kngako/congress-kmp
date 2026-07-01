@@ -94,6 +94,7 @@ data class GiftWrapSeal(
                 logger.d("giftWrapPayload: ${giftWrapPayload.toJson()}")
 
                 val giftWrapPayload = GiftWrapPayload(
+                    id = id,
                     giftWrapSealId = id,
                     publicKey = giftWrapPayload.pubKey,
                     kind = giftWrapPayload.kind,

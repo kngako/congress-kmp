@@ -74,6 +74,7 @@ class SynchronizationViewModel(
     init {
         scope.launch {
             activeWalletStateFlow.collectLatest { activeWallet ->
+                logger.d("Synchronization ActiveWallet: $activeWallet")
                 activeWallet?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
                     val keyPair = KeyPair(
                         privKey = nostrPrivateKey.value.toByteArray()

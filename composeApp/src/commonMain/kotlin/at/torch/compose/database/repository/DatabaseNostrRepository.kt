@@ -114,7 +114,7 @@ class DatabaseNostrRepository(
         publicKey: HexKey,
         name: String?,
         biography: String?
-    ): KeyPackageBundle {
+    ) {
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
             about = biography,
@@ -202,113 +202,6 @@ class DatabaseNostrRepository(
                 content = ""
             )
         )
-
-        // KeyPackage...
-        KeyPackageUtils.PRIMARY_SLOT
-        val dTag = KeyPackageUtils.generateRandomDTag() // TODO: Persist this...
-        val identity = publicKey.hexToByteArray()
-        val bundle = generateKeyPackage(identity, dTag)
-
-        val keyPackageBytes = bundle.keyPackage.toTlsBytes()
-        val keyPackageBase64 = Base64.encode(keyPackageBytes)
-        val keyPackageRef = bundle.keyPackage.reference().toHexKey()
-
-        val keyPackageTemplate = KeyPackageEvent.build(
-            keyPackageBase64 = keyPackageBase64,
-            dTagSlot = dTag,
-            keyPackageRef = keyPackageRef,
-            relays = Relays.DefaultDMRelayList,
-        )
-
-        unsignedNostrEvents.add(
-            UnsignedNostrEvent(
-                pubKey = publicKey,
-                kind = keyPackageTemplate.kind,
-                tags = keyPackageTemplate.tags,
-                content = keyPackageTemplate.content
-            )
-        )
-
-        saveUnsignedNostrEvents(unsignedNostrEvents)
-
-        return bundle
-    }
-
-    private fun generateKeyPackage(
-        identity: ByteArray,
-        dTagSlot: String = KeyPackageUtils.PRIMARY_SLOT,
-    ): KeyPackageBundle {
-        val initKp = X25519.generateKeyPair()
-        val encKp = X25519.generateKeyPair()
-        val sigKp = Ed25519.generateKeyPair()
-
-        val leafNode =
-            buildKeyPackageLeafNode(
-                encryptionKey = encKp.publicKey,
-                signatureKey = sigKp.publicKey,
-                identity = identity,
-                signingKey = sigKp.privateKey,
-            )
-
-        val unsigned =
-            MlsKeyPackage(
-                initKey = initKp.publicKey,
-                leafNode = leafNode,
-                // LastResort (0x000A) marks this as a last-resort KeyPackage per MLS Extensions draft.
-                // MDK always marks KeyPackages as last-resort via .mark_as_last_resort().
-                extensions = listOf(Extension(extensionType = 0x000A, extensionData = ByteArray(0))),
-                signature = ByteArray(0),
-            )
-        val keyPackage =
-            unsigned.copy(
-                signature =
-                    MlsCryptoProvider.signWithLabel(
-                        sigKp.privateKey,
-                        "KeyPackageTBS",
-                        unsigned.encodeTbs(),
-                    ),
-            )
-
-        val bundle = KeyPackageBundle(keyPackage, initKp.privateKey, encKp.privateKey, sigKp.privateKey)
-        // TODO: Persist this...
-
-        return bundle
-    }
-
-
-    private fun buildKeyPackageLeafNode(
-        encryptionKey: ByteArray,
-        signatureKey: ByteArray,
-        identity: ByteArray,
-        signingKey: ByteArray,
-    ): LeafNode {
-        val now = TimeUtils.now()
-        val unsigned =
-            LeafNode(
-                encryptionKey = encryptionKey,
-                signatureKey = signatureKey,
-                credential = Credential.Basic(identity),
-                capabilities =
-                    Capabilities(
-                        extensions =
-                            listOf(
-                                0x000A, // LastResort (required by OpenMLS validation)
-                                0xF2EE, // NostrGroupData (required by group's RequiredCapabilities)
-                            ),
-                        proposals =
-                            listOf(
-                                0x000A, // SelfRemove (required by group's RequiredCapabilities)
-                            ),
-                    ),
-                leafNodeSource = LeafNodeSource.KEY_PACKAGE,
-                lifetime = Lifetime(notBefore = now, notAfter = now + KEY_PACKAGE_LIFETIME_SECONDS),
-                extensions = emptyList(),
-                signature = ByteArray(0),
-            )
-
-        val tbs = unsigned.encodeTbs(groupId = null, leafIndex = null)
-        val signature = MlsCryptoProvider.signWithLabel(signingKey, "LeafNodeTBS", tbs)
-        return unsigned.copy(signature = signature)
     }
 
     override suspend fun signInToProfile(

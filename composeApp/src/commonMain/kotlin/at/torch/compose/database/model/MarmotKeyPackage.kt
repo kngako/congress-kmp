@@ -22,8 +22,8 @@ import kotlin.time.Instant
     ]
 )
 data class MarmotKeyPackage(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: HexKey,
 
     val publicKey: HexKey,
 

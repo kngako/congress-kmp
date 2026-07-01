@@ -26,13 +26,13 @@ import kotlin.time.Instant
     ],
 )
 data class MarmotKeyPackageBundle(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: HexKey,
 
     val publicKey: HexKey,
-    // TODO: have the keyPackageEventId
 
-    val tlsEncodedMarmotKeyPackage: String,
+    val tlsEncodedMarmotKeyPackage: ByteArray,
+
     val ncryptsecInitPrivateKey: String,
     val ncryptsecEncryptionPrivateKey: String,
     val ncryptsecSignaturePrivateKey: String,
@@ -45,4 +45,44 @@ data class MarmotKeyPackageBundle(
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity
+): TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as MarmotKeyPackageBundle
+
+        if (consumed != other.consumed) return false
+        if (rotated != other.rotated) return false
+        if (id != other.id) return false
+        if (publicKey != other.publicKey) return false
+        if (!tlsEncodedMarmotKeyPackage.contentEquals(other.tlsEncodedMarmotKeyPackage)) return false
+        if (ncryptsecInitPrivateKey != other.ncryptsecInitPrivateKey) return false
+        if (ncryptsecEncryptionPrivateKey != other.ncryptsecEncryptionPrivateKey) return false
+        if (ncryptsecSignaturePrivateKey != other.ncryptsecSignaturePrivateKey) return false
+        if (createdAt != other.createdAt) return false
+        if (updatedAt != other.updatedAt) return false
+        if (savedAt != other.savedAt) return false
+        if (deletedAt != other.deletedAt) return false
+        if (broadcastedAt != other.broadcastedAt) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = consumed.hashCode()
+        result = 31 * result + rotated.hashCode()
+        result = 31 * result + id.hashCode()
+        result = 31 * result + publicKey.hashCode()
+        result = 31 * result + tlsEncodedMarmotKeyPackage.contentHashCode()
+        result = 31 * result + ncryptsecInitPrivateKey.hashCode()
+        result = 31 * result + ncryptsecEncryptionPrivateKey.hashCode()
+        result = 31 * result + ncryptsecSignaturePrivateKey.hashCode()
+        result = 31 * result + createdAt.hashCode()
+        result = 31 * result + updatedAt.hashCode()
+        result = 31 * result + savedAt.hashCode()
+        result = 31 * result + (deletedAt?.hashCode() ?: 0)
+        result = 31 * result + (broadcastedAt?.hashCode() ?: 0)
+        return result
+    }
+}
