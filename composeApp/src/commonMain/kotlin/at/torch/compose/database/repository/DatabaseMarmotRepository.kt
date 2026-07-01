@@ -6,6 +6,7 @@ import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.MarmotRepository
+import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
@@ -27,15 +28,19 @@ import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlin.io.encoding.Base64
+import kotlin.time.Instant
 
 class DatabaseMarmotRepository(
     val database: TorchDatabase,
     val scope: CoroutineScope
 ): MarmotRepository {
+    private val logger = Logger.withTag(TAG)
+
     override suspend fun saveMarmotKeyPackageBundle(
         publicKey: HexKey,
         nsecPassword: String
     ) {
+        logger.d("saveMarmotKeyPackageBundle: $publicKey")
         // KeyPackage...
         val dTag = KeyPackageUtils.generateRandomDTag() // TODO: Persist this...
         val identity = publicKey.hexToByteArray()
@@ -57,21 +62,23 @@ class DatabaseMarmotRepository(
                 pubKey = publicKey,
                 kind = keyPackageTemplate.kind,
                 tags = keyPackageTemplate.tags,
+                createdAt = Instant.fromEpochSeconds(keyPackageTemplate.createdAt),
                 content = keyPackageTemplate.content
             )
         )
 
-        val id = EventHasher.hashIdBytes(
-            pubKey =publicKey,
+        val id = EventHasher.hashId(
+            pubKey = publicKey,
             createdAt = keyPackageTemplate.createdAt,
             kind = keyPackageTemplate.kind,
             tags = keyPackageTemplate.tags,
             content = keyPackageTemplate.content
         )
+        logger.d("keyPackageEventId: $id")
 
         database.marmotKeyPackageBundleDao().upsert(
             MarmotKeyPackageBundle(
-                id = id.toHexKey(),
+                id = id,
                 publicKey = publicKey,
                 tlsEncodedMarmotKeyPackage = bundle.keyPackage.toTlsBytes(),
                 ncryptsecInitPrivateKey = bundle.initPrivateKey.toHex(), // TODO: ncryptSec this using the private key
@@ -171,4 +178,7 @@ class DatabaseMarmotRepository(
         return unsigned.copy(signature = signature)
     }
 
+    companion object {
+        private const val TAG = "DatabaseMarmotRepository"
+    }
 }
