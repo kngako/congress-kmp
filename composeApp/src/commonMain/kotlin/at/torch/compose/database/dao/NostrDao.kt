@@ -21,6 +21,7 @@ import at.torch.compose.exceptions.GiftWrapUnsealException
 import at.torch.compose.exceptions.MarmotMissingKeyPackageBundleException
 import at.torch.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
 import at.torch.compose.extensions.toHex
+import at.torch.compose.network.serialization.encodeToJsonString
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
@@ -41,6 +42,7 @@ import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.io.encoding.Base64
+import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -552,6 +554,7 @@ abstract class NostrDao(
                                         }
                                 } else {
                                     decryptedGiftWrapPayload.parseSubject()?.let { subject ->
+                                        logger.d("Subject: $subject")
                                         database.chatRoomDao().upsert(
                                             localChatRoom.chatRoom.copy(
                                                 subject = subject,
@@ -571,18 +574,20 @@ abstract class NostrDao(
                                     tags = decryptedGiftWrapPayload.tags,
                                     sig = ""
                                 )
-                                logger.d("welcomeEvent: $welcomeEvent")
+                                logger.d("welcomeEvent: ${welcomeEvent.toJson()}")
 
                                 // TODO: Find keypackage and decrypt welcome...
                                 // TODO: Get keyPackage from
                                 val keyPackageEventId = welcomeEvent.keyPackageEventId() ?: throw MarmotWelcomeEventMissingKeyPackageEventIdException(
                                     "Couldn't find keyPackageEventId for $welcomeEvent"
                                 )
+                                logger.d("keyPackageEventId: $keyPackageEventId")
                                 val marmotKeyPackageBundle = database.marmotKeyPackageBundleDao().getMarmotKeyPackageBundleById(
                                     keyPackageEventId
                                 ) ?: throw MarmotMissingKeyPackageBundleException(
                                     "Couldn't find marmotKeyPackageBundle for $welcomeEvent"
                                 )
+                                logger.d("marmotKeyPackageBundle: $marmotKeyPackageBundle")
 
                                 val welcomeBytes = Base64.decode(
                                     welcomeEvent.welcomeBase64()
@@ -607,15 +612,17 @@ abstract class NostrDao(
                                         encryptionPrivateKey = encryptionPrivateKey
                                     )
                                 )
+                                logger.d("Group: $group")
 
                                 val nostrGroupId = group.groupId.toHex()
+
+                                logger.d("nostrGroupId: $nostrGroupId")
 
                                 val localChatRoom = database.chatRoomDao().findChatRoomById(
                                     nostrGroupId
                                 )
 
                                 if (localChatRoom == null) {
-
                                     logger.d("processWelcome: welcomeBytes=${welcomeBytes.size}B looking up KeyPackage by ref=${keyPackageEventId.take(8)}…")
 
 
@@ -762,6 +769,8 @@ abstract class NostrDao(
                                             profilePublicKeysToSync[relayURL]?.add(participant.participantPublicKey)
                                         }
                                     }
+                                } else {
+                                    logger.w("Chat Room already exists for $nostrGroupId")
                                 }
 
                                 // Where is the decoded welcome message...
