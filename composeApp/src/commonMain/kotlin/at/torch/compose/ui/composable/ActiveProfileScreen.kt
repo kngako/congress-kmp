@@ -43,6 +43,7 @@ import at.torch.compose.extensions.hexToNpubHrp
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import at.torch.compose.ui.view.model.ActiveProfileViewModel
@@ -185,7 +186,10 @@ fun ActiveProfileScreen(
                                 Button(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Share and Connect")
+                                            ShareProfileRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                nostrEventId = nostrEventId
+                                            )
                                         )
                                     },
                                 ) {

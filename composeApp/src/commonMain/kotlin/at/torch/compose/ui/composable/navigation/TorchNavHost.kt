@@ -18,11 +18,13 @@ import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.NostrEventDetailScreen
+import at.torch.compose.ui.composable.ShareProfileScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.composable.navigation.routes.WriteNewNoteRoute
 import at.torch.compose.ui.view.state.NavigationUIState
@@ -448,9 +450,26 @@ fun TorchNavHost(
             }
         }
         composable<ActiveProfileRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<NostrEventDetailRoute>()
+            val route = backStackEntry.toRoute<ActiveProfileRoute>()
 
             ActiveProfileScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                nostrEventId = route.nostrEventId,
+                nostrRepository = databaseNostrRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToRoute = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
+            )
+        }
+        composable<ShareProfileRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ShareProfileRoute>()
+
+            ShareProfileScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 nostrEventId = route.nostrEventId,
                 nostrRepository = databaseNostrRepository,
