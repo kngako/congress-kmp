@@ -22,12 +22,16 @@ import at.torch.compose.ui.composable.ShareProfileScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
+import at.torch.compose.ui.composable.navigation.routes.LandingRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.SocialPreconditionRoute
 import at.torch.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import at.torch.compose.ui.composable.navigation.routes.WriteNewNoteRoute
+import at.torch.compose.ui.view.model.NavigationViewModel
+import at.torch.compose.ui.view.model.NotaryViewModel
+import at.torch.compose.ui.view.model.SynchronizationViewModel
 import at.torch.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
@@ -84,8 +88,8 @@ fun TorchNavHost(
         phoenixGlobal = phoenixGlobal
     ))
 
-    val navigationViewModel: at.torch.compose.ui.view.model.NavigationViewModel =  viewModel (
-        factory = at.torch.compose.ui.view.model.NavigationViewModel.factory(
+    val navigationViewModel: NavigationViewModel =  viewModel (
+        factory = NavigationViewModel.factory(
             activeWallet = sovereignWalletViewModel.activeWalletInUI,
             initialNavigationUIState = NavigationUIState.Loading(),
             nostrRepository = databaseNostrRepository,
@@ -94,8 +98,8 @@ fun TorchNavHost(
     )
 
 
-    val notaryViewModel: at.torch.compose.ui.view.model.NotaryViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.NotaryViewModel.factory(
+    val notaryViewModel: NotaryViewModel = viewModel(
+        factory = NotaryViewModel.factory(
             activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
@@ -104,8 +108,8 @@ fun TorchNavHost(
     )
 
     // TODO: Produce a notary UI Element...
-    val synchronizationViewModel: at.torch.compose.ui.view.model.SynchronizationViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.SynchronizationViewModel.factory(
+    val synchronizationViewModel: SynchronizationViewModel = viewModel(
+        factory = SynchronizationViewModel.factory(
             activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
@@ -229,17 +233,22 @@ fun TorchNavHost(
         navController = navController,
         startDestination = LoadingRoute()
     ) {
-        composable<SovereignWalletStartupRoute> {
+        composable<SovereignWalletStartupRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
+
             at.torch.compose.ui.composable.SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
                         route = LoadingRoute(
-                            text = "Loading Aux"
+                            text = "Landing... Aux"
                         )
                     )
                 },
                 onNavigateToWalletIntroPage = {
+                    applicationIOScope.launch {
+                        navigationViewModel.loadInitialNostrProfile(route)
+                    }
                     navController.navigate(
                         route = LoadingRoute(
                             text = "Introducing... Aux"
@@ -248,7 +257,7 @@ fun TorchNavHost(
                 },
                 onSuccessfulStartup = {
                     applicationIOScope.launch {
-                        navigationViewModel.loadNostrProfile()
+                        navigationViewModel.loadInitialNostrProfile(route)
                     }
                 },
                 forceWalletId = null,
