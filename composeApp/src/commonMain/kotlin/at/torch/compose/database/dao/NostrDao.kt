@@ -14,6 +14,7 @@ import at.torch.compose.database.model.NostrEventRelay
 import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Post
 import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.SynchronizeNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.exceptions.GiftWrapImpersonationException
 import at.torch.compose.exceptions.GiftWrapSealDecryptionException
@@ -129,7 +130,7 @@ abstract class NostrDao(
                 // Setup the sync here...
             } else {
                 // TODO: Check if event got indexed...
-//                return
+                return
             }
         }
 
@@ -623,7 +624,8 @@ abstract class NostrDao(
                                 )
 
                                 if (localChatRoom == null) {
-                                    logger.d("processWelcome: welcomeBytes=${welcomeBytes.size}B looking up KeyPackage by ref=${keyPackageEventId.take(8)}…")
+                                    logger.d("processWelcome: welcomeBytes=${welcomeBytes.size}B")
+                                    logger.d("Marmot Data: ${group.currentMarmotData()}")
 
 
                                     // TODO: Save the chat room We can now s
@@ -632,10 +634,10 @@ abstract class NostrDao(
                                         ChatRoom(
                                             id = nostrGroupId,
                                             userPublicKey = userPublicKey,
-                                            subject = group.currentMarmotData()?.name,
+                                            subject = group.currentMarmotData()?.name?.ifBlank { null },
                                             initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
                                             createdAt = decryptedGiftWrapPayload.createdAt,
-                                            mlsGroupState = group.saveState().encodeTls().toHex()
+                                            mlsGroupState = group.saveState().encodeTls().toHex(),
                                         )
                                     )
 
@@ -646,7 +648,9 @@ abstract class NostrDao(
                                     )
 
                                     // TODO: Add participants... by processing group.members()
+
                                     val normalizedRelayUrl = NormalizedRelayUrl(relayURL)
+
 
                                     val participants = group.members().mapNotNull { (leafIndex, leafNode) ->
                                         val pubkey =
@@ -654,17 +658,19 @@ abstract class NostrDao(
                                                 is Credential.Basic -> cred.identity.toHexKey()
                                                 else -> null
                                             }
+                                        logger.d("Pubkey: $pubkey")
                                         if (pubkey != null) {
                                             Participant(
                                                 participantPublicKey = pubkey,
                                                 chatRoomId = nostrGroupId,
-                                                relayHint = normalizedRelayUrl.url
+                                                relayHint = group.currentMarmotData()?.relays?.firstOrNull() ?: normalizedRelayUrl.url
                                             )
                                         } else {
                                             null
                                         }
                                     }
 
+                                    logger.d("Participants: $participants")
                                     // Sync missing participant profiles...
                                     participants.forEach { participant ->
                                         val giftWrapParticipantProfile = database.profileDao().getProfileByPublicKey(participant.participantPublicKey)
@@ -702,6 +708,7 @@ abstract class NostrDao(
                                         participants
                                     )
 
+                                    // Save ChatRoom Relays...
                                     participants.filter { it.participantPublicKey != userPublicKey }.forEach { participant ->
                                         val publicKey = participant.participantPublicKey
 
@@ -769,22 +776,22 @@ abstract class NostrDao(
                                             profilePublicKeysToSync[relayURL]?.add(participant.participantPublicKey)
                                         }
                                     }
+
+                                    // Where is the decoded welcome message...
+                                    // TODO: Sync GroupEvents/Messages...
+//                                    database.chatMessageDao().upsert(
+//                                        ChatMessage(
+//                                            giftWrapPayloadId = decryptedGiftWrapPayload.id,
+//                                            senderPublicKey = decryptedGiftWrapPayload.publicKey,
+//                                            isUserMessage = activeKeyPair.pubKey.toHex() == decryptedGiftWrapPayload.publicKey,
+//                                            chatRoomId = nostrGroupId,
+//                                            createdAt = decryptedGiftWrapPayload.createdAt,
+//                                            content = "Coming soon.", // TODO: Figure out what to do here...
+//                                        )
+//                                    )
                                 } else {
                                     logger.w("Chat Room already exists for $nostrGroupId")
                                 }
-
-                                // Where is the decoded welcome message...
-                                // TODO: Sync GroupEvents/Messages...
-                                database.chatMessageDao().upsert(
-                                    ChatMessage(
-                                        giftWrapPayloadId = decryptedGiftWrapPayload.id,
-                                        senderPublicKey = decryptedGiftWrapPayload.publicKey,
-                                        isUserMessage = activeKeyPair.pubKey.toHex() == decryptedGiftWrapPayload.publicKey,
-                                        chatRoomId = nostrGroupId,
-                                        createdAt = decryptedGiftWrapPayload.createdAt,
-                                        content = "Coming soon.", // TODO: Figure out what to do here...
-                                    )
-                                )
                                 // TODO: Check encoding...
                             } else {
                                 logger.w("Unsupported event: $decryptedGiftWrapPayload")

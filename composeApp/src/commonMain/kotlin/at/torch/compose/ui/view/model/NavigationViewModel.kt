@@ -162,6 +162,7 @@ class NavigationViewModel(
             activeWalletStateFlow.collectLatest { activeWallet ->
                 logger.d("Active Wallet: $activeWallet")
                 if (activeWallet ==  null) {
+
                     _navigationUIState.getAndUpdate {
                         NavigationUIState.StartupPhoenix
                     }
