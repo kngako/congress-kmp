@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.ImportExport
@@ -33,6 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -136,15 +139,6 @@ fun ShareProfileScreen(
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                     }
-
-                                    Spacer(
-                                        modifier = Modifier.height(10.dp)
-                                    )
-
-                                    Text(
-                                        text = activeUserPublicKey.hexToNpubHrp(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
                                 }
                             }
                         }
@@ -157,7 +151,38 @@ fun ShareProfileScreen(
                                     activeUserPublicKey.hexToNpubHrp()
                                 )
                             }
+                        }
 
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(20.dp)
+                            ) {
+                                val clipboardManager = LocalClipboardManager.current
+
+                                TextButton(
+                                    onClick = {
+
+                                        clipboardManager.setText(
+                                            buildAnnotatedString {
+                                                activeUserPublicKey.hexToNpubHrp()
+                                            }
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.ContentCopy,
+                                        contentDescription = "Copy npub"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(10.dp)
+                                    )
+                                    Text(
+                                        text = activeUserPublicKey.hexToNpubHrp(),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
 
                         }
                     }
