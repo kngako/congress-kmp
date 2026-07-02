@@ -36,7 +36,7 @@ class DatabaseMarmotRepository(
 ): MarmotRepository {
     private val logger = Logger.withTag(TAG)
 
-    override suspend fun saveMarmotKeyPackageBundle(
+    override suspend fun publishMarmotKeyPackageBundle(
         publicKey: HexKey,
         nsecPassword: String
     ) {
@@ -88,6 +88,9 @@ class DatabaseMarmotRepository(
         )
     }
 
+    override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
+        return database.marmotKeyPackageBundleDao().getAllMarmotKeyPackageBundles(publicKey)
+    }
 
     private fun generateKeyPackage(
         identity: ByteArray,

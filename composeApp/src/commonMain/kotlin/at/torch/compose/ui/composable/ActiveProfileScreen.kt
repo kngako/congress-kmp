@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bento
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.ImportExport
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.SwitchVideo
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -42,6 +44,7 @@ import at.torch.compose.database.model.intermdiate.LocalNostrEvent
 import at.torch.compose.extensions.hexToNpubHrp
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import at.torch.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
@@ -208,6 +211,33 @@ fun ActiveProfileScreen(
 
                                 Spacer(
                                     modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        item {
+                            TextButton(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        KeyPackageManagementRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            nostrEventId = nostrEventId
+                                        )
+                                    )
+                                }
+                            ) {
+
+                                Icon(
+                                    Icons.Default.Bento,
+                                    contentDescription = "Key Packages"
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.width(10.dp)
+                                )
+
+                                Text(
+                                    "Key Package Management"
                                 )
                             }
                         }

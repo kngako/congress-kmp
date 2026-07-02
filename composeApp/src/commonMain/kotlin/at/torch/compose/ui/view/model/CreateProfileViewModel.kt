@@ -112,7 +112,7 @@ class CreateProfileViewModel(
                 biography = createProfileFormState.biographyField.textFieldState.text.toString()
             )
 
-            marmotRepository.saveMarmotKeyPackageBundle(
+            marmotRepository.publishMarmotKeyPackageBundle(
                 publicKey = pubkey,
                 nsecPassword = localKeyManager.nsecPassword()
             )

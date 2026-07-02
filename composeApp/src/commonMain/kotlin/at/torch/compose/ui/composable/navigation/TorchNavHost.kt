@@ -17,11 +17,13 @@ import at.torch.compose.ui.composable.ActiveProfileScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
+import at.torch.compose.ui.composable.KeyPackageManagementScreen
 import at.torch.compose.ui.composable.NostrEventDetailScreen
 import at.torch.compose.ui.composable.ShareProfileScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
+import at.torch.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
@@ -480,6 +482,23 @@ fun TorchNavHost(
                 activeUserPublicKey = route.activeUserPublicKey,
                 nostrEventId = route.nostrEventId,
                 nostrRepository = databaseNostrRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToRoute = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
+            )
+        }
+        composable<KeyPackageManagementRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<KeyPackageManagementRoute>()
+
+            KeyPackageManagementScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                nostrEventId = route.nostrEventId,
+                marmotRepository = databaseMarmotRepository,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
