@@ -25,15 +25,23 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.NegentropySynchronizeRequest
+import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlin.math.log
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState,
     val publicKey: String,
-    val synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
     val chatRepository: at.torch.compose.repository.ChatRepository
 ): ViewModel() {
@@ -65,19 +73,77 @@ class ChatRoomListViewModel(
         logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
+            val chatRequestFilter = SynchronizationFilter(
+                kinds = arrayOf(
+                    GiftWrapEvent.KIND,
+                ),
+                tags = mapOf(
+                    Pair("p", listOf(publicKey))
+                ),
+                limit = 50
+            )
             nostrRepository.queueNegentropySynchronizeRequest(
                 at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
-                    _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
-                            synchronizationFilter = synchronizationFilter
+                            synchronizationFilter = chatRequestFilter
                         ),
                         purpose = "chat",
-                        synchronizationFilter = synchronizationFilter,
+                        synchronizationFilter = chatRequestFilter,
                         relayURL = normalizedRelayUrl.url,
                         level = 0
                     )
                 }
+            )
+
+            // Get/observe groupIds for publicKey
+            val chatRooms = chatRepository.getChatRoomListByPublicKey(publicKey)
+            val relayChatRoomMaps = Relays.DefaultDMRelayList.map { dmRelay ->
+                dmRelay.url to chatRooms.map { localChatRoom ->
+                    // TODO: Just return localChatRoom.chatRoom.id once we have nostrGroupId stored as the chatRoom primary id
+                    if (localChatRoom.chatRoom.mlsGroupState != null) {
+
+                        if (localChatRoom.chatRoom.id.length == 64) {
+                            localChatRoom.chatRoom.id
+                        } else {
+                            val group = MlsGroup.restore(
+                                MlsGroupState.decodeTls(
+                                    localChatRoom.chatRoom.mlsGroupState.hexToByteArray()
+                                )
+                            )
+
+                            logger.d("chatRoomId: ${localChatRoom.chatRoom.id} vs nostrGroupId (${group.currentMarmotData()?.nostrGroupId})")
+                            group.currentMarmotData()?.nostrGroupId ?: localChatRoom.chatRoom.id
+                        }
+                    } else {
+                        localChatRoom.chatRoom.id
+                    }
+                }
+            }
+            // TODO: Get relay with chatGroups...
+            val negentropySyncRequests = relayChatRoomMaps.map { relayChatRoomMap ->
+                val mlsGroupMessageFilter = SynchronizationFilter(
+                    kinds = arrayOf(GroupEvent.KIND),
+                    tags = mapOf("h" to relayChatRoomMap.second),
+                )
+                logger.d("mlsGroupMessageFilter: $mlsGroupMessageFilter")
+
+                NegentropySynchronizeRequest(
+                    id = NegentropySynchronizeRequest.computeId(
+                        relayURL = relayChatRoomMap.first,
+                        synchronizationFilter = mlsGroupMessageFilter
+                    ),
+                    purpose = "messages",
+                    synchronizationFilter = mlsGroupMessageFilter,
+                    relayURL = relayChatRoomMap.first,
+                    level = 0
+                )
+            }
+
+            logger.d("negentropySyncRequests: ${negentropySyncRequests.map { it.synchronizationFilter }}")
+            nostrRepository.queueNegentropySynchronizeRequest(
+                negentropySyncRequests
             )
         }
     }
@@ -178,7 +244,6 @@ class ChatRoomListViewModel(
         fun factory(
             initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
             publicKey: String,
-            synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             chatRepository: at.torch.compose.repository.ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
@@ -186,7 +251,6 @@ class ChatRoomListViewModel(
                 ChatRoomListViewModel(
                     initialChatRoomListUIState = initialChatRoomListUIState,
                     publicKey = publicKey,
-                    synchronizationFilter = synchronizationFilter,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
                 )

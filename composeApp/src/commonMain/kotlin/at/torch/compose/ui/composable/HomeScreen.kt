@@ -185,10 +185,6 @@ fun HomeScreen(
                                         factory = at.torch.compose.ui.view.model.ChatRoomListViewModel.factory(
                                             initialChatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
                                             publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
-                                            synchronizationFilter = homeScreenViewModel.getSynchronizationFilter(
-                                                homeScreenTypeType,
-                                                profileWithFollowing = homeScreenUIState.profileWithFollowing
-                                            ),
                                             nostrRepository = nostrRepository,
                                             chatRepository = chatRepository
                                         ),

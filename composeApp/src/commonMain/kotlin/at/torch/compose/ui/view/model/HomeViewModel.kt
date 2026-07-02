@@ -9,7 +9,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.types.SynchronizationFilter
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
@@ -52,29 +54,6 @@ class HomeViewModel(
                 } else {
                     at.torch.compose.ui.view.state.HomeScreenUIState.Error
                 }
-            }
-        }
-    }
-
-    fun getSynchronizationFilter(
-        homeScreenType: HomeScreenType,
-        profileWithFollowing: at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing,
-    ): at.torch.compose.database.model.types.SynchronizationFilter {
-
-        Clock.System.now().minus(12.hours)
-        Clock.System.now()
-
-        return when (homeScreenType) {
-            HomeScreenType.Messages -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        GiftWrapEvent.KIND,
-                    ),
-                    tags = mapOf(
-                        Pair("p", listOf(activeUserPublicKey))
-                    ),
-                    limit = 50
-                )
             }
         }
     }

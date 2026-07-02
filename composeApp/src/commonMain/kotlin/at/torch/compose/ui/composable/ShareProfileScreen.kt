@@ -164,7 +164,7 @@ fun ShareProfileScreen(
 
                                         clipboardManager.setText(
                                             buildAnnotatedString {
-                                                activeUserPublicKey.hexToNpubHrp()
+                                                append(activeUserPublicKey.hexToNpubHrp())
                                             }
                                         )
                                     }

@@ -20,6 +20,7 @@ import at.torch.compose.exceptions.GiftWrapImpersonationException
 import at.torch.compose.exceptions.GiftWrapSealDecryptionException
 import at.torch.compose.exceptions.GiftWrapUnsealException
 import at.torch.compose.exceptions.MarmotMissingKeyPackageBundleException
+import at.torch.compose.exceptions.MarmotMissingNostrGroupDataExtension
 import at.torch.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
 import at.torch.compose.extensions.toHex
 import at.torch.compose.network.serialization.encodeToJsonString
@@ -615,7 +616,7 @@ abstract class NostrDao(
                                 )
                                 logger.d("Group: $group")
 
-                                val nostrGroupId = group.groupId.toHex()
+                                val nostrGroupId = group.currentMarmotData()?.nostrGroupId ?: throw MarmotMissingNostrGroupDataExtension("Didn't find group data for $group")
 
                                 logger.d("nostrGroupId: $nostrGroupId")
 

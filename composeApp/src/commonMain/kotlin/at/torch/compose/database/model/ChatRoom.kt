@@ -78,8 +78,8 @@ data class ChatRoom(
     ): at.torch.compose.database.model.traits.TimestampedEntity,
     at.torch.compose.database.model.traits.LocalStoreEntity,
     at.torch.compose.database.model.traits.UserViewableEntity,
-    at.torch.compose.database.model.traits.SoftDeletableEntity {
-
+    at.torch.compose.database.model.traits.SoftDeletableEntity
+{
     companion object {
         const val TAG = "ChatRoom"
 

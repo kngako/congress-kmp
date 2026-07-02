@@ -75,18 +75,18 @@ class NavigationViewModel(
                 }
             }
         } else {
-            if (startupRoute != null) {
-                val localAccount = nostrRepository.observeProfile(
-                    publicKey = activeUserPublicKey
-                ).firstOrNull()
-
-                processLocalAccount(localAccount)
-
-            } else {
-                _navigationUIState.getAndUpdate {
-                    NavigationUIState.StartupPhoenix
-                }
-            }
+//            if (startupRoute != null) {
+//                val localAccount = nostrRepository.observeProfile(
+//                    publicKey = activeUserPublicKey
+//                ).firstOrNull()
+//
+//                processLocalAccount(localAccount)
+//
+//            } else {
+//                _navigationUIState.getAndUpdate {
+//                    NavigationUIState.StartupPhoenix
+//                }
+//            }
         }
     }
 
