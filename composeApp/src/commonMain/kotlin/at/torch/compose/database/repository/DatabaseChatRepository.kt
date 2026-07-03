@@ -135,7 +135,8 @@ class DatabaseChatRepository(
                 chatRoomId = localChatRoom.chatRoom.id,
                 senderPublicKey = localChatRoom.chatRoom.userPublicKey,
                 isUserMessage = true,
-                giftWrapPayloadId = giftWrapPayloadId
+                giftWrapPayloadId = giftWrapPayloadId,
+                groupEventId = null
             )
         )
     }

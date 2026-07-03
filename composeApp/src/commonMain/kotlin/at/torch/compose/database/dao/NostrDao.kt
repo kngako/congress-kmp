@@ -14,22 +14,32 @@ import at.torch.compose.database.model.NostrEventRelay
 import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Post
 import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.SynchronizeNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.exceptions.GiftWrapImpersonationException
 import at.torch.compose.exceptions.GiftWrapSealDecryptionException
 import at.torch.compose.exceptions.GiftWrapUnsealException
+import at.torch.compose.exceptions.MarmotMissingChatGroupException
 import at.torch.compose.exceptions.MarmotMissingKeyPackageBundleException
 import at.torch.compose.exceptions.MarmotMissingNostrGroupDataExtension
+import at.torch.compose.exceptions.MarmotNotMemberOfChatGroupException
+import at.torch.compose.exceptions.MarmotUnsupportedWireFormatException
 import at.torch.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
+import at.torch.compose.extensions.exporterSecret
 import at.torch.compose.extensions.toHex
-import at.torch.compose.network.serialization.encodeToJsonString
+import at.torch.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
 import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
+import com.vitorpamplona.quartz.marmot.mls.framing.ContentType
+import com.vitorpamplona.quartz.marmot.mls.framing.MlsMessage
+import com.vitorpamplona.quartz.marmot.mls.framing.PublicMessage
+import com.vitorpamplona.quartz.marmot.mls.framing.WireFormat
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
@@ -44,7 +54,6 @@ import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.io.encoding.Base64
-import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -328,6 +337,60 @@ abstract class NostrDao(
         }
 
         // TODO: Support MLSGroupEvent handling...
+        nostrEvent.toGroupEvent(
+            userPublicKey = activeKeyPair.pubKey.toHex()
+        )?.let { groupEvent ->
+
+            groupEvent.groupId()?.let { chatRoomId ->
+                val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
+
+                if (localChatRoom != null) {
+                    val mlsGroupStateByteArray = localChatRoom.chatRoom.mlsGroupState?.hexToByteArray()
+
+                    if (mlsGroupStateByteArray != null) {
+                        val mlsGroup = MlsGroup.restore(
+                            MlsGroupState.decodeTls(
+                                mlsGroupStateByteArray
+                            )
+                        )
+
+                        val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
+                            val pubkey = when (val cred = leafNode.credential) {
+                                is Credential.Basic -> cred.identity.toHexKey()
+                                else -> null
+                            }
+
+                            pubkey
+                        }
+
+                        if (memberPubkeys.contains(activeKeyPair.pubKey.toHex())) {
+                            // Ingest message...
+                            val groupEventResult = MarmotInboundManager.processGroupEvent(
+                                database = database,
+                                activeKeyPair = activeKeyPair,
+                                localChatRoom = localChatRoom,
+                                mlsGroup = mlsGroup,
+                                groupEvent = groupEvent
+                            )?.let { chatMessage ->
+                                database.chatMessageDao().upsert(
+                                    chatMessage
+                                )
+                            }
+
+                            // Save groupEventResult as chatMessage...
+
+
+                        } else {
+                            throw MarmotNotMemberOfChatGroupException("We are not a member of the chat room ${localChatRoom.chatRoom.id}")
+                        }
+                    } else {
+                        throw MarmotMissingNostrGroupDataExtension("Couldn't find chatRoom for $nostrEvent")
+                    }
+                } else {
+                    throw MarmotMissingChatGroupException("Couldn't find chatRoom for $nostrEvent")
+                }
+            }
+        }
 
         nostrEvent.toGiftWrapMessageWithReceiverPTag()?.let { giftWrapMessage ->
             logger.d("giftWrapMessage: $giftWrapMessage")
@@ -648,18 +711,15 @@ abstract class NostrDao(
                                         )
                                     )
 
-                                    // TODO: Add participants... by processing group.members()
-
                                     val normalizedRelayUrl = NormalizedRelayUrl(relayURL)
 
 
                                     val participants = group.members().mapNotNull { (leafIndex, leafNode) ->
-                                        val pubkey =
-                                            when (val cred = leafNode.credential) {
-                                                is Credential.Basic -> cred.identity.toHexKey()
-                                                else -> null
-                                            }
-                                        logger.d("Pubkey: $pubkey")
+                                        val pubkey = when (val cred = leafNode.credential) {
+                                            is Credential.Basic -> cred.identity.toHexKey()
+                                            else -> null
+                                        }
+
                                         if (pubkey != null) {
                                             Participant(
                                                 participantPublicKey = pubkey,

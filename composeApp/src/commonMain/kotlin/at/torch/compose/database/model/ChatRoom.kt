@@ -52,7 +52,7 @@ data class ChatRoom(
      */
     val subject: String?,
 
-    val mlsGroupState: String?, // TODO: Can this be nullable???
+    val mlsGroupState: String?,
 
     /**
      * Derived from kind14/15 tags

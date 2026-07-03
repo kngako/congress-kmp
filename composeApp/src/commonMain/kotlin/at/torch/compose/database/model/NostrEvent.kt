@@ -5,6 +5,7 @@ import androidx.room3.Ignore
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -18,6 +19,7 @@ import com.vitorpamplona.quartz.nip18Reposts.quotes.QAddressableTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.QEventTag
 import com.vitorpamplona.quartz.nip18Reposts.quotes.firstTaggedQuote
 import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
+import com.vitorpamplona.quartz.nip40Expiration.expiration
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.utils.EventFactory
@@ -216,6 +218,37 @@ data class NostrEvent(
         return null
     }
 
+    fun toGroupEvent(userPublicKey: HexKey): GroupEvent? = try {
+        if (kind == GroupEvent.KIND) {
+            val groupEvent = GroupEvent(
+                id = id,
+                pubKey = pubKey,
+                createdAt = createdAt.epochSeconds,
+                tags = tags,
+                content = content,
+                sig = sig
+            )
+
+            return groupEvent
+//            return groupEvent.groupId()?.let { nostrGroupId ->
+//                MarmotGroupEvent(
+//                    id = groupEvent.id,
+//                    createdAt = createdAt,
+//                    userPublicKey = groupEvent.pubKey, // TODO: use the userPublicKey here
+////                publicKey = groupEvent.pubKey,
+//                    chatRoomId = nostrGroupId,
+//                    encryptedContent = groupEvent.encryptedContent(),
+//                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
+//                    nostrEventId = id,
+//                )
+//            }
+        }
+        return null
+    } catch (e: Throwable) {
+        logger.e("Couldn't cast GroupEvent", e)
+        return null
+    }
+
     fun toReaction(): Reaction? = try {
         if (kind == ReactionEvent.KIND) {
             val reactionEvent = EventFactory.create<ReactionEvent>(
@@ -385,6 +418,7 @@ data class NostrEvent(
         logger.e("Failed to return Repost: ", e)
         return null
     }
+
     fun toZap(): Zap? = try {
         if (kind == LnZapEvent.KIND) {
             EventFactory.create<LnZapEvent>(

@@ -3,19 +3,36 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
+import at.torch.compose.exceptions.MarmotMissingChatGroupException
+import at.torch.compose.extensions.exporterSecret
 import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.CommitOrdering
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
+import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.codec.TlsWriter
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
 import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
 import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
+import com.vitorpamplona.quartz.marmot.mls.framing.ContentType
+import com.vitorpamplona.quartz.marmot.mls.framing.MlsMessage
+import com.vitorpamplona.quartz.marmot.mls.framing.PrivateMessage
+import com.vitorpamplona.quartz.marmot.mls.framing.PublicMessage
+import com.vitorpamplona.quartz.marmot.mls.framing.WireFormat
+import com.vitorpamplona.quartz.marmot.mls.group.DecryptedMessage
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.group.RetainedEpochSecrets
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
+import com.vitorpamplona.quartz.marmot.mls.schedule.KeySchedule
+import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.marmot.mls.tree.Capabilities
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.marmot.mls.tree.Extension
@@ -30,6 +47,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
+/**
+ * Based on MlsGroupManager in quarts...
+ */
 class DatabaseMarmotRepository(
     val database: TorchDatabase,
     val scope: CoroutineScope

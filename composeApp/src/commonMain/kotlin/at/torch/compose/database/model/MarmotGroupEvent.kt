@@ -14,6 +14,7 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip40Expiration.expiration
+import com.vitorpamplona.quartz.utils.Hex
 import com.vitorpamplona.quartz.utils.Log
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -32,6 +33,8 @@ data class MarmotGroupEvent(
      */
     val userPublicKey: String,
 
+    val publicKey: HexKey,
+
     val chatRoomId: String,
 
     val encryptedContent: String,
@@ -43,7 +46,7 @@ data class MarmotGroupEvent(
     override val nostrEventId: String,
 
     override val createdAt: Instant = Clock.System.now(),
-    override val updatedAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
@@ -64,6 +67,7 @@ data class MarmotGroupEvent(
                     createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                     chatRoomId = chatRoomId,
                     userPublicKey = userPublicKey,
+                    publicKey = groupEvent.pubKey,
                     expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) }
                 )
             }
@@ -71,7 +75,6 @@ data class MarmotGroupEvent(
     }
 
     fun toMarmotInnerEvent(group: MlsGroup): MarmotInnerEvent? {
-        val mlsBytes =
         return null;
     }
 

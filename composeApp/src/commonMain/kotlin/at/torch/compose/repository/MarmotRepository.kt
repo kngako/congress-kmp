@@ -1,6 +1,10 @@
 package at.torch.compose.repository
 
 import at.torch.compose.database.model.MarmotKeyPackageBundle
+import com.vitorpamplona.quartz.marmot.GroupEventResult
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
+import com.vitorpamplona.quartz.marmot.mls.framing.MlsMessage
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 interface MarmotRepository {
@@ -24,7 +28,6 @@ interface MarmotRepository {
             override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
                 return emptyList()
             }
-
         }
     }
 }
