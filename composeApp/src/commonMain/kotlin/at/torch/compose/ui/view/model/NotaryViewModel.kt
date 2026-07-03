@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
@@ -25,6 +26,7 @@ class NotaryViewModel(
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
     val chatRepository: at.torch.compose.repository.ChatRepository,
+    val marmotRepository: MarmotRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
 
@@ -36,6 +38,7 @@ class NotaryViewModel(
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             chatRepository: at.torch.compose.repository.ChatRepository,
+            marmotRepository: MarmotRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -43,6 +46,7 @@ class NotaryViewModel(
                     activeWalletStateFlow = activeWalletStateFlow,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
+                    marmotRepository = marmotRepository,
                     scope = scope,
                 )
             }
@@ -63,6 +67,7 @@ class NotaryViewModel(
 
                     observeUnsignedNostrEvents(keyPair)
                     observeUnsealedGiftWrapPayloads(keyPair)
+                    observeUnprocessedMarmotInnerEvents(keyPair)
                 }
             }
         }
@@ -130,6 +135,31 @@ class NotaryViewModel(
 
                         chatRepository.sealGiftWrapPayload(
                             giftWrapPayload,
+                            nostrSignerSync = tempSigner
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeUnprocessedMarmotInnerEvents(
+        keyPair: KeyPair
+    ) {
+        val tempSigner = NostrSignerSync(
+            keyPair
+        )
+        scope.launch(Dispatchers.IO) {
+            logger.i { "observeUnsealedGiftWrapPayloads: ${keyPair.pubKey.toHexKey()}" }
+            marmotRepository.observeUnprocessedMarmotInnerEvents(
+                publicKey = keyPair.pubKey.toHexKey()
+            ).distinctUntilChanged().collect { marmotInnerEventOrNull ->
+                scope.launch(Dispatchers.IO) {
+                    marmotInnerEventOrNull?.let { marmotInnerEvent ->
+                        logger.d("encrypt and broadcast: $marmotInnerEvent")
+
+                        marmotRepository.encryptAndSendMarmotInnerEvent(
+                            marmotInnerEvent,
                             nostrSignerSync = tempSigner
                         )
                     }

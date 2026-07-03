@@ -1,0 +1,104 @@
+package at.torch.compose.database.dao
+
+import androidx.room3.Dao
+import androidx.room3.Transaction
+import at.torch.compose.database.TorchDatabase
+import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.MarmotGroupEvent
+import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
+import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
+import at.torch.compose.extensions.exporterSecret
+import at.torch.compose.nostr.Relays
+import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip40Expiration.expiration
+import com.vitorpamplona.quartz.utils.TimeUtils
+import kotlin.time.Instant
+
+@Dao
+abstract class MarmotOutboundDao(
+    private val database: TorchDatabase
+) {
+    val logger = Logger.withTag(TAG)
+
+    @Transaction
+    suspend fun encryptAndSendMarmotInnerEvent(
+        localChatRoom: LocalChatRoom,
+        mlsGroup: MlsGroup,
+        innerEvent: Event,
+        nostrSignerSync: NostrSignerSync
+    ) {
+        val plainTextBytes = innerEvent.toJson().encodeToByteArray()
+
+        // Step 1: MLS encrypt
+        val mlsCipherText = mlsGroup.encrypt(plainTextBytes)
+
+        // Step 2: Outer ChaCha20-Poly1305 encryption
+        val exportKey = mlsGroup.exporterSecret()
+        val encryptedContent = GroupEventEncryption.encrypt(
+            mlsMessageBytes = mlsCipherText,
+            groupKey = exportKey
+        )
+
+        // Step 3: Build the GroupEvent template (auto-apply NIP-40 expiration
+        // if the group has disappearing_message_secs configured per MIP-01/03).
+        val createdAt = TimeUtils.now()
+        val expirationTime = disappearingExpiration(mlsGroup, createdAt)
+
+        val template = GroupEvent.build(
+            encryptedContentBase64 = encryptedContent,
+            nostrGroupId = localChatRoom.chatRoom.id,
+            createdAt = createdAt,
+        ) {
+            if (expirationTime != null) expiration(expirationTime)
+        }
+
+        // Step 4: Sign with a fresh ephemeral keypair
+        val ephemeralSigner = NostrSignerInternal(KeyPair())
+        val groupEvent: GroupEvent = ephemeralSigner.sign(template)
+
+        database.nostrEventDao().upsert(
+            NostrEvent(
+                id = groupEvent.id,
+                tags = template.tags,
+                createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                content = template.content,
+                sig = groupEvent.sig,
+                kind = groupEvent.kind,
+                pubKey = groupEvent.pubKey
+            )
+        )
+        database.marmotGroupEventDao().upsert(
+            MarmotGroupEvent(
+                id = groupEvent.id,
+                createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                encryptedContent = groupEvent.encryptedContent(),
+                chatRoomId = localChatRoom.chatRoom.id,
+                nostrEventId = groupEvent.id,
+                userPublicKey = nostrSignerSync.pubKey,
+                publicKey = nostrSignerSync.pubKey
+            )
+        )
+
+        // Sync broadcast to all the required relays...
+        database.broadcastNostrEventRequestDao().insert(
+            Relays.DefaultDMRelayList.map { // TODO: Get these from localChatRoom...
+                BroadcastNostrEventRequest(
+                    nostrEventId = groupEvent.id,
+                    relayURL = it.url
+                )
+            }
+        )
+    }
+
+    companion object {
+        const val TAG = "NostrNip17Dao"
+    }
+}

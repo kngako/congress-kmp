@@ -1,11 +1,10 @@
 package at.torch.compose.repository
 
+import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackageBundle
-import com.vitorpamplona.quartz.marmot.GroupEventResult
-import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
-import com.vitorpamplona.quartz.marmot.mls.framing.MlsMessage
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import kotlinx.coroutines.flow.Flow
 
 interface MarmotRepository {
 
@@ -15,6 +14,10 @@ interface MarmotRepository {
     )
 
     suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle>
+
+    suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?>
+
+    suspend fun encryptAndSendMarmotInnerEvent(marmotInnerEvent: MarmotInnerEvent, nostrSignerSync: NostrSignerSync)
 
     companion object {
         val NO_OP_MARMOT_KEY_PACKAGE_BUNDLE = object: MarmotRepository {
@@ -27,6 +30,17 @@ interface MarmotRepository {
 
             override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
                 return emptyList()
+            }
+
+            override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun encryptAndSendMarmotInnerEvent(
+                marmotInnerEvent: MarmotInnerEvent,
+                nostrSignerSync: NostrSignerSync
+            ) {
+                TODO("Not yet implemented")
             }
         }
     }

@@ -339,7 +339,7 @@ abstract class NostrDao(
             database.profileDao().upsert(profile)
         }
 
-        // TODO: Support MLSGroupEvent handling...
+        // MLSGroupEvent handling...
         nostrEvent.toGroupEvent(
             userPublicKey = activeKeyPair.pubKey.toHex()
         )?.let { groupEvent ->
@@ -624,7 +624,8 @@ abstract class NostrDao(
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
                                                 // TODO: Get relayHint form participant...
-                                                if (profilePublicKeysToSync.containsKey(
+                                                if (
+                                                    profilePublicKeysToSync.containsKey(
                                                         relayURL
                                                     )
                                                 ) {

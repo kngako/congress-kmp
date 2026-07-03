@@ -1,38 +1,23 @@
 package at.torch.compose.database.repository
 
 import at.torch.compose.database.TorchDatabase
+import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
-import at.torch.compose.exceptions.MarmotMissingChatGroupException
-import at.torch.compose.extensions.exporterSecret
 import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
-import com.vitorpamplona.quartz.marmot.mip03GroupMessages.CommitOrdering
-import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
-import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
-import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
-import com.vitorpamplona.quartz.marmot.mls.codec.TlsWriter
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
 import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
 import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
-import com.vitorpamplona.quartz.marmot.mls.framing.ContentType
-import com.vitorpamplona.quartz.marmot.mls.framing.MlsMessage
-import com.vitorpamplona.quartz.marmot.mls.framing.PrivateMessage
-import com.vitorpamplona.quartz.marmot.mls.framing.PublicMessage
-import com.vitorpamplona.quartz.marmot.mls.framing.WireFormat
-import com.vitorpamplona.quartz.marmot.mls.group.DecryptedMessage
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.RetainedEpochSecrets
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
-import com.vitorpamplona.quartz.marmot.mls.schedule.KeySchedule
-import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.marmot.mls.tree.Capabilities
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.marmot.mls.tree.Extension
@@ -42,8 +27,12 @@ import com.vitorpamplona.quartz.marmot.mls.tree.Lifetime
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
+import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
@@ -110,6 +99,43 @@ class DatabaseMarmotRepository(
 
     override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
         return database.marmotKeyPackageBundleDao().getAllMarmotKeyPackageBundles(publicKey)
+    }
+
+    override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?> {
+        return database.marmotInnerEventDao().observeUnprocessedMarmotInnerEvents(publicKey)
+    }
+
+    override suspend fun encryptAndSendMarmotInnerEvent(
+        marmotInnerEvent: MarmotInnerEvent,
+        nostrSignerSync: NostrSignerSync
+    ) {
+        database.chatRoomDao().findChatRoomById(marmotInnerEvent.chatRoomId)?.let { localChatRoom ->
+            localChatRoom.chatRoom.mlsGroupState?.let {
+                val mlsGroup = MlsGroup.restore(
+                    MlsGroupState.decodeTls(
+                        localChatRoom.chatRoom.mlsGroupState.hexToByteArray()
+                    )
+                )
+
+                val innerEvent = RumorAssembler.assembleRumor(
+                    pubKey = nostrSignerSync.pubKey,
+                    ev = EventTemplate(
+                        createdAt = marmotInnerEvent.createdAt.epochSeconds,
+                        content = marmotInnerEvent.content,
+                        tags = marmotInnerEvent.tags,
+                        kind = marmotInnerEvent.kind
+                    )
+                )
+
+                database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
+                    localChatRoom = localChatRoom,
+                    mlsGroup = mlsGroup,
+                    innerEvent = innerEvent,
+                    nostrSignerSync = nostrSignerSync
+                )
+            }
+
+        }
     }
 
     private fun generateKeyPackage(

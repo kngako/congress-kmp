@@ -5,6 +5,7 @@ import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
+import at.torch.compose.database.dao.MarmotOutboundDao
 import at.torch.compose.database.dao.MarmotGroupEventDao
 import at.torch.compose.database.dao.MarmotInnerEventDao
 import at.torch.compose.database.dao.MarmotKeyPackageBundleDao
@@ -108,6 +109,8 @@ abstract class TorchDatabase: RoomDatabase() {
     abstract fun giftWrapPayloadDao(): at.torch.compose.database.dao.GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): at.torch.compose.database.dao.InReplyToRelationDao
+
+    abstract fun marmotOutboundDao(): MarmotOutboundDao
 
     abstract fun marmotGroupEventDao(): MarmotGroupEventDao
     abstract fun marmotInnerEventDao(): MarmotInnerEventDao
