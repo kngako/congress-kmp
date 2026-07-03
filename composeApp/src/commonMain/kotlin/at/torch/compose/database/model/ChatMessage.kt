@@ -9,6 +9,8 @@ import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
 import at.torch.compose.exceptions.GiftWrapImpersonationException
+import at.torch.compose.exceptions.MarmotUnprocessableInnerEventException
+import at.torch.compose.exceptions.MarmotUnsupportedWireFormatException
 import at.torch.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -82,11 +84,8 @@ data class ChatMessage(
             return when(groupEventResult) {
                 is GroupEventResult.ApplicationMessage -> {
                     val event = Event.fromJsonOrNull(groupEventResult.innerEventJson)
+                        ?: throw MarmotUnprocessableInnerEventException("Can't process ${groupEventResult.innerEventJson}")
 
-                    if (event?.pubKey != groupEvent.pubKey) {
-                        throw GiftWrapImpersonationException("" +
-                                "The innerEvent pubkey (${event?.pubKey}) doesn't match the groupEvent pubkey ${groupEvent.pubKey}")
-                    }
                     database.marmotInnerEventDao().upsert(
                         MarmotInnerEvent(
                             id = event.id,
