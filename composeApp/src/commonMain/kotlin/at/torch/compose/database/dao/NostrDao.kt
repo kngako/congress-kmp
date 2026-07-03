@@ -7,6 +7,7 @@ import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.Connection
+import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.Mention
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.database.model.NostrEvent
@@ -53,6 +54,7 @@ import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip40Expiration.expiration
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.io.encoding.Base64
 import kotlin.time.Clock
@@ -367,7 +369,18 @@ abstract class NostrDao(
                         }
 
                         if (memberPubkeys.contains(activeKeyPair.pubKey.toHex())) {
-                            // Ingest message...
+                            database.marmotGroupEventDao().upsert(
+                                MarmotGroupEvent(
+                                    id = groupEvent.id,
+                                    userPublicKey = activeKeyPair.pubKey.toHex(),
+                                    publicKey = groupEvent.pubKey,
+                                    encryptedContent = groupEvent.encryptedContent(),
+                                    chatRoomId = chatRoomId,
+                                    nostrEventId = nostrEvent.id,
+                                    createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) }
+                                )
+                            )
                             MarmotInboundManager.processGroupEvent(
                                 database = database,
                                 activeKeyPair = activeKeyPair,
@@ -375,7 +388,6 @@ abstract class NostrDao(
                                 mlsGroup = mlsGroup,
                                 groupEvent = groupEvent
                             )?.let { groupEventResult ->
-
                                 ChatMessage.fromGroupEventResult(
                                     database = database,
                                     activeKeyPair = activeKeyPair,
@@ -386,11 +398,7 @@ abstract class NostrDao(
                                         chatMessage
                                     )
                                 }
-
-
                             }
-
-
                         } else {
                             throw MarmotNotMemberOfChatGroupException("We are not a member of the chat room ${localChatRoom.chatRoom.id}")
                         }

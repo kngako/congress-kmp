@@ -5,6 +5,7 @@ import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
+import at.torch.compose.database.dao.MarmotGroupEventDao
 import at.torch.compose.database.dao.MarmotInnerEventDao
 import at.torch.compose.database.dao.MarmotKeyPackageBundleDao
 import at.torch.compose.database.dao.MarmotKeyPackageDao
@@ -20,6 +21,8 @@ import at.torch.compose.database.model.GiftWrapMessage
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.GiftWrapSeal
 import at.torch.compose.database.model.InReplyToRelation
+import at.torch.compose.database.model.MarmotGroupEvent
+import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.Mention
@@ -57,6 +60,8 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         InReplyToRelation::class,
+        MarmotGroupEvent::class,
+        MarmotInnerEvent::class,
         MarmotKeyPackage::class,
         MarmotKeyPackageBundle::class,
         Mention::class,
@@ -104,6 +109,7 @@ abstract class TorchDatabase: RoomDatabase() {
 
     abstract fun inReplyToRelationDao(): at.torch.compose.database.dao.InReplyToRelationDao
 
+    abstract fun marmotGroupEventDao(): MarmotGroupEventDao
     abstract fun marmotInnerEventDao(): MarmotInnerEventDao
 
     abstract fun marmotKeyPackageDao(): MarmotKeyPackageDao
