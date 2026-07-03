@@ -41,13 +41,13 @@ import kotlin.time.Instant
     ],
 )
 data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    @PrimaryKey
+    val id: HexKey,
 
     /**
      * Sender Public Key
      */
-    val publicKey: String,
+    val publicKey: HexKey,
 
     val chatRoomId: String,
 

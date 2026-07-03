@@ -3,6 +3,7 @@ package at.torch.compose.database.model
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
+import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.traits.LocalStoreEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
@@ -33,6 +34,18 @@ import kotlin.time.Instant
             childColumns = ["giftWrapPayloadId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = GroupEvent::class,
+            parentColumns = ["id"],
+            childColumns = ["groupEventId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = MarmotInnerEvent::class,
+            parentColumns = ["id"],
+            childColumns = ["marmotInnerEventId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class ChatMessage(
@@ -44,6 +57,7 @@ data class ChatMessage(
 
     val giftWrapPayloadId: HexKey?,
     val groupEventId: HexKey?,
+    val marmotInnerEventId: HexKey?,
     val chatRoomId: String,
 
     val replyToMessageId: Long? = null,
@@ -60,7 +74,8 @@ data class ChatMessage(
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
 
     companion object {
-        fun fromGroupEventResult(
+        suspend fun fromGroupEventResult(
+            database: TorchDatabase,
             activeKeyPair: KeyPair,
             groupEvent: GroupEvent,
             groupEventResult: GroupEventResult
@@ -73,12 +88,25 @@ data class ChatMessage(
                         throw GiftWrapImpersonationException("" +
                                 "The innerEvent pubkey (${event?.pubKey}) doesn't match the groupEvent pubkey ${groupEvent.pubKey}")
                     }
+                    database.marmotInnerEventDao().upsert(
+                        MarmotInnerEvent(
+                            id = event.id,
+                            publicKey = event.pubKey,
+                            marmotGroupEventId = groupEvent.id,
+                            tags = event.tags,
+                            content = event.content,
+                            chatRoomId = groupEventResult.groupId,
+                            kind = event.kind,
+                            createdAt = Instant.fromEpochSeconds(event.createdAt)
+                        )
+                    )
                     when (event.kind) {
                         ChatEvent.KIND -> {
                             ChatMessage(
                                 giftWrapPayloadId = null,
                                 messageType = "message",
                                 groupEventId = groupEvent.id,
+                                marmotInnerEventId = event.id,
                                 senderPublicKey = event.pubKey,
                                 isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                                 chatRoomId = groupEventResult.groupId,
@@ -91,6 +119,7 @@ data class ChatMessage(
                                 giftWrapPayloadId = null,
                                 messageType = "unsupported",
                                 groupEventId = groupEvent.id,
+                                marmotInnerEventId = event.id,
                                 senderPublicKey = groupEvent.pubKey,
                                 isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                                 chatRoomId = groupEventResult.groupId,
@@ -104,6 +133,7 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         groupEventId = groupEvent.id,
+                        marmotInnerEventId = null,
                         messageType = "pendingCommit",
                         senderPublicKey = groupEvent.pubKey,
                         isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
@@ -116,6 +146,7 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         groupEventId = groupEvent.id,
+                        marmotInnerEventId = null,
                         messageType = "processedCommit",
                         senderPublicKey = groupEvent.pubKey,
                         isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
@@ -155,6 +186,7 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         groupEventId = groupEvent.id,
+                        marmotInnerEventId = null,
                         messageType = "proposalStaged",
                         senderPublicKey = groupEvent.pubKey,
                         isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
@@ -167,6 +199,7 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         groupEventId = groupEvent.id,
+                        marmotInnerEventId = null,
                         messageType = "undecryptableOuterLayer",
                         senderPublicKey = groupEvent.pubKey,
                         isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,

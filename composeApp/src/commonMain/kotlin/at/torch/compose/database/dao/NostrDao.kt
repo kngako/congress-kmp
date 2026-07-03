@@ -43,6 +43,7 @@ import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -376,6 +377,7 @@ abstract class NostrDao(
                             )?.let { groupEventResult ->
 
                                 ChatMessage.fromGroupEventResult(
+                                    database = database,
                                     activeKeyPair = activeKeyPair,
                                     groupEvent = groupEvent,
                                     groupEventResult = groupEventResult,
@@ -385,7 +387,7 @@ abstract class NostrDao(
                                     )
                                 }
 
-                                // TODO: Process none chatMessages...
+
                             }
 
 

@@ -2,7 +2,10 @@ package at.torch.compose.database.repository
 
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.GiftWrapPayload
+import at.torch.compose.database.model.MarmotInnerEvent
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -11,9 +14,11 @@ import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -99,46 +104,97 @@ class DatabaseChatRepository(
         messageType: Kind
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")
-
-        val receiverTags = localChatRoom.localParticipants.filter { participant ->
-            participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey // TODO: Allow this where it's notes to self...
-        }.map { localParticipant ->
-            PTag.assemble(
-                localParticipant.participant.participantPublicKey,
-                localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+        val mlsGroup = localChatRoom.chatRoom.mlsGroupState?.let { mlsGroupState ->
+            MlsGroup.restore(
+                MlsGroupState.decodeTls(
+                    mlsGroupState.hexToByteArray()
+                )
             )
         }
+        if (mlsGroup != null) {
+            // Create ChatRumor...
+            val createdAt = Clock.System.now().epochSeconds
+            val marmotInnerEventKind = if (messageType == ChatMessageEvent.KIND) {
+                ChatEvent.KIND // nip-17 chatMessageEvent.kind is in MLS chatMessage.kind
+            } else {
+                messageType
+            }
 
-        val createdAt = Clock.System.now().epochSeconds
-        val giftWrapPayloadId = EventHasher.hashId(
-            pubKey = localChatRoom.chatRoom.userPublicKey,
-            createdAt = createdAt,
-            tags = receiverTags.toTypedArray(),
-            content = text,
-            kind = messageType
-        )
+            val marmotInnerEventId = EventHasher.hashId(
+                pubKey = localChatRoom.chatRoom.userPublicKey,
+                createdAt = createdAt,
+                tags = emptyArray(),
+                content = text,
+                kind = marmotInnerEventKind
+            )
 
-        database.giftWrapPayloadDao().upsert(
-            GiftWrapPayload(
-                id = giftWrapPayloadId,
-                kind = messageType,
+            database.marmotInnerEventDao().upsert(
+                MarmotInnerEvent(
+                    id = marmotInnerEventId,
+                    publicKey = localChatRoom.chatRoom.userPublicKey,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    tags = emptyArray(),
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    kind = marmotInnerEventKind
+                )
+            )
+
+            database.chatMessageDao().upsert(
+                ChatMessage(
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    isUserMessage = true,
+                    giftWrapPayloadId = null,
+                    groupEventId = null,
+                    marmotInnerEventId = marmotInnerEventId,
+                )
+            )
+        } else {
+            // Send GiftWrapMessage
+            val receiverTags = localChatRoom.localParticipants.filter { participant ->
+                participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey // TODO: Allow this where it's notes to self...
+            }.map { localParticipant ->
+                PTag.assemble(
+                    localParticipant.participant.participantPublicKey,
+                    localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+                )
+            }
+
+            val createdAt = Clock.System.now().epochSeconds
+            val giftWrapPayloadId = EventHasher.hashId(
+                pubKey = localChatRoom.chatRoom.userPublicKey,
+                createdAt = createdAt,
                 tags = receiverTags.toTypedArray(),
-                createdAt = Instant.fromEpochSeconds(createdAt),
                 content = text,
-                chatRoomId = localChatRoom.chatRoom.id,
-                publicKey = localChatRoom.chatRoom.userPublicKey
+                kind = messageType
             )
-        )
-        database.chatMessageDao().upsert(
-            ChatMessage(
-                content = text,
-                chatRoomId = localChatRoom.chatRoom.id,
-                senderPublicKey = localChatRoom.chatRoom.userPublicKey,
-                isUserMessage = true,
-                giftWrapPayloadId = giftWrapPayloadId,
-                groupEventId = null
+
+            database.giftWrapPayloadDao().upsert(
+                GiftWrapPayload(
+                    id = giftWrapPayloadId,
+                    kind = messageType,
+                    tags = receiverTags.toTypedArray(),
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    publicKey = localChatRoom.chatRoom.userPublicKey
+                )
             )
-        )
+
+            database.chatMessageDao().upsert(
+                ChatMessage(
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    isUserMessage = true,
+                    giftWrapPayloadId = giftWrapPayloadId,
+                    groupEventId = null,
+                    marmotInnerEventId = null
+                )
+            )
+        }
     }
 
     override fun updateChatRoomSubject(
