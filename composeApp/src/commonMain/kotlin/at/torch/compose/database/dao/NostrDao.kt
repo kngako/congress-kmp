@@ -341,6 +341,8 @@ abstract class NostrDao(
             userPublicKey = activeKeyPair.pubKey.toHex()
         )?.let { groupEvent ->
 
+            logger.d("groupEvent: $groupEvent")
+
             groupEvent.groupId()?.let { chatRoomId ->
                 val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
 
@@ -365,19 +367,26 @@ abstract class NostrDao(
 
                         if (memberPubkeys.contains(activeKeyPair.pubKey.toHex())) {
                             // Ingest message...
-                            val groupEventResult = MarmotInboundManager.processGroupEvent(
+                            MarmotInboundManager.processGroupEvent(
                                 database = database,
                                 activeKeyPair = activeKeyPair,
                                 localChatRoom = localChatRoom,
                                 mlsGroup = mlsGroup,
                                 groupEvent = groupEvent
-                            )?.let { chatMessage ->
-                                database.chatMessageDao().upsert(
-                                    chatMessage
-                                )
-                            }
+                            )?.let { groupEventResult ->
 
-                            // Save groupEventResult as chatMessage...
+                                ChatMessage.fromGroupEventResult(
+                                    activeKeyPair = activeKeyPair,
+                                    groupEvent = groupEvent,
+                                    groupEventResult = groupEventResult,
+                                )?.let { chatMessage ->
+                                    database.chatMessageDao().upsert(
+                                        chatMessage
+                                    )
+                                }
+
+                                // TODO: Process none chatMessages...
+                            }
 
 
                         } else {

@@ -57,9 +57,9 @@ object MarmotInboundManager {
         localChatRoom: LocalChatRoom,
         mlsGroup: MlsGroup,
         groupEvent: GroupEvent
-    ): ChatMessage? {
+    ): GroupEventResult? {
         groupEvent.groupId()?.let { groupId ->
-            val result = try {
+            return try {
                 val mlsBytes = tryDecryptOuterLayer(
                     mlsGroup,
                     groupEvent.encryptedContent()
@@ -105,12 +105,6 @@ object MarmotInboundManager {
             } catch (e: Throwable) {
                 GroupEventResult.Error(groupId, "Failed to process GroupEvent: ${e.message}")
             }
-
-            return ChatMessage.fromGroupEventResult(
-                activeKeyPair = activeKeyPair,
-                groupEvent = groupEvent,
-                groupEventResult = result,
-            )
         }
 
         return null

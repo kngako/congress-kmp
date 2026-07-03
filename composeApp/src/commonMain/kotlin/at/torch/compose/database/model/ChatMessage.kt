@@ -7,11 +7,15 @@ import at.torch.compose.database.model.traits.LocalStoreEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
+import at.torch.compose.exceptions.GiftWrapImpersonationException
 import at.torch.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
+import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -63,16 +67,38 @@ data class ChatMessage(
         ): ChatMessage? {
             return when(groupEventResult) {
                 is GroupEventResult.ApplicationMessage -> {
-                    ChatMessage(
-                        giftWrapPayloadId = null,
-                        messageType = "message",
-                        groupEventId = groupEvent.id,
-                        senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                        chatRoomId = groupEventResult.groupId,
-                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                        content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
-                    )
+                    val event = Event.fromJsonOrNull(groupEventResult.innerEventJson)
+
+                    if (event?.pubKey != groupEvent.pubKey) {
+                        throw GiftWrapImpersonationException("" +
+                                "The innerEvent pubkey (${event?.pubKey}) doesn't match the groupEvent pubkey ${groupEvent.pubKey}")
+                    }
+                    when (event.kind) {
+                        ChatEvent.KIND -> {
+                            ChatMessage(
+                                giftWrapPayloadId = null,
+                                messageType = "message",
+                                groupEventId = groupEvent.id,
+                                senderPublicKey = event.pubKey,
+                                isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                chatRoomId = groupEventResult.groupId,
+                                createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                content = event.content, // TODO: Figure out what to do here...
+                            )
+                        }
+                        else -> {
+                            ChatMessage(
+                                giftWrapPayloadId = null,
+                                messageType = "unsupported",
+                                groupEventId = groupEvent.id,
+                                senderPublicKey = groupEvent.pubKey,
+                                isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                chatRoomId = groupEventResult.groupId,
+                                createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                                content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
+                            )
+                        }
+                    }
                 }
                 is GroupEventResult.CommitPending -> {
                     ChatMessage(
