@@ -15,7 +15,6 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -35,9 +34,9 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
-            entity = GroupEvent::class,
+            entity = MarmotGroupEvent::class,
             parentColumns = ["id"],
-            childColumns = ["groupEventId"],
+            childColumns = ["marmotGroupEventId"],
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
@@ -56,7 +55,7 @@ data class ChatMessage(
     val isUserMessage: Boolean,
 
     val giftWrapPayloadId: HexKey?,
-    val groupEventId: HexKey?,
+    val marmotGroupEventId: HexKey?,
     val marmotInnerEventId: HexKey?,
     val chatRoomId: String,
 
@@ -105,7 +104,7 @@ data class ChatMessage(
                             ChatMessage(
                                 giftWrapPayloadId = null,
                                 messageType = "message",
-                                groupEventId = groupEvent.id,
+                                marmotGroupEventId = groupEvent.id,
                                 marmotInnerEventId = event.id,
                                 senderPublicKey = event.pubKey,
                                 isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
@@ -118,7 +117,7 @@ data class ChatMessage(
                             ChatMessage(
                                 giftWrapPayloadId = null,
                                 messageType = "unsupported",
-                                groupEventId = groupEvent.id,
+                                marmotGroupEventId = groupEvent.id,
                                 marmotInnerEventId = event.id,
                                 senderPublicKey = groupEvent.pubKey,
                                 isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
@@ -132,7 +131,7 @@ data class ChatMessage(
                 is GroupEventResult.CommitPending -> {
                     ChatMessage(
                         giftWrapPayloadId = null,
-                        groupEventId = groupEvent.id,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = null,
                         messageType = "pendingCommit",
                         senderPublicKey = groupEvent.pubKey,
@@ -145,7 +144,7 @@ data class ChatMessage(
                 is GroupEventResult.CommitProcessed -> {
                     ChatMessage(
                         giftWrapPayloadId = null,
-                        groupEventId = groupEvent.id,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = null,
                         messageType = "processedCommit",
                         senderPublicKey = groupEvent.pubKey,
@@ -185,7 +184,7 @@ data class ChatMessage(
                 is GroupEventResult.ProposalStaged -> {
                     ChatMessage(
                         giftWrapPayloadId = null,
-                        groupEventId = groupEvent.id,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = null,
                         messageType = "proposalStaged",
                         senderPublicKey = groupEvent.pubKey,
@@ -198,7 +197,7 @@ data class ChatMessage(
                 is GroupEventResult.UndecryptableOuterLayer -> {
                     ChatMessage(
                         giftWrapPayloadId = null,
-                        groupEventId = groupEvent.id,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = null,
                         messageType = "undecryptableOuterLayer",
                         senderPublicKey = groupEvent.pubKey,

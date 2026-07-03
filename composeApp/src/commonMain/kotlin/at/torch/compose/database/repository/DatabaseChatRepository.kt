@@ -147,7 +147,7 @@ class DatabaseChatRepository(
                     senderPublicKey = localChatRoom.chatRoom.userPublicKey,
                     isUserMessage = true,
                     giftWrapPayloadId = null,
-                    groupEventId = null,
+                    marmotGroupEventId = null,
                     marmotInnerEventId = marmotInnerEventId,
                 )
             )
@@ -190,7 +190,7 @@ class DatabaseChatRepository(
                     senderPublicKey = localChatRoom.chatRoom.userPublicKey,
                     isUserMessage = true,
                     giftWrapPayloadId = giftWrapPayloadId,
-                    groupEventId = null,
+                    marmotGroupEventId = null,
                     marmotInnerEventId = null
                 )
             )

@@ -29,7 +29,7 @@ abstract class MarmotOutboundDao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    suspend fun encryptAndSendMarmotInnerEvent(
+    open suspend fun encryptAndSendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,
         mlsGroup: MlsGroup,
         innerEvent: Event,

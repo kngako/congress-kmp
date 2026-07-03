@@ -101,6 +101,7 @@ fun TorchNavHost(
             activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
+            marmotRepository = databaseMarmotRepository,
             scope = applicationIOScope
         )
     )
