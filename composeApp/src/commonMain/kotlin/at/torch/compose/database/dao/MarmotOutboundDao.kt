@@ -4,11 +4,14 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
+import at.torch.compose.database.model.ChatMessageNostrEventRelation
 import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.extensions.exporterSecret
+import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -63,6 +66,13 @@ abstract class MarmotOutboundDao(
         // Step 4: Sign with a fresh ephemeral keypair
         val ephemeralSigner = NostrSignerInternal(KeyPair())
         val groupEvent: GroupEvent = ephemeralSigner.sign(template)
+        logger.d("groupEvent: $groupEvent")
+
+        database.chatRoomDao().upsert(
+            localChatRoom.chatRoom.copy(
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+            )
+        )
 
         database.nostrEventDao().upsert(
             NostrEvent(
@@ -75,30 +85,57 @@ abstract class MarmotOutboundDao(
                 pubKey = groupEvent.pubKey
             )
         )
-        database.marmotGroupEventDao().upsert(
-            MarmotGroupEvent(
-                id = groupEvent.id,
-                createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                encryptedContent = groupEvent.encryptedContent(),
-                chatRoomId = localChatRoom.chatRoom.id,
-                nostrEventId = groupEvent.id,
-                userPublicKey = nostrSignerSync.pubKey,
-                publicKey = nostrSignerSync.pubKey
-            )
-        )
 
-        // Sync broadcast to all the required relays...
-        database.broadcastNostrEventRequestDao().insert(
-            Relays.DefaultDMRelayList.map { // TODO: Get these from localChatRoom...
-                BroadcastNostrEventRequest(
+        val chatMessageOrNull = database.chatMessageDao().getChatMessagesByMarmotInnerEventId(innerEvent.id)
+
+        logger.d("encryptAndSendMarmotInnerEvent: $chatMessageOrNull")
+        chatMessageOrNull?.let { chatMessage ->
+            database.chatMessageNostrEventRelationDao().upsert(
+                ChatMessageNostrEventRelation(
+                    chatMessageId = chatMessage.id,
+                    nostrEventId = groupEvent.id
+                )
+            )
+
+            database.marmotGroupEventDao().upsert(
+                MarmotGroupEvent(
+                    id = groupEvent.id,
+                    createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                    encryptedContent = groupEvent.encryptedContent(),
+                    chatRoomId = localChatRoom.chatRoom.id,
                     nostrEventId = groupEvent.id,
-                    relayURL = it.url
+                    userPublicKey = nostrSignerSync.pubKey,
+                    publicKey = nostrSignerSync.pubKey
+                )
+            )
+            database.chatMessageDao().upsert(
+                chatMessage.copy(
+                    marmotGroupEventId = groupEvent.id
+                )
+            )
+
+            // Sync broadcast to all the required relays...
+            val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
+                Relays.DefaultDMRelayList.map { // TODO: Get these from localChatRoom...
+                    BroadcastNostrEventRequest(
+                        nostrEventId = groupEvent.id,
+                        relayURL = it.url
+                    )
+                }
+            )
+
+            broadcastNostrEventRequestIds.forEach { broadcastNostrEventRequestId ->
+                database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
+                    ChatMessageBroadcastNostrEventRequestRelation(
+                        chatMessageId = chatMessage.id,
+                        broadcastNostrEventRequestId = broadcastNostrEventRequestId
+                    )
                 )
             }
-        )
+        }
     }
 
     companion object {
-        const val TAG = "NostrNip17Dao"
+        const val TAG = "MarmotOutboundDao"
     }
 }

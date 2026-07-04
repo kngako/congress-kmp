@@ -205,12 +205,12 @@ class DatabaseChatRepository(
         return null
     }
 
-    override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<at.torch.compose.database.model.GiftWrapPayload?> {
+    override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?> {
         return database.giftWrapPayloadDao().observeUnsealedGiftWrapPayloads(publicKey)
     }
 
     override suspend fun sealGiftWrapPayload(
-        giftWrapPayload: at.torch.compose.database.model.GiftWrapPayload,
+        giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
         database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEachIndexed { index, participant ->
