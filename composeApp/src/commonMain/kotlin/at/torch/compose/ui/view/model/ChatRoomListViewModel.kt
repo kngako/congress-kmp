@@ -118,7 +118,7 @@ class ChatRoomListViewModel(
                         relayURL = relayChatRoomMap.first,
                         synchronizationFilter = mlsGroupMessageFilter
                     ),
-                    purpose = "messages",
+                    purpose = "mlsMessages",
                     synchronizationFilter = mlsGroupMessageFilter,
                     relayURL = relayChatRoomMap.first,
                     level = 0

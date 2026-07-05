@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.SynchronizeNostrEventRequest
+import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.network.dto.toRelayDTO
 import at.torch.compose.network.sockets.NostrIncomingMessage
 import co.touchlab.kermit.Logger
@@ -39,7 +41,7 @@ class SynchronizationViewModel(
     val scope: CoroutineScope,
 ): ViewModel() {
 
-    val relaysSocketManager = _root_ide_package_.at.torch.compose.network.relays.RelaysSocketManager(
+    val relaysSocketManager = at.torch.compose.network.relays.RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
         nostrSocketClientFactory = at.torch.compose.network.sockets.NostrSocketClientFactory,
         cachingImportRepository = at.torch.compose.repository.CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
@@ -125,7 +127,7 @@ class SynchronizationViewModel(
                                 synchronizeNostrEventRequest.relayURL
                             ).collect { nostrIncomingMessage ->
                                 when (nostrIncomingMessage) {
-                                    is at.torch.compose.network.sockets.NostrIncomingMessage.EventMessage -> {
+                                    is NostrIncomingMessage.EventMessage -> {
                                         scope.launch(Dispatchers.IO) {
                                             logger.d("Import message: $nostrIncomingMessage")
                                             nostrIncomingMessage.nostrEvent?.let {
@@ -139,7 +141,7 @@ class SynchronizationViewModel(
                                             }
                                         }
                                     }
-                                    is at.torch.compose.network.sockets.NostrIncomingMessage.EventsMessage -> {
+                                    is NostrIncomingMessage.EventsMessage -> {
                                         logger.d("Import messages: $nostrIncomingMessage")
 
                                         nostrIncomingMessage.nostrEvents.forEach { nostrEvent ->
@@ -152,7 +154,7 @@ class SynchronizationViewModel(
                                             )
                                         }
                                     }
-                                    is at.torch.compose.network.sockets.NostrIncomingMessage.EoseMessage -> {
+                                    is NostrIncomingMessage.EoseMessage -> {
                                         logger.d("Sync request has been successfully processed (${synchronizeNostrEventRequest.relayURL}): $nostrIncomingMessage")
                                         val closeCommand = CloseCmd(
                                             subId = synchronizeNostrEventRequest.id,
@@ -240,7 +242,7 @@ class SynchronizationViewModel(
                                     negentropySynchronizeRequest.relayURL
                                 ).collect { nostrIncomingMessage ->
                                     when (nostrIncomingMessage) {
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.EventMessage -> {
+                                        is NostrIncomingMessage.EventMessage -> {
                                             scope.launch(Dispatchers.IO) {
                                                 logger.d("Import message: $nostrIncomingMessage")
                                                 nostrIncomingMessage.nostrEvent?.let {
@@ -254,7 +256,7 @@ class SynchronizationViewModel(
                                                 }
                                             }
                                         }
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.EventsMessage -> {
+                                        is NostrIncomingMessage.EventsMessage -> {
                                             logger.d("Import messages: $nostrIncomingMessage")
 
                                             nostrIncomingMessage.nostrEvents.forEach { nostrEvent ->
@@ -281,11 +283,13 @@ class SynchronizationViewModel(
                                             logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
                                             // TODO: Don't schedule a sync when on mobile internet.
-                                            nostrRepository.queueSynchronizeNostrEvent(
-                                                listOf(
-                                                    negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                            if (negentropySynchronizeRequest.purpose == "mlsMessages") {
+                                                nostrRepository.queueSynchronizeNostrEvent(
+                                                    listOf(
+                                                        negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                                    )
                                                 )
-                                            )
+                                            }
                                             return@collect
                                         }
                                         is NostrIncomingMessage.NegentropyMessage -> {
@@ -303,10 +307,10 @@ class SynchronizationViewModel(
                                                 // Schedule a sync from this relay...
                                                 nostrRepository.queueSynchronizeNostrEvent(
                                                     listOf(
-                                                        _root_ide_package_.at.torch.compose.database.model.SynchronizeNostrEventRequest(
+                                                        SynchronizeNostrEventRequest(
                                                             purpose = negentropySynchronizeRequest.purpose,
                                                             synchronizationFilters = arrayOf(
-                                                                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
+                                                                SynchronizationFilter(
                                                                     ids = result.needIds.map { it.toHexString() }
                                                                         .toTypedArray()
                                                                 )
@@ -319,7 +323,7 @@ class SynchronizationViewModel(
                                             }
                                             val eventIds = events.map { it.id }
                                             val broadcastNostrEventRequests = result.sendIds.filter { it.toHexString() in eventIds }.map { sendId ->
-                                                _root_ide_package_.at.torch.compose.database.model.BroadcastNostrEventRequest(
+                                                at.torch.compose.database.model.BroadcastNostrEventRequest(
                                                     nostrEventId = sendId.toHexString(),
                                                     relayURL = negentropySynchronizeRequest.relayURL
                                                 )
@@ -340,11 +344,13 @@ class SynchronizationViewModel(
                                         is NostrIncomingMessage.NoticeMessage -> {
                                             logger.d("Notice message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
                                             if (nostrIncomingMessage.subscriptionId?.contains("negentropy disabled") == true) {
-                                                nostrRepository.queueSynchronizeNostrEvent(
-                                                    listOf(
-                                                        negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                                if (negentropySynchronizeRequest.purpose == "mlsMessages") {
+                                                    nostrRepository.queueSynchronizeNostrEvent(
+                                                        listOf(
+                                                            negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                                        )
                                                     )
-                                                )
+                                                }
                                             }
                                         }
                                         else -> {
