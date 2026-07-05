@@ -7,7 +7,7 @@ import androidx.navigation.compose.rememberNavController
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Aux",
+        title = "Torch",
     ) {
         val navController = rememberNavController()
         AuxApp(

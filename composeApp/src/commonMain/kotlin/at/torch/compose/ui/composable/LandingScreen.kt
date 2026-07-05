@@ -68,7 +68,7 @@ fun LandingScreen(
                 }
 
                 Text(
-                    text = "Sign in to Aux via nsec, or remote signer",
+                    text = "Sign in to Torch via nsec, or remote signer",
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
@@ -88,7 +88,7 @@ fun LandingScreen(
 
                 }
                 Text(
-                    text = "If you are new to Aux or just want to create a fresh profile",
+                    text = "If you are new to Torch or just want to create a fresh profile",
                     modifier = Modifier.padding(10.dp),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center

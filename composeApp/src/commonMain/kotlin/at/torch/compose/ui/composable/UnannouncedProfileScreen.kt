@@ -44,7 +44,7 @@ fun UnannouncedProfileScreen() {
                 )
 
                 Text(
-                    text = "Aux will be broadcast what you publish to a distributed set of relays so that it's decentralized.",
+                    text = "Torch will be broadcast what you publish to a distributed set of relays so that it's decentralized.",
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

@@ -95,7 +95,7 @@ fun HomeScreen(
                         ),
                         title = {
                             Text(
-                                "Aux"
+                                "Torch"
                             )
                         },
                         navigationIcon = {

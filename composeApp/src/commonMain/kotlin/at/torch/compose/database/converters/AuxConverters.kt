@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
 class AuxConverters {
-    val logger = Logger.withTag("AuxConverters")
+    val logger = Logger.withTag("TorchConverters")
 
     @TypeConverter
     fun fromTimestamp(value: Long?): Instant? {
@@ -37,7 +37,7 @@ class AuxConverters {
             Json.encodeToString(it).lowercase()
         }
     } catch (e: Throwable) {
-        logger.e("Failed to convert from HexArray $value", e)
+        logger.e("Failed to convert from HexArray ${value.contentToString()}", e)
         return null
     }
 
@@ -57,7 +57,7 @@ class AuxConverters {
             Json.encodeToString(it)
         }
     } catch (e: Throwable) {
-        logger.e("Failed to convert from KindArray $value", e)
+        logger.e("Failed to convert from KindArray ${value.contentToString()}", e)
         return null
     }
 
@@ -77,7 +77,7 @@ class AuxConverters {
             Json.encodeToString(value)
         }
     } catch (e: Throwable) {
-        logger.e("Failed to convert from FilterArray $value", e)
+        logger.e("Failed to convert from FilterArray ${value.contentToString()}", e)
         return null
     }
 

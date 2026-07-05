@@ -241,14 +241,14 @@ fun TorchNavHost(
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
                         route = LoadingRoute(
-                            text = "Loading... Aux"
+                            text = "Loading... Torch"
                         )
                     )
                 },
                 onNavigateToWalletIntroPage = {
                     navController.navigate(
                         route = LoadingRoute(
-                            text = "Introducing... Aux"
+                            text = "Introducing... Torch"
                         )
                     )
                     applicationIOScope.launch {
