@@ -17,6 +17,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailViewModel(
@@ -101,8 +102,16 @@ class ChatRoomDetailViewModel(
                 }
             }
 
-            logger.d("We should be creating a new chat...")
-            chatRoomDetailUIState = ChatRoomDetailUIState.Error
+            val localAccount = nostrRepository.observeProfile(chatRoomId).firstOrNull()
+
+            if (localAccount != null) {
+                logger.d("Create chat with: $localAccount")
+                // Check if we have a keyPackageEvent...
+                chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
+
+            } else {
+                chatRoomDetailUIState = ChatRoomDetailUIState.Error
+            }
         }
     }
 

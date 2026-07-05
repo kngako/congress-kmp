@@ -1,8 +1,11 @@
 package at.torch.compose.repository
 
+import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Participant
+import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatMessage
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
+import at.torch.compose.database.model.intermdiate.LocalProfile
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -33,6 +36,10 @@ interface ChatRepository {
     ): LocalChatRoom?
 
     suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
+
+    suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
+
+    suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile?
 
     suspend fun sendChatMessage(
         text: String,
@@ -85,6 +92,14 @@ interface ChatRepository {
 
             override suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent? {
                 return null
+            }
+
+            override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
+                TODO("Not yet implemented")
             }
 
             override suspend fun sendChatMessage(

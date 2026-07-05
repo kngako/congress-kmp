@@ -3,7 +3,10 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotInnerEvent
+import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Participant
+import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.intermdiate.LocalProfile
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
@@ -100,6 +103,14 @@ class DatabaseChatRepository(
                 )
             }
         }
+    }
+
+    override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? {
+        return database.marmotKeyPackageDao().getMarmotKeyPackageForPublicKey(publicKey)
+    }
+
+    override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
+        return database.profileDao().getProfileByPublicKey(publicKey)
     }
 
     override suspend fun sendChatMessage(

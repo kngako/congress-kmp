@@ -42,7 +42,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.NegentropySynchronizeRequest
+import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.extensions.toFormattedTimeAndDateString
+import at.torch.compose.nostr.Relays
 import at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
@@ -97,7 +100,7 @@ class ChatRoomDetailMessageListViewModel(
                     // Sync messages from this relay...
                     Pair(
                         chatMessageRelayListEvent.relays(),
-                        _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
+                        SynchronizationFilter(
                             kinds = arrayOf(
                                 GiftWrapEvent.KIND,
                             ),
@@ -113,8 +116,8 @@ class ChatRoomDetailMessageListViewModel(
                     isReceiverChatMessageRelayListMissing.value = true
                     // TODO: compute the timestamp for when list we sent messages and use that as since...
                     Pair(
-                        at.torch.compose.nostr.Relays.DefaultDMRelayList,
-                        _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
+                        Relays.DefaultDMRelayList,
+                        SynchronizationFilter(
                             kinds = arrayOf(
                                 ChatMessageRelayListEvent.KIND,
                             ),
@@ -129,8 +132,8 @@ class ChatRoomDetailMessageListViewModel(
                 logger.i("GiftWrapFilter: ${relayAndSynchronizationFilter.second}")
 
                 val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
-                    _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-                        id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = relayAndSynchronizationFilter.second
                         ),
