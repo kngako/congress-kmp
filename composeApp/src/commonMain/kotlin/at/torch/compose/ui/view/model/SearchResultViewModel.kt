@@ -8,8 +8,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.extensions.assureValidNpub
+import at.torch.compose.extensions.bech32ToHexOrNull
+import at.torch.compose.extensions.bech32ToHexOrThrow
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip19Bech32.bech32.bechToBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -42,18 +47,38 @@ class SearchResultViewModel(
         initiateSearchResults(searchResultType)
     }
 
+    fun computeSynchronizationFilter(): SynchronizationFilter {
+        if (searchQuery.startsWith("npub")) {
+            searchQuery.bech32ToHexOrNull()?.let { publicKey ->
+                logger.d("Looking for pubkey: $publicKey")
+                return SynchronizationFilter(
+                    kinds = arrayOf(
+                        MetadataEvent.KIND,
+                    ),
+                    authors = arrayOf(
+                        publicKey
+                    ),
+                    limit = 50
+                )
+            }
+        }
+
+        return SynchronizationFilter(
+            kinds = arrayOf(
+                MetadataEvent.KIND,
+            ),
+            search = searchQuery,
+            limit = 50
+        )
+    }
+
     fun initiateSearchResults(searchResultType: SearchResultType = this.searchResultType) {
         logger.d("initiateSearchResults")
         val synchronizationFilter = when (searchResultType) {
             SearchResultType.Profiles -> {
-                _root_ide_package_.at.torch.compose.database.model.types.SynchronizationFilter(
-                    kinds = arrayOf(
-                        MetadataEvent.KIND,
-                    ),
-                    search = searchQuery,
-                    limit = 50
-                )
+                computeSynchronizationFilter()
             }
+            // We might want to support other search result types...
         }
 
         saveSearchQuery(synchronizationFilter)
@@ -61,7 +86,7 @@ class SearchResultViewModel(
         loadSearchResultFeed(synchronizationFilter)
     }
 
-    private fun saveSearchQuery(synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter) {
+    private fun saveSearchQuery(synchronizationFilter: SynchronizationFilter) {
         logger.d("saveSearchQuery: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             nostrRepository.saveSearchQuery(
@@ -73,7 +98,7 @@ class SearchResultViewModel(
         }
     }
 
-    private fun scheduleSearch(synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter) {
+    private fun scheduleSearch(synchronizationFilter: SynchronizationFilter) {
         logger.d("scheduleSearch: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
@@ -92,7 +117,7 @@ class SearchResultViewModel(
         }
     }
 
-    private fun loadSearchResultFeed(synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter) {
+    private fun loadSearchResultFeed(synchronizationFilter: SynchronizationFilter) {
         logger.d("loadSearchResultFeed: $searchQuery")
         viewModelScope.launch(Dispatchers.IO) {
             // This is something not taking into consideration the results we are actually looking for...
