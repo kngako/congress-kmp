@@ -116,21 +116,12 @@ class DatabaseMarmotRepository(
                         localChatRoom.chatRoom.mlsGroupState.hexToByteArray()
                     )
                 )
-
-                val innerEvent = RumorAssembler.assembleRumor(
-                    pubKey = nostrSignerSync.pubKey,
-                    ev = EventTemplate(
-                        createdAt = marmotInnerEvent.createdAt.epochSeconds,
-                        content = marmotInnerEvent.content,
-                        tags = marmotInnerEvent.tags,
-                        kind = marmotInnerEvent.kind
-                    )
-                )
+                logger.d("mlsGroup: $mlsGroup")
 
                 database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
                     localChatRoom = localChatRoom,
                     mlsGroup = mlsGroup,
-                    innerEvent = innerEvent,
+                    marmotInnerEvent = marmotInnerEvent,
                     nostrSignerSync = nostrSignerSync
                 )
             }

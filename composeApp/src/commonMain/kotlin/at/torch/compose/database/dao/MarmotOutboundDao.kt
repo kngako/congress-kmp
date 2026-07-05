@@ -7,6 +7,7 @@ import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.ChatMessageNostrEventRelation
 import at.torch.compose.database.model.MarmotGroupEvent
+import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
@@ -19,9 +20,11 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip40Expiration.expiration
+import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlin.time.Instant
 
@@ -35,13 +38,27 @@ abstract class MarmotOutboundDao(
     open suspend fun encryptAndSendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,
         mlsGroup: MlsGroup,
-        innerEvent: Event,
+        marmotInnerEvent: MarmotInnerEvent,
         nostrSignerSync: NostrSignerSync
     ) {
+        val innerEvent = RumorAssembler.assembleRumor(
+            pubKey = nostrSignerSync.pubKey,
+            ev = EventTemplate(
+                createdAt = marmotInnerEvent.createdAt.epochSeconds,
+                content = marmotInnerEvent.content,
+                tags = marmotInnerEvent.tags,
+                kind = marmotInnerEvent.kind
+            )
+        )
+
+        logger.d("InnerEvent: ${innerEvent.toJson()}")
+
         val plainTextBytes = innerEvent.toJson().encodeToByteArray()
+        logger.d("plainTextBytes: ${plainTextBytes.contentToString()}")
 
         // Step 1: MLS encrypt
         val mlsCipherText = mlsGroup.encrypt(plainTextBytes)
+        logger.d("mlsCipherText: ${mlsCipherText.contentToString()}")
 
         // Step 2: Outer ChaCha20-Poly1305 encryption
         val exportKey = mlsGroup.exporterSecret()
@@ -49,6 +66,7 @@ abstract class MarmotOutboundDao(
             mlsMessageBytes = mlsCipherText,
             groupKey = exportKey
         )
+        logger.d("encryptedContent: $encryptedContent")
 
         // Step 3: Build the GroupEvent template (auto-apply NIP-40 expiration
         // if the group has disappearing_message_secs configured per MIP-01/03).
@@ -66,20 +84,21 @@ abstract class MarmotOutboundDao(
         // Step 4: Sign with a fresh ephemeral keypair
         val ephemeralSigner = NostrSignerInternal(KeyPair())
         val groupEvent: GroupEvent = ephemeralSigner.sign(template)
-        logger.d("groupEvent: $groupEvent")
+        logger.d("groupEvent: ${groupEvent.toJson()}")
 
-        database.chatRoomDao().upsert(
-            localChatRoom.chatRoom.copy(
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-            )
-        )
+        // May need to update chatRoom mlsGroupState... or last sent message
+//        database.chatRoomDao().upsert(
+//            localChatRoom.chatRoom.copy(
+//                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+//            )
+//        )
 
         database.nostrEventDao().upsert(
             NostrEvent(
                 id = groupEvent.id,
-                tags = template.tags,
+                tags = groupEvent.tags,
                 createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                content = template.content,
+                content = groupEvent.content,
                 sig = groupEvent.sig,
                 kind = groupEvent.kind,
                 pubKey = groupEvent.pubKey
@@ -88,7 +107,7 @@ abstract class MarmotOutboundDao(
 
         val chatMessageOrNull = database.chatMessageDao().getChatMessagesByMarmotInnerEventId(innerEvent.id)
 
-        logger.d("encryptAndSendMarmotInnerEvent: $chatMessageOrNull")
+        logger.d("chatMessageOrNull: $chatMessageOrNull")
         chatMessageOrNull?.let { chatMessage ->
             database.chatMessageNostrEventRelationDao().upsert(
                 ChatMessageNostrEventRelation(
@@ -105,11 +124,17 @@ abstract class MarmotOutboundDao(
                     chatRoomId = localChatRoom.chatRoom.id,
                     nostrEventId = groupEvent.id,
                     userPublicKey = nostrSignerSync.pubKey,
-                    publicKey = nostrSignerSync.pubKey
+                    publicKey = groupEvent.pubKey
                 )
             )
             database.chatMessageDao().upsert(
                 chatMessage.copy(
+                    marmotGroupEventId = groupEvent.id
+                )
+            )
+
+            database.marmotInnerEventDao().upsert(
+                marmotInnerEvent.copy(
                     marmotGroupEventId = groupEvent.id
                 )
             )
