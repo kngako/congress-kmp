@@ -37,7 +37,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.view.model.ChatRoomDetailViewModel
+import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -46,9 +51,10 @@ fun ChatRoomDetailScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     relayHint: String?,
-    initialChatRoomDetailUIState: at.torch.compose.ui.view.state.ChatRoomDetailUIState = at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading,
-    nostrRepository: at.torch.compose.repository.NostrRepository,
-    chatRepository: at.torch.compose.repository.ChatRepository
+    initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
+    nostrRepository: NostrRepository,
+    chatRepository: ChatRepository,
+    onNavigateToChat: (Route) -> Unit,
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
@@ -62,7 +68,7 @@ fun ChatRoomDetailScreen(
     )
 
     when (val chatRoomDetailUIState = chatRoomDetailViewModel.chatRoomDetailUIState) {
-        at.torch.compose.ui.view.state.ChatRoomDetailUIState.Error -> {
+        ChatRoomDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -75,7 +81,7 @@ fun ChatRoomDetailScreen(
                 )
             }
         }
-        is at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded -> {
+        is ChatRoomDetailUIState.Loaded -> {
             val textFieldState = rememberTextFieldState()
 
             val chatRoomDetailMessageListViewModel: at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel = viewModel(
@@ -228,7 +234,7 @@ fun ChatRoomDetailScreen(
                 }
             }
         }
-        at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading -> {
+        ChatRoomDetailUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -252,7 +258,7 @@ fun ChatRoomDetailScreen(
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator(
+                LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -261,10 +267,43 @@ fun ChatRoomDetailScreen(
                 )
             }
         }
+        ChatRoomDetailUIState.InitiatingNewChat -> {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(
+                    20.dp
+                ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+
+                Spacer(
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Creating new chat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+
+                LoadingDataIndicator(
+                    fillScreen = false
+                )
+
+                Spacer(
+                    modifier = Modifier.weight(2f)
+                )
+
+                LaunchedEffect(true) {
+                    chatRoomDetailViewModel.initiateNewChat(
+                        onNavigateToChat
+                    )
+                }
+            }
+        }
     }
 
     LaunchedEffect(true) {
-        if (initialChatRoomDetailUIState == at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loading) {
+        if (initialChatRoomDetailUIState == ChatRoomDetailUIState.Loading) {
             chatRoomDetailViewModel.initiateChatRoomDetail()
         }
     }
@@ -281,7 +320,7 @@ private fun ChatRoomDetailScreenPreview() {
                 activeUserPublicKey = "",
                 chatRoomId = "publicKey",
                 relayHint = null,
-                initialChatRoomDetailUIState = at.torch.compose.ui.view.state.ChatRoomDetailUIState.Loaded(
+                initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(
                     localChatRoom = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(
                         chatRoom = _root_ide_package_.at.torch.compose.database.model.ChatRoom(
                             id = "",
@@ -292,8 +331,9 @@ private fun ChatRoomDetailScreenPreview() {
                         ),
                     )
                 ),
-                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = at.torch.compose.repository.ChatRepository.NO_OP_CHAT_REPOSITORY
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                onNavigateToChat = {}
             )
         }
     }

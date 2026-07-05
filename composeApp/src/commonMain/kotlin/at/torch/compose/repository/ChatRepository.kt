@@ -1,5 +1,8 @@
 package at.torch.compose.repository
 
+import at.torch.compose.database.model.Participant
+import at.torch.compose.database.model.intermdiate.LocalChatMessage
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -9,15 +12,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 interface ChatRepository {
-    suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatRoom>>
+    suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>>
 
-    suspend fun getChatRoomListByPublicKey(publicKey: String): List<at.torch.compose.database.model.intermdiate.LocalChatRoom>
+    suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom>
 
-    suspend fun getChatRoomByIdentifier(id: String): at.torch.compose.database.model.intermdiate.LocalChatRoom?
+    suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom?
 
-    suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<at.torch.compose.database.model.intermdiate.LocalChatMessage>
+    suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
 
-    suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatMessage>>
+    suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage>
+
+    suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>>
 
     suspend fun getOrCreateChatRoom(
         chatRoomId: String,
@@ -25,13 +30,13 @@ interface ChatRepository {
         relayHint: String?,
         defaultSubject: String?,
         mlsGroupState: String?
-    ): at.torch.compose.database.model.intermdiate.LocalChatRoom?
+    ): LocalChatRoom?
 
     suspend fun getChatMessageRelayForPublicKey(publicKey: HexKey): ChatMessageRelayListEvent?
 
     suspend fun sendChatMessage(
         text: String,
-        localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
+        localChatRoom: LocalChatRoom,
         messageType: Kind = ChatMessageEvent.KIND
     )
 
@@ -43,23 +48,27 @@ interface ChatRepository {
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
-            override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatRoom>> {
+            override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
                 return flow {  }
             }
 
-            override suspend fun getChatRoomListByPublicKey(publicKey: String): List<at.torch.compose.database.model.intermdiate.LocalChatRoom> {
+            override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
                 return emptyList()
             }
 
-            override suspend fun getChatRoomByIdentifier(id: String): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
+            override suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom? {
                 return null
             }
 
-            override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<at.torch.compose.database.model.intermdiate.LocalChatMessage> {
+            override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage> {
                 return emptyList()
             }
 
-            override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatMessage>> {
+            override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>> {
                 return flow {
                 }
             }
@@ -70,7 +79,7 @@ interface ChatRepository {
                 relayHint: String?,
                 defaultSubject: String?,
                 mlsGroupState: String?
-            ): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
+            ): LocalChatRoom? {
                 return null
             }
 
@@ -80,7 +89,7 @@ interface ChatRepository {
 
             override suspend fun sendChatMessage(
                 text: String,
-                localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
+                localChatRoom: LocalChatRoom,
                 messageType: Kind
             ) {
                 // TODO("Not yet implemented")

@@ -3,6 +3,7 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotInnerEvent
+import at.torch.compose.database.model.Participant
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
@@ -38,10 +39,13 @@ class DatabaseChatRepository(
         return database.chatRoomDao().getChatRoomListByUserPublicKey(publicKey)
     }
 
-    override suspend fun getChatRoomByIdentifier(id: String): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
+    override suspend fun getChatRoomByIdentifier(id: HexKey): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
         return database.chatRoomDao().findChatRoomById(id)
     }
 
+    override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
+        return database.participantDao().findParticipantByPublicKey(publicKey)
+    }
     override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<at.torch.compose.database.model.intermdiate.LocalChatMessage> {
         return database.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
     }

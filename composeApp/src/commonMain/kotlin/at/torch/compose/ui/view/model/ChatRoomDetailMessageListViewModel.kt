@@ -43,6 +43,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.extensions.toFormattedTimeAndDateString
+import at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
@@ -52,13 +53,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailMessageListViewModel(
-    initialChatRoomDetailMessageListUIState: at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState,
+    initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState,
     val localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
     val chatRepository: at.torch.compose.repository.ChatRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var chatRoomDetailMessageListUIState: at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState by mutableStateOf(initialChatRoomDetailMessageListUIState)
+    var chatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState by mutableStateOf(initialChatRoomDetailMessageListUIState)
         private set
 
     val isReceiverChatMessageRelayListMissing: MutableState<Boolean> = mutableStateOf(false)
@@ -76,7 +77,7 @@ class ChatRoomDetailMessageListViewModel(
                 localChatRoom.chatRoom.id
             ).distinctUntilChanged().collect { chatMessages ->
                 logger.d("getChatMessageListByChatRoomId: $chatMessages")
-                chatRoomDetailMessageListUIState = at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loaded(
+                chatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loaded(
                     chatMessageList = chatMessages
                 )
             }
@@ -161,7 +162,7 @@ class ChatRoomDetailMessageListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val chatRoomDetailMessageListUIState = this@ChatRoomDetailMessageListViewModel.chatRoomDetailMessageListUIState) {
-                at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Error -> {
+                ChatRoomDetailMessageListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -174,7 +175,7 @@ class ChatRoomDetailMessageListViewModel(
                         )
                     }
                 }
-                is at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loaded -> {
+                is ChatRoomDetailMessageListUIState.Loaded -> {
                     Spacer(
                         modifier = Modifier.weight(1f)
                     )
@@ -342,7 +343,7 @@ class ChatRoomDetailMessageListViewModel(
                         }
                     }
                 }
-                at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading -> {
+                ChatRoomDetailMessageListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -384,7 +385,7 @@ class ChatRoomDetailMessageListViewModel(
         const val TAG = "ChatRoomDetailMessageListViewModel"
 
         fun factory(
-            initialChatRoomDetailMessageListUIState: at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState = at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState.Loading,
+            initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loading,
             localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             chatRepository: at.torch.compose.repository.ChatRepository

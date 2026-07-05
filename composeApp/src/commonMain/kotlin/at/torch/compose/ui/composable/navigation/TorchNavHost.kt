@@ -23,6 +23,7 @@ import at.torch.compose.ui.composable.ShareProfileScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
@@ -510,15 +511,24 @@ fun TorchNavHost(
                 }
             )
         }
-        composable<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute>()
+        composable<ChatRoomDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
 
             ChatRoomDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository
+                chatRepository = databaseChatRepository,
+                onNavigateToChat = { chatRoomDetailRoute ->
+                    navController.navigate(
+                        route = chatRoomDetailRoute
+                    ) {
+                        popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
+                },
             )
         }
         composable<at.torch.compose.ui.composable.navigation.routes.SearchRoute> { backStackEntry ->
@@ -598,10 +608,14 @@ fun TorchNavHost(
                         )
                     )
                 },
-                onNavigateToDirectMessage = { route ->
+                onNavigateToDirectMessage = { chatRoom ->
                     navController.navigate(
-                        route = route
-                    )
+                        route = chatRoom
+                    ) {
+                        popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
                 },
             )
         }

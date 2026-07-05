@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -42,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import kotlinx.coroutines.launch
@@ -125,7 +131,9 @@ fun MetadataEventDetail(
         ) {
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
                     Column(
@@ -207,24 +215,6 @@ fun MetadataEventDetail(
                                     LoadingIndicator()
                                 }
                             }
-
-                            IconButton(
-                                onClick = {
-                                    onNavigateToChatRoom.invoke(
-                                        _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = localNostrEvent.nostrEvent.pubKey,
-                                            relayHint = localNostrEvent.nostrEvent.relayUrl,
-                                        )
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Mail,
-                                    contentDescription = "Direct Message"
-                                )
-                            }
-
                         }
                         Text(
                             modifier = Modifier.fillMaxWidth().padding(
@@ -238,117 +228,69 @@ fun MetadataEventDetail(
                     }
                 }
 
-                stickyHeader {
-                    PrimaryScrollableTabRow(
-                        modifier = Modifier.padding(
-                            horizontal = 10.dp
-                        ),
-                        edgePadding = 10.dp,
-                        selectedTabIndex = metadataEventDetailViewModel.pagerState.currentPage,
-                    ) {
-                        at.torch.compose.ui.view.model.MetadataEventDetailType.entries.forEachIndexed { index, destination ->
-                            Tab(
-                                selected = metadataEventDetailViewModel.pagerState.currentPage == index,
-                                onClick = {
-                                    scope.launch {
-                                        metadataEventDetailViewModel.pagerState.animateScrollToPage(destination.ordinal)
-                                    }
-                                },
-                                text = {
-                                    Text(
-                                        text = destination.name,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
+                item {
+                    TextButton(
+                        onClick = {
+                            onNavigateToEvent.invoke(
+                                ImplementationPendingRoute("Add to Group")
                             )
                         }
+                    ) {
+                        Icon(
+                            Icons.Default.GroupAdd,
+                            contentDescription = "Add to Group"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.width(10.dp)
+                        )
+
+                        Text("Add To Group")
                     }
                 }
 
                 item {
-                    Column(
-                        modifier = Modifier.fillParentMaxSize()
-                    ) {
-                        HorizontalPager(
-                            state = metadataEventDetailViewModel.pagerState,
-                        ) { pageIndex ->
-                            val metadataEventDetailType = at.torch.compose.ui.view.model.MetadataEventDetailType.entries[pageIndex]
-
-                            when (metadataEventDetailType) {
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Posts, at.torch.compose.ui.view.model.MetadataEventDetailType.Replies,
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Articles, at.torch.compose.ui.view.model.MetadataEventDetailType.Zaps,
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Photos, at.torch.compose.ui.view.model.MetadataEventDetailType.Shorts, at.torch.compose.ui.view.model.MetadataEventDetailType.Videos,
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Bookmarks, at.torch.compose.ui.view.model.MetadataEventDetailType.Reports, at.torch.compose.ui.view.model.MetadataEventDetailType.Relays -> {
-                                    val feedListViewModel: at.torch.compose.ui.view.model.FeedListViewModel = viewModel(
-                                        key = metadataEventDetailType.name,
-                                        factory = at.torch.compose.ui.view.model.FeedListViewModel.factory(
-                                            initialFeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
-                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
-                                            nostrRepository = nostrRepository
-                                        ),
-                                    )
-
-                                    key(feedListViewModel.feedListUIState) {
-                                        feedListViewModel.RenderFeed(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            onNavigateToEvent = onNavigateToEvent
-                                        )
-                                    }
-
-                                    key(true) {
-                                        feedListViewModel.initiate()
-                                    }
-                                }
-                                // TODO: Support gallery feeds...
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Following -> {
-                                    val followingListViewModel: at.torch.compose.ui.view.model.FollowingListViewModel = viewModel(
-                                        key = metadataEventDetailType.name,
-                                        factory = at.torch.compose.ui.view.model.FollowingListViewModel.factory(
-                                            initialFeedListUIState = at.torch.compose.ui.view.state.FollowingListUIState.Loading,
-                                            publicKey = localNostrEvent.nostrEvent.pubKey,
-                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
-                                            nostrRepository = nostrRepository
-                                        ),
-                                    )
-
-
-                                    key(followingListViewModel.followingListUIState) {
-                                        followingListViewModel.RenderFeed(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            onNavigateToEvent = onNavigateToEvent
-                                        )
-                                    }
-
-                                    key(true) {
-                                        followingListViewModel.initiate()
-                                    }
-                                }
-                                at.torch.compose.ui.view.model.MetadataEventDetailType.Followers -> {
-                                    val followersListViewModel: at.torch.compose.ui.view.model.FollowersListViewModel = viewModel(
-                                        key = metadataEventDetailType.name,
-                                        factory = at.torch.compose.ui.view.model.FollowersListViewModel.factory(
-                                            initialFeedListUIState = at.torch.compose.ui.view.state.FollowersListUIState.Loading,
-                                            publicKey = localNostrEvent.nostrEvent.pubKey,
-                                            synchronizationFilter = metadataEventDetailViewModel.getSynchronizationFilter(metadataEventDetailType),
-                                            nostrRepository = nostrRepository
-                                        ),
-                                    )
-
-
-                                    key(followersListViewModel.followersListUIState) {
-                                        followersListViewModel.RenderFeed(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            onNavigateToEvent = onNavigateToEvent
-                                        )
-                                    }
-
-                                    key(true) {
-                                        followersListViewModel.initiate()
-                                    }
-                                }
-                            }
+                    TextButton(
+                        onClick = {
+                            onNavigateToEvent.invoke(
+                                ImplementationPendingRoute("Block User")
+                            )
                         }
+                    ) {
+                        Icon(
+                            Icons.Default.Block,
+                            contentDescription = "Block"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.width(10.dp)
+                        )
+
+                        Text("Block User")
+                    }
+                }
+
+                item {
+                    Button(
+                        onClick = {
+                            onNavigateToChatRoom.invoke(
+                                ChatRoomDetailRoute(
+                                    activeUserPublicKey = activeUserPublicKey,
+                                    chatRoomId = localNostrEvent.nostrEvent.pubKey,
+                                    relayHint = localNostrEvent.nostrEvent.relayUrl,
+                                )
+                            )
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Mail,
+                            contentDescription = "Direct Message"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.width(10.dp)
+                        )
+                        Text("Send Message")
                     }
                 }
             }

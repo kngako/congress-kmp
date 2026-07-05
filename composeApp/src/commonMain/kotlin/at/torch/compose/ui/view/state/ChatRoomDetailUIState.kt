@@ -7,5 +7,6 @@ sealed interface ChatRoomDetailUIState {
 
     data object Error: ChatRoomDetailUIState
     data object Loading: ChatRoomDetailUIState
+    data object InitiatingNewChat: ChatRoomDetailUIState
 }
 
