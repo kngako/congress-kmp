@@ -85,7 +85,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
     ],
     version = 1
 )
-@TypeConverters(at.torch.compose.database.converters.AuxConverters::class)
+@TypeConverters(at.torch.compose.database.converters.TorchConverters::class)
 abstract class TorchDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): at.torch.compose.database.dao.BroadcastNostrEventReceiptDao
     abstract fun broadcastNostrEventRequestDao(): at.torch.compose.database.dao.BroadcastNostrEventRequestDao

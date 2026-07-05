@@ -5,7 +5,7 @@ import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
-class AuxConverters {
+class TorchConverters {
     val logger = Logger.withTag("TorchConverters")
 
     @TypeConverter
