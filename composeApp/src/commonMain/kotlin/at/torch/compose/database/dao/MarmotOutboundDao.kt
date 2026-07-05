@@ -87,11 +87,11 @@ abstract class MarmotOutboundDao(
         logger.d("groupEvent: ${groupEvent.toJson()}")
 
         // May need to update chatRoom mlsGroupState... or last sent message
-//        database.chatRoomDao().upsert(
-//            localChatRoom.chatRoom.copy(
-//                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-//            )
-//        )
+        database.chatRoomDao().upsert(
+            localChatRoom.chatRoom.copy(
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+            )
+        )
 
         database.nostrEventDao().upsert(
             NostrEvent(

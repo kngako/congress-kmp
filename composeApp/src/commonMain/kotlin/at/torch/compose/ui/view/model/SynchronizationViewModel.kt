@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.network.dto.toRelayDTO
+import at.torch.compose.network.sockets.NostrIncomingMessage
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.negentropy.Negentropy
 import com.vitorpamplona.negentropy.storage.StorageVector
@@ -266,7 +267,7 @@ class SynchronizationViewModel(
                                                 )
                                             }
                                         }
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.EoseMessage -> {
+                                        is NostrIncomingMessage.EoseMessage -> {
                                             logger.d("Sync request has been successfully processed (${negentropySynchronizeRequest.relayURL}): $nostrIncomingMessage")
 
                                             relaysSocketManager.closeNegentropySync(
@@ -276,7 +277,7 @@ class SynchronizationViewModel(
 
                                             return@collect
                                         }
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.NegentropyError -> {
+                                        is NostrIncomingMessage.NegentropyError -> {
                                             logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
                                             // TODO: Don't schedule a sync when on mobile internet.
@@ -287,7 +288,7 @@ class SynchronizationViewModel(
                                             )
                                             return@collect
                                         }
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.NegentropyMessage -> {
+                                        is NostrIncomingMessage.NegentropyMessage -> {
                                             logger.d("NegentropyMessage: ${nostrIncomingMessage.negentropyMessage}")
 
                                             val result = negentropy.reconcile(
@@ -336,7 +337,7 @@ class SynchronizationViewModel(
 
                                             return@collect
                                         }
-                                        is at.torch.compose.network.sockets.NostrIncomingMessage.NoticeMessage -> {
+                                        is NostrIncomingMessage.NoticeMessage -> {
                                             logger.d("Notice message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
                                             if (nostrIncomingMessage.subscriptionId?.contains("negentropy disabled") == true) {
                                                 nostrRepository.queueSynchronizeNostrEvent(

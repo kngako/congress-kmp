@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlin.math.log
+import kotlin.time.Instant
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState,
@@ -83,7 +84,7 @@ class ChatRoomListViewModel(
                 limit = 50
             )
             nostrRepository.queueNegentropySynchronizeRequest(
-                at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
+                Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
                         id = NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
@@ -101,27 +102,10 @@ class ChatRoomListViewModel(
             val chatRooms = chatRepository.getChatRoomListByPublicKey(publicKey)
             val relayChatRoomMaps = Relays.DefaultDMRelayList.map { dmRelay ->
                 dmRelay.url to chatRooms.map { localChatRoom ->
-                    // TODO: Just return localChatRoom.chatRoom.id once we have nostrGroupId stored as the chatRoom primary id
-                    if (localChatRoom.chatRoom.mlsGroupState != null) {
-
-                        if (localChatRoom.chatRoom.id.length == 64) {
-                            localChatRoom.chatRoom.id
-                        } else {
-                            val group = MlsGroup.restore(
-                                MlsGroupState.decodeTls(
-                                    localChatRoom.chatRoom.mlsGroupState.hexToByteArray()
-                                )
-                            )
-
-                            logger.d("chatRoomId: ${localChatRoom.chatRoom.id} vs nostrGroupId (${group.currentMarmotData()?.nostrGroupId})")
-                            group.currentMarmotData()?.nostrGroupId ?: localChatRoom.chatRoom.id
-                        }
-                    } else {
-                        localChatRoom.chatRoom.id
-                    }
+                    localChatRoom.chatRoom.id
                 }
             }
-            // TODO: Get relay with chatGroups...
+
             val negentropySyncRequests = relayChatRoomMaps.map { relayChatRoomMap ->
                 val mlsGroupMessageFilter = SynchronizationFilter(
                     kinds = arrayOf(GroupEvent.KIND),
