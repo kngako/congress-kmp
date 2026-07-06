@@ -99,7 +99,7 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
 
 
     companion object {
-        const val TAG = "GiftWrapPayload"
+        const val TAG = "MarmotInnerEvent"
 
         /**
          * Compute the NIP-40 expiration timestamp for outbound application messages,

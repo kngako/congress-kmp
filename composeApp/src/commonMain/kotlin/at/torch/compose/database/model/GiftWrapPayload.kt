@@ -24,7 +24,7 @@ import kotlin.time.Instant
         )
     ],
 )
-data class GiftWrapPayload( // TODO: Rename this to GiftWrapPayload...
+data class GiftWrapPayload(
     @PrimaryKey
     val id: HexKey,
 
