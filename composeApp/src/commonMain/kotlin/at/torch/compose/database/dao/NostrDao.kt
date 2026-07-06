@@ -349,8 +349,7 @@ abstract class NostrDao(
         nostrEvent.toGroupEvent(
             userPublicKey = activeKeyPair.pubKey.toHex()
         )?.let { groupEvent ->
-
-            logger.d("groupEvent: $groupEvent")
+            logger.d("groupEvent: ${groupEvent.toJson()}")
 
             groupEvent.groupId()?.let { chatRoomId ->
                 val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
