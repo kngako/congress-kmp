@@ -4,9 +4,11 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.ChatMessageNostrEventRelation
 import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
@@ -18,6 +20,7 @@ import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
+import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
 import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
@@ -27,7 +30,10 @@ import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.hints.types.EventIdHint
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -35,6 +41,8 @@ import com.vitorpamplona.quartz.nip40Expiration.expiration
 import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
 import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
+import kotlinx.io.bytestring.encode
+import kotlin.io.encoding.Base64
 import kotlin.time.Instant
 
 @Dao
@@ -63,7 +71,47 @@ abstract class MarmotOutboundDao(
             )
         )
 
+        // Save Chat Room
+        val chatRoom = ChatRoom(
+            id = groupId,
+            userPublicKey = userPublicKey,
+            mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
+            subject = null,
+        )
+        database.chatRoomDao().upsert(
+            chatRoom
+        )
+
+        // TODO: Save Participants...
+
         // Invite peer...
+        inviteMember(
+            groupId = groupId,
+            mlsGroup = mlsGroup,
+            userPublicKey = userPublicKey,
+            peerPublicKey = peerPublicKey,
+            peerKeyPackage = peerKeyPackage,
+            relays = relays
+        )
+
+        // TODO: Update chatRoom
+        database.chatRoomDao().upsert(
+            chatRoom.copy(
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
+            )
+        )
+
+        return groupId
+    }
+
+    private suspend fun inviteMember(
+        groupId: HexKey,
+        mlsGroup: MlsGroup,
+        userPublicKey: HexKey,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage,
+        relays: List<String> = Relays.DefaultDMRelayList.map { it.url }
+    ) {
         val keyPackage = MlsKeyPackage.decodeTls(
             TlsReader(
                 peerKeyPackage.tlsEncodedMarmotKeyPackage
@@ -101,8 +149,7 @@ abstract class MarmotOutboundDao(
         val ephemeralSigner = NostrSignerInternal(KeyPair())
         val commitEvent: GroupEvent = ephemeralSigner.sign(template)
 
-        // TODO: Welcome event?
-        // TODO: Save c0mmitEvent nostrEvent and broadcast it...
+
         database.nostrEventDao().upsert(
             NostrEvent(
                 id = commitEvent.id,
@@ -115,16 +162,6 @@ abstract class MarmotOutboundDao(
             )
         )
 
-        // Save Chat Room
-        database.chatRoomDao().upsert(
-            ChatRoom(
-                id = groupId,
-                userPublicKey = userPublicKey,
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
-                subject = null,
-            )
-        )
-
         database.broadcastNostrEventRequestDao().insert(
             relays.map {
                 BroadcastNostrEventRequest(
@@ -133,7 +170,57 @@ abstract class MarmotOutboundDao(
                 )
             }
         )
-        return groupId
+
+        // Send welcome event to participant
+        commitResult.welcomeBytes?.let { welcomeBytes ->
+            val welcomeBase64 = Base64.encode(
+                source = welcomeBytes
+            )
+
+            // GiftWrap...
+            val welcomeEvent = WelcomeEvent.build(
+                welcomeBase64 = welcomeBase64,
+                keyPackageEventId = peerKeyPackage.id,
+                relays = relays.map { NormalizedRelayUrl(it) },
+                nostrGroupId = groupId,
+            )
+            // Compute welcomeEventId
+            val welcomeEventId = EventHasher.hashId(
+                pubKey = userPublicKey,
+                kind = welcomeEvent.kind,
+                tags = welcomeEvent.tags,
+                createdAt = welcomeEvent.createdAt,
+                content = welcomeEvent.content
+            )
+
+            GiftWrapPayload(
+                id = welcomeEventId,
+                publicKey = userPublicKey,
+                chatRoomId = groupId,
+                kind = welcomeEvent.kind,
+                tags = welcomeEvent.tags,
+                content = welcomeEvent.content,
+                createdAt = Instant.fromEpochSeconds(welcomeEvent.createdAt)
+            )
+
+            // Save chatMessage for the invite...
+            database.chatMessageDao().upsert(
+                ChatMessage(
+                    content = "Invited participant to chat", // use profile.humanReadable...
+                    chatRoomId = groupId,
+                    senderPublicKey = userPublicKey,
+                    isUserMessage = true, // TODO: This is information message...
+                    giftWrapPayloadId = welcomeEventId,
+                    marmotGroupEventId = null,
+                    marmotInnerEventId = null
+                )
+            )
+        }
+
+
+
+
+
     }
 
     private fun encryptedCommitEvent(
