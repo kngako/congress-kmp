@@ -3,7 +3,6 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.ChatMessage
-import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackage
@@ -11,20 +10,12 @@ import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatMessage
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
-import at.torch.compose.database.model.intermdiate.LocalProfile
-import at.torch.compose.extensions.toHex
-import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
-import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
-import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
-import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
@@ -35,7 +26,6 @@ import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
-import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -131,7 +121,7 @@ class DatabaseChatRepository(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage
     ): String {
-        return database.marmotOutboundDao().createMlsDirectMessage(
+        return database.marmotOutboundDao().createMlsDirectMessageChatRoom(
             userPublicKey = userPublicKey,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage

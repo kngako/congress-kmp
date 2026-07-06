@@ -53,7 +53,7 @@ abstract class MarmotOutboundDao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    open suspend fun createMlsDirectMessage(
+    open suspend fun createMlsDirectMessageChatRoom(
         userPublicKey: HexKey,
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
