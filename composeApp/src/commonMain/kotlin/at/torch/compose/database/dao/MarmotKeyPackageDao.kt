@@ -9,7 +9,7 @@ import fr.acinq.bitcoin.PublicKey
 
 @Dao
 interface MarmotKeyPackageDao {
-    @Query("SELECT * FROM MarmotKeyPackage WHERE publicKey = :publicKey ORDER BY createAt DESC")
+    @Query("SELECT * FROM MarmotKeyPackage WHERE publicKey = :publicKey ORDER BY createdAt DESC")
     suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
 
     @Upsert
