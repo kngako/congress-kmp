@@ -1,7 +1,6 @@
 package at.torch.compose.managers
 
 import at.torch.compose.database.TorchDatabase
-import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.exceptions.MarmotMissingChatGroupException
 import at.torch.compose.exceptions.MarmotUnsupportedWireFormatException
@@ -27,7 +26,6 @@ import com.vitorpamplona.quartz.marmot.mls.schedule.KeySchedule
 import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import kotlin.time.Instant
 
 object MarmotInboundManager {
     private const val TAG = "MarmotInboundManager"
@@ -268,23 +266,24 @@ object MarmotInboundManager {
         mlsGroup: MlsGroup,
         groupEvent: GroupEvent
     ): GroupEventResult {
-        val groupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()
+        logger.d("handleCommitEvent: ${groupEvent.id}")
+        val nostrGroupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()
 
         val currentEpoch = mlsGroup.epoch
-        commitTracker.addCommit(groupId, currentEpoch, groupEvent)
+        commitTracker.addCommit(nostrGroupId, currentEpoch, groupEvent)
 
         // If this is the only commit for this epoch, apply immediately
-        val pending = commitTracker.pendingForEpoch(groupId, currentEpoch)
+        val pending = commitTracker.pendingForEpoch(nostrGroupId, currentEpoch)
         return if (pending.size == 1) {
             val result = applyCommit(
                 database,
                 mlsGroup,
                 groupEvent
             )
-            commitTracker.clearEpoch(groupId, currentEpoch)
+            commitTracker.clearEpoch(nostrGroupId, currentEpoch)
             result
         } else {
-            GroupEventResult.CommitPending(groupId, currentEpoch)
+            GroupEventResult.CommitPending(nostrGroupId, currentEpoch)
         }
     }
 

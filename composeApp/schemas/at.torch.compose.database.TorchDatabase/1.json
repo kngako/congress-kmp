@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d2e739e05b7ba033c4f8b240af7e386b",
+    "identityHash": "305e0b745bddf4352f8e34b9cbf11242",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1153,6 +1153,104 @@
         ]
       },
       {
+        "tableName": "MarmotCommitResult",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `peerKeyPackageEventId` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `isOneMemberInitialGroupCreation` INTEGER NOT NULL, `commitBytes` BLOB NOT NULL, `welcomeBytes` BLOB, `groupInfoBytes` BLOB, `framedCommitBytes` BLOB NOT NULL, `preCommitExporterSecret` BLOB NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userPublicKey",
+            "columnName": "userPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerKeyPackageEventId",
+            "columnName": "peerKeyPackageEventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isOneMemberInitialGroupCreation",
+            "columnName": "isOneMemberInitialGroupCreation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commitBytes",
+            "columnName": "commitBytes",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "welcomeBytes",
+            "columnName": "welcomeBytes",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "groupInfoBytes",
+            "columnName": "groupInfoBytes",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "framedCommitBytes",
+            "columnName": "framedCommitBytes",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preCommitExporterSecret",
+            "columnName": "preCommitExporterSecret",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "viewedAt",
+            "columnName": "viewedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
         "tableName": "MarmotGroupEvent",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `encryptedContent` TEXT NOT NULL, `expiresAt` INTEGER, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
@@ -1499,6 +1597,86 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_MarmotKeyPackageBundle_publicKey` ON `${TABLE_NAME}` (`publicKey`)"
+          }
+        ]
+      },
+      {
+        "tableName": "MarmotRetainedEpochSecret",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatRoomId` TEXT NOT NULL, `epoch` INTEGER NOT NULL, `senderDataSecret` BLOB NOT NULL, `encryptionSecret` BLOB NOT NULL, `leafCount` INTEGER NOT NULL, `exporterSecret` BLOB NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`chatRoomId`, `epoch`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epoch",
+            "columnName": "epoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderDataSecret",
+            "columnName": "senderDataSecret",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptionSecret",
+            "columnName": "encryptionSecret",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leafCount",
+            "columnName": "leafCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exporterSecret",
+            "columnName": "exporterSecret",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "chatRoomId",
+            "epoch"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
@@ -3261,7 +3439,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd2e739e05b7ba033c4f8b240af7e386b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '305e0b745bddf4352f8e34b9cbf11242')"
     ]
   }
 }
