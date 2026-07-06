@@ -7,12 +7,15 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.room3.Embedded
 import androidx.room3.Relation
+import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.Participant
+import at.torch.compose.ui.composable.widgets.profile.ProfileColor
 
 data class LocalChatRoom(
-    @Embedded val chatRoom: at.torch.compose.database.model.ChatRoom,
+    @Embedded val chatRoom: ChatRoom,
 
     @Relation(
-        entity = at.torch.compose.database.model.Participant::class,
+        entity = Participant::class,
         parentColumns = ["id"],
         entityColumns = ["chatRoomId"],
     )
@@ -23,7 +26,7 @@ data class LocalChatRoom(
         if (chatRoom.subject != null) {
             Text(
                 text = chatRoom.subject,
-                color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(chatRoom.id)
+                color = ProfileColor.fromPublicKey(chatRoom.id)
             )
         } else {
             if (localParticipants.size == 1) {
@@ -33,7 +36,7 @@ data class LocalChatRoom(
             } else {
                 // Remove the active user publicKey from participants...
                 val participantNames = localParticipants.filter { it.participant.participantPublicKey != chatRoom.userPublicKey }.map { buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
+                    withStyle(style = SpanStyle(color = ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
                         append(it.profile?.humanReadableNameOrPubkey() ?: "unknown participant")
                     }
                 } }

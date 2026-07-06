@@ -43,9 +43,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.NegentropySynchronizeRequest
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.extensions.toFormattedTimeAndDateString
 import at.torch.compose.nostr.Relays
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.widgets.profile.ProfileColor
 import at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
@@ -57,9 +61,9 @@ import kotlinx.coroutines.launch
 
 class ChatRoomDetailMessageListViewModel(
     initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState,
-    val localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
-    val nostrRepository: at.torch.compose.repository.NostrRepository,
-    val chatRepository: at.torch.compose.repository.ChatRepository
+    val localChatRoom: LocalChatRoom,
+    val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
     var chatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState by mutableStateOf(initialChatRoomDetailMessageListUIState)
@@ -290,7 +294,7 @@ class ChatRoomDetailMessageListViewModel(
                                                             text = localChatMessage.profile?.humanReadableNameOrPubkey() ?: localChatMessage.chatMessage.senderPublicKey,
                                                             maxLines = 1,
                                                             overflow = TextOverflow.MiddleEllipsis,
-                                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
+                                                            color = ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
                                                     }
@@ -389,9 +393,9 @@ class ChatRoomDetailMessageListViewModel(
 
         fun factory(
             initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loading,
-            localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
-            nostrRepository: at.torch.compose.repository.NostrRepository,
-            chatRepository: at.torch.compose.repository.ChatRepository
+            localChatRoom: LocalChatRoom,
+            nostrRepository: NostrRepository,
+            chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomDetailMessageListViewModel(

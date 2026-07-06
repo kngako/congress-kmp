@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.ChatRoomDetailUIState
@@ -25,7 +26,7 @@ class ChatRoomDetailViewModel(
     val activeUserPublicKey: HexKey,
     val relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
-    val nostrRepository: at.torch.compose.repository.NostrRepository,
+    val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository
 ): ViewModel() {
 
@@ -135,7 +136,7 @@ class ChatRoomDetailViewModel(
             chatRoomId: String,
             relayHint: String?,
             initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
-            nostrRepository: at.torch.compose.repository.NostrRepository,
+            nostrRepository: NostrRepository,
             chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {

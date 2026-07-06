@@ -15,8 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.intermdiate.LocalNostrEvent
+import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.composable.widgets.detail.MetadataEventDetail
+import at.torch.compose.ui.composable.widgets.detail.TextNoteEventDetail
+import at.torch.compose.ui.theme.TorchTheme
+import at.torch.compose.ui.view.model.NostrEventDetailViewModel
+import at.torch.compose.ui.view.state.NostrEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
@@ -25,10 +34,10 @@ import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NostrEventDetailScreen(
-    initialNostrEventDetailUIState: at.torch.compose.ui.view.state.NostrEventDetailUIState,
+    initialNostrEventDetailUIState: NostrEventDetailUIState,
     activeUserPublicKey: HexKey,
     nostrEventId: HexKey,
-    nostrRepository: at.torch.compose.repository.NostrRepository,
+    nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
     onNavigateToEvent: (Route) -> Unit,
     onNavigateToDirectMessage: (Route) -> Unit,
@@ -36,8 +45,8 @@ fun NostrEventDetailScreen(
     onNavigateToWriteAReply: (String) -> Unit,
     onNavigateToQuoteNostrEvent: (String) -> Unit,
 ) {
-    val nostrEventDetailViewModel: at.torch.compose.ui.view.model.NostrEventDetailViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.NostrEventDetailViewModel.factory(
+    val nostrEventDetailViewModel: NostrEventDetailViewModel = viewModel(
+        factory = NostrEventDetailViewModel.factory(
             nostrEventId = nostrEventId,
             initialNostrEventDetailUIState = initialNostrEventDetailUIState,
             nostrRepository = nostrRepository,
@@ -46,7 +55,7 @@ fun NostrEventDetailScreen(
     )
 
     when(val feedListUIState = nostrEventDetailViewModel.nostrEventDetailUIState) {
-        at.torch.compose.ui.view.state.NostrEventDetailUIState.Error -> {
+        NostrEventDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -55,7 +64,7 @@ fun NostrEventDetailScreen(
                 Text("Something went wrong")
             }
         }
-        is at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded -> {
+        is NostrEventDetailUIState.Loaded -> {
 
             when(feedListUIState.localNostrEvent.nostrEvent.kind) {
                 MetadataEvent.KIND -> {
@@ -70,7 +79,7 @@ fun NostrEventDetailScreen(
                     )
                 }
                 TextNoteEvent.KIND -> {
-                    at.torch.compose.ui.composable.widgets.detail.TextNoteEventDetail(
+                    TextNoteEventDetail(
                         feedListUIState.localNostrEvent,
                         onNavigateBack = onNavigateBack,
                         onNavigateToWriteAReply = onNavigateToWriteAReply,
@@ -109,14 +118,14 @@ fun NostrEventDetailScreen(
                 }
             }
         }
-        at.torch.compose.ui.view.state.NostrEventDetailUIState.Loading -> {
-            at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
+        NostrEventDetailUIState.Loading -> {
+            LoadingDataIndicator()
 
             LaunchedEffect(true) {
                 nostrEventDetailViewModel.loadNostrFeed()
             }
         }
-        at.torch.compose.ui.view.state.NostrEventDetailUIState.NotFound -> {
+        NostrEventDetailUIState.NotFound -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
@@ -131,14 +140,14 @@ fun NostrEventDetailScreen(
 @Preview
 @Composable
 private fun NostrEventDetailScreenPreview() {
-    at.torch.compose.ui.theme.TorchTheme {
+    TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             NostrEventDetailScreen(
-                initialNostrEventDetailUIState = at.torch.compose.ui.view.state.NostrEventDetailUIState.Loaded(
-                    localNostrEvent = at.torch.compose.database.model.intermdiate.LocalNostrEvent(
-                        nostrEvent = at.torch.compose.database.model.NostrEvent(
+                initialNostrEventDetailUIState = NostrEventDetailUIState.Loaded(
+                    localNostrEvent = LocalNostrEvent(
+                        nostrEvent = NostrEvent(
                             id = "eventId",
                             pubKey = "publicKey",
                             content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -150,7 +159,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             sig = "",
                             kind = TextNoteEvent.KIND
                         ),
-                        profile = at.torch.compose.database.model.Profile(
+                        profile = Profile(
                             publicKey = "pubKey",
                             displayName = "John Doe",
                             nostrEventId = "nostrEventId"
@@ -159,7 +168,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 ),
                 nostrEventId = "",
                 activeUserPublicKey = "",
-                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {},
                 onNavigateToEvent = {},
                 onNavigateToWriteAReply = {},

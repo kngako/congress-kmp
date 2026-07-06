@@ -46,8 +46,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.intermdiate.LocalNostrEvent
+import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
+import at.torch.compose.ui.theme.TorchTheme
+import at.torch.compose.ui.view.model.MetadataEventDetailType
+import at.torch.compose.ui.view.model.MetadataEventDetailViewModel
+import at.torch.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import kotlinx.coroutines.launch
@@ -55,25 +65,25 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MetadataEventDetail(
-    localNostrEvent: at.torch.compose.database.model.intermdiate.LocalNostrEvent,
+    localNostrEvent: LocalNostrEvent,
     activeUserPublicKey: HexKey,
     onNavigateBack: () -> Unit,
-    onNavigateToEvent: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
+    onNavigateToEvent: (Route) -> Unit,
     onNavigateToEditProfile: () -> Unit,
-    onNavigateToChatRoom: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
-    nostrRepository: at.torch.compose.repository.NostrRepository
+    onNavigateToChatRoom: (Route) -> Unit,
+    nostrRepository: NostrRepository
 ) {
     val scope = rememberCoroutineScope()
 
     val profile = localNostrEvent.profile
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
-    val metadataEventDetailViewModel: at.torch.compose.ui.view.model.MetadataEventDetailViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.MetadataEventDetailViewModel.factory(
+    val metadataEventDetailViewModel: MetadataEventDetailViewModel = viewModel(
+        factory = MetadataEventDetailViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             publicKey = localNostrEvent.nostrEvent.pubKey,
             nostrRepository = nostrRepository,
-            pagerState = rememberPagerState { at.torch.compose.ui.view.model.MetadataEventDetailType.entries.size }
+            pagerState = rememberPagerState { MetadataEventDetailType.entries.size }
         ),
     )
 
@@ -146,7 +156,7 @@ fun MetadataEventDetail(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
+                            ProfileAvatar(
                                 size = 75.dp,
                                 profile = profile,
                                 publicKey = localNostrEvent.nostrEvent.pubKey
@@ -158,13 +168,13 @@ fun MetadataEventDetail(
                             )
 
                             when(val metadataEventDetailUIState = metadataEventDetailViewModel.metadataEventDetailUIState) {
-                                at.torch.compose.ui.view.state.MetadataEventDetailUIState.Error -> {
+                                MetadataEventDetailUIState.Error -> {
                                     Icon(
                                         Icons.Default.Error,
                                         contentDescription = "Something went wrong"
                                     )
                                 }
-                                is at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loaded -> {
+                                is MetadataEventDetailUIState.Loaded -> {
 
                                     if (metadataEventDetailViewModel.isActionPending.value) {
                                         LoadingIndicator()
@@ -211,7 +221,7 @@ fun MetadataEventDetail(
 
 
                                 }
-                                at.torch.compose.ui.view.state.MetadataEventDetailUIState.Loading -> {
+                                MetadataEventDetailUIState.Loading -> {
                                     LoadingIndicator()
                                 }
                             }
@@ -306,14 +316,14 @@ fun MetadataEventDetail(
 @Composable
 private fun MetadataEventEventDetailPreview() {
 
-    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
+    TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             MetadataEventDetail(
                 activeUserPublicKey = "",
-                localNostrEvent = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalNostrEvent(
-                    nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
+                localNostrEvent = LocalNostrEvent(
+                    nostrEvent = NostrEvent(
                         id = "eventId",
                         pubKey = "publicKey",
                         content = """Profile""".trimIndent(),
@@ -321,7 +331,7 @@ private fun MetadataEventEventDetailPreview() {
                         sig = "",
                         kind = MetadataEvent.KIND
                     ),
-                    profile = _root_ide_package_.at.torch.compose.database.model.Profile(
+                    profile = Profile(
                         publicKey = "pubKey",
                         displayName = "John Doe",
                         nip05 = "john@doe.com",
@@ -333,7 +343,7 @@ private fun MetadataEventEventDetailPreview() {
                 onNavigateToEvent = {},
                 onNavigateToEditProfile = {},
                 onNavigateToChatRoom = {},
-                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }
     }

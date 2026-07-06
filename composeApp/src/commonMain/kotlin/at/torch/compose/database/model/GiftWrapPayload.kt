@@ -4,6 +4,10 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
+import at.torch.compose.database.model.traits.LocalStoreEntity
+import at.torch.compose.database.model.traits.SoftDeletableEntity
+import at.torch.compose.database.model.traits.TimestampedEntity
+import at.torch.compose.database.model.traits.UserViewableEntity
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -74,10 +78,7 @@ data class GiftWrapPayload(
     override val savedAt: Instant = Clock.System.now(),
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
-): at.torch.compose.database.model.traits.TimestampedEntity,
-    at.torch.compose.database.model.traits.LocalStoreEntity,
-    at.torch.compose.database.model.traits.UserViewableEntity,
-    at.torch.compose.database.model.traits.SoftDeletableEntity {
+): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
     @Ignore
     private val logger = Logger.withTag(TAG)
 

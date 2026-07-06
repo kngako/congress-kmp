@@ -32,9 +32,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
+import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.HomeScreenType
+import at.torch.compose.ui.view.model.HomeViewModel
+import at.torch.compose.ui.view.state.HomeScreenUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.launch
@@ -43,18 +53,18 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     activeUserPublicKey: HexKey,
-    initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState = at.torch.compose.ui.view.state.HomeScreenUIState.Loading,
-    onNavigateToEvent: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
-    onNavigateToDirectMessageDetail: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
+    initialHomeScreenUIState: HomeScreenUIState = HomeScreenUIState.Loading,
+    onNavigateToEvent: (Route) -> Unit,
+    onNavigateToDirectMessageDetail: (Route) -> Unit,
     onNavigateToChatRoomCreation: () -> Unit,
     onNavigateToSearch: () -> Unit,
-    nostrRepository: at.torch.compose.repository.NostrRepository,
-    chatRepository: at.torch.compose.repository.ChatRepository
+    nostrRepository: NostrRepository,
+    chatRepository: ChatRepository
 ) {
     val scope = rememberCoroutineScope()
 
-    val homeScreenViewModel: at.torch.compose.ui.view.model.HomeViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.HomeViewModel.factory(
+    val homeScreenViewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             initialHomeScreenUIState = initialHomeScreenUIState,
             nostrRepository = nostrRepository,
@@ -63,7 +73,7 @@ fun HomeScreen(
     )
 
     when(val homeScreenUIState = homeScreenViewModel.homeScreenUIState) {
-        at.torch.compose.ui.view.state.HomeScreenUIState.Error -> {
+        HomeScreenUIState.Error -> {
             Scaffold { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding).fillMaxSize(),
@@ -84,7 +94,7 @@ fun HomeScreen(
             }
 
         }
-        is at.torch.compose.ui.view.state.HomeScreenUIState.Loaded -> {
+        is HomeScreenUIState.Loaded -> {
             Scaffold(
                 modifier = Modifier,
                 topBar = {
@@ -206,8 +216,8 @@ fun HomeScreen(
                 }
             }
         }
-        at.torch.compose.ui.view.state.HomeScreenUIState.Loading -> {
-            _root_ide_package_.at.torch.compose.ui.composable.widgets.LoadingDataIndicator()
+        HomeScreenUIState.Loading -> {
+            LoadingDataIndicator()
         }
     }
 
@@ -219,15 +229,15 @@ fun HomeScreen(
 @Preview
 @Composable
 private fun HomeScreenPreview() {
-    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
+    TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             HomeScreen(
                 activeUserPublicKey = "",
-                initialHomeScreenUIState = at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
-                    profileWithFollowing = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing(
-                        nostrEvent = _root_ide_package_.at.torch.compose.database.model.NostrEvent(
+                initialHomeScreenUIState = HomeScreenUIState.Loaded(
+                    profileWithFollowing = LocalProfileWithFollowing(
+                        nostrEvent = NostrEvent(
                             id = "eventId",
                             pubKey = "publicKey",
                             content = """Lorem Ipsum is simply dummy text of the printing and typesetting industry. 
@@ -239,7 +249,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             sig = "",
                             kind = TextNoteEvent.KIND
                         ),
-                        profile = _root_ide_package_.at.torch.compose.database.model.Profile(
+                        profile = Profile(
                             publicKey = "pubKey",
                             displayName = "John Doe",
                             nostrEventId = "nostrEventId"
@@ -251,8 +261,8 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToChatRoomCreation = {},
                 onNavigateToSearch = {},
                 onNavigateToDirectMessageDetail = {},
-                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = at.torch.compose.repository.ChatRepository.NO_OP_CHAT_REPOSITORY
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY
             )
         }
     }

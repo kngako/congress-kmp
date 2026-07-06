@@ -1,5 +1,7 @@
 package at.torch.compose.database.repository
 
+import at.torch.compose.database.GENESIS_AT
+import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.GiftWrapPayload
@@ -7,6 +9,8 @@ import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.intermdiate.LocalChatMessage
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.database.model.intermdiate.LocalProfile
 import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
@@ -39,30 +43,30 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 class DatabaseChatRepository(
-    private val database: at.torch.compose.database.TorchDatabase,
+    private val database: TorchDatabase,
     private val scope: CoroutineScope
 ): at.torch.compose.repository.ChatRepository {
     val logger = Logger.withTag(TAG)
-    override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatRoom>> {
+    override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
         return database.chatRoomDao().observeChatRoomListByUserPublicKey(publicKey)
     }
 
-    override suspend fun getChatRoomListByPublicKey(publicKey: String): List<at.torch.compose.database.model.intermdiate.LocalChatRoom> {
+    override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
         return database.chatRoomDao().getChatRoomListByUserPublicKey(publicKey)
     }
 
-    override suspend fun getChatRoomByIdentifier(id: HexKey): at.torch.compose.database.model.intermdiate.LocalChatRoom? {
+    override suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom? {
         return database.chatRoomDao().findChatRoomById(id)
     }
 
     override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
         return database.participantDao().findParticipantByPublicKey(publicKey)
     }
-    override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<at.torch.compose.database.model.intermdiate.LocalChatMessage> {
+    override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage> {
         return database.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
     }
 
-    override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<at.torch.compose.database.model.intermdiate.LocalChatMessage>> {
+    override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>> {
         return database.chatMessageDao().observeChatMessagesByChatRoomId(chatRoomId)
     }
 
@@ -73,7 +77,7 @@ class DatabaseChatRepository(
         relayHint: String?,
         defaultSubject: String?,
         mlsGroupState: String?
-    ): at.torch.compose.database.model.intermdiate.LocalChatRoom? = try {
+    ): LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
             chatRoomId = chatRoomId,
             activeUserPublicKey = activeUserPublicKey,
@@ -95,7 +99,7 @@ class DatabaseChatRepository(
             authors = arrayOf(
                 publicKey
             ),
-            since = _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+            since = GENESIS_AT,
             limit = 5
         ).firstOrNull()?.let { nostrEvent ->
             if (nostrEvent.kind != ChatMessageRelayListEvent.KIND) {
@@ -136,7 +140,7 @@ class DatabaseChatRepository(
 
     override suspend fun sendChatMessage(
         text: String,
-        localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom,
+        localChatRoom: LocalChatRoom,
         messageType: Kind
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")

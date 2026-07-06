@@ -1,5 +1,7 @@
 package at.torch.compose.repository
 
+import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Profile
@@ -54,11 +56,11 @@ interface ChatRepository {
         messageType: Kind = ChatMessageEvent.KIND
     )
 
-    fun updateChatRoomSubject(publicKey: String, subject: String): at.torch.compose.database.model.ChatRoom?
+    fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
 
-    suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<at.torch.compose.database.model.GiftWrapPayload?>
+    suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?>
 
-    suspend fun sealGiftWrapPayload(giftWrapPayload: at.torch.compose.database.model.GiftWrapPayload, nostrSignerSync: NostrSignerSync)
+    suspend fun sealGiftWrapPayload(giftWrapPayload: GiftWrapPayload, nostrSignerSync: NostrSignerSync)
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
@@ -125,16 +127,16 @@ interface ChatRepository {
                 // TODO("Not yet implemented")
             }
 
-            override fun updateChatRoomSubject(publicKey: String, subject: String): at.torch.compose.database.model.ChatRoom? {
+            override fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom? {
                 return null
             }
 
-            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<at.torch.compose.database.model.GiftWrapPayload?> {
+            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?> {
                 TODO("Not yet implemented")
             }
 
             override suspend fun sealGiftWrapPayload(
-                giftWrapPayload: at.torch.compose.database.model.GiftWrapPayload,
+                giftWrapPayload: GiftWrapPayload,
                 nostrSignerSync: NostrSignerSync
             ) {
                 TODO("Not yet implemented")

@@ -37,10 +37,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
+import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.ChatRoomDetailViewModel
 import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -312,7 +315,7 @@ fun ChatRoomDetailScreen(
 @Preview
 @Composable
 private fun ChatRoomDetailScreenPreview() {
-    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
+    TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -321,8 +324,8 @@ private fun ChatRoomDetailScreenPreview() {
                 chatRoomId = "publicKey",
                 relayHint = null,
                 initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(
-                    localChatRoom = _root_ide_package_.at.torch.compose.database.model.intermdiate.LocalChatRoom(
-                        chatRoom = _root_ide_package_.at.torch.compose.database.model.ChatRoom(
+                    localChatRoom = LocalChatRoom(
+                        chatRoom = ChatRoom(
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",

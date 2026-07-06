@@ -1,6 +1,7 @@
 package at.torch.compose.database.converters
 
 import androidx.room3.TypeConverter
+import at.torch.compose.database.model.types.SynchronizationFilter
 import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
@@ -72,7 +73,7 @@ class TorchConverters {
     }
 
     @TypeConverter
-    fun fromFilterArray(value: Array<at.torch.compose.database.model.types.SynchronizationFilter>?): String? = try {
+    fun fromFilterArray(value: Array<SynchronizationFilter>?): String? = try {
         return value?.let {
             Json.encodeToString(value)
         }
@@ -82,9 +83,9 @@ class TorchConverters {
     }
 
     @TypeConverter
-    fun toFilterArray(value: String?): Array<at.torch.compose.database.model.types.SynchronizationFilter>? = try {
+    fun toFilterArray(value: String?): Array<SynchronizationFilter>? = try {
         return value?.let {
-            Json.decodeFromString<Array<at.torch.compose.database.model.types.SynchronizationFilter>>(it)
+            Json.decodeFromString<Array<SynchronizationFilter>>(it)
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to FilterArray $value", e)
@@ -92,7 +93,7 @@ class TorchConverters {
     }
 
     @TypeConverter
-    fun fromSynchronizationFilter(value: at.torch.compose.database.model.types.SynchronizationFilter?): String? = try {
+    fun fromSynchronizationFilter(value: SynchronizationFilter?): String? = try {
         return value?.let {
             Json.encodeToString(value)
         }
@@ -102,9 +103,9 @@ class TorchConverters {
     }
 
     @TypeConverter
-    fun toSynchronizationFilter(value: String?): at.torch.compose.database.model.types.SynchronizationFilter? = try {
+    fun toSynchronizationFilter(value: String?): SynchronizationFilter? = try {
         return value?.let {
-            Json.decodeFromString<at.torch.compose.database.model.types.SynchronizationFilter>(it)
+            Json.decodeFromString<SynchronizationFilter>(it)
         }
     } catch (e: Throwable) {
         logger.e("Failed to convert to SynchronizationFilter $value", e)
