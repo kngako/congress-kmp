@@ -5,7 +5,9 @@ sealed interface ChatRoomDetailUIState {
         val localChatRoom: at.torch.compose.database.model.intermdiate.LocalChatRoom
     ): ChatRoomDetailUIState
 
-    data object Error: ChatRoomDetailUIState
+    data class Error(
+        val message: String
+    ): ChatRoomDetailUIState
     data object Loading: ChatRoomDetailUIState
     data object InitiatingNewChat: ChatRoomDetailUIState
 }

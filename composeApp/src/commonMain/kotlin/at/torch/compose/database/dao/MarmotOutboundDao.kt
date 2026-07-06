@@ -6,25 +6,34 @@ import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.ChatMessageNostrEventRelation
+import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
+import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.extensions.exporterSecret
 import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
+import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
+import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip40Expiration.expiration
 import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
+import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlin.time.Instant
 
@@ -34,6 +43,108 @@ abstract class MarmotOutboundDao(
 ) {
     val logger = Logger.withTag(TAG)
 
+    @Transaction
+    open suspend fun createMlsDirectMessage(
+        userPublicKey: HexKey,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage,
+        relays: List<String> = Relays.DefaultDMRelayList.map { it.url }
+    ): String {
+        // TODO: Might move this logic to a marmotOutboudDao for consistency...
+        val groupId = RandomInstance.bytes(32).toHexKey()
+        val mlsGroup = MlsGroup.create(
+            identity = userPublicKey.hexToByteArray(),
+            initialExtensions = listOf(
+                MarmotGroupData.bootstrap(
+                    nostrGroupId = groupId,
+                    creatorPubKey = userPublicKey,
+                    outboxRelays = relays,
+                ).toExtension()
+            )
+        )
+
+        // Invite peer...
+        val keyPackage = MlsKeyPackage.decodeTls(
+            TlsReader(
+                peerKeyPackage.tlsEncodedMarmotKeyPackage
+            )
+        )
+
+        val credential = keyPackage.leafNode.credential
+        require(credential is Credential.Basic) {
+            "KeyPackage must use BasicCredential"
+        }
+        require(credential.identity.toHexKey() == peerPublicKey) {
+            "KeyPackage credential identity does not match memberPubKey"
+        }
+
+        val retainedBefore = mlsGroup.retainedSecrets()
+        val commitResult = mlsGroup.addMember(
+            peerKeyPackage.tlsEncodedMarmotKeyPackage
+        )
+
+//        pushRetainedEpoch(nostrGroupId, retainedBefore)
+//        persistGroup(nostrGroupId)
+
+        // CommitEvent...
+        val encryptedContent = encryptedCommitEvent(
+            mlsGroup,
+            commitBytes = commitResult.framedCommitBytes,
+            exporterKey = commitResult.preCommitExporterSecret
+        )
+
+        val template = GroupEvent.build(
+            encryptedContentBase64 = encryptedContent,
+            nostrGroupId = groupId
+        )
+
+        val ephemeralSigner = NostrSignerInternal(KeyPair())
+        val commitEvent: GroupEvent = ephemeralSigner.sign(template)
+
+        // TODO: Welcome event?
+        // TODO: Save c0mmitEvent nostrEvent and broadcast it...
+        database.nostrEventDao().upsert(
+            NostrEvent(
+                id = commitEvent.id,
+                createdAt = Instant.fromEpochSeconds(commitEvent.createdAt),
+                content = commitEvent.content,
+                sig = commitEvent.sig,
+                tags = commitEvent.tags,
+                kind = commitEvent.kind,
+                pubKey = commitEvent.pubKey
+            )
+        )
+
+        // Save Chat Room
+        database.chatRoomDao().upsert(
+            ChatRoom(
+                id = groupId,
+                userPublicKey = userPublicKey,
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
+                subject = null,
+            )
+        )
+
+        database.broadcastNostrEventRequestDao().insert(
+            relays.map {
+                BroadcastNostrEventRequest(
+                    nostrEventId = commitEvent.id,
+                    relayURL = it
+                )
+            }
+        )
+        return groupId
+    }
+
+    private fun encryptedCommitEvent(
+        mlsGroup: MlsGroup,
+        commitBytes: ByteArray,
+        exporterKey: ByteArray? = null,
+    ): String {
+        val outerKey = exporterKey ?: mlsGroup.exporterSecret()
+
+        return GroupEventEncryption.encrypt(commitBytes, outerKey)
+    }
     @Transaction
     open suspend fun encryptAndSendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,

@@ -68,7 +68,7 @@ fun ChatRoomDetailScreen(
     )
 
     when (val chatRoomDetailUIState = chatRoomDetailViewModel.chatRoomDetailUIState) {
-        ChatRoomDetailUIState.Error -> {
+        is ChatRoomDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -77,7 +77,7 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.height(50.dp)
                 )
                 Text(
-                    text = "Something went wrong",
+                    text = chatRoomDetailUIState.message,
                 )
             }
         }

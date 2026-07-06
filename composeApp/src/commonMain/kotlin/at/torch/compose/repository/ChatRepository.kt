@@ -11,6 +11,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import fr.acinq.secp256k1.Hex
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -40,6 +41,12 @@ interface ChatRepository {
     suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
 
     suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile?
+
+    suspend fun createMlsDirectMessage(
+        userPublicKey: HexKey,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage
+    ): String
 
     suspend fun sendChatMessage(
         text: String,
@@ -99,6 +106,14 @@ interface ChatRepository {
             }
 
             override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun createMlsDirectMessage(
+                userPublicKey: HexKey,
+                peerPublicKey: HexKey,
+                peerKeyPackage: MarmotKeyPackage
+            ): String {
                 TODO("Not yet implemented")
             }
 

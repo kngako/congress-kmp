@@ -102,15 +102,26 @@ class ChatRoomDetailViewModel(
                 }
             }
 
-            val localAccount = nostrRepository.observeProfile(chatRoomId).firstOrNull()
+            val profile = chatRepository.getProfileWithPublicKey(chatRoomId)
 
-            if (localAccount != null) {
-                logger.d("Create chat with: $localAccount")
+            if (profile != null) {
+                logger.d("Create chat with: $profile")
                 // Check if we have a keyPackageEvent...
-                chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
+                val keyPackageEvent = chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
+
+                if (keyPackageEvent == null) {
+                    chatRoomDetailUIState = ChatRoomDetailUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
+                } else {
+                    // TODO: Create new chat and invite local
+                    chatRepository.createMlsDirectMessage(
+                        userPublicKey = activeUserPublicKey,
+                        peerPublicKey = chatRoomId,
+                        peerKeyPackage = keyPackageEvent
+                    )
+                }
 
             } else {
-                chatRoomDetailUIState = ChatRoomDetailUIState.Error
+                chatRoomDetailUIState = ChatRoomDetailUIState.Error("Couldn't find profile...")
             }
         }
     }
