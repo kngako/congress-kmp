@@ -160,8 +160,7 @@ abstract class TorchDatabase: RoomDatabase() {
 
     abstract fun marmotOutboundDao(): MarmotOutboundDao
 
-    abstract fun marmotRetainedEpochSecret(): MarmotRetainedEpochSecretDao
-
+    abstract fun marmotRetainedEpochSecretDao(): MarmotRetainedEpochSecretDao
 
     abstract fun mentionDao(): MentionDao
 

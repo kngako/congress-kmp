@@ -14,10 +14,13 @@ import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotInnerEvent.Companion.disappearingExpiration
 import at.torch.compose.database.model.MarmotKeyPackage
+import at.torch.compose.database.model.MarmotRetainedEpochSecret
 import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.extensions.exporterSecret
 import at.torch.compose.extensions.toHex
+import at.torch.compose.managers.MarmotInboundManager.EPOCH_RETENTION_WINDOW
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
@@ -56,12 +59,12 @@ abstract class MarmotOutboundDao(
         peerKeyPackage: MarmotKeyPackage,
         relays: List<String> = Relays.DefaultDMRelayList.map { it.url }
     ): String {
-        val groupId = RandomInstance.bytes(32).toHexKey()
+        val nostrGroupId = RandomInstance.bytes(32).toHexKey()
         val mlsGroup = MlsGroup.create(
             identity = userPublicKey.hexToByteArray(),
             initialExtensions = listOf(
                 MarmotGroupData.bootstrap(
-                    nostrGroupId = groupId,
+                    nostrGroupId = nostrGroupId,
                     creatorPubKey = userPublicKey,
                     outboxRelays = relays,
                 ).toExtension()
@@ -70,7 +73,7 @@ abstract class MarmotOutboundDao(
 
         // Save Chat Room
         val chatRoom = ChatRoom(
-            id = groupId,
+            id = nostrGroupId,
             userPublicKey = userPublicKey,
             mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             subject = null,
@@ -79,11 +82,25 @@ abstract class MarmotOutboundDao(
             chatRoom
         )
 
-        // TODO: Save Participants...
+        // Save Participants...
+        database.participantDao().upsert(
+            listOf(
+                Participant(
+                    participantPublicKey = userPublicKey,
+                    chatRoomId = chatRoom.id,
+                    relayHint = relays.first()
+                ),
+                Participant(
+                    participantPublicKey = peerPublicKey,
+                    chatRoomId = chatRoom.id,
+                    relayHint = relays.first()
+                )
+            )
+        )
 
         // Invite peer...
         inviteMember(
-            groupId = groupId,
+            nostrGroupId = nostrGroupId,
             mlsGroup = mlsGroup,
             userPublicKey = userPublicKey,
             peerPublicKey = peerPublicKey,
@@ -99,11 +116,11 @@ abstract class MarmotOutboundDao(
             )
         )
 
-        return groupId
+        return nostrGroupId
     }
 
     private suspend fun inviteMember(
-        groupId: HexKey,
+        nostrGroupId: HexKey,
         mlsGroup: MlsGroup,
         userPublicKey: HexKey,
         peerPublicKey: HexKey,
@@ -130,9 +147,25 @@ abstract class MarmotOutboundDao(
             peerKeyPackage.tlsEncodedMarmotKeyPackage
         )
 
+        database.marmotRetainedEpochSecretDao().insert(
+            MarmotRetainedEpochSecret(
+                chatRoomId = nostrGroupId,
+                epoch = retainedBefore.epoch,
+                senderDataSecret = retainedBefore.senderDataSecret,
+                encryptionSecret = retainedBefore.encryptionSecret,
+                leafCount = retainedBefore.leafCount,
+                exporterSecret = retainedBefore.exporterSecret,
+            )
+        )
 
-//        pushRetainedEpoch(nostrGroupId, retainedBefore)
-//        persistGroup(nostrGroupId)
+        val defenestratableMarmotRetainedEpochSecrets = database.marmotRetainedEpochSecretDao()
+            .defenestratableMarmotRetainedEpochSecret(
+                epochCutOffPoint = retainedBefore.epoch - EPOCH_RETENTION_WINDOW.toLong()
+            )
+        logger.d("Defenestratable Retained Epochs: ${defenestratableMarmotRetainedEpochSecrets.map { it.epoch }}")
+        database.marmotRetainedEpochSecretDao().defenestrate(
+            defenestratableMarmotRetainedEpochSecrets
+        )
 
         // CommitEvent...
         val encryptedContent = encryptedCommitEvent(
@@ -143,12 +176,11 @@ abstract class MarmotOutboundDao(
 
         val template = GroupEvent.build(
             encryptedContentBase64 = encryptedContent,
-            nostrGroupId = groupId
+            nostrGroupId = nostrGroupId
         )
 
         val ephemeralSigner = NostrSignerInternal(KeyPair())
         val commitEvent: GroupEvent = ephemeralSigner.sign(template)
-
 
         database.nostrEventDao().upsert(
             NostrEvent(
@@ -167,7 +199,7 @@ abstract class MarmotOutboundDao(
             MarmotCommitResult(
                 id = commitEvent.id,
                 isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
-                chatRoomId = groupId,
+                chatRoomId = nostrGroupId,
                 commitBytes = commitResult.commitBytes,
                 preCommitExporterSecret = commitResult.preCommitExporterSecret,
                 welcomeBytes = commitResult.welcomeBytes,
@@ -199,7 +231,7 @@ abstract class MarmotOutboundDao(
                     welcomeBase64 = welcomeBase64,
                     keyPackageEventId = peerKeyPackage.id,
                     relays = relays.map { NormalizedRelayUrl(it) },
-                    nostrGroupId = groupId,
+                    nostrGroupId = nostrGroupId,
                 )
                 // Compute welcomeEventId
                 val welcomeEventId = EventHasher.hashId(
@@ -213,7 +245,7 @@ abstract class MarmotOutboundDao(
                 GiftWrapPayload(
                     id = welcomeEventId,
                     publicKey = userPublicKey,
-                    chatRoomId = groupId,
+                    chatRoomId = nostrGroupId,
                     kind = welcomeEvent.kind,
                     tags = welcomeEvent.tags,
                     content = welcomeEvent.content,
@@ -224,7 +256,7 @@ abstract class MarmotOutboundDao(
                 database.chatMessageDao().upsert(
                     ChatMessage(
                         content = "Invited participant to chat", // use profile.humanReadable...
-                        chatRoomId = groupId,
+                        chatRoomId = nostrGroupId,
                         senderPublicKey = userPublicKey,
                         isUserMessage = true, // TODO: This is information message...
                         giftWrapPayloadId = welcomeEventId,

@@ -2,6 +2,12 @@ package at.torch.compose.database.model
 
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import at.torch.compose.database.model.traits.LocalStoreEntity
+import at.torch.compose.database.model.traits.SoftDeletableEntity
+import at.torch.compose.database.model.traits.TimestampedEntity
+import at.torch.compose.database.model.traits.UserViewableEntity
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Entity(
     foreignKeys = [
@@ -21,31 +27,10 @@ data class MarmotRetainedEpochSecret(
     val encryptionSecret: ByteArray, // TODO: Encrypt this...
     val leafCount: Int,
     val exporterSecret: ByteArray = ByteArray(0), // TODO: Encrypt this...
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
 
-        other as MarmotRetainedEpochSecret
-
-        if (epoch != other.epoch) return false
-        if (leafCount != other.leafCount) return false
-        if (chatRoomId != other.chatRoomId) return false
-        if (!senderDataSecret.contentEquals(other.senderDataSecret)) return false
-        if (!encryptionSecret.contentEquals(other.encryptionSecret)) return false
-        if (!exporterSecret.contentEquals(other.exporterSecret)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = epoch.hashCode()
-        result = 31 * result + leafCount
-        result = 31 * result + chatRoomId.hashCode()
-        result = 31 * result + senderDataSecret.contentHashCode()
-        result = 31 * result + encryptionSecret.contentHashCode()
-        result = 31 * result + exporterSecret.contentHashCode()
-        return result
-    }
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = Clock.System.now(),
+):  TimestampedEntity, LocalStoreEntity {
 
 }
