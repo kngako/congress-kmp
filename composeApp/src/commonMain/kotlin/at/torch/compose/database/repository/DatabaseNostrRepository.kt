@@ -1,5 +1,6 @@
 package at.torch.compose.database.repository
 
+import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
 import at.torch.compose.nostr.Relays
@@ -384,7 +385,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun broadcastProcessed(
-        broadcastNostrEventRequest: at.torch.compose.database.model.BroadcastNostrEventRequest,
+        broadcastNostrEventRequest: BroadcastNostrEventRequest,
         status: String
     ) {
         database.broadcastNostrEventRequestDao().upsert(
@@ -413,6 +414,25 @@ class DatabaseNostrRepository(
                         broadcastNostrEventReceiptId = broadcastNostrEventReceiptId
                     )
                 )
+            }
+
+            database.marmotCommitResultDao().getMarmotCommitRequestById(
+                nostrEventId = broadcastNostrEventRequest.nostrEventId
+            )?.let { marmotCommitResult ->
+                if (marmotCommitResult.isOneMemberInitialGroupCreation.not()) {
+                    database.chatRoomDao().findChatRoomById(marmotCommitResult.chatRoomId)?.let { localChatRoom ->
+                        // TODO: Update status of participant Invitation.PENDING -> Invitation.SENT
+                        marmotCommitResult.welcomeBytes?.let { welcomeBytes ->
+                            database.marmotOutboundDao().deliveryWelcome(
+                                nostrGroupId = marmotCommitResult.chatRoomId,
+                                userPublicKey = marmotCommitResult.userPublicKey,
+                                welcomeBytes = welcomeBytes,
+                                peerKeyPackageEventId = marmotCommitResult.peerKeyPackageEventId,
+                                relays = Relays.DefaultDMRelayList.map { it.url } // TODO: Get localChatRoom relays...
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -742,7 +762,7 @@ class DatabaseNostrRepository(
         return database.relayDao().observePublicKeyRelays(publicKey)
     }
 
-    override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<at.torch.compose.database.model.BroadcastNostrEventRequest>) {
+    override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
         database.broadcastNostrEventRequestDao().insert(
             broadcastNostrEventRequests
         )

@@ -10,6 +10,9 @@ import fr.acinq.bitcoin.PublicKey
 
 @Dao
 interface MarmotCommitResultDao {
+    @Query("SELECT * FROM MarmotCommitResult WHERE id = :nostrEventId")
+    suspend fun getMarmotCommitRequestById(nostrEventId: HexKey): MarmotCommitResult?
+
     @Upsert
     suspend fun upsert(marmotCommitResult: MarmotCommitResult)
 }

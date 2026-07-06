@@ -41,6 +41,8 @@ data class MarmotCommitResult( // TODO: Rename this to GiftWrapPayload...
 
     val userPublicKey: HexKey,
 
+    val peerKeyPackageEventId: HexKey,
+
     val chatRoomId: HexKey,
 
     val isOneMemberInitialGroupCreation: Boolean,

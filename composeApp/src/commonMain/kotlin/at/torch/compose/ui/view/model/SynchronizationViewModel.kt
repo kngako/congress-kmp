@@ -7,7 +7,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.SynchronizeNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.network.dto.toRelayDTO
+import at.torch.compose.network.relays.RelaysSocketManager
 import at.torch.compose.network.sockets.NostrIncomingMessage
+import at.torch.compose.network.sockets.NostrSocketClientFactory
+import at.torch.compose.repository.CachingImportRepository
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.negentropy.Negentropy
 import com.vitorpamplona.negentropy.storage.StorageVector
@@ -35,16 +41,16 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class SynchronizationViewModel(
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
-    val nostrRepository: at.torch.compose.repository.NostrRepository,
-    val chatRepository: at.torch.compose.repository.ChatRepository,
-    val relayRepository: at.torch.compose.repository.RelayRepository,
+    val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository,
+    val relayRepository: RelayRepository,
     val scope: CoroutineScope,
 ): ViewModel() {
 
-    val relaysSocketManager = at.torch.compose.network.relays.RelaysSocketManager(
+    val relaysSocketManager = RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
-        nostrSocketClientFactory = at.torch.compose.network.sockets.NostrSocketClientFactory,
-        cachingImportRepository = at.torch.compose.repository.CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
+        nostrSocketClientFactory = NostrSocketClientFactory,
+        cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
     )
 
@@ -55,9 +61,9 @@ class SynchronizationViewModel(
 
         fun factory(
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
-            nostrRepository: at.torch.compose.repository.NostrRepository,
-            chatRepository: at.torch.compose.repository.ChatRepository,
-            relayRepository: at.torch.compose.repository.RelayRepository,
+            nostrRepository: NostrRepository,
+            chatRepository: ChatRepository,
+            relayRepository: RelayRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {

@@ -206,6 +206,7 @@ abstract class MarmotOutboundDao(
                 framedCommitBytes = commitResult.preCommitExporterSecret,
                 groupInfoBytes = commitResult.groupInfoBytes,
                 userPublicKey = userPublicKey,
+                peerKeyPackageEventId = peerKeyPackage.id,
                 createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
             )
         )
@@ -222,55 +223,66 @@ abstract class MarmotOutboundDao(
         if (isOneMemberInitialGroupCreation) {
             // Send welcome event to participant
             commitResult.welcomeBytes?.let { welcomeBytes ->
-                val welcomeBase64 = Base64.encode(
-                    source = welcomeBytes
-                )
-
-                // GiftWrap...
-                val welcomeEvent = WelcomeEvent.build(
-                    welcomeBase64 = welcomeBase64,
-                    keyPackageEventId = peerKeyPackage.id,
-                    relays = relays.map { NormalizedRelayUrl(it) },
+                deliveryWelcome(
                     nostrGroupId = nostrGroupId,
-                )
-                // Compute welcomeEventId
-                val welcomeEventId = EventHasher.hashId(
-                    pubKey = userPublicKey,
-                    kind = welcomeEvent.kind,
-                    tags = welcomeEvent.tags,
-                    createdAt = welcomeEvent.createdAt,
-                    content = welcomeEvent.content
-                )
-
-                GiftWrapPayload(
-                    id = welcomeEventId,
-                    publicKey = userPublicKey,
-                    chatRoomId = nostrGroupId,
-                    kind = welcomeEvent.kind,
-                    tags = welcomeEvent.tags,
-                    content = welcomeEvent.content,
-                    createdAt = Instant.fromEpochSeconds(welcomeEvent.createdAt)
-                )
-
-                // Save chatMessage for the invite...
-                database.chatMessageDao().upsert(
-                    ChatMessage(
-                        content = "Invited participant to chat", // use profile.humanReadable...
-                        chatRoomId = nostrGroupId,
-                        senderPublicKey = userPublicKey,
-                        isUserMessage = true, // TODO: This is information message...
-                        giftWrapPayloadId = welcomeEventId,
-                        marmotGroupEventId = null,
-                        marmotInnerEventId = null
-                    )
+                    userPublicKey = userPublicKey,
+                    welcomeBytes = welcomeBytes,
+                    peerKeyPackageEventId = peerKeyPackage.id,
+                    relays = relays,
                 )
             }
         }
+    }
 
+    suspend fun deliveryWelcome(
+        nostrGroupId: HexKey,
+        userPublicKey: HexKey,
+        welcomeBytes: ByteArray,
+        peerKeyPackageEventId: HexKey,
+        relays: List<String>,
+    ) {
+        val welcomeBase64 = Base64.encode(
+            source = welcomeBytes
+        )
 
+        // GiftWrap...
+        val welcomeEvent = WelcomeEvent.build(
+            welcomeBase64 = welcomeBase64,
+            keyPackageEventId = peerKeyPackageEventId,
+            relays = relays.map { NormalizedRelayUrl(it) },
+            nostrGroupId = nostrGroupId,
+        )
+        // Compute welcomeEventId
+        val welcomeEventId = EventHasher.hashId(
+            pubKey = userPublicKey,
+            kind = welcomeEvent.kind,
+            tags = welcomeEvent.tags,
+            createdAt = welcomeEvent.createdAt,
+            content = welcomeEvent.content
+        )
 
+        GiftWrapPayload(
+            id = welcomeEventId,
+            publicKey = userPublicKey,
+            chatRoomId = nostrGroupId,
+            kind = welcomeEvent.kind,
+            tags = welcomeEvent.tags,
+            content = welcomeEvent.content,
+            createdAt = Instant.fromEpochSeconds(welcomeEvent.createdAt)
+        )
 
-
+        // Save chatMessage for the invite...
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = "Invited participant to chat", // use profile.humanReadable...
+                chatRoomId = nostrGroupId,
+                senderPublicKey = userPublicKey,
+                isUserMessage = true, // TODO: This is information message...
+                giftWrapPayloadId = welcomeEventId,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null
+            )
+        )
     }
 
     private fun encryptedCommitEvent(
