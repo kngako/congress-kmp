@@ -24,6 +24,7 @@ import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.RetainedEpochSecrets
 import com.vitorpamplona.quartz.marmot.mls.schedule.KeySchedule
 import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 
@@ -136,9 +137,9 @@ object MarmotInboundManager {
                 // could mint events claiming a different author. Non-event
                 // payloads (raw bytes via buildGroupEventFromBytes) bypass
                 // this check since there is no author field to verify.
-                val innerEvent =
-                    com.vitorpamplona.quartz.nip01Core.core.Event
-                        .fromJsonOrNull(innerJson)
+                val innerEvent = Event.fromJsonOrNull(innerJson)
+                logger.d("innerEvent: ${innerEvent?.toJson()}")
+
                 if (innerEvent != null) {
                     val senderIdentity = mlsGroup.memberIdentityHex(decrypted.senderLeafIndex)
                     if (senderIdentity == null || innerEvent.pubKey != senderIdentity) {

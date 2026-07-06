@@ -50,6 +50,7 @@ import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip40Expiration.expiration
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.io.encoding.Base64
+import kotlin.math.log
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -393,12 +394,14 @@ abstract class NostrDao(
                                 mlsGroup = mlsGroup,
                                 groupEvent = groupEvent
                             )?.let { groupEventResult ->
+                                logger.d("groupEventResult: $groupEventResult")
                                 ChatMessage.fromGroupEventResult(
                                     database = database,
                                     activeKeyPair = activeKeyPair,
                                     groupEvent = groupEvent,
                                     groupEventResult = groupEventResult,
                                 )?.let { chatMessage ->
+                                    logger.d("chatMessage: $chatMessage")
                                     database.chatMessageDao().upsert(
                                         chatMessage
                                     )

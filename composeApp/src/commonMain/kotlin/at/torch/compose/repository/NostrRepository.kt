@@ -98,7 +98,7 @@ interface NostrRepository {
 
     suspend fun observeNostrFeed(synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter): Flow<List<at.torch.compose.database.model.intermdiate.LocalNostrEvent>>
 
-    suspend fun getNostrFeedIds(
+    suspend fun getNegentropicNostrFeedIds(
         synchronizationFilters: Array<at.torch.compose.database.model.types.SynchronizationFilter>,
         applyLimits: Boolean = true
     ): List<at.torch.compose.database.model.NostrEvent>
@@ -266,7 +266,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun getNostrFeedIds(
+            override suspend fun getNegentropicNostrFeedIds(
                 synchronizationFilters: Array<at.torch.compose.database.model.types.SynchronizationFilter>,
                 applyLimits: Boolean
             ): List<at.torch.compose.database.model.NostrEvent> {

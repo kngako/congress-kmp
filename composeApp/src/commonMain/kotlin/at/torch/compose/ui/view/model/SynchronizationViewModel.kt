@@ -197,7 +197,7 @@ class SynchronizationViewModel(
                     mutex.withLock {
                         logger.i("negentropySynchronizeRequest: $negentropySynchronizeRequest")
 
-                        val events = nostrRepository.getNostrFeedIds(
+                        val events = nostrRepository.getNegentropicNostrFeedIds(
                             arrayOf(
                                 negentropySynchronizeRequest.synchronizationFilter
                             ),

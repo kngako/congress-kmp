@@ -1,29 +1,16 @@
 package at.torch.compose.database.repository
 
+import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
+import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
-import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRotationManager.Companion.KEY_PACKAGE_LIFETIME_SECONDS
-import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
-import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
-import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
-import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
-import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
-import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
-import com.vitorpamplona.quartz.marmot.mls.tree.Capabilities
-import com.vitorpamplona.quartz.marmot.mls.tree.Credential
-import com.vitorpamplona.quartz.marmot.mls.tree.Extension
-import com.vitorpamplona.quartz.marmot.mls.tree.LeafNode
-import com.vitorpamplona.quartz.marmot.mls.tree.LeafNodeSource
-import com.vitorpamplona.quartz.marmot.mls.tree.Lifetime
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
-import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.hints.EventHintBundle
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -51,13 +38,11 @@ import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
-import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -219,7 +204,7 @@ class DatabaseNostrRepository(
                 createdAt = Instant.fromEpochSeconds(profileEventTemplate.createdAt),
                 tags = profileEventTemplate.tags,
                 content = profileEventTemplate.content,
-                signedAt = _root_ide_package_.at.torch.compose.database.GENESIS_AT // This will keep us from trying to sign this event... but we should automatically sync the npub profile
+                signedAt = GENESIS_AT // This will keep us from trying to sign this event... but we should automatically sync the npub profile
             )
         )
     }
@@ -372,7 +357,7 @@ class DatabaseNostrRepository(
 
     override suspend fun publishNostrEvent(
         unsignedNostrEvent: UnsignedNostrEvent,
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         relayURLs: List<String>,
         activeKeyPair: KeyPair
     ) {
@@ -462,7 +447,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun saveNostrEvent(
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         synchronizeNostrEventRequest: at.torch.compose.database.model.SynchronizeNostrEventRequest,
         synchronizationRelayURLs: List<String>,
         activeKeyPair: KeyPair,
@@ -494,7 +479,7 @@ class DatabaseNostrRepository(
     }
 
     override suspend fun saveNostrEvent(
-        nostrEvent: at.torch.compose.database.model.NostrEvent,
+        nostrEvent: NostrEvent,
         negentropySynchronizeRequest: at.torch.compose.database.model.NegentropySynchronizeRequest,
         synchronizationRelayURLs: List<String>,
         activeKeyPair: KeyPair
@@ -544,7 +529,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun getNostrEvent(publicKey: HexKey, kind: Kind): at.torch.compose.database.model.NostrEvent? {
+    override suspend fun getNostrEvent(publicKey: HexKey, kind: Kind): NostrEvent? {
         return database.nostrEventDao().getNostrEventByPublicKeyAndKind(
             publicKey = publicKey,
             kind = kind
@@ -562,7 +547,7 @@ class DatabaseNostrRepository(
         )
     }
 
-    override suspend fun observeNostrFeed(synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter): Flow<List<at.torch.compose.database.model.intermdiate.LocalNostrEvent>> {
+    override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<at.torch.compose.database.model.intermdiate.LocalNostrEvent>> {
         return when {
             synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
                 logger.d("observeFilteredNostrEvents: $synchronizationFilter")
@@ -611,10 +596,11 @@ class DatabaseNostrRepository(
         }
     }
 
-    override suspend fun getNostrFeedIds(
-        synchronizationFilters: Array<at.torch.compose.database.model.types.SynchronizationFilter>,
+    override suspend fun getNegentropicNostrFeedIds(
+        synchronizationFilters: Array<SynchronizationFilter>,
         applyLimits: Boolean
-    ): List<at.torch.compose.database.model.NostrEvent> {
+    ): List<NostrEvent> {
+        logger.d("getNegentropicNostrFeedIds: ${synchronizationFilters.contentToString()}")
         if (synchronizationFilters.size == 1) {
             val synchronizationFilter = synchronizationFilters.first()
 
@@ -624,7 +610,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         search = synchronizationFilter.search,
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -637,7 +623,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getFilteredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -649,7 +635,7 @@ class DatabaseNostrRepository(
                     logger.d("getNostrEventsByIds($applyLimits): $synchronizationFilter")
                     database.nostrEventDao().getNostrEventsByIds(
                         ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -662,7 +648,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getAuthoredNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         authors = synchronizationFilter.authors,
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -688,7 +674,20 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getPublicKeyMentionedNostrEvents(
                         kinds = synchronizationFilter.kinds,
                         publicKey = synchronizationFilter.tags["p"]?.first()!!,
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
+                        limit = if (applyLimits) {
+                            synchronizationFilter.limit ?: 50
+                        } else {
+                            -1
+                        }
+                    )
+                }
+                synchronizationFilter.kinds?.isNotEmpty() == true && synchronizationFilter.tags?.contains("h") == true  -> {
+                    val chatRoomIds = synchronizationFilter.tags["h"]?.toTypedArray() ?: emptyArray()
+                    logger.d("ChatRoomIds: ${chatRoomIds.contentToString()}")
+                    logger.d("getMLSGroupEvents($applyLimits): $synchronizationFilter")
+                    database.nostrEventDao().getMLSGroupEvents(
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
@@ -702,7 +701,7 @@ class DatabaseNostrRepository(
                         kinds = arrayOf(
                             TextNoteEvent.KIND,
                         ),
-                        since = synchronizationFilter.since ?: _root_ide_package_.at.torch.compose.database.GENESIS_AT,
+                        since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {

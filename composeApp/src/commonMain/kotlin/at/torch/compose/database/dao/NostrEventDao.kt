@@ -8,6 +8,8 @@ import androidx.room3.RawQuery
 import androidx.room3.RoomRawQuery
 import androidx.room3.Transaction
 import androidx.room3.Upsert
+import at.torch.compose.database.model.NostrEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
@@ -67,7 +69,7 @@ interface NostrEventDao {
         kinds: Array<Kind>,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -76,7 +78,7 @@ interface NostrEventDao {
         search: String,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -85,7 +87,7 @@ interface NostrEventDao {
         ids: Array<HexKey>,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -93,7 +95,15 @@ interface NostrEventDao {
         ids: Array<HexKey>,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
+
+
+    @Transaction
+    @Query("SELECT * FROM NostrEvent WHERE kind = ${GroupEvent.KIND} AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
+    fun  getMLSGroupEvents(
+        since: Instant,
+        limit: Int
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -102,7 +112,7 @@ interface NostrEventDao {
         authors: Array<HexKey>,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -111,7 +121,7 @@ interface NostrEventDao {
         publicKey: HexKey,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
@@ -120,26 +130,26 @@ interface NostrEventDao {
         eventId: HexKey,
         since: Instant,
         limit: Int
-    ): List<at.torch.compose.database.model.NostrEvent>
+    ): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
-    fun  getAllNostrEvents(kinds: Array<Kind>): List<at.torch.compose.database.model.NostrEvent>
+    fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
     fun observeNostrEventById(id: String): Flow<at.torch.compose.database.model.intermdiate.LocalNostrEvent?>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
-    fun getNostrEventById(id: String): at.torch.compose.database.model.NostrEvent?
+    fun getNostrEventById(id: String): NostrEvent?
 
     @Query("SELECT * FROM NostrEvent WHERE pubKey = :publicKey AND kind = :kind ORDER BY createdAt DESC")
-    fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): at.torch.compose.database.model.NostrEvent?
+    fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): NostrEvent?
 
     @Upsert
-    suspend fun upsert(nostrEvent: at.torch.compose.database.model.NostrEvent)
+    suspend fun upsert(nostrEvent: NostrEvent)
 
     @Insert(
         onConflict = IGNORE
     )
-    suspend fun insert(nostrEvent: at.torch.compose.database.model.NostrEvent)
+    suspend fun insert(nostrEvent: NostrEvent)
 }
