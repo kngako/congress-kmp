@@ -327,6 +327,7 @@ abstract class MarmotOutboundDao(
 
         // Step 2: Outer ChaCha20-Poly1305 encryption
         val exportKey = mlsGroup.exporterSecret()
+        logger.d("exporterKey: ${exportKey.toHex()}")
         val encryptedContent = GroupEventEncryption.encrypt(
             mlsMessageBytes = mlsCipherText,
             groupKey = exportKey

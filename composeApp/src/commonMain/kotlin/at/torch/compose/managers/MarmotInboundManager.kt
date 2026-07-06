@@ -129,6 +129,7 @@ object MarmotInboundManager {
                     mlsGroup,
                     mlsMessage.toTlsBytes()
                 )
+                logger.d("decrypted: $decrypted")
                 val innerJson = decrypted.content.decodeToString()
 
                 // MIP-03: if the inner application payload is a Nostr event,
@@ -465,12 +466,14 @@ object MarmotInboundManager {
         // Try current epoch key first
         try {
             val exporterKey = mlsGroup.exporterSecret()
+            logger.d("exporterKey: ${exporterKey.toHex()}")
             return GroupEventEncryption.decrypt(encryptedContent, exporterKey)
         } catch (_: Exception) {
             // Current epoch key failed — try retained epoch keys
         }
 
         // Try retained epoch exporter keys (most recent first)
+        logger.d("Try retained")
         val retainedKeys = retainedExporterSecrets(
             nostrGroupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()
         )
@@ -492,7 +495,6 @@ object MarmotInboundManager {
         val nostrGroupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()
 
         try {
-
             val state = mlsGroup.saveState()
             val encoded = state.encodeTls()
             logger.d { "persistGroup($nostrGroupId): serialized ${encoded.size} bytes, calling store.save" }

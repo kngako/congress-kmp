@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.SynchronizeNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.network.dto.toRelayDTO
+import at.torch.compose.network.relays.RelayPool
 import at.torch.compose.network.relays.RelaysSocketManager
 import at.torch.compose.network.sockets.NostrIncomingMessage
 import at.torch.compose.network.sockets.NostrSocketClientFactory
@@ -329,7 +331,7 @@ class SynchronizationViewModel(
                                             }
                                             val eventIds = events.map { it.id }
                                             val broadcastNostrEventRequests = result.sendIds.filter { it.toHexString() in eventIds }.map { sendId ->
-                                                at.torch.compose.database.model.BroadcastNostrEventRequest(
+                                                BroadcastNostrEventRequest(
                                                     nostrEventId = sendId.toHexString(),
                                                     relayURL = negentropySynchronizeRequest.relayURL
                                                 )
@@ -396,7 +398,7 @@ class SynchronizationViewModel(
                         scope.launch(Dispatchers.IO) {
                             relaysSocketManager.publishEvent(
                                 localBroadcastNostrEventRequest.nostrEvent
-                            ).timeout(at.torch.compose.network.relays.RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
+                            ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
                                 // Timeout...
                             }.collect { nostrPublishResult ->
                                 if (nostrPublishResult.error != null) {
@@ -423,7 +425,7 @@ class SynchronizationViewModel(
                             setOf(
                                 localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL.toRelayDTO()
                             )
-                        ).timeout(at.torch.compose.network.relays.RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
+                        ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
                             // Timeout...
                         }.collect { nostrPublishResult ->
                             if (nostrPublishResult.error != null) {
