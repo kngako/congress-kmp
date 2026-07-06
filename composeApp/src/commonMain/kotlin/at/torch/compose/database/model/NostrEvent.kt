@@ -5,6 +5,7 @@ import androidx.room3.Ignore
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -249,6 +250,22 @@ data class NostrEvent(
         return null
     }
 
+    fun toKeyPackageEvent(): KeyPackageEvent? = try {
+        if (kind == KeyPackageEvent.KIND) {
+            return KeyPackageEvent(
+                id = id,
+                pubKey = pubKey,
+                createdAt = createdAt.epochSeconds,
+                tags = tags,
+                content = content,
+                sig = sig
+            )
+        }
+        return null
+    } catch (e: Throwable) {
+        logger.e("Coulldn't cast to KeyPackageEvent: ", e)
+        return null
+    }
     fun toReaction(): Reaction? = try {
         if (kind == ReactionEvent.KIND) {
             val reactionEvent = EventFactory.create<ReactionEvent>(

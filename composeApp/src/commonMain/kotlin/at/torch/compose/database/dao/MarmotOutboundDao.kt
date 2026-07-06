@@ -263,15 +263,18 @@ abstract class MarmotOutboundDao(
             content = welcomeEvent.content
         )
 
-        GiftWrapPayload(
-            id = welcomeEventId,
-            publicKey = userPublicKey,
-            chatRoomId = nostrGroupId,
-            kind = welcomeEvent.kind,
-            tags = welcomeEvent.tags,
-            content = welcomeEvent.content,
-            createdAt = Instant.fromEpochSeconds(welcomeEvent.createdAt)
+        database.giftWrapPayloadDao().upsert(
+            GiftWrapPayload(
+                id = welcomeEventId,
+                publicKey = userPublicKey,
+                chatRoomId = nostrGroupId,
+                kind = welcomeEvent.kind,
+                tags = welcomeEvent.tags,
+                content = welcomeEvent.content,
+                createdAt = Instant.fromEpochSeconds(welcomeEvent.createdAt)
+            )
         )
+
 
         // Save chatMessage for the invite...
         database.chatMessageDao().upsert(

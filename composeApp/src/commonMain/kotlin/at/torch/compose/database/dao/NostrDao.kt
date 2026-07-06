@@ -1,5 +1,6 @@
 package at.torch.compose.database.dao
 
+import androidx.compose.runtime.key
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import at.torch.compose.database.GENESIS_AT
@@ -8,6 +9,7 @@ import at.torch.compose.database.model.ChatMessage
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.Connection
 import at.torch.compose.database.model.MarmotGroupEvent
+import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Mention
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.database.model.NostrEvent
@@ -331,6 +333,19 @@ abstract class NostrDao(
         }
 
         // MLSGroupEvent handling...
+        nostrEvent.toKeyPackageEvent()?.let { keyPackageEvent ->
+            logger.d("KeyPackageEvent: $keyPackageEvent")
+            database.marmotKeyPackageDao().upsert(
+                MarmotKeyPackage(
+                    id = keyPackageEvent.id,
+                    publicKey = keyPackageEvent.pubKey,
+                    tlsEncodedMarmotKeyPackage = Base64.decode(
+                        source = keyPackageEvent.keyPackageBase64()
+                    ),
+                    createdAt = Instant.fromEpochSeconds(keyPackageEvent.createdAt)
+                )
+            )
+        }
         nostrEvent.toGroupEvent(
             userPublicKey = activeKeyPair.pubKey.toHex()
         )?.let { groupEvent ->
