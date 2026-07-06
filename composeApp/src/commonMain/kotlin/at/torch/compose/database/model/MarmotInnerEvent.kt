@@ -8,6 +8,7 @@ import at.torch.compose.database.model.traits.LocalStoreEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
+import at.torch.compose.extensions.exporterSecret
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -157,52 +158,5 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
         result = 31 * result + (deletedAt?.hashCode() ?: 0)
         result = 31 * result + logger.hashCode()
         return result
-    }
-
-    suspend fun toSignedNostrEvent(group: MlsGroup): GroupEvent {
-        // TODO: Assert group.id == chatRoomId
-
-        val innerEventTemplate = eventTemplate<Event>(
-            kind = kind,
-            description = content
-        )
-
-        val rumorEvent = RumorAssembler.assembleRumor(
-            publicKey,
-            innerEventTemplate
-        )
-
-        val mlsCiphertext = group.encrypt(rumorEvent.toJson().encodeToByteArray())
-
-        val exporterKey = group.exporterSecret(
-            "marmot",
-            "group-event".encodeToByteArray(),
-            32
-        )
-        val encryptedContent = GroupEventEncryption.encrypt(mlsCiphertext, exporterKey)
-
-        val createdAt = TimeUtils.now()
-        val expirationTime = disappearingExpiration(group, createdAt)
-        val template =
-            GroupEvent.build(
-                encryptedContentBase64 = encryptedContent,
-                nostrGroupId = chatRoomId,
-                createdAt = createdAt,
-            ) {
-                if (expirationTime != null) expiration(expirationTime)
-            }
-
-        // Step 4: Sign with a fresh ephemeral keypair
-        val ephemeralSigner = NostrSignerInternal(KeyPair())
-        val signedEvent: GroupEvent = ephemeralSigner.sign(template)
-
-        return GroupEvent(
-            id = signedEvent.id,
-            content = signedEvent.content,
-            createdAt = signedEvent.createdAt,
-            tags = signedEvent.tags,
-            sig = signedEvent.sig,
-            pubKey = signedEvent.pubKey
-        )
     }
 }

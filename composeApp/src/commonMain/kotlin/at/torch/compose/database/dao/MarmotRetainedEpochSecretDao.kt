@@ -6,11 +6,16 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy.Companion.IGNORE
 import androidx.room3.Query
 import at.torch.compose.database.model.MarmotRetainedEpochSecret
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @Dao
 interface MarmotRetainedEpochSecretDao {
-    @Query("SELECT * FROM MarmotRetainedEpochSecret WHERE epoch < :epochCutOffPoint")
-    suspend fun defenestratableMarmotRetainedEpochSecret(epochCutOffPoint: Long): List<MarmotRetainedEpochSecret>
+    @Query("SELECT * FROM MarmotRetainedEpochSecret WHERE chatRoomId = :chatRoomId")
+    suspend fun getMarmotRetainedEpochSecretForChatRoomId(chatRoomId: HexKey): List<MarmotRetainedEpochSecret>
+
+
+    @Query("SELECT * FROM MarmotRetainedEpochSecret WHERE chatRoomId = :chatRoomId AND epoch < :epochCutOffPoint")
+    suspend fun getDefenestratableMarmotRetainedEpochSecretForChatRoomId(chatRoomId: HexKey, epochCutOffPoint: Long): List<MarmotRetainedEpochSecret>
 
     @Insert(
         onConflict = IGNORE

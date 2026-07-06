@@ -9,6 +9,7 @@ import at.torch.compose.database.model.traits.NostrEventEntity
 import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.exceptions.MarmotMissingRetainedExporterSecretsException
+import at.torch.compose.extensions.exporterSecret
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
@@ -97,11 +98,7 @@ data class MarmotGroupEvent(
     ): ByteArray? {
         // Try current epoch key first
         try {
-            val exporterKey = group.exporterSecret(
-                "marmot",
-                "group-event".encodeToByteArray(),
-                32,
-            )
+            val exporterKey = group.exporterSecret()
             return GroupEventEncryption.decrypt(encryptedContent, exporterKey)
         } catch (e: Exception) {
             // Current epoch key failed — try retained epoch keys

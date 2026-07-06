@@ -158,8 +158,10 @@ abstract class MarmotOutboundDao(
             )
         )
 
+        // Trim retained epochs out of the retention window...
         val defenestratableMarmotRetainedEpochSecrets = database.marmotRetainedEpochSecretDao()
-            .defenestratableMarmotRetainedEpochSecret(
+            .getDefenestratableMarmotRetainedEpochSecretForChatRoomId(
+                chatRoomId = nostrGroupId,
                 epochCutOffPoint = retainedBefore.epoch - EPOCH_RETENTION_WINDOW.toLong()
             )
         logger.d("Defenestratable Retained Epochs: ${defenestratableMarmotRetainedEpochSecrets.map { it.epoch }}")
@@ -383,7 +385,7 @@ abstract class MarmotOutboundDao(
                     encryptedContent = groupEvent.encryptedContent(),
                     chatRoomId = localChatRoom.chatRoom.id,
                     nostrEventId = groupEvent.id,
-                    userPublicKey = nostrSignerSync.pubKey,
+                    userPublicKey = groupEvent.pubKey,
                     publicKey = groupEvent.pubKey
                 )
             )
