@@ -113,12 +113,25 @@ class ChatRoomDetailViewModel(
                 if (keyPackageEvent == null) {
                     chatRoomDetailUIState = ChatRoomDetailUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
                 } else {
-                    // TODO: Create new chat and invite local
-                    chatRepository.createMlsDirectMessage(
-                        userPublicKey = activeUserPublicKey,
-                        peerPublicKey = chatRoomId,
-                        peerKeyPackage = keyPackageEvent
-                    )
+                    // Create new chat and invite local
+                    try {
+                        val chatRoomId = chatRepository.createMlsDirectMessage(
+                            userPublicKey = activeUserPublicKey,
+                            peerPublicKey = chatRoomId,
+                            peerKeyPackage = keyPackageEvent,
+                        )
+
+                        onNavigateToChat.invoke(
+                            ChatRoomDetailRoute(
+                                activeUserPublicKey = activeUserPublicKey,
+                                chatRoomId = chatRoomId,
+                                relayHint = relayHint
+                            )
+                        )
+                    } catch (e: Throwable) {
+                        chatRoomDetailUIState = ChatRoomDetailUIState.Error("Failed to create chat")
+
+                    }
                 }
 
             } else {
