@@ -10,9 +10,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.NegentropySynchronizeRequest
+import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.tags.people.isTaggedUser
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
 import com.vitorpamplona.quartz.nip02FollowList.RelaySet
@@ -29,6 +34,7 @@ import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import com.vitorpamplona.quartz.nip68Picture.PictureEvent
 import com.vitorpamplona.quartz.nip71Video.VideoNormalEvent
 import com.vitorpamplona.quartz.nip71Video.VideoShortEvent
+import com.vitorpamplona.quartz.utils.RandomInstance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -54,6 +60,33 @@ class MetadataEventDetailViewModel(
 
     fun initiate() {
         observeMetadataEventRelationWithActiveUser()
+        scheduleSynchronization()
+    }
+
+    fun scheduleSynchronization() {
+        logger.d("scheduleSynchronization")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Sync Notifications... might want to also run this in the background
+            nostrRepository.queueNegentropySynchronizeRequest(
+                Relays.DefaultDMRelayList.map { relayUrl ->
+                    NegentropySynchronizeRequest(
+                        id = RandomInstance.bytes(32).toHexKey(),
+                        purpose = "keypackage",
+                        synchronizationFilter = SynchronizationFilter(
+                            authors = arrayOf(
+                                eventPublicKey
+                            ),
+                            kinds = arrayOf(
+                                KeyPackageEvent.KIND
+                            )
+                        ),
+                        relayURL = relayUrl.url,
+                        level = 0
+                    )
+                }
+            )
+        }
     }
 
     fun observeMetadataEventRelationWithActiveUser() {
