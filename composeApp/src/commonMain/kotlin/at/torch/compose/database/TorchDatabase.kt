@@ -5,11 +5,45 @@ import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
+import at.torch.compose.database.converters.TorchConverters
+import at.torch.compose.database.dao.BroadcastNostrEventReceiptDao
+import at.torch.compose.database.dao.BroadcastNostrEventRequestDao
+import at.torch.compose.database.dao.ChatMessageBroadcastNostrEventReceiptRelationDao
+import at.torch.compose.database.dao.ChatMessageBroadcastNostrEventRequestRelationDao
+import at.torch.compose.database.dao.ChatMessageDao
+import at.torch.compose.database.dao.ChatMessageNostrEventRelationDao
+import at.torch.compose.database.dao.ChatRoomDao
+import at.torch.compose.database.dao.ConnectionDao
+import at.torch.compose.database.dao.GiftWrapMessageDao
+import at.torch.compose.database.dao.GiftWrapPayloadDao
+import at.torch.compose.database.dao.GiftWrapSealDao
+import at.torch.compose.database.dao.InReplyToRelationDao
+import at.torch.compose.database.dao.MarmotCommitResultDao
 import at.torch.compose.database.dao.MarmotOutboundDao
 import at.torch.compose.database.dao.MarmotGroupEventDao
 import at.torch.compose.database.dao.MarmotInnerEventDao
 import at.torch.compose.database.dao.MarmotKeyPackageBundleDao
 import at.torch.compose.database.dao.MarmotKeyPackageDao
+import at.torch.compose.database.dao.MarmotRetainedEpochSecretDao
+import at.torch.compose.database.dao.MentionDao
+import at.torch.compose.database.dao.NegentropySynchronizeRequestDao
+import at.torch.compose.database.dao.NegentropySynchronizeResultDao
+import at.torch.compose.database.dao.NostrDao
+import at.torch.compose.database.dao.NostrEventDao
+import at.torch.compose.database.dao.NostrEventRelayDao
+import at.torch.compose.database.dao.NostrNip17Dao
+import at.torch.compose.database.dao.ParticipantDao
+import at.torch.compose.database.dao.PostDao
+import at.torch.compose.database.dao.ProfileDao
+import at.torch.compose.database.dao.QuotedRelationDao
+import at.torch.compose.database.dao.ReactionDao
+import at.torch.compose.database.dao.RecentSearchDao
+import at.torch.compose.database.dao.RelayDao
+import at.torch.compose.database.dao.RepostedRelationDao
+import at.torch.compose.database.dao.SynchronizeNostrEventRequestDao
+import at.torch.compose.database.dao.SynchronizeNostrEventResultDao
+import at.torch.compose.database.dao.UnsignedNostrEventDao
+import at.torch.compose.database.dao.ZapDao
 import at.torch.compose.database.model.BroadcastNostrEventReceipt
 import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessage
@@ -22,10 +56,12 @@ import at.torch.compose.database.model.GiftWrapMessage
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.GiftWrapSeal
 import at.torch.compose.database.model.InReplyToRelation
+import at.torch.compose.database.model.MarmotCommitResult
 import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.MarmotKeyPackageBundle
+import at.torch.compose.database.model.MarmotRetainedEpochSecret
 import at.torch.compose.database.model.Mention
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.database.model.NegentropySynchronizeResult
@@ -61,10 +97,12 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         InReplyToRelation::class,
+        MarmotCommitResult::class,
         MarmotGroupEvent::class,
         MarmotInnerEvent::class,
         MarmotKeyPackage::class,
         MarmotKeyPackageBundle::class,
+        MarmotRetainedEpochSecret::class,
         Mention::class,
         NegentropySynchronizeRequest::class,
         NegentropySynchronizeResult::class,
@@ -85,76 +123,82 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
     ],
     version = 1
 )
-@TypeConverters(at.torch.compose.database.converters.TorchConverters::class)
+@TypeConverters(TorchConverters::class)
 abstract class TorchDatabase: RoomDatabase() {
-    abstract fun broadcastNostrEventReceiptDao(): at.torch.compose.database.dao.BroadcastNostrEventReceiptDao
-    abstract fun broadcastNostrEventRequestDao(): at.torch.compose.database.dao.BroadcastNostrEventRequestDao
+    abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao
+    abstract fun broadcastNostrEventRequestDao(): BroadcastNostrEventRequestDao
 
-    abstract fun chatMessageDao(): at.torch.compose.database.dao.ChatMessageDao
+    abstract fun chatMessageDao(): ChatMessageDao
 
-    abstract fun chatMessageBroadcastNostrEventRequestRelationDao(): at.torch.compose.database.dao.ChatMessageBroadcastNostrEventRequestRelationDao
+    abstract fun chatMessageBroadcastNostrEventRequestRelationDao(): ChatMessageBroadcastNostrEventRequestRelationDao
 
-    abstract fun chatMessageBroadcastNostrEventReceiptRelationDao(): at.torch.compose.database.dao.ChatMessageBroadcastNostrEventReceiptRelationDao
+    abstract fun chatMessageBroadcastNostrEventReceiptRelationDao(): ChatMessageBroadcastNostrEventReceiptRelationDao
 
-    abstract fun chatMessageNostrEventRelationDao(): at.torch.compose.database.dao.ChatMessageNostrEventRelationDao
+    abstract fun chatMessageNostrEventRelationDao(): ChatMessageNostrEventRelationDao
 
-    abstract fun chatRoomDao(): at.torch.compose.database.dao.ChatRoomDao
+    abstract fun chatRoomDao(): ChatRoomDao
 
-    abstract fun connectionDao(): at.torch.compose.database.dao.ConnectionDao
+    abstract fun connectionDao(): ConnectionDao
 
-    abstract fun giftWrapMessageDao(): at.torch.compose.database.dao.GiftWrapMessageDao
+    abstract fun giftWrapMessageDao(): GiftWrapMessageDao
 
-    abstract fun giftWrapSealDao(): at.torch.compose.database.dao.GiftWrapSealDao
+    abstract fun giftWrapSealDao(): GiftWrapSealDao
 
-    abstract fun giftWrapPayloadDao(): at.torch.compose.database.dao.GiftWrapPayloadDao
+    abstract fun giftWrapPayloadDao(): GiftWrapPayloadDao
 
-    abstract fun inReplyToRelationDao(): at.torch.compose.database.dao.InReplyToRelationDao
+    abstract fun inReplyToRelationDao(): InReplyToRelationDao
 
-    abstract fun marmotOutboundDao(): MarmotOutboundDao
+    abstract fun marmotCommitResultDao(): MarmotCommitResultDao
 
     abstract fun marmotGroupEventDao(): MarmotGroupEventDao
-    abstract fun marmotInnerEventDao(): MarmotInnerEventDao
 
-    abstract fun marmotKeyPackageDao(): MarmotKeyPackageDao
+    abstract fun marmotInnerEventDao(): MarmotInnerEventDao
 
     abstract fun marmotKeyPackageBundleDao(): MarmotKeyPackageBundleDao
 
-    abstract fun mentionDao(): at.torch.compose.database.dao.MentionDao
+    abstract fun marmotKeyPackageDao(): MarmotKeyPackageDao
 
-    abstract fun negentropySynchronizeRequestDao(): at.torch.compose.database.dao.NegentropySynchronizeRequestDao
+    abstract fun marmotOutboundDao(): MarmotOutboundDao
 
-    abstract fun negentropySynchronizeResultDao(): at.torch.compose.database.dao.NegentropySynchronizeResultDao
+    abstract fun marmotRetainedEpochSecret(): MarmotRetainedEpochSecretDao
 
-    abstract fun nostrDao(): at.torch.compose.database.dao.NostrDao
 
-    abstract fun nostrEventDao(): at.torch.compose.database.dao.NostrEventDao
+    abstract fun mentionDao(): MentionDao
 
-    abstract fun nostrEventRelayDao(): at.torch.compose.database.dao.NostrEventRelayDao
+    abstract fun negentropySynchronizeRequestDao(): NegentropySynchronizeRequestDao
 
-    abstract fun nostrNip17Dao(): at.torch.compose.database.dao.NostrNip17Dao
+    abstract fun negentropySynchronizeResultDao(): NegentropySynchronizeResultDao
 
-    abstract fun participantDao(): at.torch.compose.database.dao.ParticipantDao
+    abstract fun nostrDao(): NostrDao
 
-    abstract fun postDao(): at.torch.compose.database.dao.PostDao
+    abstract fun nostrEventDao(): NostrEventDao
 
-    abstract fun profileDao(): at.torch.compose.database.dao.ProfileDao
+    abstract fun nostrEventRelayDao(): NostrEventRelayDao
 
-    abstract fun quotedRelationDao(): at.torch.compose.database.dao.QuotedRelationDao
+    abstract fun nostrNip17Dao(): NostrNip17Dao
 
-    abstract fun reactionDao(): at.torch.compose.database.dao.ReactionDao
+    abstract fun participantDao(): ParticipantDao
 
-    abstract fun recentSearchDao(): at.torch.compose.database.dao.RecentSearchDao
+    abstract fun postDao(): PostDao
 
-    abstract fun relayDao(): at.torch.compose.database.dao.RelayDao
+    abstract fun profileDao(): ProfileDao
 
-    abstract fun repostedRelationDao(): at.torch.compose.database.dao.RepostedRelationDao
+    abstract fun quotedRelationDao(): QuotedRelationDao
 
-    abstract fun synchronizeNostrEventRequestDao(): at.torch.compose.database.dao.SynchronizeNostrEventRequestDao
+    abstract fun reactionDao(): ReactionDao
 
-    abstract fun synchronizeNostrEventResultDao(): at.torch.compose.database.dao.SynchronizeNostrEventResultDao
+    abstract fun recentSearchDao(): RecentSearchDao
 
-    abstract fun unsignedNostrEventDao(): at.torch.compose.database.dao.UnsignedNostrEventDao
-    abstract fun zapDao(): at.torch.compose.database.dao.ZapDao
+    abstract fun relayDao(): RelayDao
+
+    abstract fun repostedRelationDao(): RepostedRelationDao
+
+    abstract fun synchronizeNostrEventRequestDao(): SynchronizeNostrEventRequestDao
+
+    abstract fun synchronizeNostrEventResultDao(): SynchronizeNostrEventResultDao
+
+    abstract fun unsignedNostrEventDao(): UnsignedNostrEventDao
+    abstract fun zapDao(): ZapDao
 
     suspend fun wipeData() {
         useWriterConnection { transactor ->

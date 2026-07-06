@@ -130,6 +130,7 @@ abstract class MarmotOutboundDao(
             peerKeyPackage.tlsEncodedMarmotKeyPackage
         )
 
+
 //        pushRetainedEpoch(nostrGroupId, retainedBefore)
 //        persistGroup(nostrGroupId)
 
@@ -161,21 +162,21 @@ abstract class MarmotOutboundDao(
             )
         )
 
-        // TODO: Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
-//        database.marmotCommitResultDao().upsert(
-//            MarmotCommitResult(
-//                id = commitEvent.id,
-//                isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
-//                chatRoomId = groupId,
-//                commitBytes = commitResult.commitBytes,
-//                preCommitExporterSecret = commitResult.preCommitExporterSecret,
-//                welcomeBytes = commitResult.welcomeBytes,
-//                framedCommitBytes = commitResult.preCommitExporterSecret,
-//                groupInfoBytes = commitResult.groupInfoBytes,
-//                userPublicKey = userPublicKey,
-//                createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
-//            )
-//        )
+        // Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
+        database.marmotCommitResultDao().upsert(
+            MarmotCommitResult(
+                id = commitEvent.id,
+                isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
+                chatRoomId = groupId,
+                commitBytes = commitResult.commitBytes,
+                preCommitExporterSecret = commitResult.preCommitExporterSecret,
+                welcomeBytes = commitResult.welcomeBytes,
+                framedCommitBytes = commitResult.preCommitExporterSecret,
+                groupInfoBytes = commitResult.groupInfoBytes,
+                userPublicKey = userPublicKey,
+                createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
+            )
+        )
 
         database.broadcastNostrEventRequestDao().insert(
             relays.map {
