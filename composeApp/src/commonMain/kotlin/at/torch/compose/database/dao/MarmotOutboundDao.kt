@@ -23,6 +23,7 @@ import at.torch.compose.extensions.toHex
 import at.torch.compose.managers.MarmotInboundManager.EPOCH_RETENTION_WINDOW
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.tags.EncodingTag
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -305,7 +306,7 @@ abstract class MarmotOutboundDao(
         mlsGroup: MlsGroup,
         marmotInnerEvent: MarmotInnerEvent,
         nostrSignerSync: NostrSignerSync
-    ) {
+    ): GroupEvent {
         val innerEvent = RumorAssembler.assembleRumor(
             pubKey = nostrSignerSync.pubKey,
             ev = EventTemplate(
@@ -319,11 +320,11 @@ abstract class MarmotOutboundDao(
         logger.d("InnerEvent: ${innerEvent.toJson()}")
 
         val plainTextBytes = innerEvent.toJson().encodeToByteArray()
-        logger.d("plainTextBytes: ${plainTextBytes.contentToString()}")
+        logger.d("plainTextBytes: ${plainTextBytes.toHex()}")
 
         // Step 1: MLS encrypt
         val mlsCipherText = mlsGroup.encrypt(plainTextBytes)
-        logger.d("mlsCipherText: ${mlsCipherText.contentToString()}")
+        logger.d("mlsCipherText: ${mlsCipherText.toHex()}")
 
         // Step 2: Outer ChaCha20-Poly1305 encryption
         val exportKey = mlsGroup.exporterSecret()
@@ -345,6 +346,9 @@ abstract class MarmotOutboundDao(
             createdAt = createdAt,
         ) {
             if (expirationTime != null) expiration(expirationTime)
+            addUnique(
+                EncodingTag.assemble()
+            )
         }
 
         // Step 4: Sign with a fresh ephemeral keypair
@@ -424,6 +428,8 @@ abstract class MarmotOutboundDao(
                 )
             }
         }
+
+        return groupEvent
     }
 
     companion object {

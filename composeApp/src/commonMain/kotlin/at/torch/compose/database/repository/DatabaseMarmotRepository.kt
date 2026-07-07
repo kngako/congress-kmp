@@ -5,6 +5,7 @@ import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.extensions.toHex
+import at.torch.compose.managers.MarmotInboundManager
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
@@ -27,6 +28,7 @@ import com.vitorpamplona.quartz.marmot.mls.tree.Lifetime
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
@@ -116,12 +118,22 @@ class DatabaseMarmotRepository(
                 )
                 logger.d("mlsGroup: $mlsGroup")
 
-                database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
+                val groupEvent = database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
                     localChatRoom = localChatRoom,
                     mlsGroup = mlsGroup,
                     marmotInnerEvent = marmotInnerEvent,
                     nostrSignerSync = nostrSignerSync
                 )
+
+                // TODO: Remove this logic as it's just for logging purposes...
+                val groupEventResult = MarmotInboundManager.processGroupEvent(
+                    database = database,
+                    activeKeyPair = KeyPair(),
+                    localChatRoom = localChatRoom,
+                    mlsGroup = mlsGroup,
+                    groupEvent = groupEvent
+                )
+                logger.d("groupEventResult: $groupEventResult")
             }
 
         }

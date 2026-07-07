@@ -366,11 +366,13 @@ abstract class NostrDao(
                         )
 
                         val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
+
                             val pubkey = when (val cred = leafNode.credential) {
                                 is Credential.Basic -> cred.identity.toHexKey()
                                 else -> null
                             }
 
+                            logger.d("leafIndex=$leafIndex pubKey=$pubkey")
                             pubkey
                         }
 
