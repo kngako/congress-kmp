@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Upsert
+import at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -14,7 +15,7 @@ interface BroadcastNostrEventRequestDao {
     fun  getAllBroadcastNostrEventRequests(): List<at.torch.compose.database.model.BroadcastNostrEventRequest>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE status = :status AND createdAt > :createdAt")
-    fun observeBroadcastNostrEventRequestsByStatus(status: String, createdAt: Instant = Clock.System.now()): Flow<List<at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest>>
+    fun observeBroadcastNostrEventRequestsByStatus(status: String, createdAt: Instant = Clock.System.now()): Flow<LocalBroadcastNostrEventRequest?>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId")
     fun observeBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): Flow<at.torch.compose.database.model.BroadcastNostrEventRequest?>

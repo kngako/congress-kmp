@@ -387,36 +387,37 @@ class SynchronizationViewModel(
         logger.i { "observePendingBroadcastNostrEventRequests" }
 
         scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingBroadcastNostrEventRequests().distinctUntilChanged().collect { localBroadcastNostrEventRequests ->
-                localBroadcastNostrEventRequests.forEach { localBroadcastNostrEventRequest ->
+            nostrRepository.observePendingBroadcastNostrEventRequests().distinctUntilChanged().collect { localBroadcastNostrEventRequest ->
+                logger.d("localBroadcastNostrEventRequest: $localBroadcastNostrEventRequest")
 
+                if (localBroadcastNostrEventRequest != null) {
                     nostrRepository.broadcastProcessed(
                         localBroadcastNostrEventRequest.broadcastNostrEventRequest
                     )
 
-                    if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
-                        scope.launch(Dispatchers.IO) {
-                            relaysSocketManager.publishEvent(
-                                localBroadcastNostrEventRequest.nostrEvent
-                            ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
-                                // Timeout...
-                            }.collect { nostrPublishResult ->
-                                if (nostrPublishResult.error != null) {
-                                    logger.e("Error publishing note: $nostrPublishResult")
-                                    nostrRepository.broadcastProcessed(
-                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
-                                        "failed"
-                                    )
-                                } else {
-                                    logger.d("Nostr Publish Result: $nostrPublishResult")
-                                    nostrRepository.broadcastProcessed(
-                                        localBroadcastNostrEventRequest.broadcastNostrEventRequest,
-                                        "published" // TODO: Might want to pass the nostrPublishResult.result
-                                    )
-                                }
-                            }
-                        }
-                    }
+//                if (localBroadcastNostrEventRequest.nostrEvent.broadcastedAt == null) {
+//                    scope.launch(Dispatchers.IO) {
+//                        relaysSocketManager.publishEvent(
+//                            localBroadcastNostrEventRequest.nostrEvent
+//                        ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
+//                            // Timeout...
+//                        }.collect { nostrPublishResult ->
+//                            if (nostrPublishResult.error != null) {
+//                                logger.e("Error publishing note: $nostrPublishResult")
+//                                nostrRepository.broadcastProcessed(
+//                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+//                                    "failed"
+//                                )
+//                            } else {
+//                                logger.d("Nostr Publish Result: $nostrPublishResult")
+//                                nostrRepository.broadcastProcessed(
+//                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+//                                    "published" // TODO: Might want to pass the nostrPublishResult.result
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
 
                     scope.launch(Dispatchers.IO) {
                         // Broadcast to the intended relay...
@@ -443,7 +444,6 @@ class SynchronizationViewModel(
                             }
                         }
                     }
-
                 }
             }
         }

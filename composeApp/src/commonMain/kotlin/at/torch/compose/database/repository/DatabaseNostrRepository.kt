@@ -5,6 +5,7 @@ import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
+import at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
@@ -84,7 +85,7 @@ class DatabaseNostrRepository(
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 
-    override suspend fun observePendingBroadcastNostrEventRequests(): Flow<List<at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest>> {
+    override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> {
         return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestsByStatus("pending")
     }
 
