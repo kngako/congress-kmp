@@ -129,6 +129,7 @@ abstract class MarmotOutboundDao(
         relays: List<String> = Relays.DefaultDMRelayList.map { it.url },
         isOneMemberInitialGroupCreation: Boolean
     ) {
+        logger.d("inviteMember: $peerPublicKey")
         val keyPackage = MlsKeyPackage.decodeTls(
             TlsReader(
                 peerKeyPackage.tlsEncodedMarmotKeyPackage

@@ -245,8 +245,8 @@ class DatabaseChatRepository(
         nostrSignerSync: NostrSignerSync
     ) {
         database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEachIndexed { index, participant ->
-            if (giftWrapPayload.kind == WelcomeEvent.KIND && giftWrapPayload.publicKey != participant.participantPublicKey) {
-                logger.w("We shouldn't be gift wrapping welcome event to anyone but the intended public key (${giftWrapPayload.id}).")
+            if (giftWrapPayload.kind == WelcomeEvent.KIND && nostrSignerSync.pubKey == participant.participantPublicKey) {
+                logger.w("We shouldn't be gift wrapping welcome event to ourselves (${nostrSignerSync.pubKey}).")
             } else {
                 val wrapperKeyPair = KeyPair()
                 val wrapperSigner = NostrSignerSync(
