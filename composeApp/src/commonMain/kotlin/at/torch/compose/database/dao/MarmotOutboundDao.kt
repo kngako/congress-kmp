@@ -120,6 +120,30 @@ abstract class MarmotOutboundDao(
         return nostrGroupId
     }
 
+    @Transaction
+    open suspend fun inviteMember(
+        localChatRoom: LocalChatRoom,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage,
+    ) {
+        val sentGenerations: Int = database.chatMessageDao().countChatMessagesBySenderPublicKey(
+            chatRoomId = localChatRoom.chatRoom.id,
+            senderPublicKey = localChatRoom.chatRoom.userPublicKey
+        )
+
+        localChatRoom.chatRoom.toMlsGroup(sentGenerations)?.let { mlsGroup ->
+            inviteMember(
+                nostrGroupId = localChatRoom.chatRoom.id,
+                mlsGroup = mlsGroup,
+                userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                peerPublicKey = peerPublicKey,
+                peerKeyPackage = peerKeyPackage,
+                relays = Relays.DefaultDMRelayList.map { it.url },
+                isOneMemberInitialGroupCreation = false
+            )
+        }
+    }
+
     private suspend fun inviteMember(
         nostrGroupId: HexKey,
         mlsGroup: MlsGroup,
@@ -127,7 +151,7 @@ abstract class MarmotOutboundDao(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
         relays: List<String> = Relays.DefaultDMRelayList.map { it.url },
-        isOneMemberInitialGroupCreation: Boolean
+        isOneMemberInitialGroupCreation: Boolean = false
     ) {
         logger.d("inviteMember: $peerPublicKey")
         val keyPackage = MlsKeyPackage.decodeTls(
@@ -239,7 +263,7 @@ abstract class MarmotOutboundDao(
         }
     }
 
-    suspend fun deliveryWelcome(
+    private suspend fun deliveryWelcome(
         nostrGroupId: HexKey,
         userPublicKey: HexKey,
         welcomeBytes: ByteArray,
@@ -302,6 +326,7 @@ abstract class MarmotOutboundDao(
 
         return GroupEventEncryption.encrypt(commitBytes, outerKey)
     }
+
     @Transaction
     open suspend fun encryptAndSendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,
