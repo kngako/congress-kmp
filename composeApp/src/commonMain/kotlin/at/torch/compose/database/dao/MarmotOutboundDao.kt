@@ -391,11 +391,13 @@ abstract class MarmotOutboundDao(
                 MarmotGroupEvent(
                     id = groupEvent.id,
                     createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
                     encryptedContent = groupEvent.encryptedContent(),
                     chatRoomId = localChatRoom.chatRoom.id,
                     nostrEventId = groupEvent.id,
                     userPublicKey = groupEvent.pubKey,
-                    publicKey = groupEvent.pubKey
+                    publicKey = groupEvent.pubKey,
+                    signature = groupEvent.sig,
                 )
             )
             database.chatMessageDao().upsert(

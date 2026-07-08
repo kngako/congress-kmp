@@ -22,7 +22,12 @@ import kotlin.time.Instant
 
 @Entity(
     foreignKeys = [
-
+        ForeignKey(
+            entity = NostrEvent::class,
+            parentColumns = ["id"],
+            childColumns = ["nostrEventId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MarmotGroupEvent(
@@ -38,10 +43,10 @@ data class MarmotGroupEvent(
 
     val chatRoomId: String,
 
-//    val signature: String, // TODO: Add signature...
+    val signature: String, // TODO: Add signature...
 
     val encryptedContent: String,
-    val expiresAt: Instant? = null,
+    val expiresAt: Instant?,
 
     /**
      * What gets broadcasts?
@@ -57,69 +62,6 @@ data class MarmotGroupEvent(
 
     companion object {
         const val KIND = GroupEvent.KIND
-
-        fun fromGroupEvent(
-            groupEvent: GroupEvent,
-            userPublicKey: String
-        ): MarmotGroupEvent? {
-            return groupEvent.groupId()?.let { chatRoomId ->
-                 MarmotGroupEvent(
-                    id = groupEvent.id,
-                    encryptedContent = groupEvent.encryptedContent(),
-                    nostrEventId = groupEvent.id,
-                    createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                    chatRoomId = chatRoomId,
-                    userPublicKey = userPublicKey,
-                    publicKey = groupEvent.pubKey,
-                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
-                )
-            }
-        }
     }
 
-    fun toMarmotInnerEvent(group: MlsGroup): MarmotInnerEvent? {
-        return null;
-    }
-
-    /**
-     * Decrypt the outer ChaCha20-Poly1305 layer, trying the current epoch's
-     * exporter key first and falling back to retained epoch exporter keys.
-     *
-     * After a commit advances the epoch, late-arriving messages encrypted
-     * with the previous epoch's exporter key would fail without this fallback.
-     *
-     * Returns null when neither the current epoch key nor any retained key
-     * decrypts. This happens normally for commits/application messages from
-     * epochs that predate our join (we never held those keys), so callers
-     * should treat null as an expected "nothing to do here" outcome and log
-     * at DEBUG, not as an error.
-     */
-    private fun tryDecryptOuterLayer(
-        group: MlsGroup,
-        encryptedContent: String,
-    ): ByteArray? {
-        // Try current epoch key first
-        try {
-            val exporterKey = group.exporterSecret()
-            return GroupEventEncryption.decrypt(encryptedContent, exporterKey)
-        } catch (e: Exception) {
-            // Current epoch key failed — try retained epoch keys
-            Log.e("MarmotGroupEvent", "Current Epoch Key Failed", e)
-        }
-
-        // Try retained epoch exporter keys (most recent first)
-        throw MarmotMissingRetainedExporterSecretsException(
-            "Torch currently doesn't support retainedExporterSecrets"
-        )
-//        val retainedKeys = groupManager.retainedExporterSecrets(groupId)
-//        for (retainedKey in retainedKeys) {
-//            try {
-//                return GroupEventEncryption.decrypt(encryptedContent, retainedKey)
-//            } catch (_: Exception) {
-//                // This retained key didn't work — try the next one
-//            }
-//        }
-//
-//        return null
-    }
 }

@@ -338,10 +338,10 @@ class SynchronizationViewModel(
                                                 )
                                             }
                                             logger.d("broadcastNostrEventRequests: $broadcastNostrEventRequests")
-                                            // Schedule broadcastNostrEventRequests
-                                            nostrRepository.scheduleBroadcastNostrEventRequests(
-                                                broadcastNostrEventRequests
-                                            )
+                                            // TODO: Schedule broadcastNostrEventRequests
+//                                            nostrRepository.scheduleBroadcastNostrEventRequests(
+//                                                broadcastNostrEventRequests
+//                                            )
 
                                             relaysSocketManager.closeNegentropySync(
                                                 negCloseCmd,

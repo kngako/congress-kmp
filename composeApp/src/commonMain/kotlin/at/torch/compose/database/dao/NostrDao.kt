@@ -386,7 +386,8 @@ abstract class NostrDao(
                                     chatRoomId = chatRoomId,
                                     nostrEventId = nostrEvent.id,
                                     createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) }
+                                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
+                                    signature = groupEvent.sig
                                 )
                             )
                             MarmotInboundManager.processGroupEvent(
