@@ -171,59 +171,6 @@ abstract class MarmotOutboundDao(
             defenestratableMarmotRetainedEpochSecrets
         )
 
-        // CommitEvent...
-        val encryptedContent = encryptedCommitEvent(
-            mlsGroup,
-            commitBytes = commitResult.framedCommitBytes,
-            exporterKey = commitResult.preCommitExporterSecret
-        )
-
-        val template = GroupEvent.build(
-            encryptedContentBase64 = encryptedContent,
-            nostrGroupId = nostrGroupId
-        )
-
-        val ephemeralSigner = NostrSignerInternal(KeyPair())
-        val commitEvent: GroupEvent = ephemeralSigner.sign(template)
-
-        database.nostrEventDao().upsert(
-            NostrEvent(
-                id = commitEvent.id,
-                createdAt = Instant.fromEpochSeconds(commitEvent.createdAt),
-                content = commitEvent.content,
-                sig = commitEvent.sig,
-                tags = commitEvent.tags,
-                kind = commitEvent.kind,
-                pubKey = commitEvent.pubKey
-            )
-        )
-
-        // Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
-        database.marmotCommitResultDao().upsert(
-            MarmotCommitResult(
-                id = commitEvent.id,
-                isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
-                chatRoomId = nostrGroupId,
-                commitBytes = commitResult.commitBytes,
-                preCommitExporterSecret = commitResult.preCommitExporterSecret,
-                welcomeBytes = commitResult.welcomeBytes,
-                framedCommitBytes = commitResult.preCommitExporterSecret,
-                groupInfoBytes = commitResult.groupInfoBytes,
-                userPublicKey = userPublicKey,
-                peerKeyPackageEventId = peerKeyPackage.id,
-                createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
-            )
-        )
-
-        database.broadcastNostrEventRequestDao().insert(
-            relays.map {
-                BroadcastNostrEventRequest(
-                    nostrEventId = commitEvent.id,
-                    relayURL = it
-                )
-            }
-        )
-
         if (isOneMemberInitialGroupCreation) {
             // Send welcome event to participant
             commitResult.welcomeBytes?.let { welcomeBytes ->
@@ -235,6 +182,60 @@ abstract class MarmotOutboundDao(
                     relays = relays,
                 )
             }
+        } else {
+            // CommitEvent...
+            val encryptedContent = encryptedCommitEvent(
+                mlsGroup,
+                commitBytes = commitResult.framedCommitBytes,
+                exporterKey = commitResult.preCommitExporterSecret
+            )
+
+            val template = GroupEvent.build(
+                encryptedContentBase64 = encryptedContent,
+                nostrGroupId = nostrGroupId
+            )
+
+            val ephemeralSigner = NostrSignerInternal(KeyPair())
+            val commitEvent: GroupEvent = ephemeralSigner.sign(template)
+
+            database.nostrEventDao().upsert(
+                NostrEvent(
+                    id = commitEvent.id,
+                    createdAt = Instant.fromEpochSeconds(commitEvent.createdAt),
+                    content = commitEvent.content,
+                    sig = commitEvent.sig,
+                    tags = commitEvent.tags,
+                    kind = commitEvent.kind,
+                    pubKey = commitEvent.pubKey
+                )
+            )
+
+            // Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
+            database.marmotCommitResultDao().upsert(
+                MarmotCommitResult(
+                    id = commitEvent.id,
+                    isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
+                    chatRoomId = nostrGroupId,
+                    commitBytes = commitResult.commitBytes,
+                    preCommitExporterSecret = commitResult.preCommitExporterSecret,
+                    welcomeBytes = commitResult.welcomeBytes,
+                    framedCommitBytes = commitResult.preCommitExporterSecret,
+                    groupInfoBytes = commitResult.groupInfoBytes,
+                    userPublicKey = userPublicKey,
+                    peerKeyPackageEventId = peerKeyPackage.id,
+                    createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
+                )
+            )
+
+            // Broadcast commitment so other members get it...
+            database.broadcastNostrEventRequestDao().insert(
+                relays.map {
+                    BroadcastNostrEventRequest(
+                        nostrEventId = commitEvent.id,
+                        relayURL = it
+                    )
+                }
+            )
         }
     }
 
