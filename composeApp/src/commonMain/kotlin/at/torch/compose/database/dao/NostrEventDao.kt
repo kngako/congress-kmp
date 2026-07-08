@@ -1,5 +1,6 @@
 package at.torch.compose.database.dao
 
+import androidx.compose.runtime.IntState
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy.Companion.IGNORE
@@ -14,6 +15,7 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Dao
@@ -107,10 +109,11 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM MarmotGroupEvent WHERE nostrEventId IS NOT NULL AND chatRoomId in (:chatRoomIds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
+    @Query("SELECT * FROM MarmotGroupEvent WHERE nostrEventId IS NOT NULL AND chatRoomId in (:chatRoomIds) AND createdAt > :since AND (expiresAt IS NULL OR expiresAt < :expiresAt) ORDER BY createdAt ASC LIMIT :limit")
     fun  getMarmotGroupEvents(
         chatRoomIds: Array<HexKey>,
         since: Instant,
+        expiresAt: Instant = Clock.System.now(),
         limit: Int
     ): List<MarmotGroupEvent>
 
