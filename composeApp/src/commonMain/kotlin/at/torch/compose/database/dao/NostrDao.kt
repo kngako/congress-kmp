@@ -398,6 +398,12 @@ abstract class NostrDao(
                                 groupEvent = groupEvent
                             )?.let { groupEventResult ->
                                 logger.d("groupEventResult: $groupEventResult")
+                                // Save the mls chatRoom state...
+                                database.chatRoomDao().upsert(
+                                    localChatRoom.chatRoom.copy(
+                                        mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+                                    )
+                                )
                                 ChatMessage.fromGroupEventResult(
                                     database = database,
                                     activeKeyPair = activeKeyPair,

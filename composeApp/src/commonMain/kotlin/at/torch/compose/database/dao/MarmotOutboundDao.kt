@@ -263,7 +263,7 @@ abstract class MarmotOutboundDao(
         }
     }
 
-    private suspend fun deliveryWelcome(
+    suspend fun deliveryWelcome(
         nostrGroupId: HexKey,
         userPublicKey: HexKey,
         welcomeBytes: ByteArray,
