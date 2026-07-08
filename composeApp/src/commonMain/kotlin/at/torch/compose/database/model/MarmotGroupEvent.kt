@@ -38,6 +38,8 @@ data class MarmotGroupEvent(
 
     val chatRoomId: String,
 
+//    val signature: String, // TODO: Add signature...
+
     val encryptedContent: String,
     val expiresAt: Instant? = null,
 
@@ -69,7 +71,7 @@ data class MarmotGroupEvent(
                     chatRoomId = chatRoomId,
                     userPublicKey = userPublicKey,
                     publicKey = groupEvent.pubKey,
-                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) }
+                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
                 )
             }
         }

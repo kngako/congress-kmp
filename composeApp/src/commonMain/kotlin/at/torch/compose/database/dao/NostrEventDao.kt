@@ -8,6 +8,7 @@ import androidx.room3.RawQuery
 import androidx.room3.RoomRawQuery
 import androidx.room3.Transaction
 import androidx.room3.Upsert
+import at.torch.compose.database.model.MarmotGroupEvent
 import at.torch.compose.database.model.NostrEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -104,6 +105,14 @@ interface NostrEventDao {
         since: Instant,
         limit: Int
     ): List<NostrEvent>
+
+    @Transaction
+    @Query("SELECT * FROM MarmotGroupEvent WHERE nostrEventId IS NOT NULL AND chatRoomId in (:chatRoomIds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
+    fun  getMarmotGroupEvents(
+        chatRoomIds: Array<HexKey>,
+        since: Instant,
+        limit: Int
+    ): List<MarmotGroupEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")

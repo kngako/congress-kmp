@@ -209,8 +209,8 @@ class SynchronizationViewModel(
                         val storage = StorageVector().apply {
                             events.forEach { event ->
                                 insert(
-                                    event.createdAt.toEpochMilliseconds(),
-                                    event.id
+                                    timestamp = event.createdAt.toEpochMilliseconds(),
+                                    idHex = event.id
                                 )
                             }
 
@@ -338,10 +338,10 @@ class SynchronizationViewModel(
                                                 )
                                             }
                                             logger.d("broadcastNostrEventRequests: $broadcastNostrEventRequests")
-                                            // TODO: Schedule broadcastNostrEventRequests
-//                                            nostrRepository.scheduleBroadcastNostrEventRequests(
-//                                                broadcastNostrEventRequests
-//                                            )
+                                            // Schedule broadcastNostrEventRequests
+                                            nostrRepository.scheduleBroadcastNostrEventRequests(
+                                                broadcastNostrEventRequests
+                                            )
 
                                             relaysSocketManager.closeNegentropySync(
                                                 negCloseCmd,

@@ -10,6 +10,7 @@ import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -687,14 +688,25 @@ class DatabaseNostrRepository(
                     val chatRoomIds = synchronizationFilter.tags["h"]?.toTypedArray() ?: emptyArray()
                     logger.d("ChatRoomIds: ${chatRoomIds.contentToString()}")
                     logger.d("getMLSGroupEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getMLSGroupEvents(
+                    database.nostrEventDao().getMarmotGroupEvents(
+                        chatRoomIds = chatRoomIds,
                         since = synchronizationFilter.since ?: GENESIS_AT,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {
                             -1
                         }
-                    )
+                    ).map { marmotGroupEvent ->
+                        NostrEvent(
+                            id = marmotGroupEvent.nostrEventId,
+                            content = marmotGroupEvent.encryptedContent,
+                            kind = GroupEvent.KIND,
+                            tags = emptyArray(),
+                            createdAt = marmotGroupEvent.createdAt,
+                            sig = "", // TODO: Use marmotGroupEvent.signature...
+                            pubKey = marmotGroupEvent.publicKey
+                        )
+                    }
                 }
                 else -> {
                     logger.d("getNostrEvents($applyLimits): $synchronizationFilter")
