@@ -52,6 +52,7 @@ import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.widgets.profile.ProfileColor
 import at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
@@ -96,67 +97,101 @@ class ChatRoomDetailMessageListViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
-            localChatRoom.localParticipants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
+            if (localChatRoom.chatRoom.mlsGroupState == null) {
+                localChatRoom.localParticipants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
 
-                val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
+                    val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
-                val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
-                    // Sync messages from this relay...
-                    Pair(
-                        chatMessageRelayListEvent.relays(),
-                        SynchronizationFilter(
-                            kinds = arrayOf(
-                                GiftWrapEvent.KIND,
-                            ),
-                            tags = mapOf(
-                                Pair("p", listOf(recipients.participant.participantPublicKey))
-                            ),
-                            limit = 50
+                    val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
+                        // Sync messages from this relay...
+                        Pair(
+                            chatMessageRelayListEvent.relays(),
+                            SynchronizationFilter(
+                                kinds = arrayOf(
+                                    GiftWrapEvent.KIND,
+                                ),
+                                tags = mapOf(
+                                    Pair("p", listOf(recipients.participant.participantPublicKey))
+                                ),
+                                limit = 50
+                            )
                         )
+
+                    } else {
+                        // Try to find the ChatMessageRelayList for this participant...
+                        isReceiverChatMessageRelayListMissing.value = true
+                        // TODO: compute the timestamp for when list we sent messages and use that as since...
+                        Pair(
+                            Relays.DefaultDMRelayList,
+                            SynchronizationFilter(
+                                kinds = arrayOf(
+                                    ChatMessageRelayListEvent.KIND,
+                                ),
+                                authors = arrayOf(
+                                    recipients.participant.participantPublicKey
+                                ),
+                                limit = 50
+                            )
+                        )
+                    }
+
+                    logger.i("GiftWrapFilter: ${relayAndSynchronizationFilter.second}")
+
+                    val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
+                        NegentropySynchronizeRequest(
+                            id = NegentropySynchronizeRequest.computeId(
+                                relayURL = normalizedRelayUrl.url,
+                                synchronizationFilter = relayAndSynchronizationFilter.second
+                            ),
+                            purpose = if (isReceiverChatMessageRelayListMissing.value) {
+                                "chat-message-relays"
+                            } else {
+                                "sent-messages"
+                            },
+                            synchronizationFilter = relayAndSynchronizationFilter.second,
+                            relayURL = normalizedRelayUrl.url,
+                            level = 0
+                        )
+                    }
+                    logger.i("negentropySynchronizeRequests: $negentropySynchronizeRequests")
+
+                    nostrRepository.queueNegentropySynchronizeRequest(
+                        negentropySynchronizeRequests
                     )
-
-                } else {
-                    // Try to find the ChatMessageRelayList for this participant...
-                    isReceiverChatMessageRelayListMissing.value = true
-                    // TODO: compute the timestamp for when list we sent messages and use that as since...
-                    Pair(
-                        Relays.DefaultDMRelayList,
-                        SynchronizationFilter(
-                            kinds = arrayOf(
-                                ChatMessageRelayListEvent.KIND,
-                            ),
-                            authors = arrayOf(
-                                recipients.participant.participantPublicKey
-                            ),
-                            limit = 50
-                        )
+                }
+            } else {
+                // Sync mlsMessages
+                val relayChatRoomMaps = Relays.DefaultDMRelayList.map { dmRelay ->
+                    dmRelay.url to listOf(
+                        localChatRoom.chatRoom.id
                     )
                 }
 
-                logger.i("GiftWrapFilter: ${relayAndSynchronizationFilter.second}")
+                val negentropySyncRequests = relayChatRoomMaps.map { relayChatRoomMap ->
+                    val mlsGroupMessageFilter = SynchronizationFilter(
+                        kinds = arrayOf(GroupEvent.KIND),
+                        tags = mapOf("h" to relayChatRoomMap.second),
+                    )
+                    logger.d("mlsGroupMessageFilter: $mlsGroupMessageFilter")
 
-                val negentropySynchronizeRequests = relayAndSynchronizationFilter.first.map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(
                         id = NegentropySynchronizeRequest.computeId(
-                            relayURL = normalizedRelayUrl.url,
-                            synchronizationFilter = relayAndSynchronizationFilter.second
+                            relayURL = relayChatRoomMap.first,
+                            synchronizationFilter = mlsGroupMessageFilter
                         ),
-                        purpose = if (isReceiverChatMessageRelayListMissing.value) {
-                            "chat-message-relays"
-                        } else {
-                            "sent-messages"
-                        },
-                        synchronizationFilter = relayAndSynchronizationFilter.second,
-                        relayURL = normalizedRelayUrl.url,
+                        purpose = "mlsMessages",
+                        synchronizationFilter = mlsGroupMessageFilter,
+                        relayURL = relayChatRoomMap.first,
                         level = 0
                     )
                 }
-                logger.i("negentropySynchronizeRequests: $negentropySynchronizeRequests")
 
+                logger.d("negentropySyncRequests: ${negentropySyncRequests.map { it.synchronizationFilter }}")
                 nostrRepository.queueNegentropySynchronizeRequest(
-                    negentropySynchronizeRequests
+                    negentropySyncRequests
                 )
             }
+
         }
     }
 

@@ -291,7 +291,8 @@ class SynchronizationViewModel(
                                             logger.d("Negentropy Error (need to synchronize like normal): ${nostrIncomingMessage.negentropyReason}")
 
                                             // TODO: Don't schedule a sync when on mobile internet.
-                                            if (negentropySynchronizeRequest.purpose == "mlsMessages") {
+                                            if (negentropySynchronizeRequest.purpose != "mlsMessages") {
+                                                // Require negentropy for syncRequest...
                                                 nostrRepository.queueSynchronizeNostrEvent(
                                                     listOf(
                                                         negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
@@ -352,7 +353,7 @@ class SynchronizationViewModel(
                                         is NostrIncomingMessage.NoticeMessage -> {
                                             logger.d("Notice message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
                                             if (nostrIncomingMessage.subscriptionId?.contains("negentropy disabled") == true) {
-                                                if (negentropySynchronizeRequest.purpose == "mlsMessages") {
+                                                if (negentropySynchronizeRequest.purpose != "mlsMessages") {
                                                     nostrRepository.queueSynchronizeNostrEvent(
                                                         listOf(
                                                             negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
