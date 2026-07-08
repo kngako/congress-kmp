@@ -28,6 +28,7 @@ data class ChatMessageBroadcastNostrEventRequestRelation(
 
     val chatMessageId: Long,
     val broadcastNostrEventRequestId: Long,
+    // Add nostrEventId here...
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = Clock.System.now(),

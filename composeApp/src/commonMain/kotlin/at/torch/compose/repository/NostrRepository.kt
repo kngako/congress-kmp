@@ -134,7 +134,7 @@ interface NostrRepository {
 
     suspend fun saveSearchQuery(query: String, synchronizationFilterArray: at.torch.compose.database.model.typealiases.SynchronizationFilterArray? = null)
 
-    suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>)
+    suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>)
 
     companion object {
         val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
@@ -323,7 +323,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
+            override suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
                 TODO("Not yet implemented")
             }
         }

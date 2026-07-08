@@ -25,7 +25,7 @@ import kotlin.time.Instant
         ForeignKey(
             entity = NostrEvent::class,
             parentColumns = ["id"],
-            childColumns = ["nostrEventId"],
+            childColumns = ["id"],
             onDelete = ForeignKey.CASCADE,
         ),
     ],
@@ -48,17 +48,12 @@ data class MarmotGroupEvent(
     val encryptedContent: String,
     val expiresAt: Instant?,
 
-    /**
-     * What gets broadcasts?
-     */
-    override val nostrEventId: String,
-
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
     override val deletedAt: Instant? = null,
     override val broadcastedAt: Instant? = null,
-) : NostrEventEntity, TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity {
+) : TimestampedEntity, LocalStoreEntity, BroadcastableEntity, SoftDeletableEntity {
 
     companion object {
         const val KIND = GroupEvent.KIND

@@ -6,6 +6,7 @@ import androidx.room3.Transaction
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.ChatMessage
+import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.Connection
 import at.torch.compose.database.model.MarmotGroupEvent
@@ -384,7 +385,6 @@ abstract class NostrDao(
                                     publicKey = groupEvent.pubKey,
                                     encryptedContent = groupEvent.encryptedContent(),
                                     chatRoomId = chatRoomId,
-                                    nostrEventId = nostrEvent.id,
                                     createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                                     expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
                                     signature = groupEvent.sig
@@ -1166,6 +1166,32 @@ abstract class NostrDao(
             if (negentropySynchronizeRequests.isNotEmpty()) {
                 database.negentropySynchronizeRequestDao().insert(
                     negentropySynchronizeRequests
+                )
+            }
+        }
+    }
+
+
+    /**
+     * Persist the rescheduling using a transaction so that we are assured of the existence of the
+     * [ChatMessageBroadcastNostrEventRequestRelation] when we produce the [at.torch.compose.database.model.BroadcastNostrEventReceipt]
+     */
+    @Transaction
+    open suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
+        // Check if any previous chatMessageBroadcastNostrEventRequestRelationDao exists for this nostrEventId...
+        broadcastNostrEventRequests.forEach { broadcastNostrEventRequest ->
+            val broadcastNostrEventRequestId = database.broadcastNostrEventRequestDao().upsert(
+                broadcastNostrEventRequest
+            )
+
+            database.chatMessageDao().getChatMessagesByMarmotGroupEventId(
+                marmotGroupEventId = broadcastNostrEventRequest.nostrEventId
+            )?.let { chatMessage ->
+                database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
+                    ChatMessageBroadcastNostrEventRequestRelation(
+                        broadcastNostrEventRequestId = broadcastNostrEventRequestId,
+                        chatMessageId = chatMessage.id
+                    )
                 )
             }
         }

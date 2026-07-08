@@ -2,6 +2,7 @@ package at.torch.compose.database.repository
 
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
@@ -698,7 +699,7 @@ class DatabaseNostrRepository(
                         }
                     ).map { marmotGroupEvent ->
                         NostrEvent(
-                            id = marmotGroupEvent.nostrEventId,
+                            id = marmotGroupEvent.id,
                             content = marmotGroupEvent.encryptedContent,
                             kind = GroupEvent.KIND,
                             tags = emptyArray(),
@@ -774,8 +775,8 @@ class DatabaseNostrRepository(
         return database.relayDao().observePublicKeyRelays(publicKey)
     }
 
-    override suspend fun scheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
-        database.broadcastNostrEventRequestDao().insert(
+    override suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
+        database.nostrDao().rescheduleBroadcastNostrEventRequests(
             broadcastNostrEventRequests
         )
     }

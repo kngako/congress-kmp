@@ -109,7 +109,7 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Transaction
-    @Query("SELECT * FROM MarmotGroupEvent WHERE nostrEventId IS NOT NULL AND chatRoomId in (:chatRoomIds) AND createdAt > :since AND (expiresAt IS NULL OR expiresAt < :expiresAt) ORDER BY createdAt ASC LIMIT :limit")
+    @Query("SELECT * FROM MarmotGroupEvent WHERE chatRoomId in (:chatRoomIds) AND createdAt > :since AND (expiresAt IS NULL OR expiresAt < :expiresAt) ORDER BY createdAt ASC LIMIT :limit")
     fun  getMarmotGroupEvents(
         chatRoomIds: Array<HexKey>,
         since: Instant,

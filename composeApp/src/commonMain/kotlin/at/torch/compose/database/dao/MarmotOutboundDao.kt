@@ -394,7 +394,6 @@ abstract class MarmotOutboundDao(
                     expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
                     encryptedContent = groupEvent.encryptedContent(),
                     chatRoomId = localChatRoom.chatRoom.id,
-                    nostrEventId = groupEvent.id,
                     userPublicKey = groupEvent.pubKey,
                     publicKey = groupEvent.pubKey,
                     signature = groupEvent.sig,

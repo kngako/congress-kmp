@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "ec367eb293e2be375d50f8d1b8133e00",
+    "identityHash": "f0a498de098c8c2c2007d4309022282e",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1252,7 +1252,7 @@
       },
       {
         "tableName": "MarmotGroupEvent",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `encryptedContent` TEXT NOT NULL, `expiresAt` INTEGER, `nostrEventId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`nostrEventId`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `encryptedContent` TEXT NOT NULL, `expiresAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `NostrEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1296,12 +1296,6 @@
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "nostrEventId",
-            "columnName": "nostrEventId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
             "fieldPath": "createdAt",
             "columnName": "createdAt",
             "affinity": "INTEGER",
@@ -1342,7 +1336,7 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "nostrEventId"
+              "id"
             ],
             "referencedColumns": [
               "id"
@@ -3458,7 +3452,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ec367eb293e2be375d50f8d1b8133e00')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f0a498de098c8c2c2007d4309022282e')"
     ]
   }
 }
