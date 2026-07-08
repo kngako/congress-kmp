@@ -9,11 +9,8 @@ import at.torch.compose.database.model.traits.SoftDeletableEntity
 import at.torch.compose.database.model.traits.TimestampedEntity
 import at.torch.compose.database.model.traits.UserViewableEntity
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
-import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
-import com.vitorpamplona.quartz.marmot.mls.tree.RatchetTree
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import fr.acinq.bitcoin.PrivateKey
@@ -128,7 +125,7 @@ data class ChatRoom(
 
     }
 
-    fun toMlsGroup(sentGenerations: Int): MlsGroup? {
+    fun toMlsGroup(pastGenerations: Int): MlsGroup? {
         return mlsGroupState?.let {
             val mlsGroup = MlsGroup.restore(
                 MlsGroupState.decodeTls(
@@ -136,17 +133,16 @@ data class ChatRoom(
                 )
             )
 
-            logger.i("${userPublicKey} sent $sentGenerations messsages in ${id}")
-            mlsGroup.traverseGenerations(sentGenerations)
+            mlsGroup.skipGenerations(pastGenerations)
 
             mlsGroup
         }
     }
 }
 
-private fun MlsGroup.traverseGenerations(generations: Int) {
+private fun MlsGroup.skipGenerations(generations: Int) {
     val plainByteArray = ByteArray(0)
-    for (index in 0 until generations) {
+    (0 until generations).forEach { _ ->
         encrypt(plainByteArray)
     }
 }
