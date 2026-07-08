@@ -15,8 +15,6 @@ import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageUtils
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
 import com.vitorpamplona.quartz.marmot.mls.crypto.MlsCryptoProvider
 import com.vitorpamplona.quartz.marmot.mls.crypto.X25519
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Capabilities
@@ -110,12 +108,12 @@ class DatabaseMarmotRepository(
         nostrSignerSync: NostrSignerSync
     ) {
         database.chatRoomDao().findChatRoomById(marmotInnerEvent.chatRoomId)?.let { localChatRoom ->
-            localChatRoom.chatRoom.mlsGroupState?.let {
-                val mlsGroup = MlsGroup.restore(
-                    MlsGroupState.decodeTls(
-                        localChatRoom.chatRoom.mlsGroupState.hexToByteArray()
-                    )
-                )
+            val sentGenerations: Int = database.chatMessageDao().countChatMessagesBySenderPublicKey(
+                chatRoomId = localChatRoom.chatRoom.id,
+                senderPublicKey = nostrSignerSync.pubKey
+            )
+
+            localChatRoom.chatRoom.toMlsGroup(sentGenerations)?.let { mlsGroup ->
                 logger.d("mlsGroup: $mlsGroup")
 
                 val groupEvent = database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(

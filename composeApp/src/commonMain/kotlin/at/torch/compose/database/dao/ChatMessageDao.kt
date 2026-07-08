@@ -24,6 +24,9 @@ interface ChatMessageDao {
     @Query("SELECT * FROM ChatMessage WHERE marmotInnerEventId = :marmotInnerEventId ORDER BY createdAt DESC")
     fun getChatMessagesByMarmotInnerEventId(marmotInnerEventId: HexKey): ChatMessage?
 
+    @Query("SELECT COUNT(*) FROM ChatMessage WHERE chatRoomId = :chatRoomId AND senderPublicKey = :senderPublicKey")
+    fun countChatMessagesBySenderPublicKey(chatRoomId: HexKey, senderPublicKey: HexKey): Int
+
     @Upsert
     suspend fun upsert(chatMessage: at.torch.compose.database.model.ChatMessage): Long
 }
