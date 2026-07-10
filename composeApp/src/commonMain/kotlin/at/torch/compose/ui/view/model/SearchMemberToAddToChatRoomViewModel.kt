@@ -9,10 +9,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.NegentropySynchronizeRequest
+import at.torch.compose.database.model.Profile
+import at.torch.compose.database.model.Relay
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
+import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -46,15 +53,52 @@ class SearchMemberToAddToChatRoomViewModel(
                 // Initiate new chat... and navigate to new chat...
                 SearchMemberToAddToChatRoomUIState.Error("Failed to load chat")
             } else {
+                val contacts = nostrRepository.searchableProfiles(
+                    excludingPublicKeys = localChatRoom.localParticipants.map { it.participant.participantPublicKey }.toTypedArray()
+                )
+                scheduleKeyPackageEventSynchronization(
+                    profiles = contacts
+                )
                 SearchMemberToAddToChatRoomUIState.Loaded(
                     localChatRoom = localChatRoom,
-                    contacts = nostrRepository.searchableProfiles(
-                        excludingPublicKeys = localChatRoom.localParticipants.map { it.participant.participantPublicKey }.toTypedArray()
-                    )
+                    contacts = contacts
                 )
             }
         }
     }
+
+    fun scheduleKeyPackageEventSynchronization(profiles: List<Profile>) {
+        logger.d("scheduleKeyPackageEventSynchronization: $profiles")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // TODO: Sync from aggregated relays of profile KeyPackageRelays...
+            val negentropySynchronizeRequests = Relays.DefaultDMRelayList.map { normalizedRelayUrl ->
+                val synchronizationFilter = SynchronizationFilter(
+                    authors = profiles.map { it.publicKey }.toTypedArray(),
+                    kinds = arrayOf(
+                        KeyPackageEvent.KIND
+                    )
+                )
+
+                NegentropySynchronizeRequest(
+                    id = NegentropySynchronizeRequest.computeId(
+                        relayURL = normalizedRelayUrl.url,
+                        synchronizationFilter = synchronizationFilter
+                    ),
+                    purpose = "key-packages",
+                    synchronizationFilter = synchronizationFilter,
+                    relayURL = normalizedRelayUrl.url,
+                    level = 0
+                )
+            }
+            logger.i("negentropySynchronizeRequests: $negentropySynchronizeRequests")
+
+            nostrRepository.queueNegentropySynchronizeRequest(
+                negentropySynchronizeRequests
+            )
+        }
+    }
+
 
     companion object {
         private const val TAG = "SearchMemberToAddToChatRoomViewModel"
