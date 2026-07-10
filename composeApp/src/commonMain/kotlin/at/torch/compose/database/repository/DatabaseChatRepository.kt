@@ -20,10 +20,12 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
@@ -256,62 +258,90 @@ class DatabaseChatRepository(
         nostrSignerSync: NostrSignerSync
     ) {
         database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEachIndexed { index, participant ->
-            if (giftWrapPayload.kind == WelcomeEvent.KIND && nostrSignerSync.pubKey == participant.participantPublicKey) {
-                logger.w("We shouldn't be gift wrapping welcome event to ourselves (${nostrSignerSync.pubKey}).")
-            } else {
-                val wrapperKeyPair = KeyPair()
-                val wrapperSigner = NostrSignerSync(
-                    keyPair = wrapperKeyPair
+            if (giftWrapPayload.kind == WelcomeEvent.KIND) {
+                logger.i("Only giftWrap welcomeEvent payload (${giftWrapPayload.id}) to the participant who published the related keyPackage")
+                val welcomeEvent = WelcomeEvent(
+                    id = giftWrapPayload.id,
+                    pubKey = nostrSignerSync.pubKey,
+                    tags = giftWrapPayload.tags,
+                    content = giftWrapPayload.content,
+                    createdAt = giftWrapPayload.createdAt.epochSeconds,
+                    sig = ""
                 )
 
-                val giftWrapPayloadEvent = nostrSignerSync.signNormal<Event>(
+                val shouldBeGiftWrapped: Boolean = welcomeEvent.keyPackageEventId()?.let { keyPackageEventId ->
+                    val marmotKeyPackage = database.marmotKeyPackageDao().getMarmotKeyPackageForPublicKey(
+                        keyPackageEventId
+                    )
+
+                    logger.i("MarmoteKeyPackage published by ${marmotKeyPackage?.publicKey}")
+
+                    marmotKeyPackage?.publicKey == participant.participantPublicKey
+                } ?: false
+
+                if (!shouldBeGiftWrapped) {
+                    logger.w("Participant ${participant.participantPublicKey} didn't publish key package for this welcome event")
+
+                    return@forEachIndexed
+                }
+            }
+
+            val wrapperKeyPair = KeyPair()
+            val wrapperSigner = NostrSignerSync(
+                keyPair = wrapperKeyPair
+            )
+
+            // TODO: Don't sign the payload... use event template instead...
+            val giftWrapPayloadRumor = RumorAssembler.assembleRumor(
+                pubKey = nostrSignerSync.pubKey,
+                ev = EventTemplate(
                     createdAt = giftWrapPayload.createdAt.epochSeconds,
                     kind = giftWrapPayload.kind,
                     tags = giftWrapPayload.tags,
                     content = giftWrapPayload.content
                 )
-                logger.d("GiftWrap Payload Event: ${giftWrapPayloadEvent.toJson()}")
+            )
+            logger.d("GiftWrap Payload Rumor: ${giftWrapPayloadRumor.toJson()}")
 
-                logger.d("Seal to $participant")
-                val payload = giftWrapPayloadEvent.toJson()
+            logger.d("Seal to $participant")
+            val payload = giftWrapPayloadRumor.toJson()
 
-                val sealedRumorEvent = nostrSignerSync.signNormal<SealedRumorEvent>(
-                    createdAt = TimeUtils.randomWithTwoDays(),
-                    kind = SealedRumorEvent.KIND,
-                    tags = emptyArray(),
-                    content = nostrSignerSync.nip44Encrypt(
-                        plaintext = payload,
-                        toPublicKey = participant.participantPublicKey
-                    )
+            val sealedRumorEvent = nostrSignerSync.signNormal<SealedRumorEvent>(
+                createdAt = TimeUtils.randomWithTwoDays(),
+                kind = SealedRumorEvent.KIND,
+                tags = emptyArray(),
+                content = nostrSignerSync.nip44Encrypt(
+                    plaintext = payload,
+                    toPublicKey = participant.participantPublicKey
                 )
-                logger.d("SealedRumorEvent: ${sealedRumorEvent.toJson()}")
+            )
+            logger.d("SealedRumorEvent: ${sealedRumorEvent.toJson()}")
 
-                val giftWrapEvent = wrapperSigner.signNormal<GiftWrapEvent>(
-                    createdAt = TimeUtils.randomWithTwoDays(),
-                    kind = GiftWrapEvent.KIND,
-                    tags = arrayOf(
-                        PTag.assemble(participant.participantPublicKey, participant.relayHint?.let { NormalizedRelayUrl(it) })
-                    ),
-                    content = wrapperSigner.nip44Encrypt(
-                        plaintext = sealedRumorEvent.toJson(),
-                        toPublicKey = participant.participantPublicKey
-                    )
+            val giftWrapEvent = wrapperSigner.signNormal<GiftWrapEvent>(
+                createdAt = TimeUtils.randomWithTwoDays(),
+                kind = GiftWrapEvent.KIND,
+                tags = arrayOf(
+                    PTag.assemble(participant.participantPublicKey, participant.relayHint?.let { NormalizedRelayUrl(it) })
+                ),
+                content = wrapperSigner.nip44Encrypt(
+                    plaintext = sealedRumorEvent.toJson(),
+                    toPublicKey = participant.participantPublicKey
                 )
-                logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
+            )
+            logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
-                database.nostrNip17Dao().persistAndBroadcastGiftWrap(
-                    giftWrapPayload = Pair(
-                        index,
-                        giftWrapPayload
-                    ),
-                    sealedRumorEvent = sealedRumorEvent,
-                    giftWrapEvent = giftWrapEvent,
-                    receiverPublicKey = PTag(
-                        pubKey = participant.participantPublicKey,
-                        relayHint = participant.relayHint?.let { NormalizedRelayUrl(it) }
-                    )
+            database.nostrNip17Dao().persistAndBroadcastGiftWrap(
+                giftWrapPayload = Pair(
+                    index,
+                    giftWrapPayload
+                ),
+                sealedRumorEvent = sealedRumorEvent,
+                giftWrapEvent = giftWrapEvent,
+                receiverPublicKey = PTag(
+                    pubKey = participant.participantPublicKey,
+                    relayHint = participant.relayHint?.let { NormalizedRelayUrl(it) }
                 )
-            }
+            )
         }
     }
 

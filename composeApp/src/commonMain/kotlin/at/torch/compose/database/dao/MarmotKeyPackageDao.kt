@@ -12,6 +12,9 @@ interface MarmotKeyPackageDao {
     @Query("SELECT * FROM MarmotKeyPackage WHERE publicKey = :publicKey ORDER BY createdAt DESC")
     suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
 
+    @Query("SELECT * FROM MarmotKeyPackage WHERE id = :id ORDER BY createdAt DESC")
+    suspend fun getMarmotKeyPackageById(id: HexKey): MarmotKeyPackage?
+
     @Upsert
     suspend fun upsert(marmotKeyPackage: MarmotKeyPackage)
 }
