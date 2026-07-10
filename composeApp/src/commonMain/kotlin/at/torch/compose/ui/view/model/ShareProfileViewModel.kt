@@ -8,6 +8,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.BroadcastNostrEventRequest
+import at.torch.compose.database.model.intermdiate.LocalNostrEvent
+import at.torch.compose.nostr.Relays
 import at.torch.compose.ui.view.state.ShareProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -45,6 +48,20 @@ class ShareProfileViewModel(
                     ShareProfileUIState.Error
                 }
             }
+        }
+    }
+
+    fun rebroadcastProfile(localNostrEvent: LocalNostrEvent) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Rebroadcast
+            nostrRepository.rescheduleBroadcastNostrEventRequests(
+                Relays.eventFinderRelaySet.map {
+                    BroadcastNostrEventRequest(
+                        nostrEventId = localNostrEvent.nostrEvent.id,
+                        relayURL = it.url
+                    )
+                }
+            )
         }
     }
 

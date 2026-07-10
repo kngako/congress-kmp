@@ -111,7 +111,7 @@ fun ShareProfileScreen(
                     modifier = Modifier.padding(innerPadding)
                 ) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -184,6 +184,23 @@ fun ShareProfileScreen(
                                 }
                             }
 
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            onClick = {
+                                shareProfileViewModel.rebroadcastProfile(
+                                    localNostrEvent = shareProfileUIState.localNostrEvent
+                                )
+                            }
+                        ) {
+                            Text(
+                                "Re-broadcast"
+                            )
                         }
                     }
                 }
