@@ -42,6 +42,7 @@ import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.ChatRoomDetailViewModel
@@ -57,7 +58,8 @@ fun ChatRoomDetailScreen(
     initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
-    onNavigateToChat: (Route) -> Unit,
+    onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
+    onNavigateToRoute: (Route) -> Unit,
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
@@ -104,7 +106,14 @@ fun ChatRoomDetailScreen(
                         actions = {
                             IconButton(
                                 onClick = {
-                                    // TODO: Navigate to the invite user screen...
+                                    // Navigate to the invite user screen...
+                                    onNavigateToRoute.invoke(
+                                        SearchMemberToAddToChatRoomRoute(
+                                            chatRoomId = chatRoomId,
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            relayHint = relayHint
+                                        )
+                                    )
                                 }
                             ) {
                                 Icon(
@@ -298,7 +307,7 @@ fun ChatRoomDetailScreen(
 
                 LaunchedEffect(true) {
                     chatRoomDetailViewModel.initiateNewChat(
-                        onNavigateToChat
+                        onNavigateToRouteAndPopUpInclusive
                     )
                 }
             }
@@ -336,7 +345,8 @@ private fun ChatRoomDetailScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onNavigateToChat = {}
+                onNavigateToRouteAndPopUpInclusive = {},
+                onNavigateToRoute = {}
             )
         }
     }

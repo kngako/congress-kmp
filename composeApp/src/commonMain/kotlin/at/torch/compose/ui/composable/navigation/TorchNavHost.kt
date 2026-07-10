@@ -18,12 +18,14 @@ import at.torch.compose.database.repository.DatabaseMarmotRepository
 import at.torch.compose.database.repository.DatabaseNostrRepository
 import at.torch.compose.database.repository.DatabaseSearchRepository
 import at.torch.compose.ui.composable.ActiveProfileScreen
+import at.torch.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.ImplementationPendingScreen
 import at.torch.compose.ui.composable.KeyPackageManagementScreen
 import at.torch.compose.ui.composable.NostrEventDetailScreen
+import at.torch.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import at.torch.compose.ui.composable.SearchResultScreen
 import at.torch.compose.ui.composable.SearchScreen
 import at.torch.compose.ui.composable.ShareProfileScreen
@@ -37,6 +39,7 @@ import at.torch.compose.ui.composable.UnsignedProfileScreen
 import at.torch.compose.ui.composable.UnsyncedProfileScreen
 import at.torch.compose.ui.composable.WriteNewNoteScreen
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
+import at.torch.compose.ui.composable.navigation.routes.AddMemberToChatRoomConfirmationRoute
 import at.torch.compose.ui.composable.navigation.routes.BlankRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
@@ -47,6 +50,7 @@ import at.torch.compose.ui.composable.navigation.routes.KeyPackageManagementRout
 import at.torch.compose.ui.composable.navigation.routes.LandingRoute
 import at.torch.compose.ui.composable.navigation.routes.LoadingRoute
 import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.navigation.routes.SearchResultRoute
 import at.torch.compose.ui.composable.navigation.routes.SearchRoute
 import at.torch.compose.ui.composable.navigation.routes.ShareProfileRoute
@@ -549,6 +553,51 @@ fun TorchNavHost(
             val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
 
             ChatRoomDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
+                onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
+                    navController.navigate(
+                        route = chatRoomDetailRoute
+                    ) {
+                        popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                }
+            )
+        }
+        composable<SearchMemberToAddToChatRoomRoute> {  backStackEntry ->
+            val route = backStackEntry.toRoute<SearchMemberToAddToChatRoomRoute>()
+
+            SearchMemberToAddToChatRoomScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
+                onNavigateToRoute = { chatRoomDetailRoute ->
+                    navController.navigate(
+                        route = chatRoomDetailRoute
+                    ) {
+                        popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
+                },
+            )
+        }
+        composable<AddMemberToChatRoomConfirmationRoute> {  backStackEntry ->
+            val route = backStackEntry.toRoute<AddMemberToChatRoomConfirmationRoute>()
+
+            AddMemberToChatRoomConfirmationScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,

@@ -1,0 +1,166 @@
+package at.torch.compose.ui.view.model
+
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
+import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
+
+class SearchMemberToAddToChatRoomViewModel(
+    val chatRoomId: String,
+    val activeUserPublicKey: HexKey,
+    val relayHint: String?,
+    initialSearchMemberToAddToChatRoomUIState: SearchMemberToAddToChatRoomUIState,
+    val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository
+): ViewModel() {
+
+    var searchMemberToAddToChatRoomUIState: SearchMemberToAddToChatRoomUIState by mutableStateOf(initialSearchMemberToAddToChatRoomUIState)
+        private set
+
+
+
+    private val logger = Logger.withTag(TAG)
+
+    val isActionPending: MutableState<Boolean> = mutableStateOf(false)
+
+    fun initiateChatRoomDetail() {
+        logger.d("compressed (most likely chat room): $chatRoomId")
+        // Get ChatRoomById
+        viewModelScope.launch(Dispatchers.IO) {
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
+
+            searchMemberToAddToChatRoomUIState = if (localChatRoom == null) {
+                // Initiate new chat... and navigate to new chat...
+                SearchMemberToAddToChatRoomUIState.Error("Failed to load chat")
+            } else {
+                SearchMemberToAddToChatRoomUIState.Loaded(
+                    localChatRoom = localChatRoom
+                )
+            }
+        }
+    }
+
+    fun initiateNewChat(
+        onNavigateToChat: (Route) -> Unit
+    ) {
+        logger.d("initiateNewChat: $chatRoomId")
+        // Get ChatRoomById
+        viewModelScope.launch(Dispatchers.IO) {
+
+            // Check if we have a chat with activeUserPublicKey and chatRoomId (pubkey) as participants
+            val participants = chatRepository.getAllParticipantsWithPubKey(chatRoomId)
+
+            participants.forEach { participant ->
+                chatRepository.getChatRoomByIdentifier(participant.chatRoomId)?.let { localChatRoom ->
+                    // TODO: Check that chatRoom is not a group chat...
+                    if (localChatRoom.localParticipants.size == 1) {
+                        // This is a chat with self...
+                        // TODO: navigateToTheChat...
+                        viewModelScope.launch(Dispatchers.Main) {
+                             onNavigateToChat.invoke(
+                                ChatRoomDetailRoute(
+                                    activeUserPublicKey = activeUserPublicKey,
+                                    chatRoomId = localChatRoom.chatRoom.id,
+                                    relayHint = relayHint
+                                )
+                            )
+                        }
+                        return@launch
+
+                    } else if (localChatRoom.localParticipants.size == 2) {
+                        val activeUserParticipant = localChatRoom.localParticipants.find { localParticipant -> localParticipant.participant.participantPublicKey == activeUserPublicKey }
+
+                        if (activeUserParticipant != null) {
+                            // We have found the chat we are looking for...
+                            viewModelScope.launch(Dispatchers.Main) {
+                                onNavigateToChat.invoke(
+                                    ChatRoomDetailRoute(
+                                        activeUserPublicKey = activeUserPublicKey,
+                                        chatRoomId = localChatRoom.chatRoom.id,
+                                        relayHint = relayHint
+                                    )
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                }
+            }
+
+            val profile = chatRepository.getProfileWithPublicKey(chatRoomId)
+
+            if (profile != null) {
+                logger.d("Create chat with: $profile")
+                // Check if we have a keyPackageEvent...
+                val keyPackageEvent = chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
+
+                if (keyPackageEvent == null) {
+                    searchMemberToAddToChatRoomUIState = SearchMemberToAddToChatRoomUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
+                } else {
+                    // Create new chat and invite local
+                    try {
+                        val chatRoomId = chatRepository.createMlsDirectMessage(
+                            userPublicKey = activeUserPublicKey,
+                            peerPublicKey = chatRoomId,
+                            peerKeyPackage = keyPackageEvent,
+                        )
+
+                        onNavigateToChat.invoke(
+                            ChatRoomDetailRoute(
+                                activeUserPublicKey = activeUserPublicKey,
+                                chatRoomId = chatRoomId,
+                                relayHint = relayHint
+                            )
+                        )
+                    } catch (e: Throwable) {
+                        searchMemberToAddToChatRoomUIState = SearchMemberToAddToChatRoomUIState.Error("Failed to create chat")
+
+                    }
+                }
+
+            } else {
+                searchMemberToAddToChatRoomUIState = SearchMemberToAddToChatRoomUIState.Error("Couldn't find profile...")
+            }
+        }
+    }
+
+
+    companion object {
+        private const val TAG = "SearchMemberToAddToChatRoomViewModel"
+
+        fun factory(
+            activeUserPublicKey: HexKey,
+            chatRoomId: String,
+            relayHint: String?,
+            initialSearchMemberToAddToChatRoomUIState: SearchMemberToAddToChatRoomUIState = SearchMemberToAddToChatRoomUIState.Loading,
+            nostrRepository: NostrRepository,
+            chatRepository: ChatRepository
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                SearchMemberToAddToChatRoomViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
+                    chatRoomId = chatRoomId,
+                    relayHint = relayHint,
+                    initialSearchMemberToAddToChatRoomUIState = initialSearchMemberToAddToChatRoomUIState,
+                    nostrRepository = nostrRepository,
+                    chatRepository = chatRepository
+                )
+            }
+        }
+    }
+}
