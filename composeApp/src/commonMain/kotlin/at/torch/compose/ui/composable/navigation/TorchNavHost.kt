@@ -17,13 +17,17 @@ import at.torch.compose.database.repository.DatabaseChatRepository
 import at.torch.compose.database.repository.DatabaseMarmotRepository
 import at.torch.compose.database.repository.DatabaseNostrRepository
 import at.torch.compose.database.repository.DatabaseSearchRepository
+import at.torch.compose.managers.AuxDatabaseManager
 import at.torch.compose.ui.composable.ActiveProfileScreen
 import at.torch.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
 import at.torch.compose.ui.composable.ChatRoomDetailScreen
+import at.torch.compose.ui.composable.CreateProfileScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.ImplementationPendingScreen
 import at.torch.compose.ui.composable.KeyPackageManagementScreen
+import at.torch.compose.ui.composable.LandingScreen
+import at.torch.compose.ui.composable.LoadingScreen
 import at.torch.compose.ui.composable.NostrEventDetailScreen
 import at.torch.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import at.torch.compose.ui.composable.SearchResultScreen
@@ -31,6 +35,7 @@ import at.torch.compose.ui.composable.SearchScreen
 import at.torch.compose.ui.composable.ShareProfileScreen
 import at.torch.compose.ui.composable.SignInToProfileScreen
 import at.torch.compose.ui.composable.SocialPreconditionScreen
+import at.torch.compose.ui.composable.SovereignWalletStartupScreen
 import at.torch.compose.ui.composable.UnannouncedProfileScreen
 import at.torch.compose.ui.composable.UnindexedProfileScreen
 import at.torch.compose.ui.composable.UnqueuedProfileScreen
@@ -98,7 +103,7 @@ fun TorchNavHost(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val auxDatabaseManager =
-        at.torch.compose.managers.AuxDatabaseManager(torchGlobal)
+        AuxDatabaseManager(torchGlobal)
 
     val databaseNostrRepository = DatabaseNostrRepository(
         database = auxDatabaseManager.auxDatabase,
@@ -274,7 +279,7 @@ fun TorchNavHost(
         composable<SovereignWalletStartupRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
 
-            at.torch.compose.ui.composable.SovereignWalletStartupScreen(
+            SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
@@ -304,12 +309,12 @@ fun TorchNavHost(
         composable<LoadingRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<LoadingRoute>()
 
-            at.torch.compose.ui.composable.LoadingScreen(
+            LoadingScreen(
                 text = route.text
             )
         }
         composable<LandingRoute> {
-            at.torch.compose.ui.composable.LandingScreen(
+            LandingScreen(
                 onNavigateToLearnMore = {
                     navController.navigate(
                         route = ImplementationPendingRoute(
@@ -330,7 +335,7 @@ fun TorchNavHost(
             )
         }
         composable<CreateProfileRoute> {
-            at.torch.compose.ui.composable.CreateProfileScreen(
+            CreateProfileScreen(
                 onNavigateToEndThis = {
                     navController.navigate(
                         route = BlankRoute
