@@ -95,16 +95,6 @@ fun SearchMemberToAddToChatRoomScreen(
             }
         }
         is SearchMemberToAddToChatRoomUIState.Loaded -> {
-            val textFieldState = rememberTextFieldState()
-
-            val chatRoomDetailMessageListViewModel: ChatRoomDetailMessageListViewModel = viewModel(
-                factory = ChatRoomDetailMessageListViewModel.factory(
-                    localChatRoom = searchMemberToAddToChatRoomUIState.localChatRoom,
-                    nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
-                )
-            )
-
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -191,10 +181,6 @@ fun SearchMemberToAddToChatRoomScreen(
                                 }
                             }
                         }
-                    }
-
-                    key(true) {
-                        chatRoomDetailMessageListViewModel.initiate()
                     }
                 }
             }

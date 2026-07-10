@@ -87,16 +87,6 @@ fun AddMemberToChatRoomConfirmationScreen(
             }
         }
         is AddMemberToChatRoomConfirmationUIState.Loaded -> {
-            val textFieldState = rememberTextFieldState()
-
-            val chatRoomDetailMessageListViewModel: at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel = viewModel(
-                factory = at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel.factory(
-                    localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
-                    nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
-                )
-            )
-
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -119,16 +109,12 @@ fun AddMemberToChatRoomConfirmationScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth()
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text("Render contact List")
+                        Text("Render confirmation")
                     }
-
-                    key(true) {
-                        chatRoomDetailMessageListViewModel.initiate()
-                    }
-
-                    // TODO: Check that we have direct message relays for this user...
                 }
             }
         }

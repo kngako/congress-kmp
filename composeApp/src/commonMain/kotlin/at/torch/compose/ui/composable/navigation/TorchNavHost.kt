@@ -586,11 +586,7 @@ fun TorchNavHost(
                 onNavigateToRoute = { chatRoomDetailRoute ->
                     navController.navigate(
                         route = chatRoomDetailRoute
-                    ) {
-                        popUpTo(route) {
-                            inclusive = true
-                        }
-                    }
+                    )
                 },
             )
         }
