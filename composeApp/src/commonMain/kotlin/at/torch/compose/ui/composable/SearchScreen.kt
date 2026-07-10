@@ -51,19 +51,29 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.repository.SearchRepository
+import at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.composable.navigation.routes.SearchResultRoute
+import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
+import at.torch.compose.ui.composable.widgets.profile.ProfileColor
+import at.torch.compose.ui.theme.TorchTheme
+import at.torch.compose.ui.view.model.SearchViewModel
+import at.torch.compose.ui.view.state.SearchUIState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SearchScreen(
     activeUserPublicKey: String,
-    initialSearchUIState: at.torch.compose.ui.view.state.SearchUIState,
-    nostrRepository: at.torch.compose.repository.NostrRepository,
-    searchRepository: at.torch.compose.repository.SearchRepository,
-    onNavigateToSearchResult: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit,
-    onNavigateToProfile: (at.torch.compose.ui.composable.navigation.routes.Route) -> Unit
+    initialSearchUIState: SearchUIState,
+    nostrRepository: NostrRepository,
+    searchRepository: SearchRepository,
+    onNavigateToSearchResult: (Route) -> Unit,
+    onNavigateToProfile: (Route) -> Unit
 ) {
-    val searchViewModel: at.torch.compose.ui.view.model.SearchViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.SearchViewModel.factory(
+    val searchViewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.factory(
             initialSearchUIState = initialSearchUIState,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
@@ -151,7 +161,7 @@ fun SearchScreen(
                                         IconButton(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
-                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                    SearchResultRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
                                                         textFieldState.text.toString()
                                                     )
@@ -167,7 +177,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     textFieldState.text.toString()
                                                 )
@@ -190,7 +200,7 @@ fun SearchScreen(
                                         IconButton(
                                             onClick = {
                                                 onNavigateToSearchResult.invoke(
-                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                    SearchResultRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
                                                         query = "#${
                                                             textFieldState.text.toString()
@@ -209,7 +219,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     "#${
                                                         textFieldState.text.toString()
@@ -235,12 +245,12 @@ fun SearchScreen(
                                     supportingContent = {
                                         Text(
                                             text = profile.staticIdentifier() ?: "",
-                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
+                                            color = ProfileColor.fromPublicKey(profile.publicKey),
                                             maxLines = 1,
                                         )
                                     },
                                     leadingContent = {
-                                        _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                        ProfileAvatar(
                                             profile = profile,
                                             publicKey = profile.publicKey
                                         )
@@ -248,7 +258,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToProfile.invoke(
-                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                NostrEventDetailRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     profile.nostrEventId
                                                 )
@@ -291,14 +301,14 @@ fun SearchScreen(
                                                                 .size(IconButtonDefaults.mediumContainerSize()),
                                                             onClick = {
                                                                 onNavigateToProfile.invoke(
-                                                                    _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                                    NostrEventDetailRoute(
                                                                         activeUserPublicKey = activeUserPublicKey,
                                                                         profile.nostrEventId
                                                                     )
                                                                 )
                                                             }
                                                         ) {
-                                                            _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                                            ProfileAvatar(
                                                                 size = 70.dp,
                                                                 profile = profile,
                                                                 publicKey = profile.publicKey
@@ -307,7 +317,7 @@ fun SearchScreen(
 
                                                         Text(
                                                             text = profile.humanReadableNameOrPubkey(),
-                                                            color = at.torch.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile.publicKey),
+                                                            color = ProfileColor.fromPublicKey(profile.publicKey),
                                                             overflow = TextOverflow.Ellipsis,
                                                             maxLines = 1,
                                                             style = MaterialTheme.typography.labelSmall
@@ -353,7 +363,7 @@ fun SearchScreen(
                                     modifier = Modifier
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
-                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.SearchResultRoute(
+                                                SearchResultRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     query = recentSearch.query
                                                 )
@@ -401,15 +411,15 @@ fun SearchScreen(
 @Preview
 @Composable
 private fun SearchScreenPreview() {
-    _root_ide_package_.at.torch.compose.ui.theme.TorchTheme {
+    TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             SearchScreen(
                 activeUserPublicKey = "",
-                initialSearchUIState = at.torch.compose.ui.view.state.SearchUIState.Prompt,
-                nostrRepository = at.torch.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                searchRepository = at.torch.compose.repository.SearchRepository.NO_OP_SEARCH_REPOSITORY,
+                initialSearchUIState = SearchUIState.Prompt,
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
+                searchRepository = SearchRepository.NO_OP_SEARCH_REPOSITORY,
                 onNavigateToSearchResult = {},
                 onNavigateToProfile = {}
             )
