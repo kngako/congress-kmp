@@ -36,7 +36,7 @@ class AddMemberToChatRoomConfirmationViewModel(
 
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
 
-    fun initiateChatRoomDetail() {
+    fun initiate() {
         logger.d("compressed (most likely chat room): $chatRoomId")
         // Get ChatRoomById
         viewModelScope.launch(Dispatchers.IO) {

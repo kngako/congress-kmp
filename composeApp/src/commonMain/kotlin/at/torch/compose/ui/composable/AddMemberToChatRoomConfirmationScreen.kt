@@ -1,38 +1,23 @@
 package at.torch.compose.ui.composable
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,11 +28,9 @@ import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
-import at.torch.compose.ui.composable.widgets.profile.ProfileColor
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.AddMemberToChatRoomConfirmationViewModel
 import at.torch.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
-import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -155,7 +138,7 @@ fun AddMemberToChatRoomConfirmationScreen(
 
     LaunchedEffect(true) {
         if (initialChatRoomDetailUIState == AddMemberToChatRoomConfirmationUIState.Loading) {
-            addMemberToChatRoomConfirmationViewModel.initiateChatRoomDetail()
+            addMemberToChatRoomConfirmationViewModel.initiate()
         }
     }
 }

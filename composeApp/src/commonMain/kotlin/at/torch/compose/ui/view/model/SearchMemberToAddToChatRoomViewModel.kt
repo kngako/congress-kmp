@@ -11,8 +11,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.database.model.Profile
-import at.torch.compose.database.model.Relay
-import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.ChatRepository
@@ -43,7 +41,7 @@ class SearchMemberToAddToChatRoomViewModel(
 
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
 
-    fun initiateChatRoomDetail() {
+    fun initiate() {
         logger.d("compressed (most likely chat room): $chatRoomId")
         // Get ChatRoomById
         viewModelScope.launch(Dispatchers.IO) {
