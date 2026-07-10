@@ -120,7 +120,9 @@ interface NostrRepository {
 
     suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?>
 
-    suspend fun searchableProfiles(): List<Profile>
+    suspend fun searchableProfiles(
+        excludingPublicKeys: Array<HexKey> = emptyArray()
+    ): List<Profile>
 
     suspend fun filterProfiles(searchTerm: String): List<LocalProfile>
 
@@ -292,7 +294,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun searchableProfiles(): List<Profile> {
+            override suspend fun searchableProfiles(excludingPublicKeys: Array<HexKey>): List<Profile> {
                 TODO("Not yet implemented")
             }
 

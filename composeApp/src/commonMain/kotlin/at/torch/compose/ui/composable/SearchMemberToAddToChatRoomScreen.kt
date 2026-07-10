@@ -10,16 +10,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -34,16 +38,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.AddMemberToChatRoomConfirmationRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
+import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel
 import at.torch.compose.ui.view.model.SearchMemberToAddToChatRoomViewModel
@@ -118,21 +125,70 @@ fun SearchMemberToAddToChatRoomScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth()
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        key(true) {
-                            Button(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        AddMemberToChatRoomConfirmationRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
-                                    )
-                                }
+
+                        if (searchMemberToAddToChatRoomUIState.contacts.isEmpty()) {
+                            Spacer(
+                                modifier = Modifier.height(20.dp)
+                            )
+                            Text(
+                                modifier = Modifier.padding(20.dp),
+                                text = "Currently no contacts. Please search and chat with a few people.",
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(20.dp)
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                reverseLayout = true
                             ) {
-                                Text("Contact List TODO")
+
+                                items(
+                                    items = searchMemberToAddToChatRoomUIState.contacts,
+                                    key = { it.publicKey }
+                                ) { profile ->
+                                    Card(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                AddMemberToChatRoomConfirmationRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId,
+                                                    profilePublicKey = profile.publicKey,
+                                                    relayHint = relayHint,
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                ProfileAvatar(
+                                                    profile = profile
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(
+                                                    profile.humanReadableNameOrPubkey()
+                                                )
+                                            },
+                                            supportingContent = {
+                                                profile.about?.let {
+                                                    Text(
+                                                        text = it,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -140,8 +196,6 @@ fun SearchMemberToAddToChatRoomScreen(
                     key(true) {
                         chatRoomDetailMessageListViewModel.initiate()
                     }
-
-                    // TODO: Check that we have direct message relays for this user...
                 }
             }
         }
@@ -207,6 +261,14 @@ private fun ChatRoomDetailScreenPreview() {
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),
+                    ),
+                    contacts = listOf(
+                        Profile(
+                            publicKey = "hex",
+                            displayName = "Man With A Plan",
+                            about = "Making plans and getting things done...",
+                            nostrEventId = "nostrEventId"
+                        )
                     )
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,

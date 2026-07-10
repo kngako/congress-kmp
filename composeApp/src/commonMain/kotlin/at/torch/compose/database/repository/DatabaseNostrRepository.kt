@@ -2,7 +2,6 @@ package at.torch.compose.database.repository
 
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.BroadcastNostrEventRequest
-import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
@@ -734,8 +733,10 @@ class DatabaseNostrRepository(
         return database.nostrEventDao().observeNostrEventById(nostrEventId)
     }
 
-    override suspend fun searchableProfiles(): List<at.torch.compose.database.model.Profile> {
-        return database.profileDao().getAllProfiles()
+    override suspend fun searchableProfiles(excludingPublicKeys: Array<HexKey>): List<at.torch.compose.database.model.Profile> {
+        return database.profileDao().getAllProfilesExcludingOnesWithThesePublicKeys(
+            excludedPublicKeys = excludingPublicKeys
+        )
     }
 
     override suspend fun filterProfiles(searchTerm: String): List<at.torch.compose.database.model.intermdiate.LocalProfile> {

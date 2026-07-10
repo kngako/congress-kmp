@@ -32,8 +32,6 @@ class AddMemberToChatRoomConfirmationViewModel(
     var addMemberToChatRoomConfirmationUIState: AddMemberToChatRoomConfirmationUIState by mutableStateOf(initialAddMemberToChatRoomConfirmationUIState)
         private set
 
-
-
     private val logger = Logger.withTag(TAG)
 
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
