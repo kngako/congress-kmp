@@ -7,13 +7,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -23,6 +27,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.MarmotKeyPackage
+import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
@@ -37,16 +43,18 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 @Composable
 fun AddMemberToChatRoomConfirmationScreen(
     activeUserPublicKey: HexKey,
-    chatRoomId: String,
+    chatRoomId: HexKey,
+    profilePublicKey: HexKey,
     relayHint: String?,
     initialChatRoomDetailUIState: AddMemberToChatRoomConfirmationUIState = AddMemberToChatRoomConfirmationUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
-    onNavigateToChat: (Route) -> Unit,
+    onInviteSent: () -> Unit,
 ) {
     val addMemberToChatRoomConfirmationViewModel: AddMemberToChatRoomConfirmationViewModel = viewModel(
         factory = AddMemberToChatRoomConfirmationViewModel.factory(
             chatRoomId = chatRoomId,
+            profilePublicKey = profilePublicKey,
             relayHint = relayHint,
             initialAddMemberToChatRoomConfirmationUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
@@ -58,7 +66,7 @@ fun AddMemberToChatRoomConfirmationScreen(
     when (val addMemberToChatRoomConfirmationUIState = addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) {
         is AddMemberToChatRoomConfirmationUIState.Error -> {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
@@ -66,24 +74,51 @@ fun AddMemberToChatRoomConfirmationScreen(
                 )
                 Text(
                     text = addMemberToChatRoomConfirmationUIState.message,
+                    textAlign = TextAlign.Center
                 )
             }
         }
         is AddMemberToChatRoomConfirmationUIState.Loaded -> {
             Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
-                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
-                            } else {
-                                "Invite new member to chat"
+//                topBar = {
+//                    TopAppBar(
+//                        title = {
+//                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
+//                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
+//                            } else {
+//                                "Invite new member to chat"
+//                            }
+//                            Text(
+//                                text = title,
+//                            )
+//                        },
+//                        actions = {
+//                        }
+//                    )
+//                }
+                bottomBar = {
+                    BottomAppBar(
+                        floatingActionButton = {
+                            ExtendedFloatingActionButton(
+                                onClick = {
+                                    addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
+                                        localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
+                                        peerPublicKey = addMemberToChatRoomConfirmationUIState.profile.publicKey,
+                                        peerKeyPackage = addMemberToChatRoomConfirmationUIState.marmotKeyPackage,
+                                        onInviteSent = onInviteSent
+                                    )
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Invite new member"
+                                )
+
+                                Text("Invite ${addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()}")
                             }
-                            Text(
-                                text = title,
-                            )
                         },
                         actions = {
+
                         }
                     )
                 }
@@ -92,11 +127,32 @@ fun AddMemberToChatRoomConfirmationScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text("Render confirmation")
+                        Spacer(
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Text("Invite")
+
+                        Text(
+                            text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
+                        )
+
+                        Text(
+                            text = "to join the ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: ""} chat room."
+                        )
+
+                        Text(
+                            text = "Once invited will be able to receive and send private message sent to all the ${addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size} members in the chat room.",
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(
+                            modifier = Modifier.weight(3f)
+                        )
                     }
                 }
             }
@@ -152,22 +208,35 @@ private fun ChatRoomDetailScreenPreview() {
         ) {
             AddMemberToChatRoomConfirmationScreen(
                 activeUserPublicKey = "",
+                profilePublicKey = "hex",
                 chatRoomId = "publicKey",
                 relayHint = null,
-                initialChatRoomDetailUIState = AddMemberToChatRoomConfirmationUIState.Loaded(
+                initialChatRoomDetailUIState =
+//                    AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event.\n\nTry again later or tell Person to use Torch."),
+                    AddMemberToChatRoomConfirmationUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
-                            id = "",
-                            userPublicKey = "",
-                            subject = "Message title",
+                            id = "hex",
+                            userPublicKey = "hex",
+                            subject = "Room Title",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),
-                    )
+                    ),
+                        profile = Profile(
+                            publicKey = "hex",
+                            nostrEventId = "hex",
+                            displayName = "Person"
+                        ),
+                        marmotKeyPackage = MarmotKeyPackage(
+                            id = "keypackage",
+                            publicKey = "hex",
+                            tlsEncodedMarmotKeyPackage = ByteArray(0)
+                        )
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onNavigateToChat = {}
+                onInviteSent = {}
             )
         }
     }

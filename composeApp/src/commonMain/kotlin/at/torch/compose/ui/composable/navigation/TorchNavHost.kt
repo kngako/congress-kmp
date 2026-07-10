@@ -596,17 +596,19 @@ fun TorchNavHost(
             AddMemberToChatRoomConfirmationScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 chatRoomId = route.chatRoomId,
+                profilePublicKey = route.profilePublicKey,
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
-                onNavigateToChat = { chatRoomDetailRoute ->
-                    navController.navigate(
-                        route = chatRoomDetailRoute
-                    ) {
-                        popUpTo(route) {
-                            inclusive = true
-                        }
-                    }
+                onInviteSent = {
+                    navController.popBackStack(
+                        route = SearchMemberToAddToChatRoomRoute(
+                            activeUserPublicKey = route.activeUserPublicKey,
+                            chatRoomId = route.chatRoomId,
+                            relayHint = route.relayHint
+                        ),
+                        inclusive = true
+                    )
                 },
             )
         }

@@ -129,6 +129,17 @@ class DatabaseChatRepository(
         )
     }
 
+    override suspend fun inviteMember(
+        localChatRoom: LocalChatRoom,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage
+    ) {
+        database.marmotOutboundDao().inviteMember(
+            localChatRoom = localChatRoom,
+            peerPublicKey = peerPublicKey,
+            peerKeyPackage = peerKeyPackage
+        )
+    }
     override suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,

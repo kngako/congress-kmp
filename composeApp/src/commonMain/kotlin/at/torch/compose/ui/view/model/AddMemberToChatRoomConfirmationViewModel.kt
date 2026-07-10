@@ -9,10 +9,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.MarmotKeyPackage
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
-import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 class AddMemberToChatRoomConfirmationViewModel(
     val chatRoomId: String,
     val activeUserPublicKey: HexKey,
+    val profilePublicKey: HexKey,
     val relayHint: String?,
     initialAddMemberToChatRoomConfirmationUIState: AddMemberToChatRoomConfirmationUIState,
     val nostrRepository: NostrRepository,
@@ -42,108 +43,56 @@ class AddMemberToChatRoomConfirmationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
-            addMemberToChatRoomConfirmationUIState = if (localChatRoom == null) {
-                // Initiate new chat... and navigate to new chat...
-                AddMemberToChatRoomConfirmationUIState.Error("Couldn't load chat")
-            } else {
-                AddMemberToChatRoomConfirmationUIState.Loaded(
-                    localChatRoom = localChatRoom
-                )
-            }
-        }
-    }
+            addMemberToChatRoomConfirmationUIState = if (localChatRoom != null) {
+                val profile = chatRepository.getProfileWithPublicKey(profilePublicKey)
 
-    fun initiateNewChat(
-        onNavigateToChat: (Route) -> Unit
-    ) {
-        logger.d("initiateNewChat: $chatRoomId")
-        // Get ChatRoomById
-        viewModelScope.launch(Dispatchers.IO) {
+                if (profile != null) {
+                    val marmotKeyPackage = chatRepository.getMarmotKeyPackageForPublicKey(profilePublicKey)
 
-            // Check if we have a chat with activeUserPublicKey and chatRoomId (pubkey) as participants
-            val participants = chatRepository.getAllParticipantsWithPubKey(chatRoomId)
-
-            participants.forEach { participant ->
-                chatRepository.getChatRoomByIdentifier(participant.chatRoomId)?.let { localChatRoom ->
-                    // TODO: Check that chatRoom is not a group chat...
-                    if (localChatRoom.localParticipants.size == 1) {
-                        // This is a chat with self...
-                        // TODO: navigateToTheChat...
-                        viewModelScope.launch(Dispatchers.Main) {
-                             onNavigateToChat.invoke(
-                                ChatRoomDetailRoute(
-                                    activeUserPublicKey = activeUserPublicKey,
-                                    chatRoomId = localChatRoom.chatRoom.id,
-                                    relayHint = relayHint
-                                )
-                            )
-                        }
-                        return@launch
-
-                    } else if (localChatRoom.localParticipants.size == 2) {
-                        val activeUserParticipant = localChatRoom.localParticipants.find { localParticipant -> localParticipant.participant.participantPublicKey == activeUserPublicKey }
-
-                        if (activeUserParticipant != null) {
-                            // We have found the chat we are looking for...
-                            viewModelScope.launch(Dispatchers.Main) {
-                                onNavigateToChat.invoke(
-                                    ChatRoomDetailRoute(
-                                        activeUserPublicKey = activeUserPublicKey,
-                                        chatRoomId = localChatRoom.chatRoom.id,
-                                        relayHint = relayHint
-                                    )
-                                )
-                            }
-                            return@launch
-                        }
+                    if (marmotKeyPackage != null) {
+                        AddMemberToChatRoomConfirmationUIState.Loaded(
+                            localChatRoom = localChatRoom,
+                            profile = profile,
+                            marmotKeyPackage = marmotKeyPackage
+                        )
+                    } else {
+                        AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event. Try again later or tell ${profile.humanReadableNameOrPubkey()} to use Torch.")
                     }
-                }
-            }
-
-            val profile = chatRepository.getProfileWithPublicKey(chatRoomId)
-
-            if (profile != null) {
-                logger.d("Create chat with: $profile")
-                // Check if we have a keyPackageEvent...
-                val keyPackageEvent = chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
-
-                if (keyPackageEvent == null) {
-                    addMemberToChatRoomConfirmationUIState = AddMemberToChatRoomConfirmationUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
                 } else {
-                    // Create new chat and invite local
-                    try {
-                        val chatRoomId = chatRepository.createMlsDirectMessage(
-                            userPublicKey = activeUserPublicKey,
-                            peerPublicKey = chatRoomId,
-                            peerKeyPackage = keyPackageEvent,
-                        )
-
-                        onNavigateToChat.invoke(
-                            ChatRoomDetailRoute(
-                                activeUserPublicKey = activeUserPublicKey,
-                                chatRoomId = chatRoomId,
-                                relayHint = relayHint
-                            )
-                        )
-                    } catch (e: Throwable) {
-                        addMemberToChatRoomConfirmationUIState = AddMemberToChatRoomConfirmationUIState.Error("Failed to create chat")
-
-                    }
+                    AddMemberToChatRoomConfirmationUIState.Error("Failed to find profile...")
                 }
-
             } else {
-                addMemberToChatRoomConfirmationUIState = AddMemberToChatRoomConfirmationUIState.Error("Couldn't find profile...")
+                AddMemberToChatRoomConfirmationUIState.Error("Couldn't load chat")
             }
         }
     }
 
+    fun inviteToChatRoom(
+        localChatRoom: LocalChatRoom,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage,
+        onInviteSent: () -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Invite member
+            chatRepository.inviteMember(
+                localChatRoom = localChatRoom,
+                peerPublicKey = peerPublicKey,
+                peerKeyPackage = peerKeyPackage
+            )
+            viewModelScope.launch(Dispatchers.Main) {
+                onInviteSent.invoke()
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "AddMemberToChatRoomConfirmationViewModel"
 
         fun factory(
             activeUserPublicKey: HexKey,
-            chatRoomId: String,
+            profilePublicKey: HexKey,
+            chatRoomId: HexKey,
             relayHint: String?,
             initialAddMemberToChatRoomConfirmationUIState: AddMemberToChatRoomConfirmationUIState = AddMemberToChatRoomConfirmationUIState.Loading,
             nostrRepository: NostrRepository,
@@ -153,10 +102,11 @@ class AddMemberToChatRoomConfirmationViewModel(
                 AddMemberToChatRoomConfirmationViewModel(
                     activeUserPublicKey = activeUserPublicKey,
                     chatRoomId = chatRoomId,
+                    profilePublicKey = profilePublicKey,
                     relayHint = relayHint,
                     initialAddMemberToChatRoomConfirmationUIState = initialAddMemberToChatRoomConfirmationUIState,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
                 )
             }
         }

@@ -50,6 +50,12 @@ interface ChatRepository {
         peerKeyPackage: MarmotKeyPackage
     ): String
 
+    suspend fun inviteMember(
+        localChatRoom: LocalChatRoom,
+        peerPublicKey: HexKey,
+        peerKeyPackage: MarmotKeyPackage,
+    )
+
     suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
@@ -116,6 +122,14 @@ interface ChatRepository {
                 peerPublicKey: HexKey,
                 peerKeyPackage: MarmotKeyPackage
             ): String {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun inviteMember(
+                localChatRoom: LocalChatRoom,
+                peerPublicKey: HexKey,
+                peerKeyPackage: MarmotKeyPackage
+            ) {
                 TODO("Not yet implemented")
             }
 
