@@ -469,7 +469,7 @@ fun TorchNavHost(
             val route = backStackEntry.toRoute<FeedRoute>()
             HomeScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
-                onNavigateToEvent = { eventRoute ->
+                onNavigateToRoute = { eventRoute ->
                     navController.navigate(
                         route = eventRoute
                     )
