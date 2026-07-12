@@ -3,7 +3,9 @@ package at.torch.compose.ui.composable.widgets.dialogs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -16,20 +18,26 @@ import androidx.compose.material.icons.filled.Start
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import at.torch.compose.extensions.bech32ToHexOrNull
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
+import at.torch.compose.ui.theme.TorchTheme
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +71,17 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
+                Text(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = 20.dp,
+                    ),
+                    text = "Start chat via npub or nip05",
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center
+                )
                 TextField(
                     state = textFieldState,
                     placeholder = {
@@ -145,6 +164,23 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun StartDirectMessageToNpubOrNip05DialogPreview() {
+    TorchTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            StartDirectMessageToNpubOrNip05Dialog(
+                activeUserPublicKey = "hex",
+                scope = rememberCoroutineScope(),
+                toggleOpenDialogSetting = {},
+                onNavigateToRoute = {}
+            )
         }
     }
 }
