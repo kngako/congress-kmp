@@ -103,24 +103,29 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // TODO: Add Description...
-//                        item {
-//                            chatRoomDetailUIState.localChatRoom.chatRoom.subject?.let {
-//                                Text(
-//                                    text = it
-//                                )
-//                            }
-//                        }
+                        item {
+                            chatRoomDetailUIState.localChatRoom.chatRoom.description?.let {
+                                Text(
+                                    text = it,
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
 
                         item {
-                            // Media and such should be here...
+                            HorizontalDivider()
+                            // Should add media and attachments here
                         }
                         item {
-                            Text("members")
+                            Text(
+                                text = "members",
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
 
                         item {
@@ -317,7 +322,7 @@ private fun ChatRoomMessagingScreenPreview() {
                             id = "",
                             userPublicKey = "",
                             subject = "Message Title",
-                            description = "Description",
+                            description = "Description of a chat room so that members now why they are here.",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),
