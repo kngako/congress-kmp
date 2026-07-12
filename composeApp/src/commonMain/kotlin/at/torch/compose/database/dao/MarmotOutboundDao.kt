@@ -302,7 +302,6 @@ abstract class MarmotOutboundDao(
             )
         )
 
-
         // Save chatMessage for the invite...
         database.chatMessageDao().upsert(
             ChatMessage(

@@ -45,35 +45,35 @@ import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.theme.TorchTheme
-import at.torch.compose.ui.view.model.ChatRoomDetailViewModel
-import at.torch.compose.ui.view.state.ChatRoomDetailUIState
+import at.torch.compose.ui.view.model.ChatRoomMessagingListViewModel
+import at.torch.compose.ui.view.state.ChatRoomMessagingListUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun ChatRoomDetailScreen(
+fun ChatRoomMessagingListScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     relayHint: String?,
-    initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
+    initialChatRoomMessagingListUIState: ChatRoomMessagingListUIState = ChatRoomMessagingListUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
-    val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
-        factory = ChatRoomDetailViewModel.factory(
+    val chatRoomMessagingListViewModel: ChatRoomMessagingListViewModel = viewModel(
+        factory = ChatRoomMessagingListViewModel.factory(
             chatRoomId = chatRoomId,
             relayHint = relayHint,
-            initialChatRoomDetailUIState = initialChatRoomDetailUIState,
+            initialChatRoomMessagingListUIState = initialChatRoomMessagingListUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
             activeUserPublicKey = activeUserPublicKey
         )
     )
 
-    when (val chatRoomDetailUIState = chatRoomDetailViewModel.chatRoomDetailUIState) {
-        is ChatRoomDetailUIState.Error -> {
+    when (val chatRoomDetailUIState = chatRoomMessagingListViewModel.chatRoomMessagingListUIState) {
+        is ChatRoomMessagingListUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -86,7 +86,7 @@ fun ChatRoomDetailScreen(
                 )
             }
         }
-        is ChatRoomDetailUIState.Loaded -> {
+        is ChatRoomMessagingListUIState.Loaded -> {
             val textFieldState = rememberTextFieldState()
 
             val chatRoomDetailMessageListViewModel: at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel = viewModel(
@@ -246,7 +246,7 @@ fun ChatRoomDetailScreen(
                 }
             }
         }
-        ChatRoomDetailUIState.Loading -> {
+        ChatRoomMessagingListUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -279,7 +279,7 @@ fun ChatRoomDetailScreen(
                 )
             }
         }
-        ChatRoomDetailUIState.InitiatingNewChat -> {
+        ChatRoomMessagingListUIState.InitiatingNewChat -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -306,7 +306,7 @@ fun ChatRoomDetailScreen(
                 )
 
                 LaunchedEffect(true) {
-                    chatRoomDetailViewModel.initiateNewChat(
+                    chatRoomMessagingListViewModel.initiateNewChat(
                         onNavigateToRouteAndPopUpInclusive
                     )
                 }
@@ -315,24 +315,24 @@ fun ChatRoomDetailScreen(
     }
 
     LaunchedEffect(true) {
-        if (initialChatRoomDetailUIState == ChatRoomDetailUIState.Loading) {
-            chatRoomDetailViewModel.initiateChatRoomDetail()
+        if (initialChatRoomMessagingListUIState == ChatRoomMessagingListUIState.Loading) {
+            chatRoomMessagingListViewModel.initiateChatRoomDetail()
         }
     }
 }
 
 @Preview
 @Composable
-private fun ChatRoomDetailScreenPreview() {
+private fun ChatRoomMessagingListScreenPreview() {
     TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            ChatRoomDetailScreen(
+            ChatRoomMessagingListScreen(
                 activeUserPublicKey = "",
                 chatRoomId = "publicKey",
                 relayHint = null,
-                initialChatRoomDetailUIState = ChatRoomDetailUIState.Loaded(
+                initialChatRoomMessagingListUIState = ChatRoomMessagingListUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",

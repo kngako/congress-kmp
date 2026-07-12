@@ -21,7 +21,7 @@ import at.torch.compose.managers.AuxDatabaseManager
 import at.torch.compose.ui.composable.ActiveProfileScreen
 import at.torch.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
-import at.torch.compose.ui.composable.ChatRoomDetailScreen
+import at.torch.compose.ui.composable.ChatRoomMessagingListScreen
 import at.torch.compose.ui.composable.CreateProfileScreen
 import at.torch.compose.ui.composable.HomeScreen
 import at.torch.compose.ui.composable.ImplementationPendingScreen
@@ -557,7 +557,7 @@ fun TorchNavHost(
         composable<ChatRoomDetailRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
 
-            ChatRoomDetailScreen(
+            ChatRoomMessagingListScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,

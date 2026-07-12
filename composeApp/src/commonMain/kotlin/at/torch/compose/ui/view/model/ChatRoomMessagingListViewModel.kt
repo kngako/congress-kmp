@@ -13,24 +13,23 @@ import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
-import at.torch.compose.ui.view.state.ChatRoomDetailUIState
+import at.torch.compose.ui.view.state.ChatRoomMessagingListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
-class ChatRoomDetailViewModel(
+class ChatRoomMessagingListViewModel(
     val chatRoomId: String,
     val activeUserPublicKey: HexKey,
     val relayHint: String?,
-    initialChatRoomDetailUIState: ChatRoomDetailUIState,
+    initialChatRoomMessagingListUIState: ChatRoomMessagingListUIState,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository
 ): ViewModel() {
 
-    var chatRoomDetailUIState: ChatRoomDetailUIState by mutableStateOf(initialChatRoomDetailUIState)
+    var chatRoomMessagingListUIState: ChatRoomMessagingListUIState by mutableStateOf(initialChatRoomMessagingListUIState)
         private set
 
 
@@ -45,11 +44,11 @@ class ChatRoomDetailViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
-            chatRoomDetailUIState = if (localChatRoom == null) {
+            chatRoomMessagingListUIState = if (localChatRoom == null) {
                 // Initiate new chat... and navigate to new chat...
-                ChatRoomDetailUIState.InitiatingNewChat
+                ChatRoomMessagingListUIState.InitiatingNewChat
             } else {
-                ChatRoomDetailUIState.Loaded(
+                ChatRoomMessagingListUIState.Loaded(
                     localChatRoom = localChatRoom
                 )
             }
@@ -111,7 +110,7 @@ class ChatRoomDetailViewModel(
                 val keyPackageEvent = chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId)
 
                 if (keyPackageEvent == null) {
-                    chatRoomDetailUIState = ChatRoomDetailUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
+                    chatRoomMessagingListUIState = ChatRoomMessagingListUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
                 } else {
                     // Create new chat and invite local
                     try {
@@ -129,13 +128,13 @@ class ChatRoomDetailViewModel(
                             )
                         )
                     } catch (e: Throwable) {
-                        chatRoomDetailUIState = ChatRoomDetailUIState.Error("Failed to create chat")
+                        chatRoomMessagingListUIState = ChatRoomMessagingListUIState.Error("Failed to create chat")
 
                     }
                 }
 
             } else {
-                chatRoomDetailUIState = ChatRoomDetailUIState.Error("Couldn't find profile...")
+                chatRoomMessagingListUIState = ChatRoomMessagingListUIState.Error("Couldn't find profile...")
             }
         }
     }
@@ -148,16 +147,16 @@ class ChatRoomDetailViewModel(
             activeUserPublicKey: HexKey,
             chatRoomId: String,
             relayHint: String?,
-            initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
+            initialChatRoomMessagingListUIState: ChatRoomMessagingListUIState = ChatRoomMessagingListUIState.Loading,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                ChatRoomDetailViewModel(
+                ChatRoomMessagingListViewModel(
                     activeUserPublicKey = activeUserPublicKey,
                     chatRoomId = chatRoomId,
                     relayHint = relayHint,
-                    initialChatRoomDetailUIState = initialChatRoomDetailUIState,
+                    initialChatRoomMessagingListUIState = initialChatRoomMessagingListUIState,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
                 )
