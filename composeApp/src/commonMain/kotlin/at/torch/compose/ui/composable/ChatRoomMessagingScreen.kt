@@ -14,7 +14,6 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +43,6 @@ import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
-import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.ChatRoomMessagingViewModel
@@ -289,10 +287,10 @@ fun ChatRoomMessagingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
+
                 Text(
                     text = "Creating new chat.",
                     style = MaterialTheme.typography.bodySmall,

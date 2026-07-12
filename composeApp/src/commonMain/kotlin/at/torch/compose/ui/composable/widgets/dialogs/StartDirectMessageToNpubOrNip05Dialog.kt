@@ -26,14 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import at.torch.compose.extensions.bech32ToHexOrNull
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
+    activeUserPublicKey: HexKey,
     scope: CoroutineScope,
     toggleOpenDialogSetting: (Boolean) -> Unit,
     onNavigateToRoute: (Route) -> Unit
@@ -101,11 +105,31 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         scope.launch {
                             toggleOpenDialogSetting.invoke(false)
                         }.invokeOnCompletion {
-                            onNavigateToRoute.invoke(
-                                ImplementationPendingRoute(
-                                    "Direct Message to ${textFieldState.text}"
+                            val input = textFieldState.text.toString()
+
+                            val emailLikeAddress = Parser.parseEmailLikeAddress(input)
+
+                            if (emailLikeAddress != null) {
+                                // TODO: Get public Key from hex...
+                                onNavigateToRoute.invoke(
+                                    ImplementationPendingRoute(
+                                        "Direct Message to ${textFieldState.text}"
+                                    )
                                 )
-                            )
+                            } else {
+                                val publicKey = input.bech32ToHexOrNull()
+
+                                if (publicKey != null) {
+                                    onNavigateToRoute.invoke(
+                                        ChatRoomMessagingRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = publicKey,
+                                            relayHint = null
+                                        )
+                                    )
+                                }
+                            }
+
                         }
                     }
                 ) {
