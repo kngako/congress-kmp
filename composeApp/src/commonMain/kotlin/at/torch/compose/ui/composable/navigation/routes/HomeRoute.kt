@@ -3,6 +3,6 @@ package at.torch.compose.ui.composable.navigation.routes
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class FeedRoute(
+data class HomeRoute(
     val activeUserPublicKey: String
 ): Route()

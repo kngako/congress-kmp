@@ -4,7 +4,6 @@ import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotKeyPackage
 import at.torch.compose.database.model.Participant
-import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatMessage
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -67,11 +66,20 @@ interface ChatRepository {
 
     suspend fun sealGiftWrapPayload(giftWrapPayload: GiftWrapPayload, nostrSignerSync: NostrSignerSync)
 
-    suspend fun leaveChatRoom(localChatRoom: LocalChatRoom)
+    suspend fun leaveChatRoom(
+        localChatRoom: LocalChatRoom,
+        onCompletion: () -> Unit
+    )
 
-    suspend fun softDeleteChatRoom(chatRoom: ChatRoom)
+    suspend fun softDeleteChatRoom(
+        chatRoom: ChatRoom,
+        onCompletion: () -> Unit
+    )
 
-    suspend fun deleteChatRoom(chatRoom: ChatRoom)
+    suspend fun deleteChatRoom(
+        chatRoom: ChatRoom,
+        onCompletion: () -> Unit
+    )
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
@@ -160,15 +168,24 @@ interface ChatRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun leaveChatRoom(localChatRoom: LocalChatRoom) {
+            override suspend fun leaveChatRoom(
+                localChatRoom: LocalChatRoom,
+                onCompletion: () -> Unit
+            ) {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun softDeleteChatRoom(chatRoom: ChatRoom) {
+            override suspend fun softDeleteChatRoom(
+                chatRoom: ChatRoom,
+                onCompletion: () -> Unit
+            ) {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun deleteChatRoom(chatRoom: ChatRoom) {
+            override suspend fun deleteChatRoom(
+                chatRoom: ChatRoom,
+                onCompletion: () -> Unit
+            ) {
                 TODO("Not yet implemented")
             }
         }

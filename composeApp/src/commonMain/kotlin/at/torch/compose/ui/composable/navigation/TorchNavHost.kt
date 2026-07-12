@@ -51,7 +51,7 @@ import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.CreateProfileRoute
-import at.torch.compose.ui.composable.navigation.routes.FeedRoute
+import at.torch.compose.ui.composable.navigation.routes.HomeRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
 import at.torch.compose.ui.composable.navigation.routes.LandingRoute
@@ -444,7 +444,7 @@ fun TorchNavHost(
             SocialPreconditionScreen(
                 onNavigateToSkipForNow = {
                     navController.navigate(
-                        route = FeedRoute(
+                        route = HomeRoute(
                             activeUserPublicKey = route.activeUserPubkey
                         )
                     )
@@ -465,8 +465,8 @@ fun TorchNavHost(
                 }
             )
         }
-        composable<FeedRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<FeedRoute>()
+        composable<HomeRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<HomeRoute>()
             HomeScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 onNavigateToRoute = { eventRoute ->
@@ -593,6 +593,12 @@ fun TorchNavHost(
                 onNavigateToRoute = { actionRoute ->
                     navController.navigate(
                         route = actionRoute
+                    )
+                },
+                onPopBackToRoute = { popRoute ->
+                    navController.popBackStack(
+                        route = popRoute,
+                        inclusive = false
                     )
                 }
             )

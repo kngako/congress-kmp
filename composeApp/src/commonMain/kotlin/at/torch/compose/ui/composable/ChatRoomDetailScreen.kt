@@ -63,6 +63,7 @@ fun ChatRoomDetailScreen(
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
+    onPopBackToRoute: (Route) -> Unit
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
@@ -213,10 +214,9 @@ fun ChatRoomDetailScreen(
                                 ),
                                 enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt == null, // Disable after we leave group...
                                 onClick = {
-                                    // Leave group logic
                                     chatRoomDetailViewModel.leaveGroup(
                                         localChatRoom = chatRoomDetailUIState.localChatRoom,
-                                        onNavigateToRoute = onNavigateToRoute
+                                        onPopBackToRoute = onPopBackToRoute
                                     )
                                 }
                             ) {
@@ -240,10 +240,9 @@ fun ChatRoomDetailScreen(
                                 ),
                                 enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt != null,
                                 onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute(
-                                            "Delete Group"
-                                        )
+                                    chatRoomDetailViewModel.softDeleteGroup(
+                                        localChatRoom = chatRoomDetailUIState.localChatRoom,
+                                        onPopBackToRoute = onPopBackToRoute
                                     )
                                 }
                             ) {
@@ -345,7 +344,8 @@ private fun ChatRoomMessagingScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onPopBackToRoute = {}
             )
         }
     }

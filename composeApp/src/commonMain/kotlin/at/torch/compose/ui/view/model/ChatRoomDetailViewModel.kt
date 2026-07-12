@@ -9,11 +9,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import at.torch.compose.ui.composable.navigation.routes.HomeRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
@@ -46,6 +45,7 @@ class ChatRoomDetailViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
+            logger.d("localChatRoom: $localChatRoom")
             chatRoomDetailUIState = if (localChatRoom == null) {
                 // Initiate new chat... and navigate to new chat...
                 ChatRoomDetailUIState.Error("Missing chat room")
@@ -59,20 +59,45 @@ class ChatRoomDetailViewModel(
 
     fun leaveGroup(
         localChatRoom: LocalChatRoom,
-        onNavigateToRoute: (Route) -> Unit
+        onPopBackToRoute: (Route) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            chatRepository.leaveChatRoom(localChatRoom)
-
-            viewModelScope.launch(Dispatchers.Main) {
-                onNavigateToRoute.invoke(
-                    ImplementationPendingRoute(
-                        "Leave Group"
-                    )
-                )
-            }
+            chatRepository.leaveChatRoom(
+                localChatRoom,
+                onCompletion = {
+                    viewModelScope.launch(Dispatchers.Main) {
+                        onPopBackToRoute.invoke(
+                            HomeRoute(
+                                activeUserPublicKey = activeUserPublicKey,
+                            )
+                        )
+                    }
+                }
+            )
         }
     }
+
+    fun softDeleteGroup(
+        localChatRoom: LocalChatRoom,
+        onPopBackToRoute: (Route) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.softDeleteChatRoom(
+                chatRoom = localChatRoom.chatRoom,
+                onCompletion = {
+                    viewModelScope.launch(Dispatchers.Main) {
+                        onPopBackToRoute.invoke(
+                            HomeRoute(
+                                activeUserPublicKey = activeUserPublicKey,
+                            )
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+
     companion object {
         private const val TAG = "ChatRoomDetailViewModel"
 
