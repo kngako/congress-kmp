@@ -234,6 +234,19 @@ abstract class MarmotOutboundDao(
                 )
             )
 
+            database.marmotGroupEventDao().upsert(
+                MarmotGroupEvent(
+                    id = commitEvent.id,
+                    createdAt = Instant.fromEpochSeconds(commitEvent.createdAt),
+                    encryptedContent = commitEvent.encryptedContent(),
+                    publicKey = commitEvent.pubKey,
+                    userPublicKey = userPublicKey,
+                    expiresAt = commitEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
+                    chatRoomId = nostrGroupId,
+                    signature = commitEvent.sig
+                )
+            )
+
             // Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
             database.marmotCommitResultDao().upsert(
                 MarmotCommitResult(
@@ -260,6 +273,7 @@ abstract class MarmotOutboundDao(
                     )
                 }
             )
+            // TODO: Save chatMessage
         }
     }
 
