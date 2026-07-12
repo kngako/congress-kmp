@@ -47,6 +47,7 @@ import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
 import at.torch.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
+import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.HomeScreenType
 import at.torch.compose.ui.view.model.HomeViewModel
@@ -128,7 +129,7 @@ fun HomeScreen(
                                     )
                                 }
                             ) {
-                                _root_ide_package_.at.torch.compose.ui.composable.widgets.profile.ProfileAvatar(
+                                ProfileAvatar(
                                     profile = homeScreenUIState.profileWithFollowing.profile,
                                     publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey
                                 )
