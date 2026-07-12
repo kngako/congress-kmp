@@ -141,7 +141,7 @@ class ChatRoomMessagingViewModel(
 
 
     companion object {
-        private const val TAG = "ChatRoomDetailViewModel"
+        private const val TAG = "ChatRoomMessagingViewModel"
 
         fun factory(
             activeUserPublicKey: HexKey,

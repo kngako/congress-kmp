@@ -424,7 +424,7 @@ class ChatMessageListViewModel(
     }
 
     companion object {
-        const val TAG = "ChatRoomDetailMessageListViewModel"
+        const val TAG = "ChatMessageListViewModel"
 
         fun factory(
             initialChatMessageListUIState: ChatMessageListUIState = ChatMessageListUIState.Loading,
