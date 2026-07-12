@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ChatRoomDao {
     @Transaction
-    @Query("SELECT * FROM ChatRoom WHERE id = :id")
+    @Query("SELECT * FROM ChatRoom WHERE id = :id AND deletedAt IS NULL")
     fun findChatRoomById(id: String): LocalChatRoom?
 
     @Transaction
