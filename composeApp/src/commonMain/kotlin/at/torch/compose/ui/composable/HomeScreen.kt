@@ -258,16 +258,18 @@ fun HomeScreen(
                             )
                             Card(
                                 onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Direct Message via npub")
-                                    )
+                                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Direct Message via npub")
+                                        )
+                                    }
                                 }
                             ) {
                                 ListItem(
                                     leadingContent = {
                                         Icon(
                                             Icons.Default.Key,
-                                            contentDescription = "Start npub with key"
+                                            contentDescription = "Direct Message via npub"
                                         )
                                     },
                                     headlineContent = {
@@ -276,7 +278,7 @@ fun HomeScreen(
                                     trailingContent = {
                                         Icon(
                                             Icons.Default.ChevronRight,
-                                            contentDescription = "Start chat with npub"
+                                            contentDescription = "Direct Message via npub"
                                         )
                                     }
                                 )
@@ -284,7 +286,9 @@ fun HomeScreen(
 
                             Card(
                                 onClick = {
-                                    onNavigateToChatRoomCreation.invoke()
+                                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                        onNavigateToChatRoomCreation.invoke()
+                                    }
                                 }
                             ) {
                                 ListItem(
