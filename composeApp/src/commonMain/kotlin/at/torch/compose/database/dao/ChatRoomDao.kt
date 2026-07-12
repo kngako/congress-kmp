@@ -16,11 +16,11 @@ interface ChatRoomDao {
     fun findChatRoomById(id: String): LocalChatRoom?
 
     @Transaction
-    @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey")
+    @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey AND deletedAt IS NULL")
     fun getChatRoomListByUserPublicKey(userPublicKey: String): List<LocalChatRoom>
 
     @Transaction
-    @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey")
+    @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey AND deletedAt IS NULL")
     fun observeChatRoomListByUserPublicKey(userPublicKey: String): Flow<List<LocalChatRoom>>
 
     @Upsert

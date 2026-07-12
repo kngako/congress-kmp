@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.ui.composable.widgets.feed.ListView
+import at.torch.compose.ui.view.state.FeedListUIState
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -34,12 +35,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class FeedListViewModel(
-    initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState,
+    initialFeedListUIState: FeedListUIState,
     val synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
     val nostrRepository: at.torch.compose.repository.NostrRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var feedListUIState: at.torch.compose.ui.view.state.FeedListUIState by mutableStateOf(initialFeedListUIState)
+    var feedListUIState: FeedListUIState by mutableStateOf(initialFeedListUIState)
         private set
 
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
@@ -71,7 +72,7 @@ class FeedListViewModel(
             nostrRepository.observeNostrFeed(
                 synchronizationFilter
             ).distinctUntilChanged().first().let { localNostrEvents ->
-                feedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loaded(
+                feedListUIState = FeedListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }
@@ -109,7 +110,7 @@ class FeedListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val feedListUIState = feedListUIState) {
-                at.torch.compose.ui.view.state.FeedListUIState.Error -> {
+                FeedListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -122,7 +123,7 @@ class FeedListViewModel(
                         )
                     }
                 }
-                is at.torch.compose.ui.view.state.FeedListUIState.Loaded -> {
+                is FeedListUIState.Loaded -> {
                     if (feedListUIState.localNostrEvents.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -160,7 +161,7 @@ class FeedListViewModel(
                     }
 
                 }
-                at.torch.compose.ui.view.state.FeedListUIState.Loading -> {
+                FeedListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -187,7 +188,7 @@ class FeedListViewModel(
         const val TAG = "FeedListViewModel"
 
         fun factory(
-            initialFeedListUIState: at.torch.compose.ui.view.state.FeedListUIState = at.torch.compose.ui.view.state.FeedListUIState.Loading,
+            initialFeedListUIState: FeedListUIState = FeedListUIState.Loading,
             synchronizationFilter: at.torch.compose.database.model.types.SynchronizationFilter,
             nostrRepository: at.torch.compose.repository.NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {

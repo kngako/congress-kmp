@@ -28,6 +28,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
+import at.torch.compose.repository.ChatRepository
+import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.view.state.ChatRoomListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
@@ -36,13 +39,13 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 class ChatRoomListViewModel(
-    initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState,
+    initialChatRoomListUIState: ChatRoomListUIState,
     val publicKey: String,
-    val nostrRepository: at.torch.compose.repository.NostrRepository,
-    val chatRepository: at.torch.compose.repository.ChatRepository
+    val nostrRepository: NostrRepository,
+    val chatRepository: ChatRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var chatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState by mutableStateOf(initialChatRoomListUIState)
+    var chatRoomListUIState: ChatRoomListUIState by mutableStateOf(initialChatRoomListUIState)
         private set
 
     fun initiate() {
@@ -58,7 +61,7 @@ class ChatRoomListViewModel(
                 publicKey
             ).collect { chatRooms ->
                 logger.d("ChatRoomList: $chatRooms")
-                chatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loaded(
+                chatRoomListUIState = ChatRoomListUIState.Loaded(
                     chatRoomList = chatRooms
                 )
             }
@@ -137,7 +140,7 @@ class ChatRoomListViewModel(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (val chatRoomListUIState = chatRoomListUIState) {
-                at.torch.compose.ui.view.state.ChatRoomListUIState.Error -> {
+                ChatRoomListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -150,7 +153,7 @@ class ChatRoomListViewModel(
                         )
                     }
                 }
-                is at.torch.compose.ui.view.state.ChatRoomListUIState.Loaded -> {
+                is ChatRoomListUIState.Loaded -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -194,7 +197,7 @@ class ChatRoomListViewModel(
                         }
                     }
                 }
-                at.torch.compose.ui.view.state.ChatRoomListUIState.Loading -> {
+                ChatRoomListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -221,10 +224,10 @@ class ChatRoomListViewModel(
         const val TAG = "ChatRoomListViewModel"
 
         fun factory(
-            initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
+            initialChatRoomListUIState: ChatRoomListUIState = ChatRoomListUIState.Loading,
             publicKey: String,
-            nostrRepository: at.torch.compose.repository.NostrRepository,
-            chatRepository: at.torch.compose.repository.ChatRepository
+            nostrRepository: NostrRepository,
+            chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomListViewModel(

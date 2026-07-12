@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.ui.view.state.HomeScreenUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -26,7 +27,7 @@ enum class HomeScreenType {
 
 class HomeViewModel(
     val activeUserPublicKey: HexKey,
-    val initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState,
+    val initialHomeScreenUIState: HomeScreenUIState,
     val nostrRepository: at.torch.compose.repository.NostrRepository,
     val pagerState: PagerState
 ): ViewModel() {
@@ -34,7 +35,7 @@ class HomeViewModel(
     val logger = Logger.withTag(TAG)
 
 
-    var homeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState by mutableStateOf(initialHomeScreenUIState)
+    var homeScreenUIState: HomeScreenUIState by mutableStateOf(initialHomeScreenUIState)
         private set
 
     fun initiate() {
@@ -48,11 +49,11 @@ class HomeViewModel(
                 activeUserPublicKey
             ).collect { profileWithFollowing ->
                 homeScreenUIState = if (profileWithFollowing != null) {
-                    at.torch.compose.ui.view.state.HomeScreenUIState.Loaded(
+                    HomeScreenUIState.Loaded(
                         profileWithFollowing = profileWithFollowing
                     )
                 } else {
-                    at.torch.compose.ui.view.state.HomeScreenUIState.Error
+                    HomeScreenUIState.Error
                 }
             }
         }
@@ -63,7 +64,7 @@ class HomeViewModel(
 
         fun factory(
             activeUserPublicKey: HexKey,
-            initialHomeScreenUIState: at.torch.compose.ui.view.state.HomeScreenUIState,
+            initialHomeScreenUIState: HomeScreenUIState,
             nostrRepository: at.torch.compose.repository.NostrRepository,
             pagerState: PagerState
         ): ViewModelProvider.Factory = viewModelFactory {

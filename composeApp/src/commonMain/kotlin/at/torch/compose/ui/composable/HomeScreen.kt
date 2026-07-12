@@ -49,6 +49,7 @@ import at.torch.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
 import at.torch.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
 import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
 import at.torch.compose.ui.theme.TorchTheme
+import at.torch.compose.ui.view.model.ChatRoomListViewModel
 import at.torch.compose.ui.view.model.HomeScreenType
 import at.torch.compose.ui.view.model.HomeViewModel
 import at.torch.compose.ui.view.state.HomeScreenUIState
@@ -202,9 +203,9 @@ fun HomeScreen(
                         ) { pageIndex ->
                             when (val homeScreenTypeType = HomeScreenType.entries[pageIndex]) {
                                 HomeScreenType.Messages -> {
-                                    val chatRoomListViewModel: at.torch.compose.ui.view.model.ChatRoomListViewModel = viewModel(
+                                    val chatRoomListViewModel: ChatRoomListViewModel = viewModel(
                                         key = homeScreenTypeType.name,
-                                        factory = at.torch.compose.ui.view.model.ChatRoomListViewModel.factory(
+                                        factory = ChatRoomListViewModel.factory(
                                             initialChatRoomListUIState = at.torch.compose.ui.view.state.ChatRoomListUIState.Loading,
                                             publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
                                             nostrRepository = nostrRepository,
