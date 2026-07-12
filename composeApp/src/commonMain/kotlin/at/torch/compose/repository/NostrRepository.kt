@@ -24,7 +24,11 @@ import kotlinx.coroutines.flow.Flow
 interface NostrRepository {
     suspend fun getLocalAccounts(): List<LocalAccount>
 
-    suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?>
+    suspend fun observeLocalAccount(publicKey: HexKey): Flow<LocalAccount?>
+
+    suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile?
+
+    suspend fun observeProfileWithPublicKey(publicKey: HexKey): Flow<Profile?>
 
     suspend fun observeRelation(publicKey: HexKey, activePublicKey: HexKey): Flow<List<Connection>>
 
@@ -144,7 +148,15 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeProfile(publicKey: HexKey): Flow<LocalAccount?> {
+            override suspend fun observeLocalAccount(publicKey: HexKey): Flow<LocalAccount?> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeProfileWithPublicKey(publicKey: HexKey): Flow<Profile?> {
                 TODO("Not yet implemented")
             }
 

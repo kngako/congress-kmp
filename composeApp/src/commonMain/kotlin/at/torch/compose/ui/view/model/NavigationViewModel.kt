@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -147,7 +146,7 @@ class NavigationViewModel(
 
 
     private suspend fun loadNostrProfile(activeUserPublicKey: String) {
-        nostrRepository.observeProfile(
+        nostrRepository.observeLocalAccount(
             publicKey = activeUserPublicKey
         ).distinctUntilChanged().collect { localProfile ->
             processLocalAccount(localProfile)

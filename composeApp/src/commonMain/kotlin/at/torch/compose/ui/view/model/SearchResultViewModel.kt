@@ -12,6 +12,7 @@ import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.extensions.assureValidNpub
 import at.torch.compose.extensions.bech32ToHexOrNull
 import at.torch.compose.extensions.bech32ToHexOrThrow
+import at.torch.compose.ui.view.state.SearchResultListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip19Bech32.bech32.bechToBytes
@@ -35,12 +36,12 @@ class SearchResultViewModel(
     var searchResultType: SearchResultType by mutableStateOf(initialSearchResultType)
         private set
 
-    var searchResultListUIState: at.torch.compose.ui.view.state.SearchResultListUIState by mutableStateOf(
-        at.torch.compose.ui.view.state.SearchResultListUIState.Loading)
+    var searchResultListUIState: SearchResultListUIState by mutableStateOf(
+        SearchResultListUIState.Loading)
         private set
 
     fun updateSearchResultType (searchResultType: SearchResultType) {
-        searchResultListUIState = at.torch.compose.ui.view.state.SearchResultListUIState.Loading
+        searchResultListUIState = SearchResultListUIState.Loading
 
         this.searchResultType = searchResultType
 
@@ -122,7 +123,7 @@ class SearchResultViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // This is something not taking into consideration the results we are actually looking for...
             nostrRepository.observeNostrFeed(synchronizationFilter).distinctUntilChanged().collect { localNostrEvents ->
-                searchResultListUIState = at.torch.compose.ui.view.state.SearchResultListUIState.Loaded(
+                searchResultListUIState = SearchResultListUIState.Loaded(
                     localNostrEvents = localNostrEvents
                 )
             }

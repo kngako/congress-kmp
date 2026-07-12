@@ -50,6 +50,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import at.torch.compose.ui.composable.widgets.feed.ListView
+import at.torch.compose.ui.view.model.SearchResultType
+import at.torch.compose.ui.view.model.SearchResultViewModel
+import at.torch.compose.ui.view.state.SearchResultListUIState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -64,9 +67,9 @@ fun SearchResultScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    val searchViewModel: at.torch.compose.ui.view.model.SearchResultViewModel = viewModel(
-        factory = at.torch.compose.ui.view.model.SearchResultViewModel.factory(
-            initialSearchResultType = at.torch.compose.ui.view.model.SearchResultType.Profiles,
+    val searchViewModel: SearchResultViewModel = viewModel(
+        factory = SearchResultViewModel.factory(
+            initialSearchResultType = SearchResultType.Profiles,
             searchQuery = searchQuery,
             nostrRepository = nostrRepository,
             searchRepository = searchRepository
@@ -154,14 +157,14 @@ fun SearchResultScreen(
                     },
                     windowInsets = TopAppBarDefaults.windowInsets
                 ) {
-                    val pagerState = rememberPagerState { at.torch.compose.ui.view.model.SearchResultType.entries.size }
+                    val pagerState = rememberPagerState { SearchResultType.entries.size }
 
                     PrimaryScrollableTabRow(
                         modifier = Modifier,
                         edgePadding = 10.dp,
                         selectedTabIndex = searchViewModel.searchResultType.ordinal,
                     ) {
-                        at.torch.compose.ui.view.model.SearchResultType.entries.forEach { searchResultType ->
+                        SearchResultType.entries.forEach { searchResultType ->
                             Tab(
                                 selected = searchViewModel.searchResultType == searchResultType,
                                 onClick = {
@@ -194,14 +197,14 @@ fun SearchResultScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            when(at.torch.compose.ui.view.model.SearchResultType.entries[pageIndex]) {
-                                at.torch.compose.ui.view.model.SearchResultType.Profiles -> {
+                            when(SearchResultType.entries[pageIndex]) {
+                                SearchResultType.Profiles -> {
                                     Text("Profiles")
                                 }
                             }
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
-                                at.torch.compose.ui.view.state.SearchResultListUIState.Error -> {
+                                SearchResultListUIState.Error -> {
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally
@@ -214,7 +217,7 @@ fun SearchResultScreen(
                                         )
                                     }
                                 }
-                                is at.torch.compose.ui.view.state.SearchResultListUIState.Loaded -> {
+                                is SearchResultListUIState.Loaded -> {
                                     // TODO: Handle gallery UI
                                     if (searchResultListUIState.localNostrEvents.isEmpty()) {
                                         Column(
@@ -254,7 +257,7 @@ fun SearchResultScreen(
                                     }
 
                                 }
-                                at.torch.compose.ui.view.state.SearchResultListUIState.Loading -> {
+                                SearchResultListUIState.Loading -> {
                                     Column(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalAlignment = Alignment.CenterHorizontally

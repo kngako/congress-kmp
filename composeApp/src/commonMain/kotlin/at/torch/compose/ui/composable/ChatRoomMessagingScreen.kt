@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
@@ -185,7 +186,7 @@ fun ChatRoomMessagingScreen(
                                             }
                                         ) {
                                             Icon(
-                                                Icons.Default.Send,
+                                                Icons.AutoMirrored.Filled.Send,
                                                 contentDescription = "Send"
                                             )
                                         }

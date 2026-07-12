@@ -41,8 +41,6 @@ interface ChatRepository {
 
     suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
 
-    suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile?
-
     suspend fun createMlsDirectMessage(
         name: String? = null,
         description: String? = null,
@@ -118,10 +116,6 @@ interface ChatRepository {
             }
 
             override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? {
-                TODO("Not yet implemented")
-            }
-
-            override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
                 TODO("Not yet implemented")
             }
 

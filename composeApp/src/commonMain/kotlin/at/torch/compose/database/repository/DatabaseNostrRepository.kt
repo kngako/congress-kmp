@@ -3,6 +3,7 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.model.BroadcastNostrEventRequest
 import at.torch.compose.database.model.NostrEvent
+import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
 import at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
@@ -65,8 +66,16 @@ class DatabaseNostrRepository(
         return database.unsignedNostrEventDao().getLocalAccounts()
     }
 
-    override suspend fun observeProfile(publicKey: HexKey): Flow<at.torch.compose.database.model.intermdiate.LocalAccount?> {
+    override suspend fun observeLocalAccount(publicKey: HexKey): Flow<LocalAccount?> {
         return database.unsignedNostrEventDao().observeProfile(publicKey)
+    }
+
+    override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
+        return database.profileDao().getProfileByPublicKey(publicKey)
+    }
+
+    override suspend fun observeProfileWithPublicKey(publicKey: HexKey): Flow<Profile?> {
+        return database.profileDao().observeProfileByPublicKey(publicKey)
     }
 
     override suspend fun observeRelation(

@@ -18,6 +18,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class AddMemberToChatRoomConfirmationViewModel(
@@ -44,7 +45,7 @@ class AddMemberToChatRoomConfirmationViewModel(
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
             addMemberToChatRoomConfirmationUIState = if (localChatRoom != null) {
-                val profile = chatRepository.getProfileWithPublicKey(profilePublicKey)
+                val profile = nostrRepository.getProfileWithPublicKey(profilePublicKey)
 
                 if (profile != null) {
                     val marmotKeyPackage = chatRepository.getMarmotKeyPackageForPublicKey(profilePublicKey)

@@ -28,6 +28,9 @@ interface ProfileDao {
     @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
     fun getProfileByPublicKey(publicKey: String): Profile?
 
+    @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
+    fun observeProfileByPublicKey(publicKey: String): Flow<Profile?>
+
     @Query("SELECT * FROM Profile WHERE publicKey IN (:publicKeys)")
     fun getProfileByPublicKeys(publicKeys: List<String>): List<Profile>
 

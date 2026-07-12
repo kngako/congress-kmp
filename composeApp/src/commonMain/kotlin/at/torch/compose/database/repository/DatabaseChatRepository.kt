@@ -117,10 +117,6 @@ class DatabaseChatRepository(
         return database.marmotKeyPackageDao().getMarmotKeyPackageForPublicKey(publicKey)
     }
 
-    override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
-        return database.profileDao().getProfileByPublicKey(publicKey)
-    }
-
     override suspend fun createMlsDirectMessage(
         name: String?,
         description: String?,

@@ -24,6 +24,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.NegentropySynchronizeRequest
 import at.torch.compose.ui.composable.widgets.feed.ListView
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Dispatchers
@@ -44,8 +45,8 @@ class FeedListViewModel(
     val isSynchronizationPending: MutableState<Boolean> = mutableStateOf(false)
 
     val negentropySynchronizeRequests = at.torch.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
-        _root_ide_package_.at.torch.compose.database.model.NegentropySynchronizeRequest(
-            id = at.torch.compose.database.model.NegentropySynchronizeRequest.computeId(
+        NegentropySynchronizeRequest(
+            id = NegentropySynchronizeRequest.computeId(
                 normalizedRelayUrl.url,
                 synchronizationFilter = synchronizationFilter
             ),
