@@ -45,35 +45,35 @@ import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
 import at.torch.compose.ui.theme.TorchTheme
-import at.torch.compose.ui.view.model.ChatRoomMessagingListViewModel
-import at.torch.compose.ui.view.state.ChatRoomMessagingListUIState
+import at.torch.compose.ui.view.model.ChatRoomMessagingViewModel
+import at.torch.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun ChatRoomMessagingListScreen(
+fun ChatRoomMessagingScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     relayHint: String?,
-    initialChatRoomMessagingListUIState: ChatRoomMessagingListUIState = ChatRoomMessagingListUIState.Loading,
+    initialChatRoomMessagingUIState: ChatRoomMessagingUIState = ChatRoomMessagingUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
-    val chatRoomMessagingListViewModel: ChatRoomMessagingListViewModel = viewModel(
-        factory = ChatRoomMessagingListViewModel.factory(
+    val chatRoomMessagingViewModel: ChatRoomMessagingViewModel = viewModel(
+        factory = ChatRoomMessagingViewModel.factory(
             chatRoomId = chatRoomId,
             relayHint = relayHint,
-            initialChatRoomMessagingListUIState = initialChatRoomMessagingListUIState,
+            initialChatRoomMessagingUIState = initialChatRoomMessagingUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
             activeUserPublicKey = activeUserPublicKey
         )
     )
 
-    when (val chatRoomDetailUIState = chatRoomMessagingListViewModel.chatRoomMessagingListUIState) {
-        is ChatRoomMessagingListUIState.Error -> {
+    when (val chatRoomDetailUIState = chatRoomMessagingViewModel.chatRoomMessagingUIState) {
+        is ChatRoomMessagingUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -86,11 +86,11 @@ fun ChatRoomMessagingListScreen(
                 )
             }
         }
-        is ChatRoomMessagingListUIState.Loaded -> {
+        is ChatRoomMessagingUIState.Loaded -> {
             val textFieldState = rememberTextFieldState()
 
-            val chatRoomDetailMessageListViewModel: at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel = viewModel(
-                factory = at.torch.compose.ui.view.model.ChatRoomDetailMessageListViewModel.factory(
+            val chatMessageListViewModel: at.torch.compose.ui.view.model.ChatMessageListViewModel = viewModel(
+                factory = at.torch.compose.ui.view.model.ChatMessageListViewModel.factory(
                     localChatRoom = chatRoomDetailUIState.localChatRoom,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
@@ -132,12 +132,12 @@ fun ChatRoomMessagingListScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
                         key(true) {
-                            chatRoomDetailMessageListViewModel.RenderMessages()
+                            chatMessageListViewModel.RenderMessages()
                         }
                     }
 
                     key(true) {
-                        chatRoomDetailMessageListViewModel.initiate()
+                        chatMessageListViewModel.initiate()
                     }
 
                     // TODO: Check that we have direct message relays for this user...
@@ -179,7 +179,7 @@ fun ChatRoomMessagingListScreen(
                                     } else {
                                         IconButton(
                                             onClick = {
-                                                chatRoomDetailMessageListViewModel.sendMessage(
+                                                chatMessageListViewModel.sendMessage(
                                                     textFieldState = textFieldState
                                                 )
                                             }
@@ -246,7 +246,7 @@ fun ChatRoomMessagingListScreen(
                 }
             }
         }
-        ChatRoomMessagingListUIState.Loading -> {
+        ChatRoomMessagingUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -279,7 +279,7 @@ fun ChatRoomMessagingListScreen(
                 )
             }
         }
-        ChatRoomMessagingListUIState.InitiatingNewChat -> {
+        ChatRoomMessagingUIState.InitiatingNewChat -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
                     20.dp
@@ -306,7 +306,7 @@ fun ChatRoomMessagingListScreen(
                 )
 
                 LaunchedEffect(true) {
-                    chatRoomMessagingListViewModel.initiateNewChat(
+                    chatRoomMessagingViewModel.initiateNewChat(
                         onNavigateToRouteAndPopUpInclusive
                     )
                 }
@@ -315,24 +315,24 @@ fun ChatRoomMessagingListScreen(
     }
 
     LaunchedEffect(true) {
-        if (initialChatRoomMessagingListUIState == ChatRoomMessagingListUIState.Loading) {
-            chatRoomMessagingListViewModel.initiateChatRoomDetail()
+        if (initialChatRoomMessagingUIState == ChatRoomMessagingUIState.Loading) {
+            chatRoomMessagingViewModel.initiateChatRoomDetail()
         }
     }
 }
 
 @Preview
 @Composable
-private fun ChatRoomMessagingListScreenPreview() {
+private fun ChatRoomMessagingScreenPreview() {
     TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            ChatRoomMessagingListScreen(
+            ChatRoomMessagingScreen(
                 activeUserPublicKey = "",
                 chatRoomId = "publicKey",
                 relayHint = null,
-                initialChatRoomMessagingListUIState = ChatRoomMessagingListUIState.Loaded(
+                initialChatRoomMessagingUIState = ChatRoomMessagingUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
