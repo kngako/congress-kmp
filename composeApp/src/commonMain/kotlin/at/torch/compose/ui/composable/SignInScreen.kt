@@ -65,9 +65,9 @@ fun SignInToProfileScreen(
 
                         TextField(
                             modifier = Modifier.fillMaxWidth(),
-                            state = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState,
-                            isError = signInToProfileViewModel.signInToProfileFormState.textField.errorMessage.value != null,
-                            supportingText = signInToProfileViewModel.signInToProfileFormState.textField.errorMessage.value?.let {
+                            state = signInToProfileViewModel.signInToProfileFormState.textFieldForm.textFieldState,
+                            isError = signInToProfileViewModel.signInToProfileFormState.textFieldForm.errorMessage.value != null,
+                            supportingText = signInToProfileViewModel.signInToProfileFormState.textFieldForm.errorMessage.value?.let {
                                 {
                                     Text(
                                         text = it,
@@ -107,13 +107,13 @@ fun SignInToProfileScreen(
                                     when (credentialEntity) {
                                         is NSec -> {
                                             at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNsecSignIn(
-                                                nsec = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
+                                                nsec = signInToProfileViewModel.signInToProfileFormState.textFieldForm.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }
                                         is NPub -> {
                                             at.torch.compose.ui.view.state.SignInToProfileUIState.ConfirmNpubSignIn(
-                                                npub = signInToProfileViewModel.signInToProfileFormState.textField.textFieldState.text.toString(),
+                                                npub = signInToProfileViewModel.signInToProfileFormState.textFieldForm.textFieldState.text.toString(),
                                                 hexKey = credentialEntity.hex
                                             )
                                         }

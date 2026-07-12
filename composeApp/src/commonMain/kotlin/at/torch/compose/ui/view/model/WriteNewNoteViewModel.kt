@@ -81,7 +81,7 @@ class WriteNewNoteViewModel(
     fun addProfileToMentionedProfiles(profile: at.torch.compose.database.model.Profile) {
         atSymbolRange.value?.let { range ->
             mentionedProfiles.add(profile)
-            writeNewNoteFormState.textField.textFieldState.edit {
+            writeNewNoteFormState.textFieldForm.textFieldState.edit {
                 val mentionProfile = "nostr:${
                     NProfile.create(
                         profile.publicKey,
@@ -145,7 +145,7 @@ class WriteNewNoteViewModel(
                         localProfile = localProfile,
                         inReplyToNostrEvent = inReplyToNostrEvent,
                         quotedNostrEvent = quotedNostrEvent,
-                        text = writeNewNoteFormState.textField.textFieldState.text.toString(),
+                        text = writeNewNoteFormState.textFieldForm.textFieldState.text.toString(),
                     )
             }
         }
@@ -153,11 +153,11 @@ class WriteNewNoteViewModel(
     }
 
     fun validateInput(): Boolean {
-        if (writeNewNoteFormState.textField.textFieldState.text.isBlank()) {
-            writeNewNoteFormState.textField.errorMessage.value = "Please input a note"
+        if (writeNewNoteFormState.textFieldForm.textFieldState.text.isBlank()) {
+            writeNewNoteFormState.textFieldForm.errorMessage.value = "Please input a note"
             return false
         } else {
-            writeNewNoteFormState.textField.errorMessage.value = null
+            writeNewNoteFormState.textFieldForm.errorMessage.value = null
         }
         return true
     }
@@ -173,13 +173,13 @@ class WriteNewNoteViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             val mentionedPublicKeys = at.torch.compose.ui.composable.widgets.content.ContentParser.parse(
-                writeNewNoteFormState.textField.textFieldState.text.toString(),
+                writeNewNoteFormState.textFieldForm.textFieldState.text.toString(),
             ).filterIsInstance<at.torch.compose.ui.composable.widgets.content.ContentSegment.NostrProfileSegment>().map { it.pubkey }
 
             nostrRepository.createNewTextNote(
                 publicKey = activeUserPublicKey,
                 mentionedPublicKeys = mentionedPublicKeys,
-                textInput = writeNewNoteFormState.textField.textFieldState.text.toString(),
+                textInput = writeNewNoteFormState.textFieldForm.textFieldState.text.toString(),
                 inReplyToNostrEvent = inReplyToNostrEvent,
                 quotedNostrEvent = quotedNostrEvent,
                 onError = {

@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machankura.compose.ui.composable.widgets.buttons.Clickable
-import com.machankura.compose.ui.composable.widgets.dialogs.ModalBottomSheet
+import at.torch.compose.ui.composable.widgets.dialogs.ModalBottomSheet
 
 object WalletAvatars {
     val list = listOf(

@@ -5,35 +5,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Diversity2
-import androidx.compose.material.icons.filled.Diversity3
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Start
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -46,26 +45,31 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalProfileWithFollowing
+import at.torch.compose.extensions.assureValidNpub
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
+import at.torch.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
+import at.torch.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
 import at.torch.compose.ui.theme.TorchTheme
 import at.torch.compose.ui.view.model.HomeScreenType
 import at.torch.compose.ui.view.model.HomeViewModel
 import at.torch.compose.ui.view.state.HomeScreenUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import fr.acinq.phoenix.utils.EmailLikeAddress
+import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -83,6 +87,7 @@ fun HomeScreen(
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
+    val openNpubDialog = remember { mutableStateOf(false) }
 
     val homeScreenViewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
@@ -239,99 +244,29 @@ fun HomeScreen(
                 }
 
                 if (showBottomSheet) {
-                    ModalBottomSheet(
-                        onDismissRequest = {
-                            showBottomSheet = false
+                    NewChatBottomSheetDialog(
+                        scope = scope,
+                        sheetState = sheetState,
+                        onSetShowBottomSheetUpdate = { toggle ->
+                            showBottomSheet = toggle
                         },
-                        sheetState = sheetState
-                    ) {
-                        // Sheet content
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Create new chat",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Card(
-                                onClick = {
-                                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Direct Message via npub")
-                                        )
-                                    }
-                                }
-                            ) {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Key,
-                                            contentDescription = "Direct Message via npub"
-                                        )
-                                    },
-                                    headlineContent = {
-                                        Text("Direct Message via npub")
-                                    },
-                                    trailingContent = {
-                                        Icon(
-                                            Icons.Default.ChevronRight,
-                                            contentDescription = "Direct Message via npub"
-                                        )
-                                    }
-                                )
-                            }
-
-                            Card(
-                                onClick = {
-                                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                        onNavigateToChatRoomCreation.invoke()
-                                    }
-                                }
-                            ) {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Diversity2,
-                                            contentDescription = "Start group chat"
-                                        )
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            text = "Start a group chat"
-                                        )
-                                    },
-                                    trailingContent = {
-                                        Icon(
-                                            Icons.Default.ChevronRight,
-                                            contentDescription = "Start group chat"
-                                        )
-                                    }
-                                )
-                            }
-
-                            TextButton(
-                                onClick = {
-                                    scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                        if (!sheetState.isVisible) {
-                                            showBottomSheet = false
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Close new chat"
-                                )
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-                                Text("Close")
-                            }
+                        onNavigateToRoute = onNavigateToRoute,
+                        onNavigateToChatRoomCreation = onNavigateToChatRoomCreation,
+                        onStartDirectMessageChatWithNpub = {
+                            openNpubDialog.value = true
                         }
+                    )
+                }
 
+                when {
+                    openNpubDialog.value -> {
+                        StartDirectMessageToNpubOrNip05Dialog(
+                            scope = scope,
+                            toggleOpenDialogSetting = {
+                                openNpubDialog.value = false
+                            },
+                            onNavigateToRoute = onNavigateToRoute
+                        )
                     }
                 }
             }

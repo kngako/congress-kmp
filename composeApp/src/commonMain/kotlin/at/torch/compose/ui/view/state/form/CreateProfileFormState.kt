@@ -1,6 +1,6 @@
 package at.torch.compose.ui.view.state.form
 
 data class CreateProfileFormState(
-    val nameField: TextField = TextField(),
-    val biographyField: TextField = TextField()
+    val nameField: TextFieldForm = TextFieldForm(),
+    val biographyField: TextFieldForm = TextFieldForm()
 )

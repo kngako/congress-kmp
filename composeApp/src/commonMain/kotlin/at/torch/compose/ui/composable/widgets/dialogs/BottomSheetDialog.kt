@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.machankura.compose.ui.composable.widgets.dialogs
+package at.torch.compose.ui.composable.widgets.dialogs
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
