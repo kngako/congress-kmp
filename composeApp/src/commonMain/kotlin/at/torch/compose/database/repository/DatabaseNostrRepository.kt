@@ -7,6 +7,7 @@ import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.database.model.intermdiate.LocalAccount
 import at.torch.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import at.torch.compose.database.model.types.SynchronizationFilter
+import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
@@ -406,15 +407,20 @@ class DatabaseNostrRepository(
             database.marmotCommitResultDao().getMarmotCommitRequestById(
                 nostrEventId = broadcastNostrEventRequest.nostrEventId
             )?.let { marmotCommitResult ->
+                logger.d("marmotCommitResult: $marmotCommitResult")
                 if (marmotCommitResult.isOneMemberInitialGroupCreation.not()) {
+                    logger.d("Deliver Welcome")
                     database.chatRoomDao().findChatRoomById(marmotCommitResult.chatRoomId)?.let { localChatRoom ->
                         // TODO: Update status of participant Invitation.PENDING -> Invitation.SENT
+                        logger.d("localChatRoom: $localChatRoom")
                         marmotCommitResult.welcomeBytes?.let { welcomeBytes ->
+                            logger.d("welcomeBytes: ${welcomeBytes.toHex()}")
                             database.marmotOutboundDao().deliveryWelcome(
                                 nostrGroupId = marmotCommitResult.chatRoomId,
                                 userPublicKey = marmotCommitResult.userPublicKey,
                                 welcomeBytes = welcomeBytes,
                                 peerKeyPackageEventId = marmotCommitResult.peerKeyPackageEventId,
+                                createdAt = marmotCommitResult.createdAt,
                                 relays = Relays.DefaultDMRelayList.map { it.url } // TODO: Get localChatRoom relays...
                             )
                         }

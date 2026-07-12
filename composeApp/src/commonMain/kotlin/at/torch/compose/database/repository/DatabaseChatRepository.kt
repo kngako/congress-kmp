@@ -136,7 +136,7 @@ class DatabaseChatRepository(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage
     ) {
-        database.marmotOutboundDao().inviteMember(
+        database.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage
