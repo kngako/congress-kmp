@@ -7,13 +7,11 @@ import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalChatMessage
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
-import at.torch.compose.database.model.intermdiate.LocalProfile
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
-import fr.acinq.secp256k1.Hex
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -35,6 +33,7 @@ interface ChatRepository {
         activeUserPublicKey: HexKey,
         relayHint: String?,
         defaultSubject: String?,
+        description: String?,
         mlsGroupState: String?
     ): LocalChatRoom?
 
@@ -45,6 +44,8 @@ interface ChatRepository {
     suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile?
 
     suspend fun createMlsDirectMessage(
+        name: String? = null,
+        description: String? = null,
         userPublicKey: HexKey,
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage
@@ -67,6 +68,12 @@ interface ChatRepository {
     suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?>
 
     suspend fun sealGiftWrapPayload(giftWrapPayload: GiftWrapPayload, nostrSignerSync: NostrSignerSync)
+
+    suspend fun leaveChatRoom(localChatRoom: LocalChatRoom)
+
+    suspend fun softDeleteChatRoom(chatRoom: ChatRoom)
+
+    suspend fun deleteChatRoom(chatRoom: ChatRoom)
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
@@ -100,6 +107,7 @@ interface ChatRepository {
                 activeUserPublicKey: HexKey,
                 relayHint: String?,
                 defaultSubject: String?,
+                description: String?,
                 mlsGroupState: String?
             ): LocalChatRoom? {
                 return null
@@ -118,6 +126,8 @@ interface ChatRepository {
             }
 
             override suspend fun createMlsDirectMessage(
+                name: String?,
+                description: String?,
                 userPublicKey: HexKey,
                 peerPublicKey: HexKey,
                 peerKeyPackage: MarmotKeyPackage
@@ -153,6 +163,18 @@ interface ChatRepository {
                 giftWrapPayload: GiftWrapPayload,
                 nostrSignerSync: NostrSignerSync
             ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun leaveChatRoom(localChatRoom: LocalChatRoom) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun softDeleteChatRoom(chatRoom: ChatRoom) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun deleteChatRoom(chatRoom: ChatRoom) {
                 TODO("Not yet implemented")
             }
         }

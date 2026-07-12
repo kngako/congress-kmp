@@ -227,6 +227,7 @@ private fun ChatRoomDetailScreenPreview() {
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",
+                            description = "See something... say something.",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),

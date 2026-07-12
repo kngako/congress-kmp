@@ -206,12 +206,12 @@ fun ChatRoomDetailScreen(
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = MaterialTheme.colorScheme.secondary
                                 ),
-                                enabled = true, // Disable after we leave group...
+                                enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt == null, // Disable after we leave group...
                                 onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute(
-                                            "Leave Group"
-                                        )
+                                    // Leave group logic
+                                    chatRoomDetailViewModel.leaveGroup(
+                                        localChatRoom = chatRoomDetailUIState.localChatRoom,
+                                        onNavigateToRoute = onNavigateToRoute
                                     )
                                 }
                             ) {
@@ -233,7 +233,7 @@ fun ChatRoomDetailScreen(
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
                                 ),
-                                enabled = true, // TODO: Only enabled after we leave group...
+                                enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt != null,
                                 onClick = {
                                     onNavigateToRoute.invoke(
                                         ImplementationPendingRoute(
@@ -316,7 +316,8 @@ private fun ChatRoomMessagingScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "",
                             userPublicKey = "",
-                            subject = "Message title",
+                            subject = "Message Title",
+                            description = "Description",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),

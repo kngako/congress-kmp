@@ -340,6 +340,7 @@ private fun ChatRoomMessagingScreenPreview() {
                             id = "",
                             userPublicKey = "",
                             subject = "Message title",
+                            description = "See something. Say somethin",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null
                         ),

@@ -56,6 +56,8 @@ abstract class MarmotOutboundDao(
 
     @Transaction
     open suspend fun createMlsDirectMessageChatRoom(
+        name: String? = null,
+        description: String? = null,
         userPublicKey: HexKey,
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
@@ -78,7 +80,8 @@ abstract class MarmotOutboundDao(
             id = nostrGroupId,
             userPublicKey = userPublicKey,
             mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
-            subject = null,
+            subject = name,
+            description = description
         )
         database.chatRoomDao().upsert(
             chatRoom
@@ -275,7 +278,6 @@ abstract class MarmotOutboundDao(
                     )
                 }
             )
-            // TODO: Save chatMessage
         }
     }
 

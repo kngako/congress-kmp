@@ -84,6 +84,7 @@ class ChatRoomCreationViewModel(
                         activeUserPublicKey = keyPair.pubKey.toHexKey(),
                         relayHint = null,
                         defaultSubject = name.toString(),
+                        description = description.toString(),
                         mlsGroupState = group.saveState().encodeTls().toHex()
                     )
 

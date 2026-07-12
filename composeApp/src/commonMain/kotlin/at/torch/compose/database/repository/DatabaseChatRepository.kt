@@ -3,6 +3,7 @@ package at.torch.compose.database.repository
 import at.torch.compose.database.GENESIS_AT
 import at.torch.compose.database.TorchDatabase
 import at.torch.compose.database.model.ChatMessage
+import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackage
@@ -14,7 +15,6 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
-import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
@@ -69,6 +69,7 @@ class DatabaseChatRepository(
         activeUserPublicKey: HexKey,
         relayHint: String?,
         defaultSubject: String?,
+        description: String?,
         mlsGroupState: String?
     ): LocalChatRoom? = try {
         return database.nostrNip17Dao().getOrCreateChatRoom(
@@ -76,6 +77,7 @@ class DatabaseChatRepository(
             activeUserPublicKey = activeUserPublicKey,
             relayHint = relayHint,
             defaultSubject = defaultSubject,
+            description = description,
             mlsGroupState = mlsGroupState
         )
     } catch (e: Throwable) {
@@ -120,11 +122,15 @@ class DatabaseChatRepository(
     }
 
     override suspend fun createMlsDirectMessage(
+        name: String?,
+        description: String?,
         userPublicKey: HexKey,
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage
     ): String {
         return database.marmotOutboundDao().createMlsDirectMessageChatRoom(
+            name = name,
+            description = description,
             userPublicKey = userPublicKey,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage
@@ -155,6 +161,7 @@ class DatabaseChatRepository(
                 )
             )
         }
+
         if (mlsGroup != null) {
             // Create ChatRumor...
             val createdAt = Clock.System.now().epochSeconds
@@ -343,6 +350,112 @@ class DatabaseChatRepository(
                 )
             )
         }
+    }
+
+    override suspend fun leaveChatRoom(localChatRoom: LocalChatRoom) {
+        val text = "Left group."
+
+        val mlsGroup = localChatRoom.chatRoom.mlsGroupState?.let { mlsGroupState ->
+            MlsGroup.restore(
+                MlsGroupState.decodeTls(
+                    mlsGroupState.hexToByteArray()
+                )
+            )
+        }
+
+        if (mlsGroup != null) {
+            // Create ChatRumor...
+            val createdAt = Clock.System.now().epochSeconds
+            val marmotInnerEventKind = ChatEvent.KIND
+
+            val marmotInnerEventId = EventHasher.hashId(
+                pubKey = localChatRoom.chatRoom.userPublicKey,
+                createdAt = createdAt,
+                tags = emptyArray(),
+                content = text,
+                kind = marmotInnerEventKind
+            )
+
+            database.marmotInnerEventDao().upsert(
+                MarmotInnerEvent(
+                    id = marmotInnerEventId,
+                    publicKey = localChatRoom.chatRoom.userPublicKey,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    tags = emptyArray(),
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    kind = marmotInnerEventKind
+                )
+            )
+
+            database.chatMessageDao().upsert(
+                ChatMessage(
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    isUserMessage = true,
+                    giftWrapPayloadId = null,
+                    marmotGroupEventId = null,
+                    marmotInnerEventId = marmotInnerEventId,
+                )
+            )
+        } else {
+            val innerEventKind = ChatMessageEvent.KIND
+            // Send GiftWrapMessage
+            val receiverTags = localChatRoom.localParticipants.filter { participant ->
+                participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey // TODO: Allow this where it's notes to self...
+            }.map { localParticipant ->
+                PTag.assemble(
+                    localParticipant.participant.participantPublicKey,
+                    localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+                )
+            }
+
+            val createdAt = Clock.System.now().epochSeconds
+            val giftWrapPayloadId = EventHasher.hashId(
+                pubKey = localChatRoom.chatRoom.userPublicKey,
+                createdAt = createdAt,
+                tags = receiverTags.toTypedArray(),
+                content = text,
+                kind = innerEventKind
+            )
+
+            database.giftWrapPayloadDao().upsert(
+                GiftWrapPayload(
+                    id = giftWrapPayloadId,
+                    kind = innerEventKind,
+                    tags = receiverTags.toTypedArray(),
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    publicKey = localChatRoom.chatRoom.userPublicKey
+                )
+            )
+
+            database.chatMessageDao().upsert(
+                ChatMessage(
+                    content = text,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    isUserMessage = true,
+                    giftWrapPayloadId = giftWrapPayloadId,
+                    marmotGroupEventId = null,
+                    marmotInnerEventId = null
+                )
+            )
+        }
+    }
+
+    override suspend fun softDeleteChatRoom(chatRoom: ChatRoom) {
+        database.chatRoomDao().upsert(
+            chatRoom.copy(
+                deletedAt = Clock.System.now()
+            )
+        )
+    }
+
+    override suspend fun deleteChatRoom(chatRoom: ChatRoom) {
+        database.chatRoomDao().delete(chatRoom)
     }
 
     companion object {

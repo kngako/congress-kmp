@@ -58,6 +58,8 @@ data class ChatRoom(
      */
     val subject: String?,
 
+    val description: String?,
+
     val mlsGroupState: String?,
 
     /**
@@ -74,6 +76,8 @@ data class ChatRoom(
 //    val lastChatMessageId: String? = null,
     // Might want to focus on the other last messages...
     val initialGiftWrapPayloadId: HexKey? = null,
+
+    val leftGroupAt: Instant? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,

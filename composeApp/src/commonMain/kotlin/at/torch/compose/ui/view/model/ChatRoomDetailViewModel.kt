@@ -9,8 +9,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import at.torch.compose.database.model.ChatRoom
+import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -53,6 +57,22 @@ class ChatRoomDetailViewModel(
         }
     }
 
+    fun leaveGroup(
+        localChatRoom: LocalChatRoom,
+        onNavigateToRoute: (Route) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.leaveChatRoom(localChatRoom)
+
+            viewModelScope.launch(Dispatchers.Main) {
+                onNavigateToRoute.invoke(
+                    ImplementationPendingRoute(
+                        "Leave Group"
+                    )
+                )
+            }
+        }
+    }
     companion object {
         private const val TAG = "ChatRoomDetailViewModel"
 

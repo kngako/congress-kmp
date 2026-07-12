@@ -510,6 +510,7 @@ abstract class NostrDao(
                                             id = decryptedGiftWrapPayload.chatRoomId,
                                             userPublicKey = userPublicKey,
                                             subject = decryptedGiftWrapPayload.parseSubject(),
+                                            description = null,
                                             createdAt = decryptedGiftWrapPayload.createdAt,
                                             initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
                                             mlsGroupState = null
@@ -736,6 +737,7 @@ abstract class NostrDao(
                                             id = nostrGroupId,
                                             userPublicKey = userPublicKey,
                                             subject = group.currentMarmotData()?.name?.ifBlank { null },
+                                            description = group.currentMarmotData()?.description?.ifBlank { null },
                                             initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
                                             createdAt = decryptedGiftWrapPayload.createdAt,
                                             mlsGroupState = group.saveState().encodeTls().toHex(),

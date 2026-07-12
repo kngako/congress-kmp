@@ -28,7 +28,14 @@ abstract class NostrNip17Dao(
     val logger = Logger.withTag(TAG)
 
     @Transaction
-    open suspend fun getOrCreateChatRoom(chatRoomId: String, activeUserPublicKey: HexKey, relayHint: String?, defaultSubject: String? = null, mlsGroupState: String? = null): LocalChatRoom? {
+    open suspend fun getOrCreateChatRoom(
+        chatRoomId: HexKey,
+        activeUserPublicKey: HexKey,
+        relayHint: String?,
+        defaultSubject: String? = null,
+        description: String? = null,
+        mlsGroupState: String? = null
+    ): LocalChatRoom? {
         logger.d("getOrCreateChatRoom: $chatRoomId")
 
 
@@ -51,7 +58,8 @@ abstract class NostrNip17Dao(
                     id = chatRoomId,
                     userPublicKey = activeUserPublicKey,
                     subject = defaultSubject,
-                    mlsGroupState = mlsGroupState
+                    mlsGroupState = mlsGroupState,
+                    description = description
                 )
                 database.chatRoomDao().upsert(chatRoom)
 
