@@ -50,7 +50,7 @@ import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
 import at.torch.compose.ui.composable.widgets.profile.ProfileColor
-import at.torch.compose.ui.view.state.ChatRoomDetailMessageListUIState
+import at.torch.compose.ui.view.state.ChatRoomMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
@@ -61,13 +61,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class ChatRoomDetailMessageListViewModel(
-    initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState,
+    initialChatRoomMessageListUIState: ChatRoomMessageListUIState,
     val localChatRoom: LocalChatRoom,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
-    var chatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState by mutableStateOf(initialChatRoomDetailMessageListUIState)
+    var chatRoomMessageListUIState: ChatRoomMessageListUIState by mutableStateOf(initialChatRoomMessageListUIState)
         private set
 
     val isReceiverChatMessageRelayListMissing: MutableState<Boolean> = mutableStateOf(false)
@@ -85,7 +85,7 @@ class ChatRoomDetailMessageListViewModel(
                 localChatRoom.chatRoom.id
             ).distinctUntilChanged().collect { chatMessages ->
                 logger.d("getChatMessageListByChatRoomId: $chatMessages")
-                chatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loaded(
+                chatRoomMessageListUIState = ChatRoomMessageListUIState.Loaded(
                     chatMessageList = chatMessages
                 )
             }
@@ -203,8 +203,8 @@ class ChatRoomDetailMessageListViewModel(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when (val chatRoomDetailMessageListUIState = this@ChatRoomDetailMessageListViewModel.chatRoomDetailMessageListUIState) {
-                ChatRoomDetailMessageListUIState.Error -> {
+            when (val chatRoomDetailMessageListUIState = this@ChatRoomDetailMessageListViewModel.chatRoomMessageListUIState) {
+                ChatRoomMessageListUIState.Error -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -217,7 +217,7 @@ class ChatRoomDetailMessageListViewModel(
                         )
                     }
                 }
-                is ChatRoomDetailMessageListUIState.Loaded -> {
+                is ChatRoomMessageListUIState.Loaded -> {
                     Spacer(
                         modifier = Modifier.weight(1f)
                     )
@@ -385,7 +385,7 @@ class ChatRoomDetailMessageListViewModel(
                         }
                     }
                 }
-                ChatRoomDetailMessageListUIState.Loading -> {
+                ChatRoomMessageListUIState.Loading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -427,14 +427,14 @@ class ChatRoomDetailMessageListViewModel(
         const val TAG = "ChatRoomDetailMessageListViewModel"
 
         fun factory(
-            initialChatRoomDetailMessageListUIState: ChatRoomDetailMessageListUIState = ChatRoomDetailMessageListUIState.Loading,
+            initialChatRoomMessageListUIState: ChatRoomMessageListUIState = ChatRoomMessageListUIState.Loading,
             localChatRoom: LocalChatRoom,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomDetailMessageListViewModel(
-                    initialChatRoomDetailMessageListUIState = initialChatRoomDetailMessageListUIState,
+                    initialChatRoomMessageListUIState = initialChatRoomMessageListUIState,
                     localChatRoom = localChatRoom,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository
