@@ -11,7 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.ChatRoomMessagingUIState
 import co.touchlab.kermit.Logger
@@ -73,7 +73,7 @@ class ChatRoomMessagingViewModel(
                         // TODO: navigateToTheChat...
                         viewModelScope.launch(Dispatchers.Main) {
                              onNavigateToChat.invoke(
-                                ChatRoomDetailRoute(
+                                ChatRoomMessagingRoute(
                                     activeUserPublicKey = activeUserPublicKey,
                                     chatRoomId = localChatRoom.chatRoom.id,
                                     relayHint = relayHint
@@ -89,7 +89,7 @@ class ChatRoomMessagingViewModel(
                             // We have found the chat we are looking for...
                             viewModelScope.launch(Dispatchers.Main) {
                                 onNavigateToChat.invoke(
-                                    ChatRoomDetailRoute(
+                                    ChatRoomMessagingRoute(
                                         activeUserPublicKey = activeUserPublicKey,
                                         chatRoomId = localChatRoom.chatRoom.id,
                                         relayHint = relayHint
@@ -121,7 +121,7 @@ class ChatRoomMessagingViewModel(
                         )
 
                         onNavigateToChat.invoke(
-                            ChatRoomDetailRoute(
+                            ChatRoomMessagingRoute(
                                 activeUserPublicKey = activeUserPublicKey,
                                 chatRoomId = chatRoomId,
                                 relayHint = relayHint

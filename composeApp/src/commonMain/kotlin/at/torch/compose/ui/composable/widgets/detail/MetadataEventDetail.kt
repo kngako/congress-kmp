@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
@@ -27,10 +26,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,7 +47,7 @@ import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.Profile
 import at.torch.compose.database.model.intermdiate.LocalNostrEvent
 import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -60,7 +57,6 @@ import at.torch.compose.ui.view.model.MetadataEventDetailViewModel
 import at.torch.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -284,7 +280,7 @@ fun MetadataEventDetail(
                     Button(
                         onClick = {
                             onNavigateToChatRoom.invoke(
-                                ChatRoomDetailRoute(
+                                ChatRoomMessagingRoute(
                                     activeUserPublicKey = activeUserPublicKey,
                                     chatRoomId = localNostrEvent.nostrEvent.pubKey,
                                     relayHint = localNostrEvent.nostrEvent.relayUrl,

@@ -21,6 +21,7 @@ import at.torch.compose.managers.AuxDatabaseManager
 import at.torch.compose.ui.composable.ActiveProfileScreen
 import at.torch.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import at.torch.compose.ui.composable.ChatRoomCreationScreen
+import at.torch.compose.ui.composable.ChatRoomDetailScreen
 import at.torch.compose.ui.composable.ChatRoomMessagingScreen
 import at.torch.compose.ui.composable.CreateProfileScreen
 import at.torch.compose.ui.composable.HomeScreen
@@ -48,6 +49,7 @@ import at.torch.compose.ui.composable.navigation.routes.AddMemberToChatRoomConfi
 import at.torch.compose.ui.composable.navigation.routes.BlankRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomCreationRoute
 import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.CreateProfileRoute
 import at.torch.compose.ui.composable.navigation.routes.FeedRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
@@ -554,8 +556,8 @@ fun TorchNavHost(
                 }
             )
         }
-        composable<ChatRoomDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
+        composable<ChatRoomMessagingRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ChatRoomMessagingRoute>()
 
             ChatRoomMessagingScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
@@ -572,6 +574,22 @@ fun TorchNavHost(
                         }
                     }
                 },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                }
+            )
+        }
+        composable<ChatRoomDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
+
+            ChatRoomDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
                 onNavigateToRoute = { actionRoute ->
                     navController.navigate(
                         route = actionRoute

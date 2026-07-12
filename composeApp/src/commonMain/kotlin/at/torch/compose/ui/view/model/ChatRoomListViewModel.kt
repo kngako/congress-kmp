@@ -30,15 +30,10 @@ import at.torch.compose.database.model.types.SynchronizationFilter
 import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
-import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
-import kotlin.math.log
-import kotlin.time.Instant
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: at.torch.compose.ui.view.state.ChatRoomListUIState,
@@ -179,7 +174,7 @@ class ChatRoomListViewModel(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
                                             onNavigateToDirectMessageDetail.invoke(
-                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute(
+                                                _root_ide_package_.at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute(
                                                     activeUserPublicKey = publicKey,
                                                     chatRoomId = localChatRoom.chatRoom.id,
                                                     relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint

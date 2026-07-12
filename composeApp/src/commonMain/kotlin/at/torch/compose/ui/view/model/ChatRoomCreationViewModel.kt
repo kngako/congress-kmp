@@ -11,7 +11,7 @@ import at.torch.compose.extensions.toHex
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
-import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import at.torch.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.view.state.form.ChatRoomCreationFormState
@@ -93,7 +93,7 @@ class ChatRoomCreationViewModel(
 
                             // TODO: Navigate to invitation screen...
                             onNavigateToChatRoom.invoke(
-                                ChatRoomDetailRoute(
+                                ChatRoomMessagingRoute(
                                     activeUserPublicKey = keyPair.pubKey.toHexKey(),
                                     chatRoomId = localChatRoom.chatRoom.id,
                                     relayHint = null

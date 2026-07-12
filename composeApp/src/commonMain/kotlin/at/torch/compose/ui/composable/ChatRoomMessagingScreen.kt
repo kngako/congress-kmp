@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.BottomAppBarDefaults
@@ -41,6 +42,7 @@ import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.repository.ChatRepository
 import at.torch.compose.repository.NostrRepository
+import at.torch.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import at.torch.compose.ui.composable.navigation.routes.Route
 import at.torch.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import at.torch.compose.ui.composable.widgets.LoadingDataIndicator
@@ -108,7 +110,7 @@ fun ChatRoomMessagingScreen(
                                 onClick = {
                                     // Navigate to the invite user screen...
                                     onNavigateToRoute.invoke(
-                                        SearchMemberToAddToChatRoomRoute(
+                                        ChatRoomDetailRoute(
                                             chatRoomId = chatRoomId,
                                             activeUserPublicKey = activeUserPublicKey,
                                             relayHint = relayHint
@@ -117,8 +119,8 @@ fun ChatRoomMessagingScreen(
                                 }
                             ) {
                                 Icon(
-                                    Icons.Default.PersonAdd,
-                                    contentDescription = "Invite memeber"
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "View details..."
                                 )
                             }
                         }
