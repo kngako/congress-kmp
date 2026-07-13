@@ -1,6 +1,7 @@
 package at.torch.compose.database.dao
 
 import androidx.room3.Dao
+import androidx.room3.Delete
 import androidx.room3.Query
 import androidx.room3.Upsert
 import at.torch.compose.database.model.Participant
@@ -15,5 +16,8 @@ interface ParticipantDao {
 
     @Upsert
     suspend fun upsert(participants: List<Participant>)
+
+    @Delete
+    suspend fun delete(participants: List<Participant>)
 
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6a176cdf1ee35e271c2a38b5955a7440",
+    "identityHash": "7e418251d31c1dd20c0ea92e14f2711c",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -2196,7 +2196,7 @@
       },
       {
         "tableName": "Participant",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `participantPublicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`participantPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `participantPublicKey` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `adminAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `broadcastedAt` INTEGER, FOREIGN KEY(`participantPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -2220,6 +2220,11 @@
             "fieldPath": "relayHint",
             "columnName": "relayHint",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "adminAt",
+            "columnName": "adminAt",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "createdAt",
@@ -3462,7 +3467,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6a176cdf1ee35e271c2a38b5955a7440')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7e418251d31c1dd20c0ea92e14f2711c')"
     ]
   }
 }

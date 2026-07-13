@@ -1,6 +1,7 @@
 package at.torch.compose.managers
 
 import at.torch.compose.database.TorchDatabase
+import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
 import at.torch.compose.exceptions.MarmotMissingChatGroupException
 import at.torch.compose.exceptions.MarmotUnsupportedWireFormatException
@@ -27,6 +28,7 @@ import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import kotlin.time.Clock
 
 object MarmotInboundManager {
     private const val TAG = "MarmotInboundManager"
@@ -49,6 +51,66 @@ object MarmotInboundManager {
     private val retainedEpochs = mutableMapOf<HexKey, MutableList<RetainedEpochSecrets>>()
 
     private val commitTracker = CommitOrdering.EpochCommitTracker()
+
+    suspend fun processGroupMembershipChanges(
+        database: TorchDatabase,
+        localChatRoom: LocalChatRoom,
+        mlsGroup: MlsGroup,
+    ) {
+        logger.d("processGroupMembershipChanges")
+        val adminPublicKeys = mlsGroup.currentMarmotData()?.adminPubkeys
+
+        val commitedGroupMembers = Participant.fromMlsGroup(
+            mlsGroup = mlsGroup,
+            nostrGroupId = localChatRoom.chatRoom.id,
+            relayHint = mlsGroup.currentMarmotData()?.relays?.firstOrNull()
+        )
+        val committedGroupMembersPublicKeys = commitedGroupMembers.map { it.participantPublicKey }
+        val excludedParticipants = localChatRoom.localParticipants.filter { localParticipant ->
+            committedGroupMembersPublicKeys.contains(localParticipant.participant.participantPublicKey).not()
+        }.map { localParticipant ->
+            localParticipant.participant.copy(
+                deletedAt = Clock.System.now()
+            )
+        }
+        logger.d("excludedParticipants: $excludedParticipants")
+        val existingParticipantPublicKeys = localChatRoom.localParticipants.map { it.participant.participantPublicKey }
+        val newParticipants = commitedGroupMembers.filter { committedGroupMember ->
+            existingParticipantPublicKeys.contains(committedGroupMember.participantPublicKey)
+        }.map { newParticipant ->
+            newParticipant.copy(
+                adminAt = if (adminPublicKeys?.contains(newParticipant.participantPublicKey) == null) {
+                    Clock.System.now()
+                } else {
+                    null
+                }
+            )
+        }
+        logger.d("newParticipants: $newParticipants")
+        val removedAdmins = localChatRoom.localParticipants.filter { localParticipant ->
+            localParticipant.participant.adminAt != null && adminPublicKeys?.contains(localParticipant.participant.participantPublicKey) == true
+        }.map { localParticipant ->
+            localParticipant.participant.copy(
+                adminAt = null
+            )
+        }
+        logger.d("removedAdmins: $removedAdmins")
+
+        val graduatedAdmins = localChatRoom.localParticipants.filter { localParticipant ->
+            localParticipant.participant.adminAt == null && adminPublicKeys?.contains(localParticipant.participant.participantPublicKey) == true
+        }.map { localParticipant ->
+            localParticipant.participant.copy(
+                adminAt = Clock.System.now()
+            )
+        }
+        logger.d("graduatedAdmins: $graduatedAdmins")
+
+        // Handle membership changes...
+        database.participantDao().upsert(removedAdmins)
+        database.participantDao().delete(excludedParticipants)
+        database.participantDao().upsert(newParticipants)
+        database.participantDao().upsert(graduatedAdmins)
+    }
 
     suspend fun processGroupEvent(
         database: TorchDatabase,

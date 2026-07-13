@@ -30,6 +30,7 @@ import at.torch.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdExc
 import at.torch.compose.extensions.toHex
 import at.torch.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
@@ -43,6 +44,7 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.normalizedUrls
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
 import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.nip02FollowList.ContactListEvent
@@ -398,6 +400,20 @@ abstract class NostrDao(
                                 groupEvent = groupEvent
                             )?.let { groupEventResult ->
                                 logger.d("groupEventResult: $groupEventResult")
+
+                                when(groupEventResult) {
+                                    is GroupEventResult.CommitProcessed -> {
+                                        MarmotInboundManager.processGroupMembershipChanges(
+                                            database = database,
+                                            mlsGroup = mlsGroup,
+                                            localChatRoom = localChatRoom
+                                        )
+                                    }
+                                    else -> {
+                                        logger.i("No app logic to handle: $groupEventResult")
+                                    }
+                                }
+
                                 // Save the mls chatRoom state...
                                 database.chatRoomDao().upsert(
                                     localChatRoom.chatRoom.copy(
@@ -752,23 +768,11 @@ abstract class NostrDao(
 
                                     val normalizedRelayUrl = NormalizedRelayUrl(relayURL)
 
-
-                                    val participants = group.members().mapNotNull { (leafIndex, leafNode) ->
-                                        val pubkey = when (val cred = leafNode.credential) {
-                                            is Credential.Basic -> cred.identity.toHexKey()
-                                            else -> null
-                                        }
-
-                                        if (pubkey != null) {
-                                            Participant(
-                                                participantPublicKey = pubkey,
-                                                chatRoomId = nostrGroupId,
-                                                relayHint = group.currentMarmotData()?.relays?.firstOrNull() ?: normalizedRelayUrl.url
-                                            )
-                                        } else {
-                                            null
-                                        }
-                                    }
+                                    val participants = Participant.fromMlsGroup(
+                                        mlsGroup = group,
+                                        nostrGroupId = nostrGroupId,
+                                        relayHint = normalizedRelayUrl.url
+                                    )
 
                                     logger.d("Participants: $participants")
                                     // Sync missing participant profiles...
