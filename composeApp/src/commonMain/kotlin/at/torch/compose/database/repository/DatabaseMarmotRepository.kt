@@ -116,22 +116,12 @@ class DatabaseMarmotRepository(
             localChatRoom.chatRoom.toMlsGroup(sentGenerations)?.let { mlsGroup ->
                 logger.d("mlsGroup: $mlsGroup")
 
-                val groupEvent = database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
+                database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
                     localChatRoom = localChatRoom,
                     mlsGroup = mlsGroup,
                     marmotInnerEvent = marmotInnerEvent,
                     nostrSignerSync = nostrSignerSync
                 )
-
-                // TODO: Remove this logic as it's just for logging purposes...
-                val groupEventResult = MarmotInboundManager.processGroupEvent(
-                    database = database,
-                    activeKeyPair = KeyPair(),
-                    localChatRoom = localChatRoom,
-                    mlsGroup = mlsGroup,
-                    groupEvent = groupEvent
-                )
-                logger.d("groupEventResult: $groupEventResult")
             }
 
         }
