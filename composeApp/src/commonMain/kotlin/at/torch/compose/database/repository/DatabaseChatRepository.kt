@@ -259,7 +259,7 @@ class DatabaseChatRepository(
         giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
-        database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEachIndexed { index, participant ->
+        database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEach { participant ->
             if (giftWrapPayload.kind == WelcomeEvent.KIND) {
                 logger.i("Only giftWrap welcomeEvent payload (${giftWrapPayload.id}) to the participant who published the related keyPackage")
                 val welcomeEvent = WelcomeEvent(
@@ -272,7 +272,7 @@ class DatabaseChatRepository(
                 )
 
                 val shouldBeGiftWrapped: Boolean = welcomeEvent.keyPackageEventId()?.let { keyPackageEventId ->
-                    val marmotKeyPackage = database.marmotKeyPackageDao().getMarmotKeyPackageForPublicKey(
+                    val marmotKeyPackage = database.marmotKeyPackageDao().getMarmotKeyPackageById(
                         keyPackageEventId
                     )
 
@@ -284,7 +284,7 @@ class DatabaseChatRepository(
                 if (!shouldBeGiftWrapped) {
                     logger.w("Participant ${participant.participantPublicKey} didn't publish key package for this welcome event")
 
-                    return@forEachIndexed
+                    return@forEach
                 }
             }
 
@@ -333,10 +333,7 @@ class DatabaseChatRepository(
             logger.d("giftWrapEvent: ${giftWrapEvent.toJson()}")
 
             database.nostrNip17Dao().persistAndBroadcastGiftWrap(
-                giftWrapPayload = Pair(
-                    index,
-                    giftWrapPayload
-                ),
+                giftWrapPayload = giftWrapPayload,
                 sealedRumorEvent = sealedRumorEvent,
                 giftWrapEvent = giftWrapEvent,
                 receiverPublicKey = PTag(

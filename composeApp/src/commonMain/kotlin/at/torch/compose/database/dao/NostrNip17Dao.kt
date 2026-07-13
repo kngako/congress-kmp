@@ -8,10 +8,12 @@ import at.torch.compose.database.model.ChatMessageBroadcastNostrEventRequestRela
 import at.torch.compose.database.model.ChatMessageNostrEventRelation
 import at.torch.compose.database.model.ChatRoom
 import at.torch.compose.database.model.GiftWrapMessage
+import at.torch.compose.database.model.GiftWrapPayload
 import at.torch.compose.database.model.GiftWrapSeal
 import at.torch.compose.database.model.NostrEvent
 import at.torch.compose.database.model.Participant
 import at.torch.compose.database.model.intermdiate.LocalChatRoom
+import at.torch.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
@@ -84,7 +86,7 @@ abstract class NostrNip17Dao(
 
     @Transaction
     open suspend fun persistAndBroadcastGiftWrap(
-        giftWrapPayload: Pair<Int, at.torch.compose.database.model.GiftWrapPayload>,
+        giftWrapPayload: GiftWrapPayload,
         sealedRumorEvent: SealedRumorEvent,
         giftWrapEvent: GiftWrapEvent,
         receiverPublicKey: PTag
@@ -100,11 +102,11 @@ abstract class NostrNip17Dao(
         )
         logger.d("NostrEvent: $nostrEvent")
 
-
         database.nostrEventDao().insert(nostrEvent)
 
-        val chatMessage = database.chatMessageDao().getChatMessagesByGiftWrapPayloadId(giftWrapPayload.second.id)
+        val chatMessage = database.chatMessageDao().getChatMessagesByGiftWrapPayloadId(giftWrapPayload.id)
 
+        logger.d("chatMessage: $chatMessage")
         chatMessage?.let {
             database.chatMessageNostrEventRelationDao().upsert(
                 ChatMessageNostrEventRelation(
@@ -125,47 +127,69 @@ abstract class NostrNip17Dao(
         )
         logger.d("Found messageRelayLists: $chatMessageRelayListEvents")
 
-        chatMessageRelayListEvents.firstOrNull()?.let { chatMessageRelayListNostrEvent ->
-            val chatMessageRelayListEvent = ChatMessageRelayListEvent(
-                id = chatMessageRelayListNostrEvent.id,
-                pubKey = chatMessageRelayListNostrEvent.pubKey,
-                tags = chatMessageRelayListNostrEvent.tags,
-                content = chatMessageRelayListNostrEvent.content,
-                sig = chatMessageRelayListNostrEvent.sig,
-                createdAt = chatMessageRelayListNostrEvent.createdAt.epochSeconds,
-            )
+//        chatMessageRelayListEvents.firstOrNull()?.let { chatMessageRelayListNostrEvent ->
+//            val chatMessageRelayListEvent = ChatMessageRelayListEvent(
+//                id = chatMessageRelayListNostrEvent.id,
+//                pubKey = chatMessageRelayListNostrEvent.pubKey,
+//                tags = chatMessageRelayListNostrEvent.tags,
+//                content = chatMessageRelayListNostrEvent.content,
+//                sig = chatMessageRelayListNostrEvent.sig,
+//                createdAt = chatMessageRelayListNostrEvent.createdAt.epochSeconds,
+//            )
+//
+//            logger.d("Broadcast to ${chatMessageRelayListEvent.relays()}")
+//
+//            // Only broadcasting to the first 3 relays...
+//            chatMessageRelayListEvent.relays().take(3).forEach { relayUrl ->
+//                logger.d("Submit BroadcastNostrEventRequest to $relayUrl")
+//                val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
+//                    listOf(
+//                        BroadcastNostrEventRequest(
+//                            nostrEventId = nostrEvent.id,
+//                            relayURL = relayUrl.url
+//                        )
+//                    )
+//                )
+//
+//                chatMessage?.let {
+//                    broadcastNostrEventRequestIds.forEach {
+//                        database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
+//                            ChatMessageBroadcastNostrEventRequestRelation(
+//                                chatMessageId = chatMessage.id,
+//                                broadcastNostrEventRequestId = it
+//                            )
+//                        )
+//                    }
+//                }
+//
+//            }
+//        }
 
-            logger.d("Broadcast to ${chatMessageRelayListEvent.relays()}")
-
-            // Only broadcasting to the first 3 relays...
-            chatMessageRelayListEvent.relays().take(3).forEach { relayUrl ->
-                logger.d("Submit BroadcastNostrEventRequest to $relayUrl")
-                val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
-                    listOf(
-                        BroadcastNostrEventRequest(
-                            nostrEventId = nostrEvent.id,
-                            relayURL = relayUrl.url
-                        )
+        Relays.DefaultDMRelayList.forEach { relayUrl ->
+            logger.d("Submit BroadcastNostrEventRequest to $relayUrl")
+            val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
+                listOf(
+                    BroadcastNostrEventRequest(
+                        nostrEventId = nostrEvent.id,
+                        relayURL = relayUrl.url
                     )
                 )
+            )
 
-                chatMessage?.let {
-                    broadcastNostrEventRequestIds.forEach {
-                        database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
-                            ChatMessageBroadcastNostrEventRequestRelation(
-                                chatMessageId = chatMessage.id,
-                                broadcastNostrEventRequestId = it
-                            )
+            chatMessage?.let {
+                broadcastNostrEventRequestIds.forEach {
+                    database.chatMessageBroadcastNostrEventRequestRelationDao().upsert(
+                        ChatMessageBroadcastNostrEventRequestRelation(
+                            chatMessageId = chatMessage.id,
+                            broadcastNostrEventRequestId = it
                         )
-                    }
+                    )
                 }
-
             }
         }
 
 
-
-
+        logger.d("Insert gift wrap in DB")
         database.giftWrapMessageDao().upsert(
             GiftWrapMessage(
                 id = giftWrapEvent.id,
@@ -193,15 +217,16 @@ abstract class NostrNip17Dao(
         )
         logger.d("persistAndBroadcastGiftWrap done")
 
-        if (giftWrapPayload.first == 0 && giftWrapPayload.second.giftWrapSealId == null) {
+        if (giftWrapPayload.giftWrapSealId == null) {
             // Only update the giftWrapPayload.giftWrapSealId on the first seal...
             database.giftWrapPayloadDao().upsert(
-                giftWrapPayload.second.copy(
+                giftWrapPayload.copy(
                     giftWrapSealId = sealedRumorEvent.id
                 )
             )
-            logger.d("GiftWrap now sealed: ${giftWrapPayload.second.id}")
+            logger.d("GiftWrap now sealed: ${giftWrapPayload.id}")
         }
+
     }
 
     companion object {
