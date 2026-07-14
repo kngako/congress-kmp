@@ -5,7 +5,6 @@ import at.torch.compose.database.model.MarmotInnerEvent
 import at.torch.compose.database.model.MarmotKeyPackageBundle
 import at.torch.compose.database.model.UnsignedNostrEvent
 import at.torch.compose.extensions.toHex
-import at.torch.compose.managers.MarmotInboundManager
 import at.torch.compose.nostr.Relays
 import at.torch.compose.repository.MarmotRepository
 import co.touchlab.kermit.Logger
@@ -26,7 +25,6 @@ import com.vitorpamplona.quartz.marmot.mls.tree.Lifetime
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
-import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
@@ -95,12 +93,28 @@ class DatabaseMarmotRepository(
         )
     }
 
+    override suspend fun rotateMarmotKeyPackageBundle(marmotKeyPackageBundle: MarmotKeyPackageBundle) {
+        database.marmotKeyPackageBundleDao().upsert(
+            marmotKeyPackageBundle.copy(
+                rotated = true
+            )
+        )
+    }
+
+    override suspend fun observeMarmotKeyPackageBundles(publicKey: HexKey): Flow<List<MarmotKeyPackageBundle>> {
+        return database.marmotKeyPackageBundleDao().observeAllMarmotKeyPackageBundles(publicKey)
+    }
+
     override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
         return database.marmotKeyPackageBundleDao().getAllMarmotKeyPackageBundles(publicKey)
     }
 
     override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?> {
         return database.marmotInnerEventDao().observeUnprocessedMarmotInnerEvents(publicKey)
+    }
+
+    override suspend fun observeActiveMarmotKeyPackageBundle(publicKey: HexKey): Flow<MarmotKeyPackageBundle?> {
+        return database.marmotKeyPackageBundleDao().observeActiveMarmotKeyPackageBundle(publicKey)
     }
 
     override suspend fun encryptAndSendMarmotInnerEvent(

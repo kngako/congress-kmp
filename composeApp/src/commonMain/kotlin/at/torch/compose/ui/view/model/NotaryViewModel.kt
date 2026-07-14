@@ -68,6 +68,7 @@ class NotaryViewModel(
                     observeUnsignedNostrEvents(keyPair)
                     observeUnsealedGiftWrapPayloads(keyPair)
                     observeUnprocessedMarmotInnerEvents(keyPair)
+                    observeActiveMarmotKeyPackageBundle(keyPair)
                 }
             }
         }
@@ -77,45 +78,45 @@ class NotaryViewModel(
     private fun observeUnsignedNostrEvents(
         keyPair: KeyPair
     ) {
-            val tempSigner = NostrSignerSync(
-                keyPair
-            )
-            scope.launch(Dispatchers.IO) {
-                logger.i { "observeUnsignedNostrEvents: ${keyPair.pubKey.toHexKey()}" }
-                nostrRepository.observeUnsignedNostrEvents(
-                    publicKey = keyPair.pubKey.toHexKey()
-                ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
-                    scope.launch(Dispatchers.IO) {
-                        unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
-                            logger.d("Unsigned: ${unsignedNostrEvent.kind}")
-                            val event = tempSigner.signNormal<Event>(
-                                createdAt = unsignedNostrEvent.createdAt.epochSeconds,
-                                kind = unsignedNostrEvent.kind,
-                                tags = unsignedNostrEvent.tags,
-                                content = unsignedNostrEvent.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: unsignedNostrEvent.content
-                            )
-                            logger.d("Signed: ${event.toJson()}")
+        val tempSigner = NostrSignerSync(
+            keyPair
+        )
+        scope.launch(Dispatchers.IO) {
+            logger.i { "observeUnsignedNostrEvents: ${keyPair.pubKey.toHexKey()}" }
+            nostrRepository.observeUnsignedNostrEvents(
+                publicKey = keyPair.pubKey.toHexKey()
+            ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
+                scope.launch(Dispatchers.IO) {
+                    unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
+                        logger.d("Unsigned: ${unsignedNostrEvent.kind}")
+                        val event = tempSigner.signNormal<Event>(
+                            createdAt = unsignedNostrEvent.createdAt.epochSeconds,
+                            kind = unsignedNostrEvent.kind,
+                            tags = unsignedNostrEvent.tags,
+                            content = unsignedNostrEvent.privateTags?.let { PrivateTagsInContent.encryptNip44(it, tempSigner) } ?: unsignedNostrEvent.content
+                        )
+                        logger.d("Signed: ${event.toJson()}")
 
-                            nostrRepository.publishNostrEvent(
-                                unsignedNostrEvent,
-                                _root_ide_package_.at.torch.compose.database.model.NostrEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    kind = event.kind,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    sig = event.sig,
-                                    unsignedNostrEventId = unsignedNostrEvent.id
-                                ),
-                                relayURLs = at.torch.compose.nostr.Relays.DefaultDMRelayList.map { normalizedRelayUrl -> normalizedRelayUrl.url },
-                                activeKeyPair = keyPair
-                            )
-                        }
+                        nostrRepository.publishNostrEvent(
+                            unsignedNostrEvent,
+                            _root_ide_package_.at.torch.compose.database.model.NostrEvent(
+                                id = event.id,
+                                pubKey = event.pubKey,
+                                kind = event.kind,
+                                tags = event.tags,
+                                content = event.content,
+                                createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                sig = event.sig,
+                                unsignedNostrEventId = unsignedNostrEvent.id
+                            ),
+                            relayURLs = at.torch.compose.nostr.Relays.DefaultDMRelayList.map { normalizedRelayUrl -> normalizedRelayUrl.url },
+                            activeKeyPair = keyPair
+                        )
                     }
                 }
             }
         }
+    }
 
 
     private fun observeUnsealedGiftWrapPayloads(
@@ -161,6 +162,31 @@ class NotaryViewModel(
                         marmotRepository.encryptAndSendMarmotInnerEvent(
                             marmotInnerEvent,
                             nostrSignerSync = tempSigner
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun observeActiveMarmotKeyPackageBundle(
+        keyPair: KeyPair
+    ) {
+        val tempSigner = NostrSignerSync(
+            keyPair
+        )
+        scope.launch(Dispatchers.IO) {
+            logger.i { "observeActiveMarmotKeyPackageBundle: ${keyPair.pubKey.toHexKey()}" }
+            marmotRepository.observeActiveMarmotKeyPackageBundle(
+                publicKey = keyPair.pubKey.toHexKey()
+            ).distinctUntilChanged().collect { marmotKeyPackageBundleOrNull ->
+                scope.launch(Dispatchers.IO) {
+                    if (marmotKeyPackageBundleOrNull == null) {
+                        logger.d("Need to create new key package bundle")
+                        marmotRepository.publishMarmotKeyPackageBundle(
+                            publicKey = keyPair.pubKey.toHexKey(),
+                            nsecPassword = "" // TODO: Implement nsecPassword logic...
                         )
                     }
                 }
