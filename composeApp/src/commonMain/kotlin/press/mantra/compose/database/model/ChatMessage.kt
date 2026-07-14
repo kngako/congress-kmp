@@ -3,7 +3,7 @@ package press.mantra.compose.database.model
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
-import press.mantra.compose.database.TorchDatabase
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.traits.LocalStoreEntity
 import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
@@ -74,7 +74,7 @@ data class ChatMessage(
 
     companion object {
         suspend fun fromGroupEventResult(
-            database: TorchDatabase,
+            database: MantraDatabase,
             activeKeyPair: KeyPair,
             groupEvent: GroupEvent,
             groupEventResult: GroupEventResult

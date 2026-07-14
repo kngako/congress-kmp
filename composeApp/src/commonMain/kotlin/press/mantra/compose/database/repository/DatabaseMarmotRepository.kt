@@ -1,6 +1,6 @@
 package press.mantra.compose.database.repository
 
-import press.mantra.compose.database.TorchDatabase
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackageBundle
 import press.mantra.compose.database.model.UnsignedNostrEvent
@@ -36,7 +36,7 @@ import kotlin.time.Instant
  * Based on MlsGroupManager in quarts...
  */
 class DatabaseMarmotRepository(
-    val database: TorchDatabase,
+    val database: MantraDatabase,
     val scope: CoroutineScope
 ): MarmotRepository {
     private val logger = Logger.withTag(TAG)

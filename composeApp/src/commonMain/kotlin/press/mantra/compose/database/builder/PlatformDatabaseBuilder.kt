@@ -6,14 +6,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 expect object PlatformDatabaseBuilder {
-    fun getDatabaseBuilder(platformContext: press.mantra.compose.PlatformContext): RoomDatabase.Builder<press.mantra.compose.database.TorchDatabase>
+    fun getDatabaseBuilder(platformContext: press.mantra.compose.PlatformContext): RoomDatabase.Builder<press.mantra.compose.database.MantraDatabase>
 
-    fun getInMemoryDatabaseBuilder(platform: press.mantra.compose.PlatformContext): RoomDatabase.Builder<press.mantra.compose.database.TorchDatabase>
+    fun getInMemoryDatabaseBuilder(platform: press.mantra.compose.PlatformContext): RoomDatabase.Builder<press.mantra.compose.database.MantraDatabase>
 }
 
 fun getRoomDatabase(
-    builder: RoomDatabase.Builder<press.mantra.compose.database.TorchDatabase>
-): press.mantra.compose.database.TorchDatabase {
+    builder: RoomDatabase.Builder<press.mantra.compose.database.MantraDatabase>
+): press.mantra.compose.database.MantraDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)

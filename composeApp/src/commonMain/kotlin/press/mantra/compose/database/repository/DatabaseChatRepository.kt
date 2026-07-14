@@ -1,7 +1,7 @@
 package press.mantra.compose.database.repository
 
 import press.mantra.compose.database.GENESIS_AT
-import press.mantra.compose.database.TorchDatabase
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -35,7 +35,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 class DatabaseChatRepository(
-    private val database: TorchDatabase,
+    private val database: MantraDatabase,
     private val scope: CoroutineScope
 ): press.mantra.compose.repository.ChatRepository {
     val logger = Logger.withTag(TAG)

@@ -2,7 +2,7 @@ package press.mantra.compose.database.dao
 
 import androidx.room3.Dao
 import androidx.room3.Transaction
-import press.mantra.compose.database.TorchDatabase
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.BroadcastNostrEventRequest
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
@@ -50,7 +50,7 @@ import kotlin.time.Instant
 
 @Dao
 abstract class MarmotOutboundDao(
-    private val database: TorchDatabase
+    private val database: MantraDatabase
 ) {
     val logger = Logger.withTag(TAG)
 

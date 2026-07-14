@@ -51,7 +51,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 class DatabaseNostrRepository(
-    private val database: press.mantra.compose.database.TorchDatabase,
+    private val database: press.mantra.compose.database.MantraDatabase,
     private val scope: CoroutineScope
 ): press.mantra.compose.repository.NostrRepository, press.mantra.compose.repository.RelayRepository {
     companion object {

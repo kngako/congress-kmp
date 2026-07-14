@@ -25,7 +25,7 @@ import kotlin.time.Instant
 
 @Dao
 abstract class NostrNip17Dao(
-    private val database: press.mantra.compose.database.TorchDatabase
+    private val database: press.mantra.compose.database.MantraDatabase
 ) {
     val logger = Logger.withTag(TAG)
 

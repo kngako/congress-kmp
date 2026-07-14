@@ -1,6 +1,6 @@
 package press.mantra.compose.managers
 
-import press.mantra.compose.database.TorchDatabase
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.exceptions.MarmotMissingChatGroupException
@@ -53,7 +53,7 @@ object MarmotInboundManager {
     private val commitTracker = CommitOrdering.EpochCommitTracker()
 
     suspend fun processGroupMembershipChanges(
-        database: TorchDatabase,
+        database: MantraDatabase,
         localChatRoom: LocalChatRoom,
         mlsGroup: MlsGroup,
     ) {
@@ -113,7 +113,7 @@ object MarmotInboundManager {
     }
 
     suspend fun processGroupEvent(
-        database: TorchDatabase,
+        database: MantraDatabase,
         activeKeyPair: KeyPair,
         localChatRoom: LocalChatRoom,
         mlsGroup: MlsGroup,
@@ -173,7 +173,7 @@ object MarmotInboundManager {
 
 
     suspend fun processPrivateMessage(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         mlsMessage: MlsMessage,
         groupEvent: GroupEvent
@@ -236,7 +236,7 @@ object MarmotInboundManager {
     }
 
     private suspend fun decryptMessageBytes(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         messageBytes: ByteArray,
     ): DecryptedMessage {
@@ -282,7 +282,7 @@ object MarmotInboundManager {
     }
 
     public suspend fun processPublicMessage(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         mlsMessage: MlsMessage,
         groupEvent: GroupEvent
@@ -326,7 +326,7 @@ object MarmotInboundManager {
     }
 
     private suspend fun handleCommitEvent(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         groupEvent: GroupEvent
     ): GroupEventResult {
@@ -352,7 +352,7 @@ object MarmotInboundManager {
     }
 
     private suspend fun applyCommit(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         commitEvent: GroupEvent,
     ): GroupEventResult =
@@ -480,7 +480,7 @@ object MarmotInboundManager {
      * @param confirmationTag optional confirmation tag for verification
      */
     suspend fun processCommit(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup,
         commitBytes: ByteArray,
         senderLeafIndex: Int,
@@ -551,7 +551,7 @@ object MarmotInboundManager {
     }
 
     private suspend fun persistGroup(
-        database: TorchDatabase,
+        database: MantraDatabase,
         mlsGroup: MlsGroup
     ) {
         val nostrGroupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()

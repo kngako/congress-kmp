@@ -36,7 +36,7 @@ fun LandingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Torch",
+                    text = "Mantra",
                     style = MaterialTheme.typography.headlineLarge
                 )
 

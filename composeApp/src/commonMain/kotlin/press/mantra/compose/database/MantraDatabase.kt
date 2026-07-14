@@ -5,7 +5,7 @@ import androidx.room3.RoomDatabase
 import androidx.room3.TypeConverters
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
-import press.mantra.compose.database.converters.TorchConverters
+import press.mantra.compose.database.converters.MantraConverters
 import press.mantra.compose.database.dao.BroadcastNostrEventReceiptDao
 import press.mantra.compose.database.dao.BroadcastNostrEventRequestDao
 import press.mantra.compose.database.dao.ChatMessageBroadcastNostrEventReceiptRelationDao
@@ -123,8 +123,8 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
     ],
     version = 1
 )
-@TypeConverters(TorchConverters::class)
-abstract class TorchDatabase: RoomDatabase() {
+@TypeConverters(MantraConverters::class)
+abstract class MantraDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao
     abstract fun broadcastNostrEventRequestDao(): BroadcastNostrEventRequestDao
 

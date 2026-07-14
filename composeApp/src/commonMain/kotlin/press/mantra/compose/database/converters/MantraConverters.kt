@@ -6,8 +6,8 @@ import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
-class TorchConverters {
-    val logger = Logger.withTag("TorchConverters")
+class MantraConverters {
+    val logger = Logger.withTag("MantraConverters")
 
     @TypeConverter
     fun fromTimestamp(value: Long?): Instant? {
