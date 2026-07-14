@@ -129,14 +129,17 @@ class ChatRoomMessagingViewModel(
                                     peerKeyPackage = keyPackageEvent,
                                 )
 
-                                onNavigateToChat.invoke(
-                                    ChatRoomMessagingRoute(
-                                        activeUserPublicKey = activeUserPublicKey,
-                                        chatRoomId = chatRoomId,
-                                        relayHint = relayHint
+                                viewModelScope.launch(Dispatchers.Main) {
+                                    onNavigateToChat.invoke(
+                                        ChatRoomMessagingRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
                                     )
-                                )
+                                }
                             } catch (e: Throwable) {
+                                logger.e("Failed to create chat", e)
                                 chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Failed to create chat")
                             }
                         }
