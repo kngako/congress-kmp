@@ -42,13 +42,10 @@ class KeyPackageManagementViewModel(
 
     fun publishNewKeyPackage() {
         viewModelScope.launch(Dispatchers.IO) {
+            // TODO: Rotate all other keys...
             marmotRepository.publishMarmotKeyPackageBundle(
                 publicKey = activeUserPublicKey,
                 nsecPassword = "" // TODO: Implement nsecPassword logic...
-            )
-
-            keyPackageManagementUIState = KeyPackageManagementUIState.Loaded(
-                keyPackageBundles = marmotRepository.getMarmotKeyPackageBundles(activeUserPublicKey)
             )
         }
     }
