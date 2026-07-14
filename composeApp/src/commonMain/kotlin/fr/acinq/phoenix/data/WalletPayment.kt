@@ -18,14 +18,14 @@ import fr.acinq.phoenix.data.lnurl.LnurlPay
 import fr.acinq.phoenix.utils.converters.AmountFormatter.toPrettyString
 import fr.acinq.phoenix.utils.extensions.desc
 import org.jetbrains.compose.resources.stringResource
-import torch.composeapp.generated.resources.Res
-import torch.composeapp.generated.resources.paymentdetails_desc_closing_channel
-import torch.composeapp.generated.resources.paymentdetails_desc_cpfp
-import torch.composeapp.generated.resources.paymentdetails_desc_liquidity_automated
-import torch.composeapp.generated.resources.paymentdetails_desc_liquidity_manual
-import torch.composeapp.generated.resources.paymentdetails_desc_splice_out
-import torch.composeapp.generated.resources.paymentdetails_desc_swapin
-import torch.composeapp.generated.resources.paymentdetails_desc_swapout
+import mantra.composeapp.generated.resources.Res
+import mantra.composeapp.generated.resources.paymentdetails_desc_closing_channel
+import mantra.composeapp.generated.resources.paymentdetails_desc_cpfp
+import mantra.composeapp.generated.resources.paymentdetails_desc_liquidity_automated
+import mantra.composeapp.generated.resources.paymentdetails_desc_liquidity_manual
+import mantra.composeapp.generated.resources.paymentdetails_desc_splice_out
+import mantra.composeapp.generated.resources.paymentdetails_desc_swapin
+import mantra.composeapp.generated.resources.paymentdetails_desc_swapout
 
 /**
  * Represents a payment & its associated metadata.

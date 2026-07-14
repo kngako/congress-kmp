@@ -5,8 +5,8 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationManagerCompat
-import at.torch.android.BuildConfig
-import at.torch.android.TorchApplication
+import press.mantra.android.BuildConfig
+import press.mantra.android.MantraApplication
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixBusiness
 import fr.acinq.phoenix.PhoenixGlobal
@@ -100,7 +100,7 @@ class PaymentsForegroundService : Service() {
                     is DecryptSeedResult.Failure -> {
                         log.info("unable to read seed, ignoring background message (reason=$reason)")
                         serviceScope.launch {
-                            val walletMetadataMap = (application as TorchApplication).globalPrefs.getAvailableWalletsMeta.first()
+                            val walletMetadataMap = (application as MantraApplication).globalPrefs.getAvailableWalletsMeta.first()
                             val metadata = walletMetadataMap.getByWalletIdOrDefault(walletId)
                             when (reason) {
                                 "IncomingPayment" -> SystemNotificationHelper.notifyPaymentMissedAppUnavailable(applicationContext, metadata)

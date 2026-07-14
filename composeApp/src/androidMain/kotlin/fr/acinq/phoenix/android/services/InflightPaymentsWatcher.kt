@@ -26,8 +26,8 @@ import androidx.work.Operation
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import at.torch.android.BuildConfig
-import at.torch.android.TorchApplication
+import press.mantra.android.BuildConfig
+import press.mantra.android.MantraApplication
 import fr.acinq.lightning.channel.states.Syncing
 import fr.acinq.lightning.utils.Connection
 import fr.acinq.phoenix.PhoenixGlobal
@@ -95,7 +95,7 @@ class InflightPaymentsWatcher(context: Context, workerParams: WorkerParameters) 
         }
 
         val watchResult = userWallets.map { (walletId, wallet) ->
-            val walletMetadata = (applicationContext as TorchApplication).globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
+            val walletMetadata = (applicationContext as MantraApplication).globalPrefs.getAvailableWalletsMeta.first().getByWalletIdOrDefault(walletId)
             watchWallet(walletId, walletMetadata, wallet.words)
         }
 

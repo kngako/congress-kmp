@@ -6,13 +6,13 @@ import fr.acinq.lightning.utils.ServerAddress
 import fr.acinq.phoenix.utils.extensions.isOnion
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.getString
-import torch.composeapp.generated.resources.Res
-import torch.composeapp.generated.resources.currency_ars_bm
-import torch.composeapp.generated.resources.currency_ars_official
-import torch.composeapp.generated.resources.currency_cup_fm
-import torch.composeapp.generated.resources.currency_cup_official
-import torch.composeapp.generated.resources.currency_lbp_bm
-import torch.composeapp.generated.resources.currency_lbp_official
+import mantra.composeapp.generated.resources.Res
+import mantra.composeapp.generated.resources.currency_ars_bm
+import mantra.composeapp.generated.resources.currency_ars_official
+import mantra.composeapp.generated.resources.currency_cup_fm
+import mantra.composeapp.generated.resources.currency_cup_official
+import mantra.composeapp.generated.resources.currency_lbp_bm
+import mantra.composeapp.generated.resources.currency_lbp_official
 
 
 sealed interface CurrencyUnit {

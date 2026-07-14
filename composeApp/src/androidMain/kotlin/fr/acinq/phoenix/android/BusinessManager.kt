@@ -18,9 +18,9 @@ package fr.acinq.phoenix.android
 
 import android.content.Context
 import android.text.format.DateUtils
-import at.torch.android.TorchApplication
-import at.torch.compose.AppVersion
-import at.torch.compose.ui.composable.widgets.wallet.WalletAvatars
+import press.mantra.android.MantraApplication
+import press.mantra.compose.AppVersion
+import press.mantra.compose.ui.composable.widgets.wallet.WalletAvatars
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.PaymentEvents
 import fr.acinq.lightning.utils.Connection
@@ -67,7 +67,7 @@ object BusinessManager {
 
     // No memory leaks because this can only contain the application context.
     private lateinit var appContext: Context
-    private val application by lazy { appContext as TorchApplication }
+    private val application by lazy { appContext as MantraApplication }
 
     /** A map of (walletId -> active businesses) */
     private val _businessFlow = MutableStateFlow<Map<WalletId, BusinessRunning>>(emptyMap())

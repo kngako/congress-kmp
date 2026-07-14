@@ -1,4 +1,4 @@
-rootProject.name = "Torch"
+rootProject.name = "Mantra"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

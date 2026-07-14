@@ -9,7 +9,7 @@ import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.FileProvider
-import at.torch.android.BuildConfig
+import press.mantra.android.BuildConfig
 import fr.acinq.lightning.utils.currentTimestampMillis
 import org.slf4j.LoggerFactory
 import java.io.File

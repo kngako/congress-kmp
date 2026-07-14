@@ -120,14 +120,14 @@ kotlin {
 }
 
 android {
-    namespace = "at.torch.android"
+    namespace = "press.mantra.android"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     buildFeatures {
         buildConfig = true
     }
     defaultConfig {
-        applicationId = "at.torch.android"
+        applicationId = "press.mantra.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -188,11 +188,11 @@ sqldelight {
 
 compose.desktop {
     application {
-        mainClass = "at.torch.desktop.MainKt"
+        mainClass = "press.mantra.desktop.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "at.torch.desktop"
+            packageName = "press.mantra.desktop"
             packageVersion = "1.0.0"
         }
     }

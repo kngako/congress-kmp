@@ -30,9 +30,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.TaskStackBuilder
 import androidx.core.net.toUri
-import at.torch.android.BuildConfig
-import at.torch.android.MainActivity
-import at.torch.android.R
+import press.mantra.android.BuildConfig
+import press.mantra.android.MainActivity
+import press.mantra.android.R
 import fr.acinq.bitcoin.Satoshi
 import fr.acinq.lightning.LiquidityEvents
 import fr.acinq.lightning.MilliSatoshi
