@@ -26,10 +26,10 @@ class TranslationTranslatorListEvent(
         const val ALT_DESCRIPTION = "TranslationTranslatorList"
 
         fun build(
-            description: String,
+            content: String,
             createdAt: Long = TimeUtils.now(),
             initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, description, createdAt) {
+        ) = eventTemplate(KIND, content, createdAt) {
             alt(ALT_DESCRIPTION)
             initializer()
         }
