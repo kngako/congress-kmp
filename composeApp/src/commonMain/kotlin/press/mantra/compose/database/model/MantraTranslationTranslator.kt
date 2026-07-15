@@ -20,6 +20,8 @@ data class MantraTranslationTranslator(
     val translationId: HexKey,
     val translatorPublicKey: HexKey,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {

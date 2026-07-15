@@ -22,18 +22,20 @@ data class MantraChunk(
     val wordCount: Int,
     val characterCount: Int,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {
 
     fun toChunkEvent(): ChunkEvent {
         return ChunkEvent(
-            id = "",
+            id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = emptyArray(),
             content = "",
-            sig = ""
+            sig = signature
         )
     }
 }

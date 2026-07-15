@@ -21,18 +21,20 @@ data class MantraTranslationChunk(
     val chunkId: HexKey,
     val translationChapterId: HexKey,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {
 
     fun toTranslationChunkEvent(): TranslationChunkEvent {
         return TranslationChunkEvent(
-            id = "",
+            id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = emptyArray(),
             content = "",
-            sig = ""
+            sig = signature
         )
     }
 }

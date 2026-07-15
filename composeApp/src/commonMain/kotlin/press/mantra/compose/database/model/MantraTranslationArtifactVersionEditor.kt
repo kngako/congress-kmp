@@ -20,6 +20,8 @@ data class MantraTranslationArtifactVersionEditor(
     val translationArtifactVersionId: HexKey,
     val editorPublicKey: HexKey,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {

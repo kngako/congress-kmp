@@ -23,17 +23,19 @@ data class MantraArtifact(
     val license: String,
 //    val artifactApprovalId: String,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {
     fun toArtifactEvent(): ArtifactEvent {
         return ArtifactEvent(
-            id = "",
+            id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = emptyArray(),
             content = "",
-            sig = ""
+            sig = signature
         )
     }
 }

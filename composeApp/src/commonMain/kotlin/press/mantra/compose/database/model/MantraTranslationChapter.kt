@@ -18,17 +18,19 @@ data class MantraTranslationChapter(
     val translationArtifactVersionId: HexKey,
     val index: Int,
 
+    val signature: String,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): TimestampedEntity {
     fun toTranslationChapterEvent(): TranslationChapterEvent {
         return TranslationChapterEvent(
-            id = "",
+            id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = emptyArray(),
             content = "",
-            sig = ""
+            sig = signature
         )
     }
 }
