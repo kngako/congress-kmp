@@ -18,6 +18,19 @@ import press.mantra.compose.database.dao.GiftWrapMessageDao
 import press.mantra.compose.database.dao.GiftWrapPayloadDao
 import press.mantra.compose.database.dao.GiftWrapSealDao
 import press.mantra.compose.database.dao.InReplyToRelationDao
+import press.mantra.compose.database.dao.MantraArtifactDao
+import press.mantra.compose.database.dao.MantraArtifactVersionDao
+import press.mantra.compose.database.dao.MantraChapterDao
+import press.mantra.compose.database.dao.MantraChunkDao
+import press.mantra.compose.database.dao.MantraDialectDao
+import press.mantra.compose.database.dao.MantraTranslationArtifactVersionDao
+import press.mantra.compose.database.dao.MantraTranslationArtifactVersionEditorDao
+import press.mantra.compose.database.dao.MantraTranslationChapterDao
+import press.mantra.compose.database.dao.MantraTranslationChapterProofReaderDao
+import press.mantra.compose.database.dao.MantraTranslationChapterTranslatorDao
+import press.mantra.compose.database.dao.MantraTranslationChunkDao
+import press.mantra.compose.database.dao.MantraTranslationDao
+import press.mantra.compose.database.dao.MantraTranslationTranslatorDao
 import press.mantra.compose.database.dao.MarmotCommitResultDao
 import press.mantra.compose.database.dao.MarmotOutboundDao
 import press.mantra.compose.database.dao.MarmotGroupEventDao
@@ -56,6 +69,19 @@ import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GiftWrapSeal
 import press.mantra.compose.database.model.InReplyToRelation
+import press.mantra.compose.database.model.MantraArtifact
+import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.MantraChapter
+import press.mantra.compose.database.model.MantraChunk
+import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraTranslation
+import press.mantra.compose.database.model.MantraTranslationArtifactVersion
+import press.mantra.compose.database.model.MantraTranslationArtifactVersionEditor
+import press.mantra.compose.database.model.MantraTranslationChapter
+import press.mantra.compose.database.model.MantraTranslationChapterProofReader
+import press.mantra.compose.database.model.MantraTranslationChapterTranslator
+import press.mantra.compose.database.model.MantraTranslationChunk
+import press.mantra.compose.database.model.MantraTranslationTranslator
 import press.mantra.compose.database.model.MarmotCommitResult
 import press.mantra.compose.database.model.MarmotGroupEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -97,6 +123,19 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         InReplyToRelation::class,
+        MantraArtifact::class,
+        MantraArtifactVersion::class,
+        MantraChapter::class,
+        MantraChunk::class,
+        MantraDialect::class,
+        MantraTranslation::class,
+        MantraTranslationArtifactVersion::class,
+        MantraTranslationArtifactVersionEditor::class,
+        MantraTranslationChapter::class,
+        MantraTranslationChapterProofReader::class,
+        MantraTranslationChapterTranslator::class,
+        MantraTranslationChunk::class,
+        MantraTranslationTranslator::class,
         MarmotCommitResult::class,
         MarmotGroupEvent::class,
         MarmotInnerEvent::class,
@@ -147,6 +186,32 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun giftWrapPayloadDao(): GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): InReplyToRelationDao
+
+    abstract fun mantraArtifactDao(): MantraArtifactDao
+
+    abstract fun mantraArtifactVersionDao(): MantraArtifactVersionDao
+
+    abstract fun mantraChapterDao(): MantraChapterDao
+
+    abstract fun mantraChunkDao(): MantraChunkDao
+
+    abstract fun mantraDialectDao(): MantraDialectDao
+
+    abstract fun mantraTranslationArtifactVersionDao(): MantraTranslationArtifactVersionDao
+
+    abstract fun mantraTranslationArtifactVersionEditorDao(): MantraTranslationArtifactVersionEditorDao
+
+    abstract fun mantraTranslationChapterDao(): MantraTranslationChapterDao
+
+    abstract fun mantraTranslationChapterProofReaderDao(): MantraTranslationChapterProofReaderDao
+
+    abstract fun mantraTranslationChapterTranslatorDao(): MantraTranslationChapterTranslatorDao
+
+    abstract fun mantraTranslationChunkDao(): MantraTranslationChunkDao
+
+    abstract fun mantraTranslationDao(): MantraTranslationDao
+
+    abstract fun mantraTranslationTranslatorDao(): MantraTranslationTranslatorDao
 
     abstract fun marmotCommitResultDao(): MarmotCommitResultDao
 
