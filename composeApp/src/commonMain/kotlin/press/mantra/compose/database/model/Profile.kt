@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +21,9 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
+import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
+import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -37,7 +41,6 @@ import kotlin.time.Instant
         Index("nostrEventId"),
     ],
 )
-
 data class Profile(
     @PrimaryKey
     val publicKey: String,
@@ -133,61 +136,43 @@ data class Profile(
             ),
             onClick = {
                 onNavigateToEvent.invoke(
-                    press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                    NostrEventDetailRoute(
                         activeUserPublicKey = activeUserPublicKey,
                         nostrEventId
                     )
                 )
             }
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(
-                    space = 10.dp,
-                    alignment = Alignment.Start
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(4.dp)
-                ) {
-                    press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
+            ListItem(
+                leadingContent = {
+                    ProfileAvatar(
                         publicKey = publicKey,
                         profile = this@Profile
                     )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(
-                        space = 4.dp,
-                        alignment = Alignment.CenterVertically
-                    )
-                ) {
+                },
+                headlineContent = {
                     Text(
                         text = humanReadableNameOrPubkey(),
                         style = MaterialTheme.typography.bodyMedium
                     )
-
+                },
+                supportingContent = {
                     staticIdentifier()?.let { staticIdentifier ->
                         Text(
                             text = staticIdentifier,
                             style = MaterialTheme.typography.labelMedium,
-                            color = press.mantra.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(publicKey)
+                            color = ProfileColor.fromPublicKey(publicKey)
                         )
                     }
-
                 }
-            }
+            )
         }
     }
 }
 
 @Preview
 @Composable
-fun ProfileRenderAsListItemPreview(
-    activeUserPublicKey: String
-) {
+fun ProfileRenderAsListItemPreview() {
     val profile = Profile(
         publicKey = "pubKey",
         displayName = "John Doe",
