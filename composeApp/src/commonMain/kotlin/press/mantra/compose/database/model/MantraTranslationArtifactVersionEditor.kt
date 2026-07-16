@@ -3,9 +3,13 @@ package press.mantra.compose.database.model
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nipF4Podcasts.metadata.tags.AuthorTag
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEditorListEvent
+import press.mantra.compose.nostr.nip30303.TranslationChapterProofReaderListEvent
+import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -33,7 +37,15 @@ data class MantraTranslationArtifactVersionEditor(
                 id = "",
                 pubKey = "",
                 createdAt = TimeUtils.now(),
-                tags = emptyArray(),
+                tags = TagArrayBuilder<TranslationChapterProofReaderListEvent>()
+                    .addUnique(
+                        TranslationArtifactVersionIdTag.assemble("") // TODO: use actual value..
+                    )
+                    // TODO: Add tag for editorPublicKey
+                    .addUnique(
+                        AuthorTag.assemble("") // TODO: Get piblicKeyList...
+                    )
+                    .build(),
                 content = "",
                 sig = ""
             )

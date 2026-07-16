@@ -2,8 +2,11 @@ package press.mantra.compose.database.model
 
 import androidx.room3.Entity
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
+import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -28,7 +31,14 @@ data class MantraTranslationChapter(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = emptyArray(),
+            tags = TagArrayBuilder<TranslationChapterEvent>()
+                .addUnique(
+                    TranslationArtifactVersionIdTag.assemble(translationArtifactVersionId)
+                )
+                .addUnique(
+                    ChapterIdTag.assemble(chapterId)
+                )
+                .build(),
             content = "",
             sig = signature
         )
