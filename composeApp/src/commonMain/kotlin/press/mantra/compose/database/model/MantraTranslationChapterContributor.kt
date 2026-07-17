@@ -8,23 +8,24 @@ import com.vitorpamplona.quartz.nipF4Podcasts.metadata.tags.AuthorTag
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEditorListEvent
-import press.mantra.compose.nostr.nip30303.TranslationChapterProofReaderListEvent
-import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
+import press.mantra.compose.nostr.nip30303.TranslationChapterContributorListEvent
+import press.mantra.compose.nostr.nip30303.tags.ContributorTag
+import press.mantra.compose.nostr.nip30303.tags.TranslationChapterIdTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
- * 30307
+ * 30310
  */
 @Entity
-data class MantraTranslationArtifactVersionEditor(
+data class MantraTranslationChapterContributor(
     @PrimaryKey
     val id: HexKey,
     val publicKey: HexKey,
-    val translationArtifactVersionId: HexKey,
-    val editorPublicKey: HexKey,
+    val translationChapterId: HexKey,
+    val translatorPublicKey: HexKey,
 
+    val role: String,
     /**
      * Signature will be an empty string if this is a rumor
      */
@@ -42,19 +43,18 @@ data class MantraTranslationArtifactVersionEditor(
 ): OptionalNostrEventEntity, TimestampedEntity {
 
     companion object {
-        fun toTranslationChapterProofReaderListEvent(mantraTranslationChapterProofReaders: List<MantraTranslationChapterProofReader>): TranslationArtifactVersionEditorListEvent {
+        fun toTranslationChapterTranslatorListEvent(mantraTranslationChapterTranslators: List<MantraTranslationChapterTranslator>): TranslationChapterContributorListEvent {
             // TODO: create TranslationChapterProofReaderListEvent from mantraTranslationChapterProofReaders
-            return TranslationArtifactVersionEditorListEvent(
+            return TranslationChapterContributorListEvent(
                 id = "",
                 pubKey = "",
                 createdAt = TimeUtils.now(),
-                tags = TagArrayBuilder<TranslationChapterProofReaderListEvent>()
+                tags = TagArrayBuilder<TranslationChapterContributorListEvent>()
                     .addUnique(
-                        TranslationArtifactVersionIdTag.assemble("") // TODO: use actual value..
+                        TranslationChapterIdTag.assemble("")
                     )
-                    // TODO: Add tag for editorPublicKey
                     .addUnique(
-                        AuthorTag.assemble("") // TODO: Get piblicKeyList...
+                        ContributorTag.assemble("", ContributorTag.ROLE_TRANSLATOR)
                     )
                     .build(),
                 content = "",

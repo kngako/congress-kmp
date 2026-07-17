@@ -22,7 +22,7 @@ class TranslationChapterEvent(
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
 
     companion object {
-        const val KIND = 30307
+        const val KIND = 30308
         const val ALT_DESCRIPTION = "TranslationChapter"
 
         fun build(

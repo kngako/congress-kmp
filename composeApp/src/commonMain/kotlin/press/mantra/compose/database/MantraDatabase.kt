@@ -24,13 +24,12 @@ import press.mantra.compose.database.dao.MantraChapterDao
 import press.mantra.compose.database.dao.MantraChunkDao
 import press.mantra.compose.database.dao.MantraDialectDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionDao
-import press.mantra.compose.database.dao.MantraTranslationArtifactVersionEditorDao
+import press.mantra.compose.database.dao.MantraTranslationArtifactVersionContributorDao
 import press.mantra.compose.database.dao.MantraTranslationChapterDao
-import press.mantra.compose.database.dao.MantraTranslationChapterProofReaderDao
-import press.mantra.compose.database.dao.MantraTranslationChapterTranslatorDao
+import press.mantra.compose.database.dao.MantraTranslationChapterContributorDao
 import press.mantra.compose.database.dao.MantraTranslationChunkDao
 import press.mantra.compose.database.dao.MantraTranslationDao
-import press.mantra.compose.database.dao.MantraTranslationTranslatorDao
+import press.mantra.compose.database.dao.MantraTranslationContributorDao
 import press.mantra.compose.database.dao.MarmotCommitResultDao
 import press.mantra.compose.database.dao.MarmotOutboundDao
 import press.mantra.compose.database.dao.MarmotGroupEventDao
@@ -76,12 +75,11 @@ import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslation
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
-import press.mantra.compose.database.model.MantraTranslationArtifactVersionEditor
+import press.mantra.compose.database.model.MantraTranslationArtifactVersionContributor
 import press.mantra.compose.database.model.MantraTranslationChapter
-import press.mantra.compose.database.model.MantraTranslationChapterProofReader
-import press.mantra.compose.database.model.MantraTranslationChapterTranslator
+import press.mantra.compose.database.model.MantraTranslationChapterContributor
 import press.mantra.compose.database.model.MantraTranslationChunk
-import press.mantra.compose.database.model.MantraTranslationTranslator
+import press.mantra.compose.database.model.MantraTranslationContributor
 import press.mantra.compose.database.model.MarmotCommitResult
 import press.mantra.compose.database.model.MarmotGroupEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -130,12 +128,11 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         MantraDialect::class,
         MantraTranslation::class,
         MantraTranslationArtifactVersion::class,
-        MantraTranslationArtifactVersionEditor::class,
+        MantraTranslationArtifactVersionContributor::class,
         MantraTranslationChapter::class,
-        MantraTranslationChapterProofReader::class,
-        MantraTranslationChapterTranslator::class,
+        MantraTranslationChapterContributor::class,
         MantraTranslationChunk::class,
-        MantraTranslationTranslator::class,
+        MantraTranslationContributor::class,
         MarmotCommitResult::class,
         MarmotGroupEvent::class,
         MarmotInnerEvent::class,
@@ -199,19 +196,17 @@ abstract class MantraDatabase: RoomDatabase() {
 
     abstract fun mantraTranslationArtifactVersionDao(): MantraTranslationArtifactVersionDao
 
-    abstract fun mantraTranslationArtifactVersionEditorDao(): MantraTranslationArtifactVersionEditorDao
+    abstract fun mantraTranslationArtifactVersionContributorDao(): MantraTranslationArtifactVersionContributorDao
 
     abstract fun mantraTranslationChapterDao(): MantraTranslationChapterDao
 
-    abstract fun mantraTranslationChapterProofReaderDao(): MantraTranslationChapterProofReaderDao
-
-    abstract fun mantraTranslationChapterTranslatorDao(): MantraTranslationChapterTranslatorDao
+    abstract fun mantraTranslationChapterContributorDao(): MantraTranslationChapterContributorDao
 
     abstract fun mantraTranslationChunkDao(): MantraTranslationChunkDao
 
     abstract fun mantraTranslationDao(): MantraTranslationDao
 
-    abstract fun mantraTranslationTranslatorDao(): MantraTranslationTranslatorDao
+    abstract fun mantraTranslationContributorDao(): MantraTranslationContributorDao
 
     abstract fun marmotCommitResultDao(): MarmotCommitResultDao
 

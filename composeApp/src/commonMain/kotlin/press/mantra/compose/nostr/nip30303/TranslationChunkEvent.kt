@@ -22,7 +22,7 @@ class TranslationChunkEvent(
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
 
     companion object {
-        const val KIND = 30310
+        const val KIND = 30309
         const val ALT_DESCRIPTION = "TranslationChunk"
 
         fun build(

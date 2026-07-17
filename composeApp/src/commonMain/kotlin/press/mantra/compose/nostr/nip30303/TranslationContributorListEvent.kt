@@ -12,7 +12,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
 
 
 @Immutable
-class TranslationChapterTranslatorListEvent(
+class TranslationContributorListEvent(
     id: HexKey,
     pubKey: HexKey,
     createdAt: Long,
@@ -22,8 +22,8 @@ class TranslationChapterTranslatorListEvent(
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
 
     companion object {
-        const val KIND = 30309
-        const val ALT_DESCRIPTION = "TranslationChapterTranslatorList"
+        const val KIND = 30310
+        const val ALT_DESCRIPTION = "TranslationContributorListEvent"
 
         fun build(
             content: String,

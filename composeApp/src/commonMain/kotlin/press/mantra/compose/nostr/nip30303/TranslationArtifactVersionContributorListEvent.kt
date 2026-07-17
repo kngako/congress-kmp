@@ -12,7 +12,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
 
 
 @Immutable
-class TranslationArtifactVersionEditorListEvent(
+class TranslationArtifactVersionContributorListEvent(
     id: HexKey,
     pubKey: HexKey,
     createdAt: Long,
@@ -23,7 +23,7 @@ class TranslationArtifactVersionEditorListEvent(
 
     companion object {
         const val KIND = 30305
-        const val ALT_DESCRIPTION = "TranslationArtifactVersionEditorList"
+        const val ALT_DESCRIPTION = "TranslationArtifactVersionContributorListEvent"
 
         fun build(
             content: String,
