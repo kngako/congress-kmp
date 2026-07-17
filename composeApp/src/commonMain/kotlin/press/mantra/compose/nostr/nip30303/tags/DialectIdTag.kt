@@ -30,8 +30,8 @@ class DialectIdTag(
 
         fun assemble(
             eventId: HexKey,
-            relay: NormalizedRelayUrl?,
-            pubkey: String?,
+            relay: NormalizedRelayUrl? = null,
+            pubkey: String? = null,
         ) = arrayOfNotNull(TAG_NAME, eventId, relay?.url, pubkey)
 
         fun assemble(ref: EventReference) = assemble(ref.eventId, ref.relayHint, ref.author)
