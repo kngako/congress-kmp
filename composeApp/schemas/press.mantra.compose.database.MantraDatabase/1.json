@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "8217dfd8f9e2232bc6df544924528cb5",
+    "identityHash": "f62275705b3100ae81f6a0f46c6a6e3f",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1164,7 +1164,7 @@
       },
       {
         "tableName": "MantraArtifact",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `url` TEXT NOT NULL, `visibility` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `url` TEXT NOT NULL, `visibility` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1247,7 +1247,20 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "foreignKeys": [
+          {
+            "table": "MantraDialect",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "dialectId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "MantraArtifactVersion",
@@ -1713,7 +1726,7 @@
       },
       {
         "tableName": "MantraTranslationArtifactVersion",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `name` TEXT NOT NULL, `visibility` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `name` TEXT NOT NULL, `visibility` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1808,6 +1821,17 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "MantraDialect",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "dialectId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
@@ -1895,7 +1919,7 @@
       },
       {
         "tableName": "MantraTranslationChapter",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chapterId`) REFERENCES `MantraChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1974,6 +1998,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "translationArtifactVersionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "MantraChapter",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chapterId"
             ],
             "referencedColumns": [
               "id"
@@ -4567,7 +4602,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8217dfd8f9e2232bc6df544924528cb5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f62275705b3100ae81f6a0f46c6a6e3f')"
     ]
   }
 }

@@ -26,6 +26,12 @@ import kotlin.time.Instant
             childColumns = ["translationArtifactVersionId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = MantraChapter::class,
+            parentColumns = ["id"],
+            childColumns = ["chapterId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraTranslationChapter(

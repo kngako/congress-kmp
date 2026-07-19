@@ -1,6 +1,7 @@
 package press.mantra.compose.database.model
 
 import androidx.room3.Entity
+import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
@@ -16,7 +17,16 @@ import kotlin.time.Instant
 /**
  * 30300
  */
-@Entity
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = MantraDialect::class,
+            parentColumns = ["id"],
+            childColumns = ["dialectId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ]
+)
 data class MantraArtifact(
     @PrimaryKey
     val id: HexKey,
