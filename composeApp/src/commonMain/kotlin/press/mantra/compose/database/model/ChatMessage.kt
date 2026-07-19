@@ -123,99 +123,109 @@ data class ChatMessage(
                             )
                         }
                         ArtifactEvent.KIND -> {
-                            // TODO: Handle mantra messages
-                            database.mantraArtifactDao().upsert(
-                                MantraArtifact(
+                            MantraArtifact.fromArtifactEvent(
+                                artifactEvent = ArtifactEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    url = event.tags.first().first(),
-                                    visibility = event.tags.first().first(),
-                                    dialectId = event.tags.first().first(),
-                                    license = "",
-                                    copyrightOwner = "",
-                                    signature = event.sig,
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraArtifact ->
+                                database.mantraArtifactDao().upsert(
+                                    mantraArtifact
+                                )
+                            }
+
                             null
                         }
 
                         ArtifactVersionEvent.KIND -> {
-                            database.mantraArtifactVersionDao().upsert(
-                                MantraArtifactVersion(
+                            MantraArtifactVersion.fromArtifactVersionEvent(
+                                artifactVersionEvent = ArtifactVersionEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    artifactId = event.tags.first().first(), // TODO: Get artifactId tag...
-                                    versionLabel = event.tags.first().first(), // TODO: Get version label from tag...
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraArtifactVersion ->
+                                database.mantraArtifactVersionDao().upsert(
+                                    mantraArtifactVersion
+                                )
+                            }
                             null
                         }
 
                         ChapterEvent.KIND -> {
-                            database.mantraChapterDao().upsert(
-                                MantraChapter(
+                            MantraChapter.fromChapterEvent(
+                                chapterEvent = ChapterEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    artifactVersionId = event.tags.first().first(), // TODO: Get artifactVersionId from tags...
-                                    name = event.tags.first().first(), // TODO: Get name from tags...
-                                    originalText = event.content, // TODO: Get originalText from tags...
-                                    index = 0, // TODO: Get index from tags...
-                                    wordCount = 0, // TODO: Get wordCount from tags
-                                    characterCount = 0, // TODO: Get characterCount from tags
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraChapter ->
+                                database.mantraChapterDao().upsert(
+                                    mantraChapter = mantraChapter
+                                )
+                            }
                             null
                         }
 
                         ChunkEvent.KIND -> {
-                            database.mantraChunkDao().upsert(
-                                MantraChunk(
-                                    id =  event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    chapterId = event.tags.first().first(), // TODO: Get chapterId from tags
-                                    text = event.content,
-                                    index = 0, // TODO: Get index from tags...
-                                    wordCount = 0, // TODO: Get wordCount from tags
-                                    characterCount = 0, // TODO: Get characterCount from tags
-                                    signature = event.sig
+                            MantraChunk.fromChunkEvent(
+                                chunkEvent = ChunkEvent(
+                                    id = event.id,
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraChunk ->
+                                database.mantraChunkDao().upsert(
+                                    mantraChunk = mantraChunk
+                                )
+                            }
                             null
                         }
                         DialectEvent.KIND -> {
-                            database.mantraDialectDao().upsert(
-                                MantraDialect(
+                            MantraDialect.fromDialectEvent(
+                                dialectEvent = DialectEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    name = event.tags.first().first(), // TODO: Get name from tags
-                                    country = event.tags.first().first(), // TODO: Get country from tags
-                                    language = event.tags.first().first(), // TODO: Get language from tags
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraDialect ->
+                                database.mantraDialectDao().upsert(
+                                    mantraDialect
+                                )
+                            }
                             null
                         }
-
                         TranslationArtifactVersionEvent.KIND -> {
-                            database.mantraTranslationArtifactVersionDao().upsert(
-                                MantraTranslationArtifactVersion(
+                            MantraTranslationArtifactVersion.fromTranslationArtifactVersionEvent(
+                                translationArtifactVersionEvent = TranslationArtifactVersionEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    artifactVersionId = event.tags.first().first(), // TODO: Get artifactVersionId from tags...
-                                    dialectId = event.tags.first().first(),
-                                    name = event.content,
-                                    visibility = event.tags.first().first(),
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraTranslationArtifactVersion ->
+                                database.mantraTranslationArtifactVersionDao().upsert(
+                                    mantraTranslationArtifactVersion
+                                )
+                            }
                             null
                         }
                         TranslationArtifactVersionContributorListEvent.KIND -> {
@@ -223,32 +233,33 @@ data class ChatMessage(
                             null
                         }
                         TranslationChapterEvent.KIND -> {
-                            database.mantraTranslationChapterDao().upsert(
-                                MantraTranslationChapter(
+                            MantraTranslationChapter.fromTranslationChapterEvent(
+                                translationChapterEvent = TranslationChapterEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    translationArtifactVersionId = event.tags.first().first(), // TODO: Get artifactVersionId from tags...
-                                    chapterId = event.tags.first().first(),
-                                    index = 0,
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraTranslationChapter ->
+                                database.mantraTranslationChapterDao().upsert(mantraTranslationChapter)
+                            }
                             null
                         }
                         TranslationChunkEvent.KIND -> {
-                            database.mantraTranslationChunkDao().upsert(
-                                MantraTranslationChunk(
+                            MantraTranslationChunk.fromTranslationChunkEvent(
+                                translationChunkEvent = TranslationChunkEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    chunkId = event.tags.first().first(),
-                                    translationChapterId = event.tags.first().first(),
-                                    index = 0,
-                                    text = event.content,
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraTranslationChunk ->
+                                database.mantraTranslationChunkDao().upsert(mantraTranslationChunk)
+                            }
 
                             null
                         }
@@ -256,19 +267,19 @@ data class ChatMessage(
                             // TODO: Consume contributors...
                             null
                         }
-
                         TranslationEvent.KIND -> {
-                            database.mantraTranslationDao().upsert(
-                                MantraTranslation(
+                            MantraTranslation.fromTranslationEvent(
+                                translationEvent = TranslationEvent(
                                     id = event.id,
-                                    publicKey = event.pubKey,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    translationArtifactVersionId = event.tags.first().first(), // TODO: Get artifactVersionId from tags...
-                                    translationChunkId = event.tags.first().first(),
-                                    text = event.content,
-                                    signature = event.sig
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
                                 )
-                            )
+                            )?.let { mantraTranslation ->
+                                database.mantraTranslationDao().upsert(mantraTranslation)
+                            }
                             null
                         }
                         else -> {
