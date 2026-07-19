@@ -32,6 +32,12 @@ import kotlin.time.Instant
             childColumns = ["translationChapterId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraTranslationChunk(
@@ -47,6 +53,8 @@ data class MantraTranslationChunk(
      * Signature will be an empty string if this is a rumor
      */
     val signature: String,
+
+    val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
@@ -81,7 +89,7 @@ data class MantraTranslationChunk(
     }
 
     companion object {
-        fun fromTranslationChunkEvent(translationChunkEvent: TranslationChunkEvent): MantraTranslationChunk? {
+        fun fromTranslationChunkEvent(translationChunkEvent: TranslationChunkEvent, chatRoomId: HexKey): MantraTranslationChunk? {
             return translationChunkEvent.translationChapterId()?.let { translationChapterId ->
                 translationChunkEvent.chunkId()?.let { chunkId ->
                     translationChunkEvent.index()?.let { index ->
@@ -93,7 +101,8 @@ data class MantraTranslationChunk(
                             chunkId = chunkId,
                             index = index,
                             text = translationChunkEvent.content,
-                            signature = translationChunkEvent.sig
+                            signature = translationChunkEvent.sig,
+                            chatRoomId = chatRoomId
                         )
                     }
                 }

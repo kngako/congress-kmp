@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f62275705b3100ae81f6a0f46c6a6e3f",
+    "identityHash": "02723164876a0246ea7370dc8c52bc70",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -1164,7 +1164,7 @@
       },
       {
         "tableName": "MantraArtifact",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `url` TEXT NOT NULL, `visibility` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `url` TEXT NOT NULL, `visibility` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `license` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1205,6 +1205,12 @@
           {
             "fieldPath": "license",
             "columnName": "license",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1259,12 +1265,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraArtifactVersion",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `artifactId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `versionLabel` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactId`) REFERENCES `MantraArtifact`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `artifactId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `versionLabel` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactId`) REFERENCES `MantraArtifact`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1293,6 +1310,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1341,12 +1364,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraChapter",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `originalText` TEXT NOT NULL, `index` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `characterCount` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `originalText` TEXT NOT NULL, `index` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `characterCount` INTEGER NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1403,6 +1437,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "relayHint",
             "columnName": "relayHint",
             "affinity": "TEXT"
@@ -1447,12 +1487,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraChunk",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `text` TEXT NOT NULL, `index` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `characterCount` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chapterId`) REFERENCES `MantraChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `text` TEXT NOT NULL, `index` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `characterCount` INTEGER NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chapterId`) REFERENCES `MantraChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1503,6 +1554,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "relayHint",
             "columnName": "relayHint",
             "affinity": "TEXT"
@@ -1547,12 +1604,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraDialect",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `country` TEXT NOT NULL, `language` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `country` TEXT NOT NULL, `language` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1591,6 +1659,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "relayHint",
             "columnName": "relayHint",
             "affinity": "TEXT"
@@ -1623,11 +1697,24 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "foreignKeys": [
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "MantraTranslation",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationChunkId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `text` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationChunkId`) REFERENCES `MantraTranslationChunk`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationChunkId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `text` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationChunkId`) REFERENCES `MantraTranslationChunk`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1662,6 +1749,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1721,12 +1814,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationArtifactVersion",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `name` TEXT NOT NULL, `visibility` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `dialectId` TEXT NOT NULL, `name` TEXT NOT NULL, `visibility` TEXT NOT NULL, `license` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`dialectId`) REFERENCES `MantraDialect`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1773,6 +1877,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1832,12 +1942,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationArtifactVersionContributor",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `editorPublicKey` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersionContributor`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `editorPublicKey` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersionContributor`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1866,6 +1987,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1914,12 +2041,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationChapter",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chapterId`) REFERENCES `MantraChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chapterId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chapterId`) REFERENCES `MantraChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1954,6 +2092,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -2013,12 +2157,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationChapterContributor",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationChapterId` TEXT NOT NULL, `translatorPublicKey` TEXT NOT NULL, `role` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationChapterId`) REFERENCES `MantraTranslationChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationChapterId` TEXT NOT NULL, `translatorPublicKey` TEXT NOT NULL, `role` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationChapterId`) REFERENCES `MantraTranslationChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -2053,6 +2208,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -2101,12 +2262,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationChunk",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chunkId` TEXT NOT NULL, `translationChapterId` TEXT NOT NULL, `text` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chunkId`) REFERENCES `MantraChunk`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`translationChapterId`) REFERENCES `MantraTranslationChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `chunkId` TEXT NOT NULL, `translationChapterId` TEXT NOT NULL, `text` TEXT NOT NULL, `index` INTEGER NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chunkId`) REFERENCES `MantraChunk`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`translationChapterId`) REFERENCES `MantraTranslationChapter`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -2147,6 +2319,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -2206,12 +2384,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "MantraTranslationContributor",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `dTag` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationId` TEXT NOT NULL, `translatorPublicKey` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationId`) REFERENCES `MantraTranslation`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `dTag` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `translationId` TEXT NOT NULL, `translatorPublicKey` TEXT NOT NULL, `signature` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`translationId`) REFERENCES `MantraTranslation`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -2246,6 +2435,12 @@
           {
             "fieldPath": "signature",
             "columnName": "signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -2290,6 +2485,17 @@
             "onUpdate": "NO ACTION",
             "columns": [
               "translationId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "ChatRoom",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
             ],
             "referencedColumns": [
               "id"
@@ -4602,7 +4808,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f62275705b3100ae81f6a0f46c6a6e3f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '02723164876a0246ea7370dc8c52bc70')"
     ]
   }
 }

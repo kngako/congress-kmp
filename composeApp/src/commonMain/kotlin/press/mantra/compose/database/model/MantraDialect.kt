@@ -1,6 +1,7 @@
 package press.mantra.compose.database.model
 
 import androidx.room3.Entity
+import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
@@ -16,7 +17,16 @@ import kotlin.time.Instant
 /**
  * 30304
  */
-@Entity
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ]
+)
 data class MantraDialect(
     @PrimaryKey
     val id: HexKey,
@@ -26,6 +36,8 @@ data class MantraDialect(
     val language: String,
 
     val signature: String,
+
+    val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
@@ -58,7 +70,7 @@ data class MantraDialect(
     }
 
     companion object {
-        fun fromDialectEvent(dialectEvent: DialectEvent): MantraDialect? {
+        fun fromDialectEvent(dialectEvent: DialectEvent, chatRoomId: HexKey): MantraDialect? {
             return dialectEvent.name()?.let { name ->
                 dialectEvent.language()?.let { language ->
                     dialectEvent.country()?.let { country ->
@@ -70,7 +82,8 @@ data class MantraDialect(
                             name = name,
                             language = language,
                             country = country,
-                            signature = dialectEvent.sig
+                            signature = dialectEvent.sig,
+                            chatRoomId = chatRoomId
                         )
                     }
                 }

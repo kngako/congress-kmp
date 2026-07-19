@@ -25,6 +25,12 @@ import kotlin.time.Instant
             childColumns = ["translationArtifactVersionId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraTranslationArtifactVersionContributor(
@@ -39,6 +45,8 @@ data class MantraTranslationArtifactVersionContributor(
      */
     val signature: String,
 
+    val chatRoomId: String,
+
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
 
@@ -51,7 +59,7 @@ data class MantraTranslationArtifactVersionContributor(
 ): OptionalNostrEventEntity, TimestampedEntity {
 
     companion object {
-        fun toTranslationChapterProofReaderListEvent(mantraTranslationChapterProofReaders: List<MantraTranslationArtifactVersionContributor>): TranslationArtifactVersionContributorListEvent {
+        fun toTranslationChapterProofReaderListEvent(chatRoomId: HexKey, mantraTranslationChapterProofReaders: List<MantraTranslationArtifactVersionContributor>): TranslationArtifactVersionContributorListEvent {
             // TODO: create TranslationChapterProofReaderListEvent from mantraTranslationChapterProofReaders
             return TranslationArtifactVersionContributorListEvent(
                 id = "",

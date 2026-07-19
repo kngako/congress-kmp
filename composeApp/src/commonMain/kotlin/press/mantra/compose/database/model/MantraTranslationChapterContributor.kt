@@ -26,6 +26,12 @@ import kotlin.time.Instant
             childColumns = ["translationChapterId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraTranslationChapterContributor(
@@ -40,6 +46,8 @@ data class MantraTranslationChapterContributor(
      * Signature will be an empty string if this is a rumor
      */
     val signature: String,
+
+    val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,

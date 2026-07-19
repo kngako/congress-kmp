@@ -32,6 +32,12 @@ import kotlin.time.Instant
             childColumns = ["dialectId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraTranslationArtifactVersion(
@@ -48,6 +54,8 @@ data class MantraTranslationArtifactVersion(
      * Signature will be an empty string if this is a rumor
      */
     val signature: String,
+
+    val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
@@ -86,7 +94,7 @@ data class MantraTranslationArtifactVersion(
     }
 
     companion object {
-        fun fromTranslationArtifactVersionEvent(translationArtifactVersionEvent: TranslationArtifactVersionEvent): MantraTranslationArtifactVersion? {
+        fun fromTranslationArtifactVersionEvent(translationArtifactVersionEvent: TranslationArtifactVersionEvent, chatRoomId: HexKey): MantraTranslationArtifactVersion? {
 
             return translationArtifactVersionEvent.artifactVersionId()?.let { artifactVersionId ->
                 translationArtifactVersionEvent.dialectId()?.let { dialectId ->
@@ -100,7 +108,8 @@ data class MantraTranslationArtifactVersion(
                             name = translationArtifactVersionMetadata.name,
                             visibility = translationArtifactVersionMetadata.visibility,
                             license = translationArtifactVersionMetadata.license,
-                            signature = translationArtifactVersionEvent.sig
+                            signature = translationArtifactVersionEvent.sig,
+                            chatRoomId = chatRoomId
                         )
                     }
                 }

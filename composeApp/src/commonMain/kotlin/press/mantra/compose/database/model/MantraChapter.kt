@@ -27,6 +27,12 @@ import kotlin.time.Instant
             childColumns = ["artifactVersionId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
 )
 data class MantraChapter(
@@ -44,6 +50,8 @@ data class MantraChapter(
      * Signature will be an empty string if this is a rumor
      */
     val signature: String,
+
+    val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
@@ -87,7 +95,7 @@ data class MantraChapter(
     }
 
     companion object {
-        fun fromChapterEvent(chapterEvent: ChapterEvent): MantraChapter? {
+        fun fromChapterEvent(chapterEvent: ChapterEvent, chatRoomId: HexKey): MantraChapter? {
             return chapterEvent.chapterMetadata?.let { chapterMetadata ->
                 chapterEvent.wordStatisticsTag?.let { wordStatisticsTag ->
                     chapterEvent.artifactVersionId()?.let { artifactId ->
@@ -102,7 +110,8 @@ data class MantraChapter(
                                 index = index,
                                 wordCount = wordStatisticsTag.wordCount,
                                 characterCount = wordStatisticsTag.characterCount,
-                                signature = chapterEvent.sig
+                                signature = chapterEvent.sig,
+                                chatRoomId = chatRoomId
                             )
                         }
                     }

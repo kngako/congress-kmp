@@ -131,7 +131,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig,
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraArtifact ->
                                 database.mantraArtifactDao().upsert(
                                     mantraArtifact.copy(
@@ -152,7 +153,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraArtifactVersion ->
                                 database.mantraArtifactVersionDao().upsert(
                                     mantraArtifactVersion.copy(
@@ -172,7 +174,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraChapter ->
                                 database.mantraChapterDao().upsert(
                                     mantraChapter.copy(
@@ -192,7 +195,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraChunk ->
                                 database.mantraChunkDao().upsert(
                                     mantraChunk.copy(
@@ -211,7 +215,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraDialect ->
                                 database.mantraDialectDao().upsert(
                                     mantraDialect.copy(
@@ -230,7 +235,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraTranslationArtifactVersion ->
                                 database.mantraTranslationArtifactVersionDao().upsert(
                                     mantraTranslationArtifactVersion.copy(
@@ -253,7 +259,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraTranslationChapter ->
                                 database.mantraTranslationChapterDao().upsert(
                                     mantraTranslationChapter.copy(
@@ -272,7 +279,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraTranslationChunk ->
                                 database.mantraTranslationChunkDao().upsert(
                                     mantraTranslationChunk.copy(
@@ -296,7 +304,8 @@ data class ChatMessage(
                                     tags = event.tags,
                                     content = event.content,
                                     sig = event.sig
-                                )
+                                ),
+                                chatRoomId = groupEventResult.groupId,
                             )?.let { mantraTranslation ->
                                 database.mantraTranslationDao().upsert(
                                     mantraTranslation.copy(

@@ -25,6 +25,12 @@ import kotlin.time.Instant
             childColumns = ["dialectId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ]
 )
 data class MantraArtifact(
@@ -37,6 +43,8 @@ data class MantraArtifact(
     val dialectId: String,
     val license: String,
 //    val artifactApprovalId: String,
+
+    val chatRoomId: String,
 
     /**
      * Signature will be an empty string if this is a rumor
@@ -79,7 +87,7 @@ data class MantraArtifact(
     }
 
     companion object {
-        fun fromArtifactEvent(artifactEvent: ArtifactEvent): MantraArtifact? {
+        fun fromArtifactEvent(artifactEvent: ArtifactEvent, chatRoomId: HexKey, ): MantraArtifact? {
             return artifactEvent.artifactMetadata?.let { artifactMetadata ->
                 artifactEvent.dialectId()?.let { dialectId ->
                     MantraArtifact(
@@ -92,6 +100,7 @@ data class MantraArtifact(
                         visibility = artifactMetadata.visibility,
                         name = artifactEvent.content,
                         signature = artifactEvent.sig,
+                        chatRoomId = chatRoomId
                     )
                 }
             }
