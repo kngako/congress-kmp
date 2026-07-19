@@ -1,6 +1,7 @@
 package press.mantra.compose.database.model
 
 import androidx.room3.Entity
+import androidx.room3.ForeignKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
@@ -14,7 +15,16 @@ import kotlin.time.Instant
 /**
  * 30308
  */
-@Entity
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = MantraTranslationArtifactVersion::class,
+            parentColumns = ["id"],
+            childColumns = ["translationArtifactVersionId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
 data class MantraTranslationChapter(
     val id: HexKey,
     val publicKey: HexKey,
