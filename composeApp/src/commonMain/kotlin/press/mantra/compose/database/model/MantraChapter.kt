@@ -10,6 +10,9 @@ import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
+import press.mantra.compose.nostr.nip30303.tags.ChapterMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -59,11 +62,52 @@ data class MantraChapter(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ArtifactVersionEvent>().addUnique(
-                ArtifactVersionIdTag.assemble(artifactVersionId)
-            ).build(),
+            tags = TagArrayBuilder<ArtifactVersionEvent>()
+                .addUnique(
+                    ArtifactVersionIdTag.assemble(artifactVersionId)
+                )
+                .addUnique(
+                    ChapterMetadataTag.assemble(
+                        name = name,
+                        originalText = originalText,
+                    )
+                )
+                .addUnique(
+                    IndexTag.assemble(
+                        index
+                    )
+                )
+                .addUnique(
+                    WordStatisticsTag.assemble(wordCount, characterCount)
+                )
+                .build(),
             content = "",
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromChapterEvent(chapterEvent: ChapterEvent): MantraChapter? {
+            return chapterEvent.chapterMetadata?.let { chapterMetadata ->
+                chapterEvent.wordStatisticsTag?.let { wordStatisticsTag ->
+                    chapterEvent.artifactVersionId()?.let { artifactId ->
+                        chapterEvent.index()?.let { index ->
+                            MantraChapter(
+                                id = chapterEvent.id,
+                                publicKey = chapterEvent.pubKey,
+                                createdAt = Instant.fromEpochSeconds(chapterEvent.createdAt),
+                                artifactVersionId = artifactId,
+                                name = chapterMetadata.name,
+                                originalText = chapterMetadata.originalText,
+                                index = index,
+                                wordCount = wordStatisticsTag.wordCount,
+                                characterCount = wordStatisticsTag.characterCount,
+                                signature = chapterEvent.sig
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

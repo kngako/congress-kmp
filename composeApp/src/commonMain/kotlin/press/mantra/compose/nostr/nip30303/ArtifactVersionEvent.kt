@@ -9,6 +9,8 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
+import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
 
 
 @Immutable
@@ -20,6 +22,11 @@ class ArtifactVersionEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+
+    fun versionLabel() = tags.firstNotNullOfOrNull(ArtifactVersionMetadataTag::parse)?.versionLabel
+
+    fun artifactIdReference() = tags.firstNotNullOfOrNull(ArtifactIdTag::parse)?.ref
+    fun artifactId() = artifactIdReference()?.eventId
 
     companion object {
         const val KIND = 30301

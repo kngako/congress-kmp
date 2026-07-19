@@ -5,6 +5,7 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.utils.ensure
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.TranslationEvent
@@ -66,8 +67,29 @@ data class MantraTranslation(
                     TranslationChunkIdTag.assemble(translationChunkId)
                 )
                 .build(),
-            content = "",
+            content = text,
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromTranslationEvent(translationEvent: TranslationEvent): MantraTranslation? {
+            ensure(translationEvent.translationChunkId() != null) { return null}
+            ensure(translationEvent.translationArtifactVersionId() != null) { return null}
+
+            return translationEvent.translationChunkId()?.let { translationChunkId ->
+                translationEvent.translationArtifactVersionId()?.let { translationArtifactVersionId ->
+                    MantraTranslation(
+                        id = translationEvent.id,
+                        publicKey = translationEvent.pubKey,
+                        createdAt = Instant.fromEpochSeconds(translationEvent.createdAt),
+                        text = translationEvent.content,
+                        translationChunkId = translationChunkId,
+                        translationArtifactVersionId = translationArtifactVersionId,
+                        signature = translationEvent.sig
+                    )
+                }
+            }
+        }
     }
 }

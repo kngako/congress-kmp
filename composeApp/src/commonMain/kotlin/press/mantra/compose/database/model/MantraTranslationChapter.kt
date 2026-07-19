@@ -6,8 +6,10 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
 import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -59,10 +61,33 @@ data class MantraTranslationChapter(
                 .addUnique(
                     ChapterIdTag.assemble(chapterId)
                 )
+                .addUnique(
+                    IndexTag.assemble(index)
+                )
                 .build(),
             content = "",
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromTranslationChapterEvent(translationChapterEvent: TranslationChapterEvent): MantraTranslationChapter? {
+            return translationChapterEvent.chapterId()?.let { chapterId ->
+                translationChapterEvent.translationArtifactVersionId()?.let { translationArtifactVersionId ->
+                    translationChapterEvent.index()?.let { index ->
+                        MantraTranslationChapter(
+                            id = translationChapterEvent.id,
+                            publicKey = translationChapterEvent.pubKey,
+                            createdAt = Instant.fromEpochSeconds(translationChapterEvent.createdAt),
+                            chapterId = chapterId,
+                            translationArtifactVersionId = translationArtifactVersionId,
+                            index = index,
+                            signature = translationChapterEvent.sig
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

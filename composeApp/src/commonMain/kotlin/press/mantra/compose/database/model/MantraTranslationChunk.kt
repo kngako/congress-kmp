@@ -7,8 +7,10 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.nostr.nip30303.tags.ChunkIdTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
 import press.mantra.compose.nostr.nip30303.tags.TranslationChapterIdTag
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -67,11 +69,35 @@ data class MantraTranslationChunk(
                     TranslationChapterIdTag.assemble(translationChapterId)
                 )
                 .addUnique(
-                    ChunkIdTag.assemble(chunkId) // TODO: PublicKeyListTag
+                    ChunkIdTag.assemble(chunkId)
+                )
+                .addUnique(
+                    IndexTag.assemble(index)
                 )
                 .build(),
-            content = "",
+            content = text,
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromTranslationChunkEvent(translationChunkEvent: TranslationChunkEvent): MantraTranslationChunk? {
+            return translationChunkEvent.translationChapterId()?.let { translationChapterId ->
+                translationChunkEvent.chunkId()?.let { chunkId ->
+                    translationChunkEvent.index()?.let { index ->
+                        MantraTranslationChunk(
+                            id = translationChunkEvent.id,
+                            publicKey = translationChunkEvent.pubKey,
+                            createdAt = Instant.fromEpochSeconds(translationChunkEvent.createdAt),
+                            translationChapterId = translationChapterId,
+                            chunkId = chunkId,
+                            index = index,
+                            text = translationChunkEvent.content,
+                            signature = translationChunkEvent.sig
+                        )
+                    }
+                }
+            }
+        }
     }
 }

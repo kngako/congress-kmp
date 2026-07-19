@@ -5,10 +5,12 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
+import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -57,11 +59,31 @@ data class MantraArtifactVersion(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ArtifactVersionEvent>().addUnique(
-                ArtifactIdTag.assemble(artifactId)
-            ).build(),
-            content = "",
+            tags = TagArrayBuilder<ArtifactVersionEvent>()
+                .addUnique(
+                    ArtifactIdTag.assemble(artifactId)
+                )
+                .addUnique(
+                    AltTag.assemble(ArtifactVersionEvent.ALT_DESCRIPTION)
+                )
+                .build(),
+            content = versionLabel,
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromArtifactVersionEvent(artifactVersionEvent: ArtifactVersionEvent): MantraArtifactVersion? {
+            return artifactVersionEvent.artifactId()?.let { artifactId ->
+                MantraArtifactVersion(
+                    id = artifactVersionEvent.id,
+                    publicKey = artifactVersionEvent.pubKey,
+                    createdAt = Instant.fromEpochSeconds(artifactVersionEvent.createdAt),
+                    artifactId = artifactId,
+                    versionLabel = artifactVersionEvent.content,
+                    signature = artifactVersionEvent.sig
+                )
+            }
+        }
     }
 }

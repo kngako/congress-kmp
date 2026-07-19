@@ -9,6 +9,9 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
 
 
 @Immutable
@@ -20,6 +23,14 @@ class ChunkEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+    val wordStatisticsTag = tags.firstNotNullOfOrNull(WordStatisticsTag::parse)
+
+    fun index() = tags.firstNotNullOfOrNull(IndexTag::parse)?.index
+    fun wordCount() = wordStatisticsTag?.wordCount
+    fun characterCount() = wordStatisticsTag?.characterCount
+
+    fun chapterIdReference() = tags.firstNotNullOfOrNull(ChapterIdTag::parse)?.ref
+    fun chapterId() = chapterIdReference()?.eventId
 
     companion object {
         const val KIND = 30303

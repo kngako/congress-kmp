@@ -9,6 +9,9 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
 
 
 @Immutable
@@ -20,6 +23,14 @@ class TranslationChapterEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+
+    fun translationArtifactVersionIdReference() = tags.firstNotNullOfOrNull(TranslationArtifactVersionIdTag::parse)?.ref
+    fun translationArtifactVersionId() = translationArtifactVersionIdReference()?.eventId
+
+    fun chapterIdReference() = tags.firstNotNullOfOrNull(ChapterIdTag::parse)?.ref
+    fun chapterId() = chapterIdReference()?.eventId
+
+    fun index() = tags.firstNotNullOfOrNull(IndexTag::parse)?.index
 
     companion object {
         const val KIND = 30308

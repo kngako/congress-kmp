@@ -9,6 +9,8 @@ import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -56,11 +58,44 @@ data class MantraChunk(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ChunkEvent>().addUnique(
-                ChapterIdTag.assemble(chapterId)
-            ).build(),
-            content = "",
+            tags = TagArrayBuilder<ChunkEvent>()
+                .addUnique(
+                    ChapterIdTag.assemble(chapterId)
+                )
+                .addUnique(
+                    IndexTag.assemble(
+                        index
+                    )
+                )
+                .addUnique(
+                    WordStatisticsTag.assemble(wordCount, characterCount)
+                )
+                .build(),
+            content = text,
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromChunkEvent(chunkEvent: ChunkEvent): MantraChunk? {
+            return chunkEvent.wordStatisticsTag?.let { wordStatisticsTag ->
+                chunkEvent.index()?.let { index ->
+                    chunkEvent.chapterId()?.let { chapterId ->
+                        MantraChunk(
+                            id = chunkEvent.id,
+                            publicKey = chunkEvent.pubKey,
+                            createdAt = Instant.fromEpochSeconds(chunkEvent.createdAt),
+                            index = index,
+                            wordCount = wordStatisticsTag.wordCount,
+                            characterCount = wordStatisticsTag.characterCount,
+                            chapterId = chapterId,
+                            text = chunkEvent.content,
+                            signature = chunkEvent.sig
+                        )
+                    }
+
+                }
+            }
+        }
     }
 }

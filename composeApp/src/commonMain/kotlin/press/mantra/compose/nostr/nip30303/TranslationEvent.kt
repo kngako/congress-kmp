@@ -9,6 +9,8 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
+import press.mantra.compose.nostr.nip30303.tags.TranslationChunkIdTag
 
 
 @Immutable
@@ -20,6 +22,12 @@ class TranslationEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+
+    fun translationChunkIdReference() = tags.firstNotNullOfOrNull(TranslationChunkIdTag::parse)?.ref
+    fun translationChunkId() = translationChunkIdReference()?.eventId
+
+    fun translationArtifactVersionIdReference() = tags.firstNotNullOfOrNull(TranslationArtifactVersionIdTag::parse)?.ref
+    fun translationArtifactVersionId() = translationArtifactVersionIdReference()?.eventId
 
     companion object {
         const val KIND = 30311

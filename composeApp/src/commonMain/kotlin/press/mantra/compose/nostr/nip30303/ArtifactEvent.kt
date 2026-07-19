@@ -9,6 +9,8 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ArtifactMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
 
 
 @Immutable
@@ -20,6 +22,14 @@ class ArtifactEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+    val artifactMetadata = tags.firstNotNullOfOrNull(ArtifactMetadataTag::parse)
+
+    fun url() = artifactMetadata?.url
+    fun visibility() = artifactMetadata?.visibility
+    fun license() = artifactMetadata?.license
+
+    fun dialectIdReference() = tags.firstNotNullOfOrNull(DialectIdTag::parse)?.ref
+    fun dialectId() = dialectIdReference()?.eventId
 
     companion object {
         const val KIND = 30300

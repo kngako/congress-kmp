@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Schema
 import androidx.compose.material.icons.filled.Unsubscribe
+import androidx.compose.material.icons.filled.WaterfallChart
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -120,8 +124,92 @@ fun ChatRoomDetailScreen(
 
                         item {
                             HorizontalDivider()
-                            // Should add media and attachments here
                         }
+
+                        item {
+                            // Artifacts
+                            Text(
+                                text = "Library",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+
+                        item {
+                            Text("No artifacts exists in this group.")
+                        }
+
+                        item {
+                            TextButton(
+                                onClick = {
+                                    // Navigate to the invite user screen...
+                                    onNavigateToRoute.invoke(
+                                        ImplementationPendingRoute(
+                                            "Add new artifact"
+                                        )
+                                    )
+                                }
+                            ) {
+
+                                Icon(
+                                    Icons.Default.LibraryBooks,
+                                    contentDescription = "Add new artifact"
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.width(10.dp)
+                                )
+
+                                Text("Add Artifact to Library")
+                            }
+                        }
+
+                        item {
+                            HorizontalDivider()
+                        }
+
+                        // TODO: Add projects...
+
+                        item {
+                            // Artifacts
+                            Text(
+                                text = "Projects",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+
+                        item {
+                            Text("No projects exists in this group.")
+                        }
+
+                        item {
+                            TextButton(
+                                onClick = {
+                                    // Navigate to the invite user screen...
+                                    onNavigateToRoute.invoke(
+                                        ImplementationPendingRoute(
+                                            "Add new project"
+                                        )
+                                    )
+                                }
+                            ) {
+
+                                Icon(
+                                    Icons.Default.Schema,
+                                    contentDescription = "create new projec"
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.width(10.dp)
+                                )
+
+                                Text("Create project")
+                            }
+                        }
+
+                        item {
+                            HorizontalDivider()
+                        }
+
                         item {
                             Text(
                                 text = "members",

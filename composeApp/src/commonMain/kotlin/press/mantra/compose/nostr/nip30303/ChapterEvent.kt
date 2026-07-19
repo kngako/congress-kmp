@@ -5,10 +5,12 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import com.vitorpamplona.quartz.nip01Core.signers.eventTemplate
-import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
-import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
+import press.mantra.compose.nostr.nip30303.tags.ChapterMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
 
 
 @Immutable
@@ -20,6 +22,18 @@ class ChapterEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
+    val chapterMetadata = tags.firstNotNullOfOrNull(ChapterMetadataTag::parse)
+    val wordStatisticsTag = tags.firstNotNullOfOrNull(WordStatisticsTag::parse)
+
+    fun artifactVersionIdReference() = tags.firstNotNullOfOrNull(ArtifactVersionIdTag::parse)?.ref
+    fun artifactVersionId() = artifactVersionIdReference()?.eventId
+
+    fun name() = chapterMetadata?.name
+    fun originalText() = chapterMetadata?.originalText
+
+    fun index() = tags.firstNotNullOfOrNull(IndexTag::parse)?.index
+    fun wordCount() = wordStatisticsTag?.wordCount
+    fun characterCount() = wordStatisticsTag?.characterCount
 
     companion object {
         const val KIND = 30302

@@ -11,6 +11,7 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
+import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionMetadataTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -35,6 +36,7 @@ data class MantraTranslationArtifactVersion(
     val dialectId: HexKey,
     val name: String,
     val visibility: String,
+    val license: String,
 
     /**
      * Signature will be an empty string if this is a rumor
@@ -64,10 +66,40 @@ data class MantraTranslationArtifactVersion(
                 .addUnique(
                     DialectIdTag.assemble(dialectId)
                 )
+                .addUnique(
+                    TranslationArtifactVersionMetadataTag.assemble(
+                        name = name,
+                        visibility = visibility,
+                        license = license
+                    )
+                )
                 .build(),
             content = "",
             sig = signature
         )
+    }
+
+    companion object {
+        fun fromTranslationArtifactVersionEvent(translationArtifactVersionEvent: TranslationArtifactVersionEvent): MantraTranslationArtifactVersion? {
+
+            return translationArtifactVersionEvent.artifactVersionId()?.let { artifactVersionId ->
+                translationArtifactVersionEvent.dialectId()?.let { dialectId ->
+                    translationArtifactVersionEvent.translationArtifactVersionMetadata?.let { translationArtifactVersionMetadata ->
+                        MantraTranslationArtifactVersion(
+                            id = translationArtifactVersionEvent.id,
+                            publicKey = translationArtifactVersionEvent.pubKey,
+                            createdAt = Instant.fromEpochSeconds(translationArtifactVersionEvent.createdAt),
+                            artifactVersionId = artifactVersionId,
+                            dialectId = dialectId,
+                            name = translationArtifactVersionMetadata.name,
+                            visibility = translationArtifactVersionMetadata.visibility,
+                            license = translationArtifactVersionMetadata.license,
+                            signature = translationArtifactVersionEvent.sig
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
