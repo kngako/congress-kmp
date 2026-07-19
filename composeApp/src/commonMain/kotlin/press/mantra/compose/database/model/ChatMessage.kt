@@ -130,11 +130,13 @@ data class ChatMessage(
                                     createdAt = event.createdAt,
                                     tags = event.tags,
                                     content = event.content,
-                                    sig = event.sig
+                                    sig = event.sig,
                                 )
                             )?.let { mantraArtifact ->
                                 database.mantraArtifactDao().upsert(
-                                    mantraArtifact
+                                    mantraArtifact.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
 
@@ -153,7 +155,9 @@ data class ChatMessage(
                                 )
                             )?.let { mantraArtifactVersion ->
                                 database.mantraArtifactVersionDao().upsert(
-                                    mantraArtifactVersion
+                                    mantraArtifactVersion.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
                             null
@@ -171,7 +175,9 @@ data class ChatMessage(
                                 )
                             )?.let { mantraChapter ->
                                 database.mantraChapterDao().upsert(
-                                    mantraChapter = mantraChapter
+                                    mantraChapter.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
                             null
@@ -189,7 +195,9 @@ data class ChatMessage(
                                 )
                             )?.let { mantraChunk ->
                                 database.mantraChunkDao().upsert(
-                                    mantraChunk = mantraChunk
+                                    mantraChunk.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
                             null
@@ -206,7 +214,9 @@ data class ChatMessage(
                                 )
                             )?.let { mantraDialect ->
                                 database.mantraDialectDao().upsert(
-                                    mantraDialect
+                                    mantraDialect.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
                             null
@@ -223,7 +233,9 @@ data class ChatMessage(
                                 )
                             )?.let { mantraTranslationArtifactVersion ->
                                 database.mantraTranslationArtifactVersionDao().upsert(
-                                    mantraTranslationArtifactVersion
+                                    mantraTranslationArtifactVersion.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
                                 )
                             }
                             null
@@ -243,7 +255,11 @@ data class ChatMessage(
                                     sig = event.sig
                                 )
                             )?.let { mantraTranslationChapter ->
-                                database.mantraTranslationChapterDao().upsert(mantraTranslationChapter)
+                                database.mantraTranslationChapterDao().upsert(
+                                    mantraTranslationChapter.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
+                                )
                             }
                             null
                         }
@@ -258,7 +274,11 @@ data class ChatMessage(
                                     sig = event.sig
                                 )
                             )?.let { mantraTranslationChunk ->
-                                database.mantraTranslationChunkDao().upsert(mantraTranslationChunk)
+                                database.mantraTranslationChunkDao().upsert(
+                                    mantraTranslationChunk.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
+                                )
                             }
 
                             null
@@ -278,7 +298,11 @@ data class ChatMessage(
                                     sig = event.sig
                                 )
                             )?.let { mantraTranslation ->
-                                database.mantraTranslationDao().upsert(mantraTranslation)
+                                database.mantraTranslationDao().upsert(
+                                    mantraTranslation.copy(
+                                        marmotGroupEventId = groupEvent.id,
+                                    )
+                                )
                             }
                             null
                         }
