@@ -22,7 +22,7 @@ data class MantraArtifact(
     val url: String, // Hash this to get the dTag...
     val visibility: String, // public, private, permissioned (public, but only members can contribute)
     val dialectId: String,
-    val copyrightOwner: String,
+    val copyrightOwner: String, // Put this in artifactContributor
     val license: String,
 //    val artifactApprovalId: String,
 
