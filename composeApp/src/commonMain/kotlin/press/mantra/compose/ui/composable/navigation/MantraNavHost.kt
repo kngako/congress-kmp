@@ -86,6 +86,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.composable.AddArtifactScreen
+import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 
 @Composable
 fun MantraNavHost(
@@ -639,6 +641,31 @@ fun MantraNavHost(
                         inclusive = true
                     )
                 },
+            )
+        }
+        composable<AddArtifactRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AddArtifactRoute>()
+
+            AddArtifactScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
+                onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
+                    navController.navigate(
+                        route = chatRoomDetailRoute
+                    ) {
+                        popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                }
             )
         }
         composable<SearchRoute> { backStackEntry ->

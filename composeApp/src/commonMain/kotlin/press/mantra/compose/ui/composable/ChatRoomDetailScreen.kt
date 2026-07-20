@@ -56,6 +56,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -135,7 +136,7 @@ fun ChatRoomDetailScreen(
                         }
 
                         item {
-                            Text("No artifacts exists in this group.")
+                            Text("No artifacts exists in this groups library.")
                         }
 
                         item {
@@ -143,8 +144,10 @@ fun ChatRoomDetailScreen(
                                 onClick = {
                                     // Navigate to the invite user screen...
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute(
-                                            "Add new artifact"
+                                        AddArtifactRoute(
+                                            chatRoomId = chatRoomId,
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            relayHint = relayHint
                                         )
                                     )
                                 }
