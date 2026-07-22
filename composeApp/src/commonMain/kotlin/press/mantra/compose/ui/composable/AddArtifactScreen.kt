@@ -50,6 +50,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.view.model.AddArtifactViewModel
 import press.mantra.compose.ui.view.state.AddArtifactUIState
@@ -63,6 +64,7 @@ fun AddArtifactScreen(
     initialAddArtifactUIState: AddArtifactUIState = AddArtifactUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
+    mantraRepository: MantraRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
@@ -73,7 +75,8 @@ fun AddArtifactScreen(
             initialAddArtifactUIState = initialAddArtifactUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
-            activeUserPublicKey = activeUserPublicKey
+            activeUserPublicKey = activeUserPublicKey,
+            mantraRepository = mantraRepository
         )
     )
 
@@ -114,9 +117,10 @@ fun AddArtifactScreen(
                             ExtendedFloatingActionButton(
                                 onClick = {
                                     addArtifactViewModel.addArtifact(
-                                        name = nameFieldState.text.toString(),
-                                        url = urlFieldState.text.toString(),
-                                        versionLabel = versionLabelFieldState.text.toString(),
+                                        localChatRoom = addArtifactUIState.localChatRoom,
+                                        nameField = nameFieldState,
+                                        urlField = urlFieldState,
+                                        versionLabelField = versionLabelFieldState,
                                         onSuccess = {
                                             onNavigateToRoute.invoke(
                                                 ImplementationPendingRoute("Add Artifact")
@@ -281,7 +285,7 @@ fun AddArtifactScreen(
 
 @Preview
 @Composable
-private fun ChatRoomMessagingScreenPreview() {
+private fun AddArtifactScreenPreview() {
     TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
@@ -304,6 +308,7 @@ private fun ChatRoomMessagingScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {}
             )

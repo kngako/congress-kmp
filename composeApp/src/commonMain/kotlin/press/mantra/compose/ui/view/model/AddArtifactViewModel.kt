@@ -1,5 +1,7 @@
 package press.mantra.compose.ui.view.model
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +18,8 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.view.state.AddArtifactUIState
 
 class AddArtifactViewModel(
@@ -24,7 +28,8 @@ class AddArtifactViewModel(
     val relayHint: String?,
     initialAddArtifactUIState: AddArtifactUIState,
     val nostrRepository: NostrRepository,
-    val chatRepository: ChatRepository
+    val chatRepository: ChatRepository,
+    val mantraRepository: MantraRepository
 ): ViewModel() {
 
     var addArtifactUIState: AddArtifactUIState by mutableStateOf(initialAddArtifactUIState)
@@ -52,13 +57,33 @@ class AddArtifactViewModel(
     }
 
     fun addArtifact(
-        name: String,
-        url: String,
-        versionLabel: String,
+        localChatRoom: LocalChatRoom,
+        nameField: TextFieldState,
+        urlField: TextFieldState,
+        versionLabelField: TextFieldState,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
 
+        if (nameField.text.isNotBlank() && urlField.text.isNotBlank() && versionLabelField.text.isNotBlank()) {
+            val name = nameField.text.toString()
+            val url = urlField.text.toString()
+            val versionLabel = versionLabelField.text.toString()
+
+            nameField.clearText()
+            urlField.clearText()
+            versionLabelField.clearText()
+
+            viewModelScope.launch(Dispatchers.IO) {
+                mantraRepository.addArtifact(
+                    name = name,
+                    url = url,
+                    versionLabel = versionLabel
+                )
+                // TODO: Navigate to artifact...
+                onSuccess.invoke()
+            }
+        }
     }
 
     companion object {
@@ -70,7 +95,8 @@ class AddArtifactViewModel(
             relayHint: String?,
             initialAddArtifactUIState: AddArtifactUIState = AddArtifactUIState.Loading,
             nostrRepository: NostrRepository,
-            chatRepository: ChatRepository
+            chatRepository: ChatRepository,
+            mantraRepository: MantraRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AddArtifactViewModel(
@@ -79,7 +105,8 @@ class AddArtifactViewModel(
                     relayHint = relayHint,
                     initialAddArtifactUIState = initialAddArtifactUIState,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
+                    mantraRepository = mantraRepository
                 )
             }
         }

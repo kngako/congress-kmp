@@ -419,7 +419,6 @@ class ChatMessageListViewModel(
                     localChatRoom = localChatRoom
                 )
             }
-
         }
     }
 

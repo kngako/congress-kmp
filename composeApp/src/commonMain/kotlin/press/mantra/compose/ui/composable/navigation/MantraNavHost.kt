@@ -86,6 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 
@@ -120,6 +121,10 @@ fun MantraNavHost(
     )
 
     val databaseMarmotRepository = DatabaseMarmotRepository(
+        database = auxDatabaseManager.auxDatabase,
+        applicationIOScope
+    )
+    val databaseMantraRepository = DatabaseMantraRepository(
         database = auxDatabaseManager.auxDatabase,
         applicationIOScope
     )
@@ -652,6 +657,7 @@ fun MantraNavHost(
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
+                mantraRepository = databaseMantraRepository,
                 onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
                     navController.navigate(
                         route = chatRoomDetailRoute
