@@ -36,11 +36,25 @@ class ArtifactEvent(
         const val ALT_DESCRIPTION = "Artifact"
 
         fun build(
-            content: String,
+            name: String,
+            url: String,
+            visibility: String,
+            license: String,
+            dialectId: String,
             createdAt: Long = TimeUtils.now(),
             initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+        ) = eventTemplate(KIND, name, createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(
+                ArtifactMetadataTag.assemble(
+                    url = url,
+                    visibility = visibility,
+                    license = license
+                )
+            )
+            addUnique(
+                DialectIdTag.assemble(dialectId)
+            )
             initializer()
         }
     }

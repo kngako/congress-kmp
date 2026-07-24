@@ -20,6 +20,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.MarmotRepository
 import press.mantra.compose.ui.view.state.AddArtifactUIState
 
 class AddArtifactViewModel(
@@ -29,7 +30,7 @@ class AddArtifactViewModel(
     initialAddArtifactUIState: AddArtifactUIState,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
-    val mantraRepository: MantraRepository
+    val mantraRepository: MantraRepository,
 ): ViewModel() {
 
     var addArtifactUIState: AddArtifactUIState by mutableStateOf(initialAddArtifactUIState)
@@ -79,9 +80,14 @@ class AddArtifactViewModel(
                     name = name,
                     url = url,
                     versionLabel = versionLabel
-                )
-                // TODO: Navigate to artifact...
-                onSuccess.invoke()
+                )?.let { marmotInnerEvent ->
+
+
+                    onSuccess.invoke()
+                    return@launch
+                }
+
+                onFailure.invoke()
             }
         }
     }
