@@ -5,6 +5,8 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
@@ -81,6 +83,30 @@ data class MantraArtifactVersion(
     }
 
     companion object {
+        fun fromArtifactVersionEventTemplate(
+            artifactVersionEventTemplate: EventTemplate<ArtifactVersionEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraArtifactVersion? {
+            return fromArtifactVersionEvent(
+                ArtifactVersionEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = artifactVersionEventTemplate.tags,
+                        content = artifactVersionEventTemplate.content,
+                        createdAt = artifactVersionEventTemplate.createdAt,
+                        kind = artifactVersionEventTemplate.kind,
+                    ),
+                    content = artifactVersionEventTemplate.content,
+                    tags = artifactVersionEventTemplate.tags,
+                    createdAt = artifactVersionEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromArtifactVersionEvent(artifactVersionEvent: ArtifactVersionEvent, chatRoomId: HexKey, ): MantraArtifactVersion? {
             return artifactVersionEvent.artifactId()?.let { artifactId ->
                 MantraArtifactVersion(

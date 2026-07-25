@@ -62,33 +62,54 @@ class AddArtifactViewModel(
         nameField: TextFieldState,
         urlField: TextFieldState,
         versionLabelField: TextFieldState,
+        dialectId: HexKey?,
+        visibility: String = MantraRepository.DEFAULT_VISIBILITY,
+        license: String = MantraRepository.DEFAULT_LICENSE,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
+        val name = nameField.text.toString()
+        val url = urlField.text.toString()
+        val versionLabel = versionLabelField.text.toString()
 
-        if (nameField.text.isNotBlank() && urlField.text.isNotBlank() && versionLabelField.text.isNotBlank()) {
-            val name = nameField.text.toString()
-            val url = urlField.text.toString()
-            val versionLabel = versionLabelField.text.toString()
+        // dialectId is a required foreign key on MantraArtifact. Until a dialect
+        // picker supplies one, this validation fails gracefully instead of
+        // attempting an insert that would violate the constraint.
+        if (name.isBlank() || url.isBlank() || versionLabel.isBlank() || dialectId.isNullOrBlank()) {
+            onFailure.invoke()
+            return
+        }
 
-            nameField.clearText()
-            urlField.clearText()
-            versionLabelField.clearText()
+        // Guard against double submits from repeated FAB taps.
+        if (isActionPending.value) return
+        isActionPending.value = true
 
-            viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val marmotInnerEvent = runCatching {
                 mantraRepository.addArtifact(
                     name = name,
                     url = url,
-                    versionLabel = versionLabel
-                )?.let { marmotInnerEvent ->
+                    versionLabel = versionLabel,
+                    dialectId = dialectId,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    userPublicKey = activeUserPublicKey,
+                    visibility = visibility,
+                    license = license,
+                )
+            }.onFailure { error ->
+                logger.e("Failed to add artifact", error)
+            }.getOrNull()
 
-
-                    onSuccess.invoke()
-                    return@launch
-                }
-
+            if (marmotInnerEvent != null) {
+                nameField.clearText()
+                urlField.clearText()
+                versionLabelField.clearText()
+                onSuccess.invoke()
+            } else {
                 onFailure.invoke()
             }
+
+            isActionPending.value = false
         }
     }
 

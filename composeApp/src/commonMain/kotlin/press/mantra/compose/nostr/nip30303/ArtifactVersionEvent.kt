@@ -35,7 +35,7 @@ class ArtifactVersionEvent(
         fun build(
             content: String,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
+            initializer: TagArrayBuilder<ArtifactVersionEvent>.() -> Unit = {},
         ) = eventTemplate(KIND, content, createdAt) {
             alt(ALT_DESCRIPTION)
             initializer()

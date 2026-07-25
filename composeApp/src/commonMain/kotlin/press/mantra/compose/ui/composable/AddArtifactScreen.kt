@@ -121,6 +121,9 @@ fun AddArtifactScreen(
                                         nameField = nameFieldState,
                                         urlField = urlFieldState,
                                         versionLabelField = versionLabelFieldState,
+                                        // TODO: Source this from a dialect picker; addArtifact
+                                        //  fails gracefully while this is null.
+                                        dialectId = null,
                                         onSuccess = {
                                             onNavigateToRoute.invoke(
                                                 ImplementationPendingRoute("Add Artifact")
