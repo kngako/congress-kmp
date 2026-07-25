@@ -38,11 +38,17 @@ class TranslationChunkEvent(
         const val ALT_DESCRIPTION = "TranslationChunk"
 
         fun build(
-            content: String,
+            translationChapterId: String,
+            chunkId: String,
+            index: Int,
+            text: String,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<TranslationChunkEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, text, createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(TranslationChapterIdTag.assemble(translationChapterId))
+            addUnique(ChunkIdTag.assemble(chunkId))
+            addUnique(IndexTag.assemble(index))
             initializer()
         }
     }

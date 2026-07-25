@@ -5,9 +5,11 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
@@ -70,7 +72,9 @@ data class MantraTranslationChapter(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
+            // Tag order matches TranslationChapterEvent.build so the id round-trips.
             tags = TagArrayBuilder<TranslationChapterEvent>()
+                .addUnique(AltTag.assemble(TranslationChapterEvent.ALT_DESCRIPTION))
                 .addUnique(
                     TranslationArtifactVersionIdTag.assemble(translationArtifactVersionId)
                 )
@@ -87,6 +91,30 @@ data class MantraTranslationChapter(
     }
 
     companion object {
+        fun fromTranslationChapterEventTemplate(
+            translationChapterEventTemplate: EventTemplate<TranslationChapterEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraTranslationChapter? {
+            return fromTranslationChapterEvent(
+                TranslationChapterEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = translationChapterEventTemplate.tags,
+                        content = translationChapterEventTemplate.content,
+                        createdAt = translationChapterEventTemplate.createdAt,
+                        kind = translationChapterEventTemplate.kind,
+                    ),
+                    content = translationChapterEventTemplate.content,
+                    tags = translationChapterEventTemplate.tags,
+                    createdAt = translationChapterEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromTranslationChapterEvent(translationChapterEvent: TranslationChapterEvent, chatRoomId: HexKey): MantraTranslationChapter? {
             return translationChapterEvent.chapterId()?.let { chapterId ->
                 translationChapterEvent.translationArtifactVersionId()?.let { translationArtifactVersionId ->

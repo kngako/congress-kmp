@@ -5,9 +5,11 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.nostr.nip30303.tags.ChunkIdTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
@@ -72,7 +74,9 @@ data class MantraTranslationChunk(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
+            // Tag order matches TranslationChunkEvent.build so the id round-trips.
             tags = TagArrayBuilder<TranslationChunkEvent>()
+                .addUnique(AltTag.assemble(TranslationChunkEvent.ALT_DESCRIPTION))
                 .addUnique(
                     TranslationChapterIdTag.assemble(translationChapterId)
                 )
@@ -89,6 +93,30 @@ data class MantraTranslationChunk(
     }
 
     companion object {
+        fun fromTranslationChunkEventTemplate(
+            translationChunkEventTemplate: EventTemplate<TranslationChunkEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraTranslationChunk? {
+            return fromTranslationChunkEvent(
+                TranslationChunkEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = translationChunkEventTemplate.tags,
+                        content = translationChunkEventTemplate.content,
+                        createdAt = translationChunkEventTemplate.createdAt,
+                        kind = translationChunkEventTemplate.kind,
+                    ),
+                    content = translationChunkEventTemplate.content,
+                    tags = translationChunkEventTemplate.tags,
+                    createdAt = translationChunkEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromTranslationChunkEvent(translationChunkEvent: TranslationChunkEvent, chatRoomId: HexKey): MantraTranslationChunk? {
             return translationChunkEvent.translationChapterId()?.let { translationChapterId ->
                 translationChunkEvent.chunkId()?.let { chunkId ->

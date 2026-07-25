@@ -25,6 +25,20 @@ interface MantraRepository {
     suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
 
     /**
+     * Start a translation of the artifact into the given dialect: creates a
+     * MantraTranslationArtifactVersion for the artifact's latest version, and
+     * scaffolds a MantraTranslationChapter for each existing chapter plus a
+     * MantraTranslationChunk (empty text) for each existing chunk. Returns null
+     * when the artifact has no version to translate.
+     */
+    suspend fun addTranslation(
+        artifactId: String,
+        dialectId: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MantraTranslationArtifactVersion?
+
+    /**
      * Add a chapter (markdown [originalText]) to the artifact's latest version.
      * Word/character counts are derived from the text, and the chapter is split
      * by paragraph into associated chunks. Returns null when the artifact has no
@@ -84,6 +98,13 @@ interface MantraRepository {
             override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> = emptyList()
 
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
+
+            override suspend fun addTranslation(
+                artifactId: String,
+                dialectId: String,
+                chatRoomId: String,
+                userPublicKey: HexKey,
+            ): MantraTranslationArtifactVersion? = null
 
             override suspend fun addChapter(
                 artifactId: String,

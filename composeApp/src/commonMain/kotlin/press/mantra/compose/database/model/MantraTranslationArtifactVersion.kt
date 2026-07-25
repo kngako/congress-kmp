@@ -5,9 +5,11 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
@@ -75,7 +77,9 @@ data class MantraTranslationArtifactVersion(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ArtifactVersionEvent>()
+            // Tag order matches TranslationArtifactVersionEvent.build so the id round-trips.
+            tags = TagArrayBuilder<TranslationArtifactVersionEvent>()
+                .addUnique(AltTag.assemble(TranslationArtifactVersionEvent.ALT_DESCRIPTION))
                 .addUnique(
                     ArtifactVersionIdTag.assemble(artifactVersionId)
                 )
@@ -92,6 +96,30 @@ data class MantraTranslationArtifactVersion(
     }
 
     companion object {
+        fun fromTranslationArtifactVersionEventTemplate(
+            translationArtifactVersionEventTemplate: EventTemplate<TranslationArtifactVersionEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraTranslationArtifactVersion? {
+            return fromTranslationArtifactVersionEvent(
+                TranslationArtifactVersionEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = translationArtifactVersionEventTemplate.tags,
+                        content = translationArtifactVersionEventTemplate.content,
+                        createdAt = translationArtifactVersionEventTemplate.createdAt,
+                        kind = translationArtifactVersionEventTemplate.kind,
+                    ),
+                    content = translationArtifactVersionEventTemplate.content,
+                    tags = translationArtifactVersionEventTemplate.tags,
+                    createdAt = translationArtifactVersionEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromTranslationArtifactVersionEvent(translationArtifactVersionEvent: TranslationArtifactVersionEvent, chatRoomId: HexKey): MantraTranslationArtifactVersion? {
 
             return translationArtifactVersionEvent.artifactVersionId()?.let { artifactVersionId ->
