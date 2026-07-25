@@ -9,7 +9,9 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
-import press.mantra.compose.nostr.nip30303.tags.DialectMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.CountryTag
+import press.mantra.compose.nostr.nip30303.tags.LanguageTag
+import press.mantra.compose.nostr.nip30303.tags.NameTag
 
 
 @Immutable
@@ -21,11 +23,9 @@ class DialectEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
-    val dialectMetadata = tags.firstNotNullOfOrNull(DialectMetadataTag::parse)
-
-    fun name() = dialectMetadata?.name
-    fun country() = dialectMetadata?.country
-    fun language() = dialectMetadata?.language
+    fun name() = tags.firstNotNullOfOrNull(NameTag::parse)?.name
+    fun country() = tags.firstNotNullOfOrNull(CountryTag::parse)?.country
+    fun language() = tags.firstNotNullOfOrNull(LanguageTag::parse)?.language
 
     companion object {
         const val KIND = 30304

@@ -8,8 +8,9 @@ import com.vitorpamplona.quartz.nip01Core.signers.eventTemplate
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
-import press.mantra.compose.nostr.nip30303.tags.ChapterMetadataTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
+import press.mantra.compose.nostr.nip30303.tags.NameTag
+import press.mantra.compose.nostr.nip30303.tags.OriginalTextTag
 import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
 
 
@@ -22,14 +23,13 @@ class ChapterEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
-    val chapterMetadata = tags.firstNotNullOfOrNull(ChapterMetadataTag::parse)
     val wordStatisticsTag = tags.firstNotNullOfOrNull(WordStatisticsTag::parse)
 
     fun artifactVersionIdReference() = tags.firstNotNullOfOrNull(ArtifactVersionIdTag::parse)?.ref
     fun artifactVersionId() = artifactVersionIdReference()?.eventId
 
-    fun name() = chapterMetadata?.name
-    fun originalText() = chapterMetadata?.originalText
+    fun name() = tags.firstNotNullOfOrNull(NameTag::parse)?.name
+    fun originalText() = tags.firstNotNullOfOrNull(OriginalTextTag::parse)?.originalText
 
     fun index() = tags.firstNotNullOfOrNull(IndexTag::parse)?.index
     fun wordCount() = wordStatisticsTag?.wordCount

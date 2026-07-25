@@ -11,7 +11,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
-import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.LicenseTag
+import press.mantra.compose.nostr.nip30303.tags.NameTag
+import press.mantra.compose.nostr.nip30303.tags.VisibilityTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -80,13 +82,9 @@ data class MantraTranslationArtifactVersion(
                 .addUnique(
                     DialectIdTag.assemble(dialectId)
                 )
-                .addUnique(
-                    TranslationArtifactVersionMetadataTag.assemble(
-                        name = name,
-                        visibility = visibility,
-                        license = license
-                    )
-                )
+                .addUnique(NameTag.assemble(name))
+                .addUnique(VisibilityTag.assemble(visibility))
+                .addUnique(LicenseTag.assemble(license))
                 .build(),
             content = "",
             sig = signature
@@ -98,19 +96,23 @@ data class MantraTranslationArtifactVersion(
 
             return translationArtifactVersionEvent.artifactVersionId()?.let { artifactVersionId ->
                 translationArtifactVersionEvent.dialectId()?.let { dialectId ->
-                    translationArtifactVersionEvent.translationArtifactVersionMetadata?.let { translationArtifactVersionMetadata ->
-                        MantraTranslationArtifactVersion(
-                            id = translationArtifactVersionEvent.id,
-                            publicKey = translationArtifactVersionEvent.pubKey,
-                            createdAt = Instant.fromEpochSeconds(translationArtifactVersionEvent.createdAt),
-                            artifactVersionId = artifactVersionId,
-                            dialectId = dialectId,
-                            name = translationArtifactVersionMetadata.name,
-                            visibility = translationArtifactVersionMetadata.visibility,
-                            license = translationArtifactVersionMetadata.license,
-                            signature = translationArtifactVersionEvent.sig,
-                            chatRoomId = chatRoomId
-                        )
+                    translationArtifactVersionEvent.name()?.let { name ->
+                        translationArtifactVersionEvent.visibility()?.let { visibility ->
+                            translationArtifactVersionEvent.license()?.let { license ->
+                                MantraTranslationArtifactVersion(
+                                    id = translationArtifactVersionEvent.id,
+                                    publicKey = translationArtifactVersionEvent.pubKey,
+                                    createdAt = Instant.fromEpochSeconds(translationArtifactVersionEvent.createdAt),
+                                    artifactVersionId = artifactVersionId,
+                                    dialectId = dialectId,
+                                    name = name,
+                                    visibility = visibility,
+                                    license = license,
+                                    signature = translationArtifactVersionEvent.sig,
+                                    chatRoomId = chatRoomId
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -11,8 +11,10 @@ import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
-import press.mantra.compose.nostr.nip30303.tags.ArtifactMetadataTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
+import press.mantra.compose.nostr.nip30303.tags.LicenseTag
+import press.mantra.compose.nostr.nip30303.tags.UrlTag
+import press.mantra.compose.nostr.nip30303.tags.VisibilityTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -69,13 +71,9 @@ data class MantraArtifact(
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = TagArrayBuilder<ArtifactEvent>()
-                .addUnique(
-                    ArtifactMetadataTag.assemble(
-                        url = url,
-                        visibility = visibility,
-                        license = license
-                    )
-                )
+                .addUnique(UrlTag.assemble(url))
+                .addUnique(VisibilityTag.assemble(visibility))
+                .addUnique(LicenseTag.assemble(license))
                 .addUnique(
                     DialectIdTag.assemble(dialectId)
                 )
@@ -109,20 +107,24 @@ data class MantraArtifact(
             )
         }
         fun fromArtifactEvent(artifactEvent: ArtifactEvent, chatRoomId: HexKey, ): MantraArtifact? {
-            return artifactEvent.artifactMetadata?.let { artifactMetadata ->
-                artifactEvent.dialectId()?.let { dialectId ->
-                    MantraArtifact(
-                        id = artifactEvent.id,
-                        publicKey = artifactEvent.pubKey,
-                        dialectId = dialectId,
-                        createdAt = Instant.fromEpochSeconds(artifactEvent.createdAt),
-                        url = artifactMetadata.url,
-                        license = artifactMetadata.license,
-                        visibility = artifactMetadata.visibility,
-                        name = artifactEvent.content,
-                        signature = artifactEvent.sig,
-                        chatRoomId = chatRoomId
-                    )
+            return artifactEvent.url()?.let { url ->
+                artifactEvent.visibility()?.let { visibility ->
+                    artifactEvent.license()?.let { license ->
+                        artifactEvent.dialectId()?.let { dialectId ->
+                            MantraArtifact(
+                                id = artifactEvent.id,
+                                publicKey = artifactEvent.pubKey,
+                                dialectId = dialectId,
+                                createdAt = Instant.fromEpochSeconds(artifactEvent.createdAt),
+                                url = url,
+                                license = license,
+                                visibility = visibility,
+                                name = artifactEvent.content,
+                                signature = artifactEvent.sig,
+                                chatRoomId = chatRoomId
+                            )
+                        }
+                    }
                 }
             }
         }

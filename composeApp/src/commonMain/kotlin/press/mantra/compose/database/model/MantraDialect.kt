@@ -10,7 +10,9 @@ import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
-import press.mantra.compose.nostr.nip30303.tags.DialectMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.CountryTag
+import press.mantra.compose.nostr.nip30303.tags.LanguageTag
+import press.mantra.compose.nostr.nip30303.tags.NameTag
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -56,13 +58,9 @@ data class MantraDialect(
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
             tags = TagArrayBuilder<ChunkEvent>()
-                .addUnique(
-                    DialectMetadataTag.assemble(
-                        name = name,
-                        country = country,
-                        language = language
-                    )
-                )
+                .addUnique(NameTag.assemble(name))
+                .addUnique(CountryTag.assemble(country))
+                .addUnique(LanguageTag.assemble(language))
                 .build(),
             content = language, // TODO: Consider using the isoCode... as content?
             sig = signature

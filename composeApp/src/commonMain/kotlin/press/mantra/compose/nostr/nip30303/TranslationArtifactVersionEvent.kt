@@ -9,7 +9,9 @@ import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
-import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionMetadataTag
+import press.mantra.compose.nostr.nip30303.tags.LicenseTag
+import press.mantra.compose.nostr.nip30303.tags.NameTag
+import press.mantra.compose.nostr.nip30303.tags.VisibilityTag
 
 
 @Immutable
@@ -22,7 +24,9 @@ class TranslationArtifactVersionEvent(
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
 
-    val translationArtifactVersionMetadata = tags.firstNotNullOfOrNull(TranslationArtifactVersionMetadataTag::parse)
+    fun name() = tags.firstNotNullOfOrNull(NameTag::parse)?.name
+    fun visibility() = tags.firstNotNullOfOrNull(VisibilityTag::parse)?.visibility
+    fun license() = tags.firstNotNullOfOrNull(LicenseTag::parse)?.license
 
     fun artifactVersionIdReference() = tags.firstNotNullOfOrNull(ArtifactVersionIdTag::parse)?.ref
     fun artifactVersionId() = artifactVersionIdReference()?.eventId

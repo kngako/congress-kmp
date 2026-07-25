@@ -9,8 +9,10 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
-import press.mantra.compose.nostr.nip30303.tags.ArtifactMetadataTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
+import press.mantra.compose.nostr.nip30303.tags.LicenseTag
+import press.mantra.compose.nostr.nip30303.tags.UrlTag
+import press.mantra.compose.nostr.nip30303.tags.VisibilityTag
 
 
 @Immutable
@@ -22,11 +24,9 @@ class ArtifactEvent(
     content: String,
     sig: HexKey,
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
-    val artifactMetadata = tags.firstNotNullOfOrNull(ArtifactMetadataTag::parse)
-
-    fun url() = artifactMetadata?.url
-    fun visibility() = artifactMetadata?.visibility
-    fun license() = artifactMetadata?.license
+    fun url() = tags.firstNotNullOfOrNull(UrlTag::parse)?.url
+    fun visibility() = tags.firstNotNullOfOrNull(VisibilityTag::parse)?.visibility
+    fun license() = tags.firstNotNullOfOrNull(LicenseTag::parse)?.license
 
     fun dialectIdReference() = tags.firstNotNullOfOrNull(DialectIdTag::parse)?.ref
     fun dialectId() = dialectIdReference()?.eventId
@@ -45,13 +45,9 @@ class ArtifactEvent(
             initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
         ) = eventTemplate(KIND, name, createdAt) {
             alt(ALT_DESCRIPTION)
-            addUnique(
-                ArtifactMetadataTag.assemble(
-                    url = url,
-                    visibility = visibility,
-                    license = license
-                )
-            )
+            addUnique(UrlTag.assemble(url))
+            addUnique(VisibilityTag.assemble(visibility))
+            addUnique(LicenseTag.assemble(license))
             addUnique(
                 DialectIdTag.assemble(dialectId)
             )
