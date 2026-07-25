@@ -39,11 +39,20 @@ class TranslationArtifactVersionEvent(
         const val ALT_DESCRIPTION = "TranslationArtifactVersion"
 
         fun build(
-            content: String,
+            artifactVersionId: String,
+            dialectId: String,
+            name: String,
+            visibility: String,
+            license: String,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<TranslationArtifactVersionEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, "", createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(ArtifactVersionIdTag.assemble(artifactVersionId))
+            addUnique(DialectIdTag.assemble(dialectId))
+            addUnique(NameTag.assemble(name))
+            addUnique(VisibilityTag.assemble(visibility))
+            addUnique(LicenseTag.assemble(license))
             initializer()
         }
     }

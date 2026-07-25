@@ -90,10 +90,12 @@ import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
+import press.mantra.compose.ui.composable.AddTranslationScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 
 @Composable
@@ -709,6 +711,29 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable<AddTranslationRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AddTranslationRoute>()
+
+            AddTranslationScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                artifactId = route.artifactId,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                mantraRepository = databaseMantraRepository,
+                onNavigateToRoute = { actionRoute ->
+                    // Replace this screen and the stale artifact detail beneath it
+                    // so we land on a freshly-loaded detail showing the new translation.
+                    navController.navigate(route = actionRoute) {
+                        popUpTo<ArtifactDetailRoute> {
+                            inclusive = true
+                        }
+                    }
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

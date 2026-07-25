@@ -37,11 +37,16 @@ class TranslationChapterEvent(
         const val ALT_DESCRIPTION = "TranslationChapter"
 
         fun build(
-            content: String,
+            translationArtifactVersionId: String,
+            chapterId: String,
+            index: Int,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<TranslationChapterEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, "", createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(TranslationArtifactVersionIdTag.assemble(translationArtifactVersionId))
+            addUnique(ChapterIdTag.assemble(chapterId))
+            addUnique(IndexTag.assemble(index))
             initializer()
         }
     }

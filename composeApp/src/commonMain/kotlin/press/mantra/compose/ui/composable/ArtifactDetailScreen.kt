@@ -39,6 +39,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -239,6 +240,29 @@ fun ArtifactDetailScreen(
                                     supportingContent = { Text(translation.visibility) }
                                 )
                             }
+                        }
+                    }
+
+                    item {
+                        TextButton(
+                            enabled = artifactDetailUIState.versions.isNotEmpty(),
+                            onClick = {
+                                onNavigateToRoute.invoke(
+                                    AddTranslationRoute(
+                                        activeUserPublicKey = activeUserPublicKey,
+                                        artifactId = artifact.id,
+                                        chatRoomId = chatRoomId,
+                                        relayHint = relayHint
+                                    )
+                                )
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Translate,
+                                contentDescription = "Add translation"
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Add Translation")
                         }
                     }
                 }
