@@ -16,12 +16,15 @@ class WordStatisticsTag(
         const val TAG_NAME = "word_stats"
 
         fun parse(tag: Array<String>): WordStatisticsTag? {
-            ensure(tag.has(3)) { return null }
+            ensure(tag.has(2)) { return null }
             ensure(tag[0] == TAG_NAME) { return null }
 
+            val wordCount = tag[1].toIntOrNull() ?: return null
+            val characterCount = tag[2].toIntOrNull() ?: return null
+
             return WordStatisticsTag(
-                wordCount = tag[1].toInt(),
-                characterCount = tag[2].toInt(),
+                wordCount = wordCount,
+                characterCount = characterCount,
             )
         }
 

@@ -16,9 +16,10 @@ class IndexTag(
         fun parse(tag: Array<String>): IndexTag? {
             ensure(tag.has(1)) { return null }
             ensure(tag[0] == TAG_NAME) { return null }
-            // TODO: Check that it is an int...
+
+            val index = tag[1].toIntOrNull() ?: return null
             return IndexTag(
-                index = tag[1].toInt(),
+                index = index,
             )
         }
 
