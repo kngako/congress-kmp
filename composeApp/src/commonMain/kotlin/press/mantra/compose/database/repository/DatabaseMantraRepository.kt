@@ -6,7 +6,9 @@ import kotlinx.coroutines.CoroutineScope
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
@@ -23,6 +25,18 @@ class DatabaseMantraRepository(
 
     override suspend fun getArtifacts(chatRoomId: String): List<MantraArtifact> =
         database.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
+
+    override suspend fun getArtifact(id: String): MantraArtifact? =
+        database.mantraArtifactDao().getArtifactById(id)
+
+    override suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion> =
+        database.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(artifactId)
+
+    override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> =
+        database.mantraChapterDao().getChaptersByArtifactId(artifactId)
+
+    override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
+        database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactId(artifactId)
 
     override suspend fun getDialects(chatRoomId: String): List<MantraDialect> =
         database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)

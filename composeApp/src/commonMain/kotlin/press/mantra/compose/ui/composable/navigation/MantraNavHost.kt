@@ -89,6 +89,8 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.ArtifactDetailScreen
 
 @Composable
 fun MantraNavHost(
@@ -672,6 +674,20 @@ fun MantraNavHost(
                     navController.navigate(
                         route = actionRoute
                     )
+                }
+            )
+        }
+        composable<ArtifactDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ArtifactDetailRoute>()
+
+            ArtifactDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                artifactId = route.artifactId,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                mantraRepository = databaseMantraRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

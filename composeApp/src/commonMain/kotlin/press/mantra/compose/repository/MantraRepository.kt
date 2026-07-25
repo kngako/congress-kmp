@@ -2,11 +2,22 @@ package press.mantra.compose.repository
 
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
+import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MarmotInnerEvent
 
 interface MantraRepository {
     suspend fun getArtifacts(chatRoomId: String): List<MantraArtifact>
+
+    suspend fun getArtifact(id: String): MantraArtifact?
+
+    suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion>
+
+    suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter>
+
+    suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
 
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
 
@@ -42,6 +53,14 @@ interface MantraRepository {
 
         val NO_OP_MANTRA_REPOSITORY = object: MantraRepository{
             override suspend fun getArtifacts(chatRoomId: String): List<MantraArtifact> = emptyList()
+
+            override suspend fun getArtifact(id: String): MantraArtifact? = null
+
+            override suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion> = emptyList()
+
+            override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> = emptyList()
+
+            override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 

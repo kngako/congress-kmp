@@ -12,4 +12,7 @@ interface MantraArtifactDao {
 
     @Query("SELECT * FROM MantraArtifact WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
     suspend fun getArtifactsByChatRoomId(chatRoomId: String): List<MantraArtifact>
+
+    @Query("SELECT * FROM MantraArtifact WHERE id = :id")
+    suspend fun getArtifactById(id: String): MantraArtifact?
 }

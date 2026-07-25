@@ -58,6 +58,7 @@ import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -150,8 +151,11 @@ fun ChatRoomDetailScreen(
                                 Card(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Artifact detail"
+                                            ArtifactDetailRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                artifactId = artifact.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
                                             )
                                         )
                                     }
