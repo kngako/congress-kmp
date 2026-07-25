@@ -5,11 +5,12 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
-import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
 import press.mantra.compose.nostr.nip30303.tags.CountryTag
 import press.mantra.compose.nostr.nip30303.tags.LanguageTag
 import press.mantra.compose.nostr.nip30303.tags.NameTag
@@ -57,7 +58,9 @@ data class MantraDialect(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ChunkEvent>()
+            // Tag order matches DialectEvent.build so the event id round-trips.
+            tags = TagArrayBuilder<DialectEvent>()
+                .addUnique(AltTag.assemble(DialectEvent.ALT_DESCRIPTION))
                 .addUnique(NameTag.assemble(name))
                 .addUnique(CountryTag.assemble(country))
                 .addUnique(LanguageTag.assemble(language))
@@ -68,6 +71,30 @@ data class MantraDialect(
     }
 
     companion object {
+        fun fromDialectEventTemplate(
+            dialectEventTemplate: EventTemplate<DialectEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraDialect? {
+            return fromDialectEvent(
+                DialectEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = dialectEventTemplate.tags,
+                        content = dialectEventTemplate.content,
+                        createdAt = dialectEventTemplate.createdAt,
+                        kind = dialectEventTemplate.kind,
+                    ),
+                    content = dialectEventTemplate.content,
+                    tags = dialectEventTemplate.tags,
+                    createdAt = dialectEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromDialectEvent(dialectEvent: DialectEvent, chatRoomId: HexKey): MantraDialect? {
             return dialectEvent.name()?.let { name ->
                 dialectEvent.language()?.let { language ->

@@ -6,9 +6,11 @@ import kotlinx.coroutines.CoroutineScope
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository
 
@@ -18,6 +20,48 @@ class DatabaseMantraRepository(
 ): MantraRepository {
 
     private val logger = Logger.withTag(TAG)
+
+    override suspend fun getDialects(chatRoomId: String): List<MantraDialect> =
+        database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
+
+    override suspend fun addDialect(
+        name: String,
+        country: String,
+        language: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MantraDialect? {
+        val dialectEventTemplate = DialectEvent.build(
+            name = name,
+            country = country,
+            language = language,
+        )
+
+        val mantraDialect = MantraDialect.fromDialectEventTemplate(
+            dialectEventTemplate = dialectEventTemplate,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+        ) ?: return null
+
+        val dialectInnerEvent = MarmotInnerEvent(
+            id = mantraDialect.id,
+            publicKey = mantraDialect.publicKey,
+            kind = DialectEvent.KIND,
+            createdAt = mantraDialect.createdAt,
+            tags = dialectEventTemplate.tags,
+            content = dialectEventTemplate.content,
+            chatRoomId = mantraDialect.chatRoomId,
+        )
+
+        return try {
+            database.mantraDialectDao().upsert(mantraDialect)
+            database.marmotInnerEventDao().upsert(dialectInnerEvent)
+            mantraDialect
+        } catch (error: Throwable) {
+            logger.e("Failed to add dialect \"$name\" to chat room $chatRoomId", error)
+            null
+        }
+    }
 
     override suspend fun addArtifact(
         name: String,

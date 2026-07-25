@@ -32,11 +32,16 @@ class DialectEvent(
         const val ALT_DESCRIPTION = "Dialect"
 
         fun build(
-            content: String,
+            name: String,
+            country: String,
+            language: String,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<DialectEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, language, createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(NameTag.assemble(name))
+            addUnique(CountryTag.assemble(country))
+            addUnique(LanguageTag.assemble(language))
             initializer()
         }
     }
