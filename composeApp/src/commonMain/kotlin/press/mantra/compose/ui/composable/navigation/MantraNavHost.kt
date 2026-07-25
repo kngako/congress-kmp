@@ -89,8 +89,10 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
+import press.mantra.compose.ui.composable.AddChapterScreen
 
 @Composable
 fun MantraNavHost(
@@ -686,6 +688,34 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable<AddChapterRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AddChapterRoute>()
+
+            AddChapterScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                artifactId = route.artifactId,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                mantraRepository = databaseMantraRepository,
+                onNavigateToRoute = { actionRoute ->
+                    // Replace both this add screen and the stale artifact detail
+                    // beneath it so we land on a freshly-loaded detail screen.
+                    navController.navigate(route = actionRoute) {
+                        popUpTo<ArtifactDetailRoute> {
+                            inclusive = true
+                        }
+                    }
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

@@ -5,6 +5,9 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ChunkEvent
@@ -66,7 +69,9 @@ data class MantraChunk(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
+            // Tag order matches ChunkEvent.build so the event id round-trips.
             tags = TagArrayBuilder<ChunkEvent>()
+                .addUnique(AltTag.assemble(ChunkEvent.ALT_DESCRIPTION))
                 .addUnique(
                     ChapterIdTag.assemble(chapterId)
                 )
@@ -85,6 +90,30 @@ data class MantraChunk(
     }
 
     companion object {
+        fun fromChunkEventTemplate(
+            chunkEventTemplate: EventTemplate<ChunkEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraChunk? {
+            return fromChunkEvent(
+                ChunkEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = chunkEventTemplate.tags,
+                        content = chunkEventTemplate.content,
+                        createdAt = chunkEventTemplate.createdAt,
+                        kind = chunkEventTemplate.kind,
+                    ),
+                    content = chunkEventTemplate.content,
+                    tags = chunkEventTemplate.tags,
+                    createdAt = chunkEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromChunkEvent(chunkEvent: ChunkEvent, chatRoomId: HexKey): MantraChunk? {
             return chunkEvent.wordStatisticsTag?.let { wordStatisticsTag ->
                 chunkEvent.index()?.let { index ->

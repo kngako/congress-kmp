@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.PostAdd
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +38,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ArtifactDetailViewModel
@@ -49,6 +54,7 @@ fun ArtifactDetailScreen(
     relayHint: String?,
     initialArtifactDetailUIState: ArtifactDetailUIState = ArtifactDetailUIState.Loading,
     mantraRepository: MantraRepository,
+    onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val artifactDetailViewModel: ArtifactDetailViewModel = viewModel(
@@ -170,6 +176,29 @@ fun ArtifactDetailScreen(
                         }
                     }
 
+                    item {
+                        TextButton(
+                            enabled = artifactDetailUIState.versions.isNotEmpty(),
+                            onClick = {
+                                onNavigateToRoute.invoke(
+                                    AddChapterRoute(
+                                        activeUserPublicKey = activeUserPublicKey,
+                                        artifactId = artifact.id,
+                                        chatRoomId = chatRoomId,
+                                        relayHint = relayHint
+                                    )
+                                )
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.PostAdd,
+                                contentDescription = "Add chapter"
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Add Chapter")
+                        }
+                    }
+
                     item { HorizontalDivider() }
 
                     // Translations
@@ -261,6 +290,7 @@ private fun ArtifactDetailScreenPreview() {
                     )
                 ),
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                onNavigateToRoute = {},
                 onNavigateBack = {}
             )
         }

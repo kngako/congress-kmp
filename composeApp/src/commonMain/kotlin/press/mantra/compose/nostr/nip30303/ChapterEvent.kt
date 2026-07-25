@@ -40,11 +40,21 @@ class ChapterEvent(
         const val ALT_DESCRIPTION = "Chapter"
 
         fun build(
-            content: String,
+            artifactVersionId: String,
+            name: String,
+            originalText: String,
+            index: Int,
+            wordCount: Int,
+            characterCount: Int,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<ChapterEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, "", createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(ArtifactVersionIdTag.assemble(artifactVersionId))
+            addUnique(NameTag.assemble(name))
+            addUnique(OriginalTextTag.assemble(originalText))
+            addUnique(IndexTag.assemble(index))
+            addUnique(WordStatisticsTag.assemble(wordCount, characterCount))
             initializer()
         }
     }

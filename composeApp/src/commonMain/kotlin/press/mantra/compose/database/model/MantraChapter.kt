@@ -5,9 +5,11 @@ import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionIdTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
@@ -71,7 +73,9 @@ data class MantraChapter(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
-            tags = TagArrayBuilder<ArtifactVersionEvent>()
+            // Tag order matches ChapterEvent.build so the event id round-trips.
+            tags = TagArrayBuilder<ChapterEvent>()
+                .addUnique(AltTag.assemble(ChapterEvent.ALT_DESCRIPTION))
                 .addUnique(
                     ArtifactVersionIdTag.assemble(artifactVersionId)
                 )
@@ -92,6 +96,30 @@ data class MantraChapter(
     }
 
     companion object {
+        fun fromChapterEventTemplate(
+            chapterEventTemplate: EventTemplate<ChapterEvent>,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+        ): MantraChapter? {
+            return fromChapterEvent(
+                ChapterEvent(
+                    id = EventHasher.hashId(
+                        pubKey = userPublicKey,
+                        tags = chapterEventTemplate.tags,
+                        content = chapterEventTemplate.content,
+                        createdAt = chapterEventTemplate.createdAt,
+                        kind = chapterEventTemplate.kind,
+                    ),
+                    content = chapterEventTemplate.content,
+                    tags = chapterEventTemplate.tags,
+                    createdAt = chapterEventTemplate.createdAt,
+                    pubKey = userPublicKey,
+                    sig = "", // Unsigned rumor
+                ),
+                chatRoomId = chatRoomId,
+            )
+        }
+
         fun fromChapterEvent(chapterEvent: ChapterEvent, chatRoomId: HexKey): MantraChapter? {
             return chapterEvent.name()?.let { name ->
                 chapterEvent.originalText()?.let { originalText ->

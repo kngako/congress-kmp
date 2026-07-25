@@ -23,4 +23,7 @@ interface MantraChapterDao {
         """
     )
     suspend fun getChaptersByArtifactId(artifactId: String): List<MantraChapter>
+
+    @Query("SELECT * FROM MantraChapter WHERE artifactVersionId = :artifactVersionId ORDER BY `index` ASC")
+    suspend fun getChaptersByArtifactVersionId(artifactVersionId: String): List<MantraChapter>
 }

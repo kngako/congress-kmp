@@ -37,11 +37,18 @@ class ChunkEvent(
         const val ALT_DESCRIPTION = "Chunk"
 
         fun build(
-            content: String,
+            chapterId: String,
+            text: String,
+            index: Int,
+            wordCount: Int,
+            characterCount: Int,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
-        ) = eventTemplate(KIND, content, createdAt) {
+            initializer: TagArrayBuilder<ChunkEvent>.() -> Unit = {},
+        ) = eventTemplate(KIND, text, createdAt) {
             alt(ALT_DESCRIPTION)
+            addUnique(ChapterIdTag.assemble(chapterId))
+            addUnique(IndexTag.assemble(index))
+            addUnique(WordStatisticsTag.assemble(wordCount, characterCount))
             initializer()
         }
     }
