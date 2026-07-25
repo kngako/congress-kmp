@@ -76,10 +76,10 @@ object MarmotInboundManager {
         logger.d("excludedParticipants: $excludedParticipants")
         val existingParticipantPublicKeys = localChatRoom.localParticipants.map { it.participant.participantPublicKey }
         val newParticipants = commitedGroupMembers.filter { committedGroupMember ->
-            existingParticipantPublicKeys.contains(committedGroupMember.participantPublicKey)
+            existingParticipantPublicKeys.contains(committedGroupMember.participantPublicKey).not()
         }.map { newParticipant ->
             newParticipant.copy(
-                adminAt = if (adminPublicKeys?.contains(newParticipant.participantPublicKey) == null) {
+                adminAt = if (adminPublicKeys?.contains(newParticipant.participantPublicKey) == true) {
                     Clock.System.now()
                 } else {
                     null
@@ -88,7 +88,7 @@ object MarmotInboundManager {
         }
         logger.d("newParticipants: $newParticipants")
         val removedAdmins = localChatRoom.localParticipants.filter { localParticipant ->
-            localParticipant.participant.adminAt != null && adminPublicKeys?.contains(localParticipant.participant.participantPublicKey) == true
+            localParticipant.participant.adminAt != null && adminPublicKeys?.contains(localParticipant.participant.participantPublicKey) != true
         }.map { localParticipant ->
             localParticipant.participant.copy(
                 adminAt = null
@@ -389,9 +389,22 @@ object MarmotInboundManager {
                         }
 
                         else -> {
+                            // `decrypt` applies the commit inline, advancing the
+                            // epoch in memory. Capture the outgoing epoch's
+                            // secrets first, then retain + persist on a
+                            // successful advance — mirroring decryptMessageBytes
+                            // and processCommit. Without this the advance is lost
+                            // on reload and prior-epoch messages can no longer be
+                            // decrypted.
+                            val retainedBefore = mlsGroup.retainedSecrets()
+                            val preEpoch = mlsGroup.epoch
                             val decrypted = mlsGroup.decrypt(mlsMessage.toTlsBytes())
                             if (decrypted.contentType == ContentType.COMMIT) {
-                                GroupEventResult.CommitProcessed(groupId, mlsGroup.epoch ?: 0)
+                                if (mlsGroup.epoch != preEpoch) {
+                                    pushRetainedEpoch(groupId, retainedBefore)
+                                    persistGroup(database, mlsGroup)
+                                }
+                                GroupEventResult.CommitProcessed(groupId, mlsGroup.epoch)
                             } else {
                                 GroupEventResult.Error(
                                     groupId,
@@ -566,6 +579,14 @@ object MarmotInboundManager {
             if (localChatRoom == null) {
                 throw MarmotMissingChatGroupException("chatRoom not found in database, skipping")
             } else {
+                // ⚠️ SECURITY / KNOWN VULNERABILITY (H1: MLS group state stored
+                //  in plaintext at rest). `MlsGroupState` contains secret key
+                //  material (signing key, encryption key, epoch secrets) and its
+                //  own KDoc states it "MUST be stored in encrypted local
+                //  storage", yet it is written here as plain hex. See the matching
+                //  warning on the key-package bundle in DatabaseMarmotRepository.
+                //  TODO(security): Encrypt `mlsGroupState` at rest with a
+                //   platform-backed key-encryption-key before this ships.
                 database.chatRoomDao().upsert(
                     localChatRoom.chatRoom.copy(
                         mlsGroupState = encoded.toHex()
@@ -610,6 +631,38 @@ object MarmotInboundManager {
         }
     }
 
+    /**
+     * ⚠️ SECURITY / KNOWN VULNERABILITY (retained-epoch sender impersonation).
+     *
+     * This hand-rolled fallback decrypts a late APPLICATION message under a
+     * previous epoch's secrets but does NOT verify the sender's per-message
+     * `FramedContentTBS` signature — unlike the library's primary
+     * [MlsGroup.decrypt], which verifies it against the sender leaf's signature
+     * key (quartz MlsGroup.kt: `verifyWithLabel(senderLeaf.signatureKey,
+     * "FramedContentTBS", …)`).
+     *
+     * The application key/nonce here are derived from the epoch's *shared*
+     * `encryptionSecret` (via [SecretTree]), which every group member — and any
+     * removed member who kept a prior [RetainedEpochSecrets] — possesses. The
+     * only thing that normally binds a message to a specific member is that
+     * signature. Because it is skipped, a holder of a retained epoch secret can
+     * forge an APPLICATION message with an arbitrary `senderLeafIndex`, and the
+     * downstream MIP-03 check in [processPrivateMessage] passes (the attacker
+     * simply sets the inner event's pubkey to match that leaf's identity).
+     *
+     * This CANNOT be fixed here: [RetainedEpochSecrets] carries only symmetric
+     * material (epoch, senderDataSecret, encryptionSecret, leafCount,
+     * exporterSecret) — no ratchet tree, no leaf signature keys, and no
+     * past-epoch groupContext — so the `FramedContentTBS` for a past epoch
+     * cannot be reconstructed or verified in the app.
+     *
+     * TODO(security): Fix in the quartz library — snapshot the epoch's ratchet
+     *  tree (or at least each leaf's signature key) and groupContext into
+     *  [RetainedEpochSecrets], and expose a verified `decryptWithRetainedSecrets`
+     *  that reuses the library's `buildApplicationFramedContentTbs` +
+     *  `verifyWithLabel` path. Until then this path trusts sender identity for
+     *  late prior-epoch messages.
+     */
     private fun tryDecryptWithRetainedEpoch(
         messageBytes: ByteArray,
         retained: RetainedEpochSecrets,

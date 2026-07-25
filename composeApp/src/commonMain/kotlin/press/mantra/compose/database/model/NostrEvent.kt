@@ -10,6 +10,7 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.crypto.verify
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.firstTaggedEvent
 import com.vitorpamplona.quartz.nip01Core.tags.events.taggedEvents
@@ -491,6 +492,14 @@ data class NostrEvent(
     companion object {
 
         fun fromEvent(event: Event, synchronizeNostrEventRequest: SynchronizeNostrEventRequest? = null): NostrEvent? = try {
+            // Relays are untrusted. Reject any event whose id doesn't match the
+            // canonical NIP-01 hash or whose Schnorr signature is invalid, so a
+            // malicious/compromised relay cannot inject forged events attributed
+            // to another pubkey (profile overwrites, fake notes/reactions, etc.).
+            // verify() == verifyId() && verifySignature().
+            if (!event.verify()) {
+                return null
+            }
             // TODO: Check for unsupported kind
             event.firstTaggedEvent()
 

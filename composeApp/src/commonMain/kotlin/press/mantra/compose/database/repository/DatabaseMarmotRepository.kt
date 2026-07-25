@@ -81,14 +81,25 @@ class DatabaseMarmotRepository(
         )
         logger.d("keyPackageEventId: $id")
 
+        // ⚠️ SECURITY / KNOWN VULNERABILITY (H1: MLS private keys stored in
+        //  plaintext at rest). Despite the `ncryptsec*` field names, the values
+        //  below are RAW hex private keys (MLS init / encryption / signature).
+        //  Any DB compromise — device backup, forensic extraction, another app
+        //  on a rooted/jailbroken device — yields the group's decryption and
+        //  signing keys, defeating E2E confidentiality and enabling
+        //  impersonation. The same applies to `mlsGroupState` persisted in
+        //  MarmotInboundManager.persistGroup (see the warning there).
+        //  TODO(security): Encrypt these at rest with a platform-backed
+        //   key-encryption-key (Android Keystore / iOS Keychain / a JVM secret
+        //   store) — the intended ncryptsec scheme — before this ships.
         database.marmotKeyPackageBundleDao().upsert(
             MarmotKeyPackageBundle(
                 id = id,
                 publicKey = publicKey,
                 tlsEncodedMarmotKeyPackage = bundle.keyPackage.toTlsBytes(),
-                ncryptsecInitPrivateKey = bundle.initPrivateKey.toHex(), // TODO: ncryptSec this using the private key
-                ncryptsecEncryptionPrivateKey = bundle.encryptionPrivateKey.toHex(), // TODO: ncryptSec this using the private key
-                ncryptsecSignaturePrivateKey = bundle.signaturePrivateKey.toHex() // TODO: ncryptSec this using the private key
+                ncryptsecInitPrivateKey = bundle.initPrivateKey.toHex(), // TODO(security): encrypt at rest, do not store raw
+                ncryptsecEncryptionPrivateKey = bundle.encryptionPrivateKey.toHex(), // TODO(security): encrypt at rest, do not store raw
+                ncryptsecSignaturePrivateKey = bundle.signaturePrivateKey.toHex() // TODO(security): encrypt at rest, do not store raw
             )
         )
     }
