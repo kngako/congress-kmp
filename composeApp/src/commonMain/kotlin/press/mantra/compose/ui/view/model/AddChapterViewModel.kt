@@ -56,7 +56,9 @@ class AddChapterViewModel(
         val originalText = originalTextField.text.toString()
 
         if (name.isBlank() || originalText.isBlank()) {
-            onFailure.invoke()
+            viewModelScope.launch(Dispatchers.Main) {
+                onFailure.invoke()
+            }
             return
         }
 
@@ -80,9 +82,13 @@ class AddChapterViewModel(
             if (chapter != null) {
                 nameField.clearText()
                 originalTextField.clearText()
-                onSuccess.invoke()
+                viewModelScope.launch(Dispatchers.Main) {
+                    onSuccess.invoke()
+                }
             } else {
-                onFailure.invoke()
+                viewModelScope.launch(Dispatchers.Main) {
+                    onFailure.invoke()
+                }
             }
 
             isActionPending.value = false
