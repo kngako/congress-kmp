@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -27,7 +28,8 @@ class ChatRoomDetailViewModel(
     val relayHint: String?,
     initialChatRoomDetailUIState: ChatRoomDetailUIState,
     val nostrRepository: NostrRepository,
-    val chatRepository: ChatRepository
+    val chatRepository: ChatRepository,
+    val mantraRepository: MantraRepository,
 ): ViewModel() {
 
     var chatRoomDetailUIState: ChatRoomDetailUIState by mutableStateOf(initialChatRoomDetailUIState)
@@ -51,7 +53,8 @@ class ChatRoomDetailViewModel(
                 ChatRoomDetailUIState.Error("Missing chat room")
             } else {
                 ChatRoomDetailUIState.Loaded(
-                    localChatRoom = localChatRoom
+                    localChatRoom = localChatRoom,
+                    artifacts = mantraRepository.getArtifacts(chatRoomId),
                 )
             }
         }
@@ -107,7 +110,8 @@ class ChatRoomDetailViewModel(
             relayHint: String?,
             initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
             nostrRepository: NostrRepository,
-            chatRepository: ChatRepository
+            chatRepository: ChatRepository,
+            mantraRepository: MantraRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatRoomDetailViewModel(
@@ -116,7 +120,8 @@ class ChatRoomDetailViewModel(
                     relayHint = relayHint,
                     initialChatRoomDetailUIState = initialChatRoomDetailUIState,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
+                    mantraRepository = mantraRepository,
                 )
             }
         }

@@ -21,6 +21,9 @@ class DatabaseMantraRepository(
 
     private val logger = Logger.withTag(TAG)
 
+    override suspend fun getArtifacts(chatRoomId: String): List<MantraArtifact> =
+        database.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
+
     override suspend fun getDialects(chatRoomId: String): List<MantraDialect> =
         database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
 

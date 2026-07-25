@@ -46,6 +46,7 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -67,6 +68,7 @@ fun ChatRoomDetailScreen(
     initialChatRoomDetailUIState: ChatRoomDetailUIState = ChatRoomDetailUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
+    mantraRepository: MantraRepository,
     onNavigateToRoute: (Route) -> Unit,
     onPopBackToRoute: (Route) -> Unit
 ) {
@@ -77,6 +79,7 @@ fun ChatRoomDetailScreen(
             initialChatRoomDetailUIState = initialChatRoomDetailUIState,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
+            mantraRepository = mantraRepository,
             activeUserPublicKey = activeUserPublicKey
         )
     )
@@ -135,8 +138,46 @@ fun ChatRoomDetailScreen(
                             )
                         }
 
-                        item {
-                            Text("No artifacts exists in this groups library.")
+                        if (chatRoomDetailUIState.artifacts.isEmpty()) {
+                            item {
+                                Text("No artifacts exists in this groups library.")
+                            }
+                        } else {
+                            items(
+                                items = chatRoomDetailUIState.artifacts,
+                                key = { artifact -> artifact.id }
+                            ) { artifact ->
+                                Card(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute(
+                                                "Artifact detail"
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.LibraryBooks,
+                                                contentDescription = "Artifact"
+                                            )
+                                        },
+                                        trailingContent = {
+                                            Icon(
+                                                Icons.Default.ChevronRight,
+                                                contentDescription = "View artifact"
+                                            )
+                                        },
+                                        headlineContent = {
+                                            Text(text = artifact.name)
+                                        },
+                                        supportingContent = {
+                                            Text(text = artifact.url)
+                                        }
+                                    )
+                                }
+                            }
                         }
 
                         item {
@@ -435,6 +476,7 @@ private fun ChatRoomMessagingScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 onNavigateToRoute = {},
                 onPopBackToRoute = {}
             )

@@ -1,6 +1,7 @@
 package press.mantra.compose.database.dao
 
 import androidx.room3.Dao
+import androidx.room3.Query
 import androidx.room3.Upsert
 import press.mantra.compose.database.model.MantraArtifact
 
@@ -8,4 +9,7 @@ import press.mantra.compose.database.model.MantraArtifact
 interface MantraArtifactDao {
     @Upsert
     suspend fun upsert(mantraArtifact: MantraArtifact)
+
+    @Query("SELECT * FROM MantraArtifact WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
+    suspend fun getArtifactsByChatRoomId(chatRoomId: String): List<MantraArtifact>
 }

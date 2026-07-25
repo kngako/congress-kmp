@@ -597,6 +597,7 @@ fun MantraNavHost(
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
+                mantraRepository = databaseMantraRepository,
                 onNavigateToRoute = { actionRoute ->
                     navController.navigate(
                         route = actionRoute
