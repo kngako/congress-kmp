@@ -39,6 +39,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -158,7 +159,18 @@ fun ArtifactDetailScreen(
                             items = artifactDetailUIState.chapters,
                             key = { chapter -> chapter.id }
                         ) { chapter ->
-                            Card {
+                            Card(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        ChapterDetailRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chapterId = chapter.id,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            ) {
                                 ListItem(
                                     leadingContent = {
                                         Icon(

@@ -39,6 +39,12 @@ class DatabaseMantraRepository(
     override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> =
         database.mantraChapterDao().getChaptersByArtifactId(artifactId)
 
+    override suspend fun getChapter(id: String): MantraChapter? =
+        database.mantraChapterDao().getChapterById(id)
+
+    override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> =
+        database.mantraChunkDao().getChunksByChapterId(chapterId)
+
     override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
         database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactId(artifactId)
 

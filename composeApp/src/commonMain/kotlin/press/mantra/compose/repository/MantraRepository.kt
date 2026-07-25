@@ -4,6 +4,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
+import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -16,6 +17,10 @@ interface MantraRepository {
     suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion>
 
     suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter>
+
+    suspend fun getChapter(id: String): MantraChapter?
+
+    suspend fun getChunksForChapter(chapterId: String): List<MantraChunk>
 
     suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
 
@@ -73,6 +78,10 @@ interface MantraRepository {
             override suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion> = emptyList()
 
             override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> = emptyList()
+
+            override suspend fun getChapter(id: String): MantraChapter? = null
+
+            override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> = emptyList()
 
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
