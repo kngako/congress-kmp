@@ -54,12 +54,14 @@ class DatabaseMantraRepository(
         val version = database.mantraArtifactVersionDao()
             .getArtifactVersionsByArtifactId(artifactId)
             .firstOrNull() ?: return null
+        val dialect = database.mantraDialectDao().getDialectById(dialectId) ?: return null
 
-        // The translation inherits the source artifact's name/visibility/license.
+        // The translation is named after its dialect, and inherits the source
+        // artifact's visibility/license.
         val translationVersionTemplate = TranslationArtifactVersionEvent.build(
             artifactVersionId = version.id,
             dialectId = dialectId,
-            name = artifact.name,
+            name = dialect.name,
             visibility = artifact.visibility,
             license = artifact.license,
         )

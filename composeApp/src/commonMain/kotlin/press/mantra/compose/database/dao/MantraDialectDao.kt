@@ -14,4 +14,7 @@ interface MantraDialectDao {
 
     @Query("SELECT * FROM MantraDialect WHERE chatRoomId = :chatRoomId ORDER BY name")
     suspend fun getDialectsByChatRoomId(chatRoomId: String): List<MantraDialect>
+
+    @Query("SELECT * FROM MantraDialect WHERE id = :id")
+    suspend fun getDialectById(id: String): MantraDialect?
 }
