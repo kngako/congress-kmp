@@ -65,7 +65,10 @@ class AddTranslationViewModel(
         val creatingNewDialect = existingDialectId.isNullOrBlank()
         val newDialectIncomplete = dialectName.isBlank() || dialectCountry.isBlank() || dialectLanguage.isBlank()
         if (creatingNewDialect && newDialectIncomplete) {
-            onFailure.invoke()
+            viewModelScope.launch(Dispatchers.Main) {
+                onFailure.invoke()
+            }
+
             return
         }
 
@@ -102,9 +105,15 @@ class AddTranslationViewModel(
                 dialectNameField.clearText()
                 dialectCountryField.clearText()
                 dialectLanguageField.clearText()
-                onSuccess.invoke()
+                viewModelScope.launch(Dispatchers.Main) {
+                    onSuccess.invoke()
+                }
+
             } else {
-                onFailure.invoke()
+                viewModelScope.launch(Dispatchers.Main) {
+                    onFailure.invoke()
+                }
+
             }
 
             isActionPending.value = false
