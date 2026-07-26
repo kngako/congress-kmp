@@ -45,7 +45,8 @@ interface NostrRepository {
     suspend fun createNewProfile(
         publicKey: HexKey,
         name: String?,
-        biography: String?
+        biography: String?,
+        onCompletion: suspend () -> Unit
     )
 
     suspend fun signInToProfile(
@@ -190,7 +191,8 @@ interface NostrRepository {
             override suspend fun createNewProfile(
                 publicKey: HexKey,
                 name: String?,
-                biography: String?
+                biography: String?,
+                onCompletion: suspend () -> Unit
             ) {
                 TODO("")
             }

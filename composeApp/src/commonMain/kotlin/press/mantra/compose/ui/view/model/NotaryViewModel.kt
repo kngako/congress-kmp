@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.NostrEvent
 import kotlin.time.Instant
 
 class NotaryViewModel(
@@ -99,7 +100,7 @@ class NotaryViewModel(
 
                         nostrRepository.publishNostrEvent(
                             unsignedNostrEvent,
-                            _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                            NostrEvent(
                                 id = event.id,
                                 pubKey = event.pubKey,
                                 kind = event.kind,

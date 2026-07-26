@@ -53,7 +53,7 @@ class ShareProfileViewModel(
 
     fun rebroadcastProfile(localNostrEvent: LocalNostrEvent) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Rebroadcast
+            // Rebroadcast localNostrEvent and relays
             nostrRepository.rescheduleBroadcastNostrEventRequests(
                 Relays.eventFinderRelaySet.map {
                     BroadcastNostrEventRequest(

@@ -111,8 +111,11 @@ class DatabaseNostrRepository(
     override suspend fun createNewProfile(
         publicKey: HexKey,
         name: String?,
-        biography: String?
+        biography: String?,
+        onCompletion: suspend () -> Unit
     ) {
+        logger.d("createNewProfile: $publicKey")
+
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
             about = biography,
@@ -202,6 +205,8 @@ class DatabaseNostrRepository(
         )
 
         saveUnsignedNostrEvents(unsignedNostrEvents)
+
+        onCompletion.invoke()
     }
 
     override suspend fun signInToProfile(
@@ -356,7 +361,6 @@ class DatabaseNostrRepository(
 
     override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) {
         logger.d("saveUnsignedNostrEvents: $unsignedNostrEvents")
-        delay(2_100)
 
         database.unsignedNostrEventDao().insert(
             unsignedNostrEvents

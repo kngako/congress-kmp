@@ -24,7 +24,9 @@ import fr.acinq.phoenix.utils.MnemonicLanguage
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class CreateProfileViewModel(
     val initialCreateProfileUIState: CreateProfileUIState,
@@ -106,15 +108,19 @@ class CreateProfileViewModel(
 
             val pubkey = localKeyManager.nostrPublicKey()
 
+            logger.d("Pubkey: $pubkey" )
             nostrRepository.createNewProfile(
                 pubkey,
                 name = createProfileFormState.nameField.textFieldState.text.toString(),
-                biography = createProfileFormState.biographyField.textFieldState.text.toString()
-            )
+                biography = createProfileFormState.biographyField.textFieldState.text.toString(),
+                onCompletion = {
+                    logger.d("Created: $pubkey" )
 
-            marmotRepository.publishMarmotKeyPackageBundle(
-                publicKey = pubkey,
-                nsecPassword = localKeyManager.nsecPassword()
+                    marmotRepository.publishMarmotKeyPackageBundle(
+                        publicKey = pubkey,
+                        nsecPassword = localKeyManager.nsecPassword()
+                    )
+                }
             )
         }
     }

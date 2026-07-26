@@ -330,6 +330,7 @@ abstract class NostrDao(
         }
 
         nostrEvent.toProfile()?.let { profile ->
+            logger.d("Profile: $profile")
             database.profileDao().upsert(profile)
         }
 
