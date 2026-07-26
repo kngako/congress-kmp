@@ -38,10 +38,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.widgets.DetailRow
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.TranslationDetailRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ArtifactDetailViewModel
@@ -228,7 +230,18 @@ fun ArtifactDetailScreen(
                             items = artifactDetailUIState.translations,
                             key = { translation -> translation.id }
                         ) { translation ->
-                            Card {
+                            Card(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        TranslationDetailRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            translationArtifactVersionId = translation.id,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            ) {
                                 ListItem(
                                     leadingContent = {
                                         Icon(
@@ -292,14 +305,6 @@ fun ArtifactDetailScreen(
             artifactDetailViewModel.initiateArtifactDetail()
         }
     }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    ListItem(
-        overlineContent = { Text(label) },
-        headlineContent = { Text(value) }
-    )
 }
 
 @Preview

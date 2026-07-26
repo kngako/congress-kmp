@@ -54,12 +54,14 @@ class DatabaseMantraRepository(
         val version = database.mantraArtifactVersionDao()
             .getArtifactVersionsByArtifactId(artifactId)
             .firstOrNull() ?: return null
+        val dialect = database.mantraDialectDao().getDialectById(dialectId) ?: return null
 
-        // The translation inherits the source artifact's name/visibility/license.
+        // The translation is named after its dialect, and inherits the source
+        // artifact's visibility/license.
         val translationVersionTemplate = TranslationArtifactVersionEvent.build(
             artifactVersionId = version.id,
             dialectId = dialectId,
-            name = artifact.name,
+            name = dialect.name,
             visibility = artifact.visibility,
             license = artifact.license,
         )
@@ -155,6 +157,15 @@ class DatabaseMantraRepository(
 
     override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
         database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactId(artifactId)
+
+    override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? =
+        database.mantraTranslationArtifactVersionDao().getTranslationById(id)
+
+    override suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter> =
+        database.mantraTranslationChapterDao().getTranslationChaptersByTranslationArtifactVersionId(translationArtifactVersionId)
+
+    override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> =
+        database.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(translationChapterId)
 
     override suspend fun addChapter(
         artifactId: String,
