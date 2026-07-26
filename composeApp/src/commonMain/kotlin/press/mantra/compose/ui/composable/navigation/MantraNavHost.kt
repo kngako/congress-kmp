@@ -95,14 +95,14 @@ import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
-import press.mantra.compose.ui.composable.navigation.routes.TranslationDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.AddTranslationScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
 import press.mantra.compose.ui.composable.TranslationChapterScreen
-import press.mantra.compose.ui.composable.TranslationDetailScreen
+import press.mantra.compose.ui.composable.TranslationArtifactVersionDetailScreen
 
 @Composable
 fun MantraNavHost(
@@ -722,10 +722,10 @@ fun MantraNavHost(
                 }
             )
         }
-        composable<TranslationDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TranslationDetailRoute>()
+        composable<TranslationArtifactVersionDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<TranslationArtifactVersionDetailRoute>()
 
-            TranslationDetailScreen(
+            TranslationArtifactVersionDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 translationArtifactVersionId = route.translationArtifactVersionId,
                 chatRoomId = route.chatRoomId,

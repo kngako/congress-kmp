@@ -39,34 +39,34 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRo
 import press.mantra.compose.ui.composable.widgets.DetailRow
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
-import press.mantra.compose.ui.view.model.TranslationDetailViewModel
-import press.mantra.compose.ui.view.state.TranslationDetailUIState
+import press.mantra.compose.ui.view.model.TranslationArtifactVersionDetailViewModel
+import press.mantra.compose.ui.view.state.TranslationArtifactVersionDetailUIState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslationDetailScreen(
+fun TranslationArtifactVersionDetailScreen(
     activeUserPublicKey: HexKey,
     translationArtifactVersionId: String,
     chatRoomId: String,
     relayHint: String?,
-    initialTranslationDetailUIState: TranslationDetailUIState = TranslationDetailUIState.Loading,
+    initialTranslationArtifactVersionDetailUIState: TranslationArtifactVersionDetailUIState = TranslationArtifactVersionDetailUIState.Loading,
     mantraRepository: MantraRepository,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
-    val translationDetailViewModel: TranslationDetailViewModel = viewModel(
-        factory = TranslationDetailViewModel.factory(
+    val translationDetailViewModel: TranslationArtifactVersionDetailViewModel = viewModel(
+        factory = TranslationArtifactVersionDetailViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             translationArtifactVersionId = translationArtifactVersionId,
             chatRoomId = chatRoomId,
             relayHint = relayHint,
-            initialTranslationDetailUIState = initialTranslationDetailUIState,
+            initialTranslationArtifactVersionDetailUIState = initialTranslationArtifactVersionDetailUIState,
             mantraRepository = mantraRepository,
         )
     )
 
     when (val translationDetailUIState = translationDetailViewModel.translationDetailUIState) {
-        is TranslationDetailUIState.Error -> {
+        is TranslationArtifactVersionDetailUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -76,7 +76,7 @@ fun TranslationDetailScreen(
             }
         }
 
-        is TranslationDetailUIState.Loaded -> {
+        is TranslationArtifactVersionDetailUIState.Loaded -> {
             val translation = translationDetailUIState.translation
             Scaffold(
                 topBar = {
@@ -163,7 +163,7 @@ fun TranslationDetailScreen(
             }
         }
 
-        TranslationDetailUIState.Loading -> {
+        TranslationArtifactVersionDetailUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -182,23 +182,23 @@ fun TranslationDetailScreen(
     }
 
     LaunchedEffect(true) {
-        if (initialTranslationDetailUIState == TranslationDetailUIState.Loading) {
-            translationDetailViewModel.initiateTranslationDetail()
+        if (initialTranslationArtifactVersionDetailUIState == TranslationArtifactVersionDetailUIState.Loading) {
+            translationDetailViewModel.initiateTranslationArtifactVersionDetail()
         }
     }
 }
 
 @Preview
 @Composable
-private fun TranslationDetailScreenPreview() {
+private fun TranslationArtifactVersionDetailScreenPreview() {
     TorchTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            TranslationDetailScreen(
+            TranslationArtifactVersionDetailScreen(
                 activeUserPublicKey = "",
                 translationArtifactVersionId = "translationId",
                 chatRoomId = "chatRoomId",
                 relayHint = null,
-                initialTranslationDetailUIState = TranslationDetailUIState.Loaded(
+                initialTranslationArtifactVersionDetailUIState = TranslationArtifactVersionDetailUIState.Loaded(
                     translation = MantraTranslationArtifactVersion(
                         id = "translationId",
                         publicKey = "author",
