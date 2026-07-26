@@ -104,50 +104,6 @@ fun ArtifactDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Details
-                    item {
-                        Text(
-                            text = "Details",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    item {
-                        Card {
-                            DetailRow(label = "Name", value = artifact.name)
-                            DetailRow(label = "Url", value = artifact.url)
-                            DetailRow(label = "Visibility", value = artifact.visibility)
-                            DetailRow(label = "License", value = artifact.license)
-                            DetailRow(label = "Dialect", value = artifact.dialectId)
-                            DetailRow(label = "Author", value = artifact.publicKey)
-                            DetailRow(label = "Created", value = artifact.createdAt.toString())
-                        }
-                    }
-
-                    // Versions
-                    item {
-                        Text(
-                            text = "Versions",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    if (artifactDetailUIState.versions.isEmpty()) {
-                        item { Text("No versions.") }
-                    } else {
-                        items(
-                            items = artifactDetailUIState.versions,
-                            key = { version -> version.id }
-                        ) { version ->
-                            Card {
-                                ListItem(
-                                    headlineContent = { Text(version.versionLabel) },
-                                    overlineContent = { Text("Version") }
-                                )
-                            }
-                        }
-                    }
-
-                    item { HorizontalDivider() }
-
                     // Chapters
                     item {
                         Text(
@@ -276,6 +232,50 @@ fun ArtifactDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text("Add Translation")
+                        }
+                    }
+
+                    item { HorizontalDivider() }
+
+                    // Details
+                    item {
+                        Text(
+                            text = "Details",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    item {
+                        Card {
+                            DetailRow(label = "Name", value = artifact.name)
+                            DetailRow(label = "Url", value = artifact.url)
+                            DetailRow(label = "Visibility", value = artifact.visibility)
+                            DetailRow(label = "License", value = artifact.license)
+                            DetailRow(label = "Dialect", value = artifact.dialectId)
+                            DetailRow(label = "Author", value = artifact.publicKey)
+                            DetailRow(label = "Created", value = artifact.createdAt.toString())
+                        }
+                    }
+
+                    // Versions
+                    item {
+                        Text(
+                            text = "Versions",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    if (artifactDetailUIState.versions.isEmpty()) {
+                        item { Text("No versions.") }
+                    } else {
+                        items(
+                            items = artifactDetailUIState.versions,
+                            key = { version -> version.id }
+                        ) { version ->
+                            Card {
+                                ListItem(
+                                    headlineContent = { Text(version.versionLabel) },
+                                    overlineContent = { Text("Version") }
+                                )
+                            }
                         }
                     }
                 }
