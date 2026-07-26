@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -23,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -37,6 +40,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslationChapterViewModel
@@ -52,6 +57,7 @@ fun TranslationChapterScreen(
     relayHint: String?,
     initialTranslationChapterUIState: TranslationChapterUIState = TranslationChapterUIState.Loading,
     mantraRepository: MantraRepository,
+    onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val translationChapterViewModel: TranslationChapterViewModel = viewModel(
@@ -128,7 +134,20 @@ fun TranslationChapterScreen(
                             items = translationChapterUIState.rows,
                             key = { pair -> pair.originalChunk.id }
                         ) { pair ->
-                            ChunkTranslationRow(pair)
+                            ChunkTranslationRow(
+                                pair = pair,
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        TranslateChunkRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            translationChapterId = translationChapterId,
+                                            chunkId = pair.originalChunk.id,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            )
                             HorizontalDivider()
                         }
                     }
@@ -162,18 +181,35 @@ fun TranslationChapterScreen(
 }
 
 @Composable
-private fun ChunkTranslationRow(pair: ChunkTranslationPair) {
+private fun ChunkTranslationRow(
+    pair: ChunkTranslationPair,
+    onClick: () -> Unit,
+) {
     val translated = pair.translationChunk?.text?.takeIf { it.isNotBlank() }
     TableRow(
         left = { Text(pair.originalChunk.text) },
         right = {
-            if (translated != null) {
-                Text(translated)
-            } else {
-                // No translation yet: show the original as a greyed-out placeholder.
+            // The translation cell is a button that opens the chunk translation
+            // editor. When there is no translation yet, the original text is
+            // shown greyed out as a placeholder.
+            TextButton(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
                 Text(
-                    text = pair.originalChunk.text,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    modifier = Modifier.weight(1f),
+                    text = translated ?: pair.originalChunk.text,
+                    color = if (translated != null) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    }
+                )
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Translate this chunk",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -219,6 +255,7 @@ private fun TranslationChapterScreenPreview() {
                     )
                 ),
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                onNavigateToRoute = {},
                 onNavigateBack = {}
             )
         }
