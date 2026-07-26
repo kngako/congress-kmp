@@ -97,27 +97,6 @@ fun TranslationArtifactVersionDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Details
-                    item {
-                        Text(
-                            text = "Details",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    item {
-                        Card {
-                            DetailRow(label = "Name", value = translation.name)
-                            DetailRow(label = "Dialect", value = translation.dialectId)
-                            DetailRow(label = "Visibility", value = translation.visibility)
-                            DetailRow(label = "License", value = translation.license)
-                            DetailRow(label = "Source version", value = translation.artifactVersionId)
-                            DetailRow(label = "Author", value = translation.publicKey)
-                            DetailRow(label = "Created", value = translation.createdAt.toString())
-                        }
-                    }
-
-                    item { HorizontalDivider() }
-
                     // Chapters with translation progress
                     item {
                         Text(
@@ -157,6 +136,27 @@ fun TranslationArtifactVersionDetailScreen(
                                     }
                                 )
                             }
+                        }
+                    }
+
+                    item { HorizontalDivider() }
+
+                    // Details
+                    item {
+                        Text(
+                            text = "Details",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    item {
+                        Card {
+                            DetailRow(label = "Name", value = translation.name)
+                            DetailRow(label = "Dialect", value = translation.dialectId)
+                            DetailRow(label = "Visibility", value = translation.visibility)
+                            DetailRow(label = "License", value = translation.license)
+                            DetailRow(label = "Source version", value = translation.artifactVersionId)
+                            DetailRow(label = "Author", value = translation.publicKey)
+                            DetailRow(label = "Created", value = translation.createdAt.toString())
                         }
                     }
                 }
