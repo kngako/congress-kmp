@@ -14,4 +14,7 @@ interface MarmotInnerEventDao {
 
     @Upsert
     suspend fun upsert(marmotInnerEvent: MarmotInnerEvent)
+
+    @Query("DELETE FROM MarmotInnerEvent WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

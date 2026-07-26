@@ -14,4 +14,7 @@ interface MantraChunkDao {
 
     @Query("SELECT * FROM MantraChunk WHERE chapterId = :chapterId ORDER BY `index` ASC")
     suspend fun getChunksByChapterId(chapterId: String): List<MantraChunk>
+
+    @Query("SELECT * FROM MantraChunk WHERE id = :id")
+    suspend fun getChunkById(id: String): MantraChunk?
 }

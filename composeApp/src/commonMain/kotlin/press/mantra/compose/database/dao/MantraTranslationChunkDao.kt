@@ -14,4 +14,7 @@ interface MantraTranslationChunkDao {
 
     @Query("SELECT * FROM MantraTranslationChunk WHERE translationChapterId = :translationChapterId ORDER BY `index` ASC")
     suspend fun getTranslationChunksByTranslationChapterId(translationChapterId: String): List<MantraTranslationChunk>
+
+    @Query("DELETE FROM MantraTranslationChunk WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

@@ -26,6 +26,22 @@ interface MantraRepository {
 
     suspend fun getChunksForChapter(chapterId: String): List<MantraChunk>
 
+    suspend fun getChunk(id: String): MantraChunk?
+
+    /**
+     * Create or replace the translation of a source chunk within a translation
+     * chapter. Any existing translation chunk for the same (translationChapterId,
+     * chunkId) is replaced. Returns the saved chunk, or null if the source chunk
+     * can't be found.
+     */
+    suspend fun saveTranslationChunk(
+        translationChapterId: String,
+        chunkId: String,
+        text: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MantraTranslationChunk?
+
     suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
 
     suspend fun getTranslation(id: String): MantraTranslationArtifactVersion?
@@ -112,6 +128,16 @@ interface MantraRepository {
             override suspend fun getChapter(id: String): MantraChapter? = null
 
             override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> = emptyList()
+
+            override suspend fun getChunk(id: String): MantraChunk? = null
+
+            override suspend fun saveTranslationChunk(
+                translationChapterId: String,
+                chunkId: String,
+                text: String,
+                chatRoomId: String,
+                userPublicKey: HexKey,
+            ): MantraTranslationChunk? = null
 
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
