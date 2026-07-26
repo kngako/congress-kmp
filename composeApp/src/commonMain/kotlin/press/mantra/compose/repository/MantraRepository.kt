@@ -7,6 +7,8 @@ import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
+import press.mantra.compose.database.model.MantraTranslationChapter
+import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
 
 interface MantraRepository {
@@ -23,6 +25,12 @@ interface MantraRepository {
     suspend fun getChunksForChapter(chapterId: String): List<MantraChunk>
 
     suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
+
+    suspend fun getTranslation(id: String): MantraTranslationArtifactVersion?
+
+    suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter>
+
+    suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk>
 
     /**
      * Start a translation of the artifact into the given dialect: creates a
@@ -98,6 +106,12 @@ interface MantraRepository {
             override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> = emptyList()
 
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
+
+            override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? = null
+
+            override suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter> = emptyList()
+
+            override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> = emptyList()
 
             override suspend fun addTranslation(
                 artifactId: String,

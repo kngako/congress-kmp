@@ -23,4 +23,7 @@ interface MantraTranslationArtifactVersionDao {
         """
     )
     suspend fun getTranslationsByArtifactId(artifactId: String): List<MantraTranslationArtifactVersion>
+
+    @Query("SELECT * FROM MantraTranslationArtifactVersion WHERE id = :id")
+    suspend fun getTranslationById(id: String): MantraTranslationArtifactVersion?
 }

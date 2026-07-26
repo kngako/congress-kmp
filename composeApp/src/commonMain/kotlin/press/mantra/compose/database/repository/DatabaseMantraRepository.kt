@@ -158,6 +158,15 @@ class DatabaseMantraRepository(
     override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
         database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactId(artifactId)
 
+    override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? =
+        database.mantraTranslationArtifactVersionDao().getTranslationById(id)
+
+    override suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter> =
+        database.mantraTranslationChapterDao().getTranslationChaptersByTranslationArtifactVersionId(translationArtifactVersionId)
+
+    override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> =
+        database.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(translationChapterId)
+
     override suspend fun addChapter(
         artifactId: String,
         name: String,

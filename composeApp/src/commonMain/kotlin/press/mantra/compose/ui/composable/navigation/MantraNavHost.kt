@@ -93,10 +93,12 @@ import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.TranslationDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.AddTranslationScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
+import press.mantra.compose.ui.composable.TranslationDetailScreen
 
 @Composable
 fun MantraNavHost(
@@ -708,6 +710,20 @@ fun MantraNavHost(
             ChapterDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 chapterId = route.chapterId,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                mantraRepository = databaseMantraRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable<TranslationDetailRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<TranslationDetailRoute>()
+
+            TranslationDetailScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                translationArtifactVersionId = route.translationArtifactVersionId,
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
