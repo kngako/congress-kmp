@@ -368,11 +368,12 @@ fun MantraNavHost(
                 },
                 nostrRepository = databaseNostrRepository,
                 marmotRepository = databaseMarmotRepository,
-                writeSeed = { words ->
+                writeSeed = { words, onSeedWritten, onSeedWriteError ->
                     sovereignWalletViewModel.writeSeed(
                         words,
                         isRestoringWallet = false,
                         onSeedWritten = { walletId ->
+                            onSeedWritten()
 
                             sovereignWalletViewModel.loadSovereignData(walletId)
                             sovereignWalletViewModel.listAvailableWallets {
@@ -381,7 +382,8 @@ fun MantraNavHost(
                                     route = SovereignWalletStartupRoute
                                 )
                             }
-                        }
+                        },
+                        onSeedWriteError = { onSeedWriteError() }
                     )
                 }
             )

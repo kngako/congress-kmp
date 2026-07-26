@@ -234,8 +234,13 @@ class SovereignWalletViewModel(
     fun writeSeed(
         mnemonics: List<String>,
         isRestoringWallet: Boolean,
-        onSeedWritten: (WalletId) -> Unit
+        onSeedWritten: (WalletId) -> Unit,
+        onSeedWriteError: (WritingSeedState.Error) -> Unit = {}
     ) {
+        if (writingState is WritingSeedState.Error || writingState is WritingSeedState.WrittenToDisk) {
+            // A previous attempt finished; reset so platformWriteSeed does not silently skip this one.
+            writingState = WritingSeedState.Init
+        }
         platformWriteSeed(
             log = log,
             phoenixGlobal = phoenixGlobal,
@@ -245,6 +250,7 @@ class SovereignWalletViewModel(
             mnemonics = mnemonics,
             onWritingSeedError = { writingSeedStateError ->
                 writingState = writingSeedStateError
+                onSeedWriteError(writingSeedStateError)
             },
             onWritingSeedStateWriting = { writing ->
                 writingState = writing
@@ -253,6 +259,7 @@ class SovereignWalletViewModel(
             isTorEnabled = isTorEnabled.value,
             customElectrumServer = customElectrumServer.value,
             onSeedWritten = { walletId ->
+                writingState = WritingSeedState.WrittenToDisk(walletId)
                 onSeedWritten(walletId)
             }
         )

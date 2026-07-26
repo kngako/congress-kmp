@@ -114,7 +114,6 @@ actual fun platformWriteSeed(
                 val newSeedMap = existingSeeds + (newWalletId to mnemonics)
                 val encrypted = EncryptedSeed.V2.encrypt(newSeedMap)
                 SeedManager.writeSeedToDisk(phoenixGlobal, encrypted, overwrite = true)
-                onSeedWritten.invoke(newWalletId)
                 if (isRestoringWallet) {
                     log.i("successfully restored wallet=$newWalletId")
                 } else {

@@ -12,7 +12,6 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.view.state.CreateProfileUIState
 import press.mantra.compose.ui.view.state.form.CreateProfileFormState
 import co.touchlab.kermit.Logger
-import fr.acinq.bitcoin.Chain
 import fr.acinq.bitcoin.MnemonicCode
 import fr.acinq.bitcoin.byteVector
 import fr.acinq.lightning.Lightning
@@ -79,48 +78,67 @@ class CreateProfileViewModel(
     }
 
 
+    private fun failProfileCreation(e: Throwable? = null) {
+        if (e != null) {
+            logger.e("error when creating new profile: ", e)
+        } else {
+            logger.e { "seed write failed, aborting profile creation" }
+        }
+        createProfileUIState.value = CreateProfileUIState.Error
+        isActionPending.value = false
+    }
+
     fun createAccount(
-        writeSeed: (List<String>) -> Unit
-//        onNavigateToUnsignedProfile: (UnsignedProfileRoute) -> Unit,
-//        onNavigateToUnannouncedProfile: (UnannouncedProfileRoute) -> Unit
+        writeSeed: (mnemonics: List<String>, onSeedWritten: () -> Unit, onSeedWriteError: () -> Unit) -> Unit
     ) {
         logger.d { "createAccount" }
+        if (isActionPending.value) return
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO + CoroutineExceptionHandler { _, e ->
-            logger.e("error when creating new wallet: ", e)
-            throw e
+            failProfileCreation(e)
         }) {
-            // TODO: Generate a new profile...
             logger.d("generating new wallet...")
             val entropy = Lightning.randomBytes(16)
             val mnemonics = MnemonicCode.toMnemonics(
                 entropy = entropy,
                 wordlist = MnemonicLanguage.English.wordlist()
             )
-            writeSeed(mnemonics)
 
             val localKeyManager = LocalKeyManager(
                 seed = MnemonicCode.toSeed(mnemonics, "").byteVector(),
-                chain = Chain.Mainnet,
-                remoteSwapInExtendedPublicKey =  NodeParamsManager.remoteSwapInXpub
+                chain = NodeParamsManager.chain,
+                remoteSwapInExtendedPublicKey = NodeParamsManager.remoteSwapInXpub
             )
 
             val pubkey = localKeyManager.nostrPublicKey()
 
             logger.d("Pubkey: $pubkey" )
-            nostrRepository.createNewProfile(
-                pubkey,
-                name = createProfileFormState.nameField.textFieldState.text.toString(),
-                biography = createProfileFormState.biographyField.textFieldState.text.toString(),
-                onCompletion = {
-                    logger.d("Created: $pubkey" )
 
-                    marmotRepository.publishMarmotKeyPackageBundle(
-                        publicKey = pubkey,
-                        nsecPassword = localKeyManager.nsecPassword()
-                    )
-                }
+            // Only create the profile events once the seed backing this pubkey is safely
+            // on disk; otherwise the notary could never sign them.
+            writeSeed(
+                mnemonics,
+                {
+                    viewModelScope.launch(Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+                        failProfileCreation(e)
+                    }) {
+                        nostrRepository.createNewProfile(
+                            pubkey,
+                            name = createProfileFormState.nameField.textFieldState.text.toString(),
+                            biography = createProfileFormState.biographyField.textFieldState.text.toString(),
+                            onCompletion = {
+                                logger.d("Created: $pubkey" )
+
+                                marmotRepository.publishMarmotKeyPackageBundle(
+                                    publicKey = pubkey,
+                                    nsecPassword = localKeyManager.nsecPassword()
+                                )
+                            }
+                        )
+                    }
+                },
+                { failProfileCreation() }
             )
         }
     }

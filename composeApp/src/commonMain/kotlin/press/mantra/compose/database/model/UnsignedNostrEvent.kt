@@ -43,9 +43,13 @@ data class UnsignedNostrEvent(
         other as UnsignedNostrEvent
 
         if (id != other.id) return false
+        if (pubKey != other.pubKey) return false
         if (kind != other.kind) return false
         if (!tags.contentDeepEquals(other.tags)) return false
+        if (privateTags == null != (other.privateTags == null)) return false
+        if (privateTags != null && !privateTags.contentDeepEquals(other.privateTags)) return false
         if (content != other.content) return false
+        if (signedAt != other.signedAt) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
         if (savedAt != other.savedAt) return false
@@ -57,9 +61,12 @@ data class UnsignedNostrEvent(
 
     override fun hashCode(): Int {
         var result = id.hashCode()
+        result = 31 * result + pubKey.hashCode()
         result = 31 * result + kind
         result = 31 * result + tags.contentDeepHashCode()
+        result = 31 * result + (privateTags?.contentDeepHashCode() ?: 0)
         result = 31 * result + content.hashCode()
+        result = 31 * result + (signedAt?.hashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         result = 31 * result + savedAt.hashCode()

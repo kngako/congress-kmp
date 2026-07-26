@@ -42,7 +42,7 @@ fun CreateProfileScreen(
     onNavigateToEndThis: () -> Unit,
     nostrRepository: press.mantra.compose.repository.NostrRepository,
     marmotRepository: MarmotRepository,
-    writeSeed: (List<String>) -> Unit
+    writeSeed: (mnemonics: List<String>, onSeedWritten: () -> Unit, onSeedWriteError: () -> Unit) -> Unit
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
         factory = CreateProfileViewModel.factory(
@@ -129,7 +129,7 @@ fun CreateProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "Name (eg. Alan Turin)",
+                                    text = "Name (eg. Alan Turing)",
                                     maxLines = 1,
                                 )
                             },
@@ -395,7 +395,7 @@ fun CreateAccountScreenPreview() {
 //                        )
 //                    ),
                 onNavigateToEndThis = {},
-                writeSeed = {},
+                writeSeed = { _, _, _ -> },
                 nostrRepository = press.mantra.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 marmotRepository = MarmotRepository.NO_OP_MARMOT_KEY_PACKAGE_BUNDLE
             )
