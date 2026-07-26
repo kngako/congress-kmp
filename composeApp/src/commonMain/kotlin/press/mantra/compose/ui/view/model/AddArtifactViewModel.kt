@@ -69,7 +69,7 @@ class AddArtifactViewModel(
         dialectLanguageField: TextFieldState,
         visibility: String = MantraRepository.DEFAULT_VISIBILITY,
         license: String = MantraRepository.DEFAULT_LICENSE,
-        onSuccess: () -> Unit,
+        onSuccess: (artifactId: String) -> Unit,
         onFailure: () -> Unit
     ) {
         val name = nameField.text.toString()
@@ -132,7 +132,7 @@ class AddArtifactViewModel(
                 dialectLanguageField.clearText()
 
                 viewModelScope.launch(Dispatchers.Main) {
-                    onSuccess.invoke()
+                    onSuccess.invoke(marmotInnerEvent.id)
                 }
             } else {
                 viewModelScope.launch(Dispatchers.Main) {

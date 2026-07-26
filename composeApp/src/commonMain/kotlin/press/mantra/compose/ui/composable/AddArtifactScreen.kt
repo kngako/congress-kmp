@@ -60,6 +60,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.view.model.AddArtifactViewModel
 import press.mantra.compose.ui.view.state.AddArtifactUIState
@@ -141,9 +142,16 @@ fun AddArtifactScreen(
                                         dialectNameField = dialectNameFieldState,
                                         dialectCountryField = dialectCountryFieldState,
                                         dialectLanguageField = dialectLanguageFieldState,
-                                        onSuccess = {
-                                            onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Add Artifact")
+                                        onSuccess = { artifactId ->
+                                            // Open the newly created artifact, removing this
+                                            // add screen from the back stack.
+                                            onNavigateToRouteAndPopUpInclusive.invoke(
+                                                ArtifactDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    artifactId = artifactId,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
                                             )
                                         },
                                         onFailure = {
