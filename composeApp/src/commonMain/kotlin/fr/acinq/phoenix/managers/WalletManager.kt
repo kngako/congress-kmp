@@ -110,11 +110,13 @@ fun LocalKeyManager.nostrPrivateKey(): PrivateKey {
     return derivePrivateKey(path).privateKey
 }
 
-fun LocalKeyManager.nsecPassword(): String {
+fun PrivateKey.nsecPassword(): String {
     return Crypto.hash160(
-        nostrPrivateKey().value
+        value
     ).byteVector().toHex()
 }
+
+fun LocalKeyManager.nsecPassword(): String = nostrPrivateKey().nsecPassword()
 
 fun LocalKeyManager.nostrPublicKey(): HexKey {
     return KeyPair(
