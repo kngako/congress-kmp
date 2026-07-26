@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -112,40 +113,53 @@ fun MantraNavHost(
 ) {
     val logger = Logger.withTag("MantraNavHost")
 
-    val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        logger.e("Caught exception: ${throwable.message}", throwable)
+    val exceptionHandler = remember {
+        CoroutineExceptionHandler { _, throwable ->
+            logger.e("Caught exception: ${throwable.message}", throwable)
+        }
     }
 
-    val applicationIOScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
-    val applicationMainScope = CoroutineScope(Dispatchers.Main)
+    val applicationIOScope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler) }
+    val applicationMainScope = remember { CoroutineScope(Dispatchers.Main) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val auxDatabaseManager =
+    val auxDatabaseManager = remember {
         AuxDatabaseManager(mantraGlobal)
+    }
 
-    val databaseNostrRepository = DatabaseNostrRepository(
-        database = auxDatabaseManager.auxDatabase,
-        applicationIOScope
-    )
+    val databaseNostrRepository = remember {
+        DatabaseNostrRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
 
-    val databaseChatRepository = DatabaseChatRepository(
-        database = auxDatabaseManager.auxDatabase,
-        applicationIOScope
-    )
+    val databaseChatRepository = remember {
+        DatabaseChatRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
 
-    val databaseMarmotRepository = DatabaseMarmotRepository(
-        database = auxDatabaseManager.auxDatabase,
-        applicationIOScope
-    )
-    val databaseMantraRepository = DatabaseMantraRepository(
-        database = auxDatabaseManager.auxDatabase,
-        applicationIOScope
-    )
+    val databaseMarmotRepository = remember {
+        DatabaseMarmotRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
+    val databaseMantraRepository = remember {
+        DatabaseMantraRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
 
-    val searchRepository = DatabaseSearchRepository(
-        database = auxDatabaseManager.auxDatabase
-    )
+    val searchRepository = remember {
+        DatabaseSearchRepository(
+            database = auxDatabaseManager.auxDatabase
+        )
+    }
 
     val sovereignWalletViewModel: SovereignWalletViewModel = viewModel(
         factory = SovereignWalletViewModel.factory(
