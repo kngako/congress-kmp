@@ -43,7 +43,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
-import press.mantra.compose.ui.composable.navigation.routes.TranslationDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ArtifactDetailViewModel
@@ -233,7 +233,7 @@ fun ArtifactDetailScreen(
                             Card(
                                 onClick = {
                                     onNavigateToRoute.invoke(
-                                        TranslationDetailRoute(
+                                        TranslationArtifactVersionDetailRoute(
                                             activeUserPublicKey = activeUserPublicKey,
                                             translationArtifactVersionId = translation.id,
                                             chatRoomId = chatRoomId,

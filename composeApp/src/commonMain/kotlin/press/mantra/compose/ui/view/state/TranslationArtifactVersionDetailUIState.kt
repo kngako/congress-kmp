@@ -10,15 +10,15 @@ data class TranslationChapterProgress(
     val translatedChunks: Int,
 )
 
-sealed interface TranslationDetailUIState {
+sealed interface TranslationArtifactVersionDetailUIState {
     data class Loaded(
         val translation: MantraTranslationArtifactVersion,
         val chapters: List<TranslationChapterProgress> = emptyList(),
-    ): TranslationDetailUIState
+    ): TranslationArtifactVersionDetailUIState
 
     data class Error(
         val message: String
-    ): TranslationDetailUIState
+    ): TranslationArtifactVersionDetailUIState
 
-    data object Loading: TranslationDetailUIState
+    data object Loading: TranslationArtifactVersionDetailUIState
 }

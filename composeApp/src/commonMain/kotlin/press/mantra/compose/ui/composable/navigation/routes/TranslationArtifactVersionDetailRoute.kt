@@ -3,7 +3,7 @@ package press.mantra.compose.ui.composable.navigation.routes
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class TranslationDetailRoute(
+data class TranslationArtifactVersionDetailRoute(
     val activeUserPublicKey: String,
     val translationArtifactVersionId: String,
     val chatRoomId: String,
