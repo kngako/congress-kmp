@@ -34,6 +34,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.widgets.DetailRow
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -49,6 +51,7 @@ fun TranslationDetailScreen(
     relayHint: String?,
     initialTranslationDetailUIState: TranslationDetailUIState = TranslationDetailUIState.Loading,
     mantraRepository: MantraRepository,
+    onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val translationDetailViewModel: TranslationDetailViewModel = viewModel(
@@ -129,7 +132,18 @@ fun TranslationDetailScreen(
                             items = translationDetailUIState.chapters,
                             key = { progress -> progress.chapter.id }
                         ) { progress ->
-                            Card {
+                            Card(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        TranslationChapterRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            translationChapterId = progress.chapter.id,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            ) {
                                 ListItem(
                                     leadingContent = {
                                         Icon(
@@ -198,6 +212,7 @@ private fun TranslationDetailScreenPreview() {
                     )
                 ),
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                onNavigateToRoute = {},
                 onNavigateBack = {}
             )
         }

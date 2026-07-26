@@ -14,4 +14,7 @@ interface MantraTranslationChapterDao {
 
     @Query("SELECT * FROM MantraTranslationChapter WHERE translationArtifactVersionId = :translationArtifactVersionId ORDER BY `index` ASC")
     suspend fun getTranslationChaptersByTranslationArtifactVersionId(translationArtifactVersionId: String): List<MantraTranslationChapter>
+
+    @Query("SELECT * FROM MantraTranslationChapter WHERE id = :id")
+    suspend fun getTranslationChapterById(id: String): MantraTranslationChapter?
 }

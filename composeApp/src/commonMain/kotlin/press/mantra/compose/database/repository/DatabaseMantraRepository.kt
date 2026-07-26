@@ -41,6 +41,9 @@ class DatabaseMantraRepository(
     override suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion> =
         database.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(artifactId)
 
+    override suspend fun getArtifactVersion(id: String): MantraArtifactVersion? =
+        database.mantraArtifactVersionDao().getArtifactVersionById(id)
+
     override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> =
         database.mantraChapterDao().getChaptersByArtifactId(artifactId)
 
@@ -161,6 +164,9 @@ class DatabaseMantraRepository(
     override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? =
         database.mantraTranslationArtifactVersionDao().getTranslationById(id)
 
+    override suspend fun getTranslationChapter(id: String): MantraTranslationChapter? =
+        database.mantraTranslationChapterDao().getTranslationChapterById(id)
+
     override suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter> =
         database.mantraTranslationChapterDao().getTranslationChaptersByTranslationArtifactVersionId(translationArtifactVersionId)
 
@@ -250,6 +256,9 @@ class DatabaseMantraRepository(
 
     override suspend fun getDialects(chatRoomId: String): List<MantraDialect> =
         database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
+
+    override suspend fun getDialect(id: String): MantraDialect? =
+        database.mantraDialectDao().getDialectById(id)
 
     override suspend fun addDialect(
         name: String,

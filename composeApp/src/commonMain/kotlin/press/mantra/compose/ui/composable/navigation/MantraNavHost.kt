@@ -93,11 +93,13 @@ import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.AddTranslationScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
+import press.mantra.compose.ui.composable.TranslationChapterScreen
 import press.mantra.compose.ui.composable.TranslationDetailScreen
 
 @Composable
@@ -724,6 +726,25 @@ fun MantraNavHost(
             TranslationDetailScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 translationArtifactVersionId = route.translationArtifactVersionId,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                mantraRepository = databaseMantraRepository,
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable<TranslationChapterRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<TranslationChapterRoute>()
+
+            TranslationChapterScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                translationChapterId = route.translationChapterId,
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,

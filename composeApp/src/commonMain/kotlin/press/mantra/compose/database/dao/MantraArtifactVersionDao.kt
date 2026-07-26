@@ -14,4 +14,7 @@ interface MantraArtifactVersionDao {
 
     @Query("SELECT * FROM MantraArtifactVersion WHERE artifactId = :artifactId ORDER BY createdAt DESC")
     suspend fun getArtifactVersionsByArtifactId(artifactId: String): List<MantraArtifactVersion>
+
+    @Query("SELECT * FROM MantraArtifactVersion WHERE id = :id")
+    suspend fun getArtifactVersionById(id: String): MantraArtifactVersion?
 }

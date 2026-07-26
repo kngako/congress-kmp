@@ -18,6 +18,8 @@ interface MantraRepository {
 
     suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion>
 
+    suspend fun getArtifactVersion(id: String): MantraArtifactVersion?
+
     suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter>
 
     suspend fun getChapter(id: String): MantraChapter?
@@ -27,6 +29,8 @@ interface MantraRepository {
     suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion>
 
     suspend fun getTranslation(id: String): MantraTranslationArtifactVersion?
+
+    suspend fun getTranslationChapter(id: String): MantraTranslationChapter?
 
     suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter>
 
@@ -61,6 +65,8 @@ interface MantraRepository {
     ): MantraChapter?
 
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
+
+    suspend fun getDialect(id: String): MantraDialect?
 
     suspend fun addDialect(
         name: String,
@@ -99,6 +105,8 @@ interface MantraRepository {
 
             override suspend fun getArtifactVersions(artifactId: String): List<MantraArtifactVersion> = emptyList()
 
+            override suspend fun getArtifactVersion(id: String): MantraArtifactVersion? = null
+
             override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> = emptyList()
 
             override suspend fun getChapter(id: String): MantraChapter? = null
@@ -108,6 +116,8 @@ interface MantraRepository {
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
             override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? = null
+
+            override suspend fun getTranslationChapter(id: String): MantraTranslationChapter? = null
 
             override suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter> = emptyList()
 
@@ -129,6 +139,8 @@ interface MantraRepository {
             ): MantraChapter? = null
 
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
+
+            override suspend fun getDialect(id: String): MantraDialect? = null
 
             override suspend fun addDialect(
                 name: String,
