@@ -1,8 +1,10 @@
 package press.mantra.compose.database.dao
 
+import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
@@ -16,8 +18,9 @@ import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_LICENSE
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_VISIBILITY
 
+@Dao
 abstract class MantraDao(
-    private val database: press.mantra.compose.database.MantraDatabase,
+    private val database: MantraDatabase,
 ) {
     val logger = Logger.withTag("NostrDao")
 

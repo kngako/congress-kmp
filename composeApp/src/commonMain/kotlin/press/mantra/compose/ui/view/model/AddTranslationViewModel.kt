@@ -16,7 +16,11 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.MarmotRepository
 import press.mantra.compose.ui.view.state.AddTranslationUIState
 
 class AddTranslationViewModel(
@@ -26,6 +30,7 @@ class AddTranslationViewModel(
     val relayHint: String?,
     initialAddTranslationUIState: AddTranslationUIState,
     val mantraRepository: MantraRepository,
+    val chatRepository: ChatRepository,
 ): ViewModel() {
 
     var addTranslationUIState: AddTranslationUIState by mutableStateOf(initialAddTranslationUIState)
@@ -38,11 +43,13 @@ class AddTranslationViewModel(
     fun initiateAddTranslation() {
         viewModelScope.launch(Dispatchers.IO) {
             val artifact = mantraRepository.getArtifact(artifactId)
-            addTranslationUIState = if (artifact == null) {
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
+            addTranslationUIState = if (artifact == null || localChatRoom == null) {
                 AddTranslationUIState.Error("Couldn't find the artifact")
             } else {
                 AddTranslationUIState.Loaded(
                     artifact = artifact,
+                    localChatRoom = localChatRoom,
                     dialects = mantraRepository.getDialects(chatRoomId),
                 )
             }
@@ -50,6 +57,7 @@ class AddTranslationViewModel(
     }
 
     fun addTranslation(
+        localChatRoom: LocalChatRoom,
         existingDialectId: HexKey?,
         dialectNameField: TextFieldState,
         dialectCountryField: TextFieldState,
@@ -81,7 +89,7 @@ class AddTranslationViewModel(
                 // Reuse the selected dialect, or create a new one for the translation.
                 val dialectId = if (creatingNewDialect) {
                     mantraRepository.addDialect(
-                        ,
+                        localChatRoom = localChatRoom,
                         name = dialectName,
                         country = dialectCountry,
                         language = dialectLanguage,
@@ -130,6 +138,7 @@ class AddTranslationViewModel(
             relayHint: String?,
             initialAddTranslationUIState: AddTranslationUIState = AddTranslationUIState.Loading,
             mantraRepository: MantraRepository,
+            chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AddTranslationViewModel(
@@ -139,6 +148,7 @@ class AddTranslationViewModel(
                     relayHint = relayHint,
                     initialAddTranslationUIState = initialAddTranslationUIState,
                     mantraRepository = mantraRepository,
+                    chatRepository = chatRepository
                 )
             }
         }

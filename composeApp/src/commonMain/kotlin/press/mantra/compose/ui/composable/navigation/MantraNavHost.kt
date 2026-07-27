@@ -809,6 +809,7 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
+                chatRepository = databaseChatRepository,
                 onNavigateToRoute = { actionRoute ->
                     // Replace this screen and the stale artifact detail beneath it
                     // so we land on a freshly-loaded detail showing the new translation.

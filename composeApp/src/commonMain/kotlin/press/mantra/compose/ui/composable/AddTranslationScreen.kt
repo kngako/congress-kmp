@@ -41,7 +41,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.MantraArtifact
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -59,6 +62,7 @@ fun AddTranslationScreen(
     relayHint: String?,
     initialAddTranslationUIState: AddTranslationUIState = AddTranslationUIState.Loading,
     mantraRepository: MantraRepository,
+    chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -70,6 +74,7 @@ fun AddTranslationScreen(
             relayHint = relayHint,
             initialAddTranslationUIState = initialAddTranslationUIState,
             mantraRepository = mantraRepository,
+            chatRepository = chatRepository
         )
     )
 
@@ -114,6 +119,7 @@ fun AddTranslationScreen(
                             ExtendedFloatingActionButton(
                                 onClick = {
                                     addTranslationViewModel.addTranslation(
+                                        localChatRoom = addTranslationUIState.localChatRoom,
                                         existingDialectId = selectedDialectId,
                                         dialectNameField = dialectNameFieldState,
                                         dialectCountryField = dialectCountryFieldState,
@@ -258,6 +264,16 @@ private fun AddTranslationScreenPreview() {
                 chatRoomId = "chatRoomId",
                 relayHint = null,
                 initialAddTranslationUIState = AddTranslationUIState.Loaded(
+                    localChatRoom = LocalChatRoom(
+                        chatRoom = ChatRoom(
+                            id = "",
+                            userPublicKey = "",
+                            subject = "Message title",
+                            description = "See something. Say somethin",
+                            initialGiftWrapPayloadId = "sdfaer",
+                            mlsGroupState = null
+                        ),
+                    ),
                     artifact = MantraArtifact(
                         id = "artifactId",
                         publicKey = "author",
@@ -271,6 +287,7 @@ private fun AddTranslationScreenPreview() {
                     )
                 ),
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 onNavigateToRoute = {},
                 onNavigateBack = {}
             )

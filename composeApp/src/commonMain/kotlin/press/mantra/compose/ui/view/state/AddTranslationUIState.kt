@@ -2,9 +2,11 @@ package press.mantra.compose.ui.view.state
 
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
 sealed interface AddTranslationUIState {
     data class Loaded(
+        val localChatRoom: LocalChatRoom,
         val artifact: MantraArtifact,
         val dialects: List<MantraDialect> = emptyList(),
     ): AddTranslationUIState
