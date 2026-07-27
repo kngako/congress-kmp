@@ -29,6 +29,7 @@ import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventI
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.CancellationException
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
@@ -73,7 +74,6 @@ abstract class NostrDao(
 //        RelayFeedsListEvent.KIND
     )
 
-    @Transaction
     open suspend fun publishNostrEvent(
         unsignedNostrEvent: press.mantra.compose.database.model.UnsignedNostrEvent,
         nostrEvent: NostrEvent,
@@ -81,6 +81,39 @@ abstract class NostrDao(
         activeKeyPair: KeyPair
     ) {
         logger.i("Publish Nostr Event: $nostrEvent ($relayURLs)")
+
+        commitPublishedNostrEvent(unsignedNostrEvent, nostrEvent, relayURLs)
+
+        // Indexing is best-effort enrichment and runs in its OWN transaction. It used to share
+        // the transaction above, so any throw in it rolled back `signedAt` too — and because the
+        // notary drains one unsigned row at a time, that row would be re-selected forever and
+        // every later event (including the MLS key package, which is enqueued last) would never
+        // be signed at all.
+        try {
+            indexNostrEvent(
+                nostrEvent = nostrEvent,
+                relayURL = relayURLs.first(),
+                synchronizationRelayURLs = relayURLs,
+                level = 0,
+                activeKeyPair = activeKeyPair
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.e("Failed to index published event ${nostrEvent.id} (kind ${nostrEvent.kind})", e)
+        }
+    }
+
+    /**
+     * The durable half of publishing: mark the unsigned row signed, store the signed event and
+     * queue it for every target relay. All-or-nothing, and independent of indexing.
+     */
+    @Transaction
+    protected open suspend fun commitPublishedNostrEvent(
+        unsignedNostrEvent: press.mantra.compose.database.model.UnsignedNostrEvent,
+        nostrEvent: NostrEvent,
+        relayURLs: List<String>
+    ) {
         // Update unsignedEvent with signedTime time...
         database.unsignedNostrEventDao().upsert(
             unsignedNostrEvent.copy(
@@ -89,14 +122,6 @@ abstract class NostrDao(
         )
 
         database.nostrEventDao().upsert(nostrEvent)
-
-        indexNostrEvent(
-            nostrEvent = nostrEvent,
-            relayURL = relayURLs.first(),
-            synchronizationRelayURLs = relayURLs,
-            level = 0,
-            activeKeyPair = activeKeyPair
-        )
 
         relayURLs.forEach { relayURL ->
             database.broadcastNostrEventRequestDao().upsert(
@@ -656,8 +681,13 @@ abstract class NostrDao(
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
                                                 // TODO: Get relayHint form participant...
+                                                // Inverted test: this created the set only when
+                                                // one already existed (wiping it), and left the
+                                                // key absent otherwise — so the `?.add` below was
+                                                // a no-op and the participant whose DM relay list
+                                                // we are missing never got queued for sync.
                                                 if (
-                                                    profilePublicKeysToSync.containsKey(
+                                                    !profilePublicKeysToSync.containsKey(
                                                         relayURL
                                                     )
                                                 ) {
@@ -872,7 +902,8 @@ abstract class NostrDao(
 
                                             // Sync ChatMessageRelayListEvent publicKey...
                                             // TODO: Get relayHint form participant...
-                                            if (profilePublicKeysToSync.containsKey(relayURL)) {
+                                            // Inverted test — see the identical block above.
+                                            if (!profilePublicKeysToSync.containsKey(relayURL)) {
                                                 profilePublicKeysToSync[relayURL] = mutableSetOf()
                                             }
                                             profilePublicKeysToSync[relayURL]?.add(participant.participantPublicKey)

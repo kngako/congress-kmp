@@ -33,6 +33,9 @@ class NavigationViewModel(
     companion object {
         private const val TAG = "NavigationViewModel"
 
+        /** Broadcast statuses that mean "still on its way to a relay". */
+        private val PENDING_BROADCAST_STATUSES = setOf("pending", "processing")
+
         fun factory(
             activeWallet: StateFlow<ActiveWallet?>,
             initialNavigationUIState: NavigationUIState,
@@ -105,15 +108,25 @@ class NavigationViewModel(
                 NavigationUIState.ProfileLoaded(
                     publicKey = localAccount.unsignedNostrEvent.pubKey
                 )
+            } else if (localAccount.broadcastNostrEventRequest != null &&
+                localAccount.broadcastNostrEventRequest.status in PENDING_BROADCAST_STATUSES
+            ) {
+                // Must be checked BEFORE the signed-and-indexed branch below. `publishNostrEvent`
+                // stamps `signedAt` and upserts the local Profile in the same transaction, so
+                // that branch went true the instant the kind-0 was signed and this gate — the one
+                // that exists to hold the user until the profile is actually on a relay — was
+                // unreachable. A profile that lived only on the device looked fully announced.
+                //
+                // Deliberately scoped to in-flight statuses: once a broadcast has been marked
+                // "failed" we fall through rather than park the user on a screen with no way out.
+                logger.i("We have a broadcast request: ${localAccount.broadcastNostrEventRequest}")
+                NavigationUIState.UnannouncedProfile(
+                    broadcastNostrEventRequest = localAccount.broadcastNostrEventRequest
+                )
             } else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.profile != null) {
                 logger.i("We have successfully synced a profile: ${localAccount.profile}")
                 NavigationUIState.ProfileLoaded(
                     publicKey = localAccount.unsignedNostrEvent.pubKey
-                )
-            } else if (localAccount.broadcastNostrEventRequest != null) {
-                logger.i("We have a broadcast request: ${localAccount.broadcastNostrEventRequest}")
-                NavigationUIState.UnannouncedProfile(
-                    broadcastNostrEventRequest = localAccount.broadcastNostrEventRequest
                 )
             }  else if (localAccount.profile != null) {
                 logger.i("We have a profile that needs to queued for broadcast: ${localAccount.profile}")
@@ -130,7 +143,9 @@ class NavigationViewModel(
                 NavigationUIState.UnqueuedProfileSynchronization(
                     unsignedNostrEvent = localAccount.unsignedNostrEvent
                 )
-            }  else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.synchronizeNostrEventRequests.isEmpty()) {
+            // `isNotEmpty`: this branch is the "a sync is already queued" case. It used to repeat
+            // the predicate above verbatim, which made it dead code.
+            }  else if (localAccount.unsignedNostrEvent.signedAt != null && localAccount.synchronizeNostrEventRequests.isNotEmpty()) {
                 logger.i("We should be syncing the profile: ${localAccount.unsignedNostrEvent}")
                 NavigationUIState.UnsyncedProfile(
                     unsignedNostrEvent = localAccount.unsignedNostrEvent

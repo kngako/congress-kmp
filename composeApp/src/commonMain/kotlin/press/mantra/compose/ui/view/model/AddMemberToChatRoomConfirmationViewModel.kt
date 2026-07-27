@@ -10,15 +10,22 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.MarmotKeyPackage
+import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class AddMemberToChatRoomConfirmationViewModel(
     val chatRoomId: String,
@@ -43,28 +50,71 @@ class AddMemberToChatRoomConfirmationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
 
-            addMemberToChatRoomConfirmationUIState = if (localChatRoom != null) {
-                val profile = nostrRepository.getProfileWithPublicKey(profilePublicKey)
-
-                if (profile != null) {
-                    val marmotKeyPackage = chatRepository.getMarmotKeyPackageForPublicKey(profilePublicKey)
-
-                    if (marmotKeyPackage != null) {
-                        AddMemberToChatRoomConfirmationUIState.Loaded(
-                            localChatRoom = localChatRoom,
-                            profile = profile,
-                            marmotKeyPackage = marmotKeyPackage
-                        )
-                    } else {
-                        AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event. Try again later or tell ${profile.humanReadableNameOrPubkey()} to use Torch.")
-                    }
-                } else {
-                    AddMemberToChatRoomConfirmationUIState.Error("Failed to find profile...")
-                }
-            } else {
-                AddMemberToChatRoomConfirmationUIState.Error("Couldn't load chat")
+            if (localChatRoom == null) {
+                addMemberToChatRoomConfirmationUIState =
+                    AddMemberToChatRoomConfirmationUIState.Error("Couldn't load chat")
+                return@launch
             }
+
+            val profile = nostrRepository.getProfileWithPublicKey(profilePublicKey)
+            if (profile == null) {
+                addMemberToChatRoomConfirmationUIState =
+                    AddMemberToChatRoomConfirmationUIState.Error("Failed to find profile...")
+                return@launch
+            }
+
+            // Don't depend on the bulk sync the previous screen fired asynchronously — the
+            // contact list is tappable long before that relay round-trip can finish. Ask for
+            // this one peer's key package ourselves.
+            scheduleKeyPackageSync()
+
+            // Wait for the relays, but don't spin forever with no explanation. Cancelling this
+            // job (rather than testing a shared flag) is what keeps the timeout from racing the
+            // arrival and clobbering a Loaded state.
+            val lookupTimeout = launch {
+                delay(RELAY_LOOKUP_TIMEOUT)
+                addMemberToChatRoomConfirmationUIState =
+                    AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event. Try again later or tell ${profile.humanReadableNameOrPubkey()} to use Torch.")
+            }
+
+            // Observe rather than read once: the key package usually lands a moment after
+            // this screen opens, and the old one-shot read latched a terminal error that no
+            // amount of waiting could clear.
+            chatRepository.observeMarmotKeyPackageForPublicKey(profilePublicKey)
+                .distinctUntilChanged()
+                .collect { marmotKeyPackage ->
+                    if (marmotKeyPackage != null) {
+                        lookupTimeout.cancel()
+                        addMemberToChatRoomConfirmationUIState =
+                            AddMemberToChatRoomConfirmationUIState.Loaded(
+                                localChatRoom = localChatRoom,
+                                profile = profile,
+                                marmotKeyPackage = marmotKeyPackage
+                            )
+                    }
+                }
         }
+    }
+
+    private suspend fun scheduleKeyPackageSync() {
+        val synchronizationFilter = SynchronizationFilter(
+            authors = arrayOf(profilePublicKey),
+            kinds = arrayOf(KeyPackageEvent.KIND)
+        )
+        nostrRepository.queueNegentropySynchronizeRequest(
+            Relays.DefaultDMRelayList.map { relay ->
+                NegentropySynchronizeRequest(
+                    id = NegentropySynchronizeRequest.computeId(
+                        relayURL = relay.url,
+                        synchronizationFilter = synchronizationFilter
+                    ),
+                    purpose = "key-packages",
+                    synchronizationFilter = synchronizationFilter,
+                    relayURL = relay.url,
+                    level = 0
+                )
+            }
+        )
     }
 
     fun inviteToChatRoom(
@@ -74,12 +124,25 @@ class AddMemberToChatRoomConfirmationViewModel(
         onInviteSent: () -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Invite member
-            chatRepository.inviteMember(
-                localChatRoom = localChatRoom,
-                peerPublicKey = peerPublicKey,
-                peerKeyPackage = peerKeyPackage
-            )
+            // Invite member. `inviteMember` can throw (no MLS state for the room, credential
+            // identity mismatch); reporting success regardless popped the user back to the chat
+            // as though an invite had been sent when nothing was ever queued.
+            val outcome = runCatching {
+                chatRepository.inviteMember(
+                    localChatRoom = localChatRoom,
+                    peerPublicKey = peerPublicKey,
+                    peerKeyPackage = peerKeyPackage
+                )
+            }
+
+            outcome.exceptionOrNull()?.let { e ->
+                logger.e("Failed to invite $peerPublicKey to ${localChatRoom.chatRoom.id}", e)
+                isActionPending.value = false
+                addMemberToChatRoomConfirmationUIState =
+                    AddMemberToChatRoomConfirmationUIState.Error("Couldn't send the invite. Please try again.")
+                return@launch
+            }
+
             viewModelScope.launch(Dispatchers.Main) {
                 onInviteSent.invoke()
             }
@@ -88,6 +151,9 @@ class AddMemberToChatRoomConfirmationViewModel(
 
     companion object {
         private const val TAG = "AddMemberToChatRoomConfirmationViewModel"
+
+        /** How long to wait on the relays before telling the user we came up empty. */
+        private val RELAY_LOOKUP_TIMEOUT = 20.seconds
 
         fun factory(
             activeUserPublicKey: HexKey,

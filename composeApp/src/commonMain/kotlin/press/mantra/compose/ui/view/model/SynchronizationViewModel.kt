@@ -27,18 +27,27 @@ import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.nostrPrivateKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Duration.Companion.milliseconds
 
 class SynchronizationViewModel(
@@ -58,6 +67,14 @@ class SynchronizationViewModel(
 
     companion object {
         private const val TAG = "SynchronizationViewModel"
+
+        private const val MAX_CONCURRENT_PUBLISHES = 8
+
+        /**
+         * Hard ceiling on a single publish attempt, covering the suspend calls that open the
+         * socket as well as the response flow, so a request can never sit in "processing".
+         */
+        private val PUBLISH_ATTEMPT_TIMEOUT = (RelayPool.PUBLISH_TIMEOUT * 2).milliseconds
 
         private val mutex = Mutex()
 
@@ -82,6 +99,26 @@ class SynchronizationViewModel(
 
     private val logger = Logger.withTag(TAG)
 
+    /** Guards the one-shot startup requeue against a second active-wallet emission. */
+    private var hasRequeuedStaleBroadcasts = false
+
+    /** Caps how many publishes may be in flight while the queue drains a backlog. */
+    private val publishSlots = Semaphore(MAX_CONCURRENT_PUBLISHES)
+
+    /**
+     * Keeps one bad request from killing the pump that is draining the queue. Mirrors
+     * `NotaryViewModel.guardNotarization`.
+     */
+    private inline fun guardPump(what: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.e("Synchronization step failed: $what", e)
+        }
+    }
+
     init {
         scope.launch {
             activeWalletStateFlow.collectLatest { activeWallet ->
@@ -91,23 +128,43 @@ class SynchronizationViewModel(
                         privKey = nostrPrivateKey.value.toByteArray()
                     )
 
-                    observePendingBroadcastNostrEventRequests(keyPair)
-                    observePendingSyncNostrEventRequests(keyPair)
-                    observePendingNegentropySynchronizeRequests(keyPair)
+                    // Anything a previous run left mid-flight is ours to retry: it was flipped to
+                    // "processing" before the publish and nothing observes that status, so
+                    // without this it would sit in the table forever. Once per process only —
+                    // collectLatest can fire again on a wallet switch, and re-running it then
+                    // would resurrect rows whose publish is still in flight.
+                    if (!hasRequeuedStaleBroadcasts) {
+                        hasRequeuedStaleBroadcasts = true
+                        runCatching { nostrRepository.requeueStaleBroadcastNostrEventRequests() }
+                            .onFailure { logger.e("Failed to requeue stale broadcasts", it) }
+                    }
+
+                    // Run the three pumps as children of collectLatest so a wallet switch
+                    // cancels them. Launching on `scope` (as this used to) escaped that
+                    // cancellation and accumulated a duplicate set of collectors — each
+                    // racing the same single-row queues with a stale key pair.
+                    // supervisorScope, not coroutineScope: the three pumps are independent, and a
+                    // throw in one must not take the other two down with it for the rest of the
+                    // session. Each pump also guards its own per-request body (see guardPump).
+                    supervisorScope {
+                        launch(Dispatchers.IO) { observePendingBroadcastNostrEventRequests(keyPair) }
+                        launch(Dispatchers.IO) { observePendingSyncNostrEventRequests(keyPair) }
+                        launch(Dispatchers.IO) { observePendingNegentropySynchronizeRequests(keyPair) }
+                    }
                 }
             }
         }
 
     }
 
-    private fun observePendingSyncNostrEventRequests(
+    private suspend fun observePendingSyncNostrEventRequests(
         keyPair: KeyPair
-    ) {
+    ): Unit = coroutineScope {
         logger.i { "observePendingSyncNostrEventRequests" }
 
-        scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingSynchronizeNostrEventRequests().distinctUntilChanged().collect { synchronizeNostrEventRequestOrNull ->
-                synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
+        nostrRepository.observePendingSynchronizeNostrEventRequests().distinctUntilChanged().collect { synchronizeNostrEventRequestOrNull ->
+            synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
+                guardPump("sync request ${synchronizeNostrEventRequest.id}") {
                     logger.i("synchronizeNostrEventRequest: $synchronizeNostrEventRequest")
                     val reqCommand = ReqCmd(
                         subId = synchronizeNostrEventRequest.id,
@@ -128,7 +185,7 @@ class SynchronizationViewModel(
 
                     nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
 
-                    scope.launch(Dispatchers.IO) {
+                    launch(Dispatchers.IO) {
                         try {
                             relaysSocketManager.query(
                                 reqCommand,
@@ -136,7 +193,7 @@ class SynchronizationViewModel(
                             ).collect { nostrIncomingMessage ->
                                 when (nostrIncomingMessage) {
                                     is NostrIncomingMessage.EventMessage -> {
-                                        scope.launch(Dispatchers.IO) {
+                                        launch(Dispatchers.IO) {
                                             logger.d("Import message: $nostrIncomingMessage")
                                             nostrIncomingMessage.nostrEvent?.let {
                                                 nostrRepository.saveNostrEvent(
@@ -173,6 +230,15 @@ class SynchronizationViewModel(
                                             synchronizeNostrEventRequest.relayURL
                                         )
                                     }
+                                    is NostrIncomingMessage.ClosedMessage -> {
+                                        // The relay ended the subscription on its side (auth
+                                        // required, rate limit, unsupported filter): no EOSE
+                                        // will follow. Previously CLOSED was not even parsed, so
+                                        // the reason was invisible. (`return@collect` only ends
+                                        // handling of this message — same as the EOSE branch.)
+                                        logger.w("Relay closed sync subscription (${synchronizeNostrEventRequest.relayURL}): ${nostrIncomingMessage.message}")
+                                        return@collect
+                                    }
                                     else -> {
                                         logger.d("Unhandled message ${synchronizeNostrEventRequest.relayURL}: $nostrIncomingMessage")
                                     }
@@ -188,14 +254,14 @@ class SynchronizationViewModel(
         }
     }
 
-    private fun observePendingNegentropySynchronizeRequests(
+    private suspend fun observePendingNegentropySynchronizeRequests(
         keyPair: KeyPair
-    ) {
+    ): Unit = coroutineScope {
         logger.i { "observePendingNegentropySynchronizeRequests" }
 
-        scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingNegentropySynchronizeRequests().distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
+        nostrRepository.observePendingNegentropySynchronizeRequests().distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
                 negentropySynchronizeRequestOrNull?.let { negentropySynchronizeRequest ->
+                  guardPump("negentropy request ${negentropySynchronizeRequest.id}") {
                     mutex.withLock {
                         logger.i("negentropySynchronizeRequest: $negentropySynchronizeRequest")
 
@@ -208,8 +274,13 @@ class SynchronizationViewModel(
                         logger.d("Events: ${events.size}")
                         val storage = StorageVector().apply {
                             events.forEach { event ->
+                                // Nostr timestamps — and therefore every timestamp a relay
+                                // puts in its own negentropy vector — are in SECONDS. Feeding
+                                // milliseconds here sorted every local item ~1000x past every
+                                // remote one, so the fingerprint bounds could never match and
+                                // reconciliation degenerated into a full ID transfer.
                                 insert(
-                                    timestamp = event.createdAt.toEpochMilliseconds(),
+                                    timestamp = event.createdAt.epochSeconds,
                                     idHex = event.id
                                 )
                             }
@@ -239,7 +310,7 @@ class SynchronizationViewModel(
 
                         nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
 
-                        scope.launch(Dispatchers.IO) {
+                        launch(Dispatchers.IO) {
                             try {
                                 val negCloseCmd = NegCloseCmd(
                                     subId = negentropySynchronizeRequest.uuid,
@@ -251,7 +322,7 @@ class SynchronizationViewModel(
                                 ).collect { nostrIncomingMessage ->
                                     when (nostrIncomingMessage) {
                                         is NostrIncomingMessage.EventMessage -> {
-                                            scope.launch(Dispatchers.IO) {
+                                            launch(Dispatchers.IO) {
                                                 logger.d("Import message: $nostrIncomingMessage")
                                                 nostrIncomingMessage.nostrEvent?.let {
                                                     nostrRepository.saveNostrEvent(
@@ -351,9 +422,33 @@ class SynchronizationViewModel(
 
                                             return@collect
                                         }
+                                        is NostrIncomingMessage.ClosedMessage -> {
+                                            // Relay refused or ended the NEG subscription (no
+                                            // NIP-77 support, auth required, rate limit). No
+                                            // NEG-MSG will follow, so fall back to a plain REQ
+                                            // rather than leaving the request silently unserved.
+                                            // (`return@collect` ends handling of this message,
+                                            // matching the EOSE and NEG-ERR branches.)
+                                            logger.w("Relay closed negentropy subscription (${negentropySynchronizeRequest.relayURL}): ${nostrIncomingMessage.message}")
+                                            if (negentropySynchronizeRequest.purpose != "mlsMessages") {
+                                                nostrRepository.queueSynchronizeNostrEvent(
+                                                    listOf(
+                                                        negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
+                                                    )
+                                                )
+                                            }
+                                            return@collect
+                                        }
                                         is NostrIncomingMessage.NoticeMessage -> {
                                             logger.d("Notice message ${negentropySynchronizeRequest.relayURL}: $nostrIncomingMessage")
-                                            if (nostrIncomingMessage.subscriptionId?.contains("negentropy disabled") == true) {
+                                            // A NOTICE carries its text in `message`; it used to
+                                            // be read out of `subscriptionId`, which NIP-01
+                                            // NOTICEs do not have, so this fallback never fired.
+                                            // Kept narrow on purpose: a NOTICE has no
+                                            // subscription id, so it is delivered to EVERY live
+                                            // collector on this socket — a loose match would fan
+                                            // one notice out into a REQ fallback per collector.
+                                            if (nostrIncomingMessage.message?.contains("negentropy disabled", ignoreCase = true) == true) {
                                                 if (negentropySynchronizeRequest.purpose != "mlsMessages") {
                                                     nostrRepository.queueSynchronizeNostrEvent(
                                                         listOf(
@@ -383,16 +478,16 @@ class SynchronizationViewModel(
     }
 
     @OptIn(FlowPreview::class)
-    private fun observePendingBroadcastNostrEventRequests(
+    private suspend fun observePendingBroadcastNostrEventRequests(
         keyPair: KeyPair
-    ) {
+    ): Unit = coroutineScope {
         logger.i { "observePendingBroadcastNostrEventRequests" }
 
-        scope.launch(Dispatchers.IO) {
-            nostrRepository.observePendingBroadcastNostrEventRequests().distinctUntilChanged().collect { localBroadcastNostrEventRequest ->
+        nostrRepository.observePendingBroadcastNostrEventRequests().distinctUntilChanged().collect { localBroadcastNostrEventRequest ->
                 logger.d("localBroadcastNostrEventRequest: $localBroadcastNostrEventRequest")
 
                 if (localBroadcastNostrEventRequest != null) {
+                  guardPump("broadcast request ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.id}") {
                     nostrRepository.broadcastProcessed(
                         localBroadcastNostrEventRequest.broadcastNostrEventRequest
                     )
@@ -421,16 +516,42 @@ class SynchronizationViewModel(
 //                    }
 //                }
 
-                    scope.launch(Dispatchers.IO) {
+                    // The queue advances as soon as the row leaves "pending", so a backlog would
+                    // otherwise fan out one publish coroutine (and one 30s timer) per row as fast
+                    // as SQLite can commit. Bound it.
+                    launch(Dispatchers.IO) {
+                      publishSlots.withPermit {
+                      // Every publish MUST reach a terminal status. The row was flipped to
+                      // "processing" before we got here, and the navigation gate parks the user
+                      // on "announcing your profile" while a broadcast is pending/processing —
+                      // so a publish that neither completes nor throws would strand them there.
+                      // `.catch` only sees errors from the flow, not from the suspend call that
+                      // builds it, hence the outer try/catch and the outer timeout.
+                      try {
+                        withTimeout(PUBLISH_ATTEMPT_TIMEOUT) {
                         // Broadcast to the intended relay...
                         relaysSocketManager.publishEvent(
                             localBroadcastNostrEventRequest.nostrEvent,
                             setOf(
                                 localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL.toRelayDTO()
                             )
-                        ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds).catch {
-                            // Timeout...
-                        }.collect { nostrPublishResult ->
+                        ).timeout(RelayPool.PUBLISH_TIMEOUT.milliseconds)
+                            // We publish to exactly ONE relay per request, so exactly one result
+                            // is expected. `take(1)` completes the collection on that result —
+                            // without it the underlying MutableSharedFlow never completes, the
+                            // timeout keeps running, and 30s after a SUCCESSFUL publish the catch
+                            // below would overwrite "published" with "failed".
+                            .take(1)
+                            .catch { e ->
+                                // The request was flipped to "processing" before we got here, so
+                                // an empty catch left it stranded in that status with nothing to
+                                // observe it. Record the failure; the next launch requeues it.
+                                logger.e("Publish timed out/failed for ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId} @ ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}", e)
+                                nostrRepository.broadcastProcessed(
+                                    localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                    "failed"
+                                )
+                            }.collect { nostrPublishResult ->
                             if (nostrPublishResult.error != null) {
                                 logger.e("Error publishing note: $nostrPublishResult")
                                 nostrRepository.broadcastProcessed(
@@ -445,9 +566,30 @@ class SynchronizationViewModel(
                                 )
                             }
                         }
+                        }
+                      } catch (e: CancellationException) {
+                        // A withTimeout expiry is a CancellationException too, but only the
+                        // *outer* coroutine being cancelled should propagate.
+                        if (currentCoroutineContext().isActive) {
+                            logger.e("Publish did not complete for ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId} @ ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}", e)
+                            nostrRepository.broadcastProcessed(
+                                localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                                "failed"
+                            )
+                        } else {
+                            throw e
+                        }
+                      } catch (e: Throwable) {
+                        logger.e("Publish failed for ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.nostrEventId} @ ${localBroadcastNostrEventRequest.broadcastNostrEventRequest.relayURL}", e)
+                        nostrRepository.broadcastProcessed(
+                            localBroadcastNostrEventRequest.broadcastNostrEventRequest,
+                            "failed"
+                        )
+                      }
+                      }
                     }
+                  }
                 }
             }
-        }
     }
 }

@@ -40,6 +40,8 @@ interface ChatRepository {
 
     suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage?
 
+    suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?>
+
     suspend fun createMlsDirectMessage(
         name: String? = null,
         description: String? = null,
@@ -124,6 +126,10 @@ interface ChatRepository {
             }
 
             override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?> {
                 TODO("Not yet implemented")
             }
 

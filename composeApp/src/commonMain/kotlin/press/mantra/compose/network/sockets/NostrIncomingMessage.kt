@@ -22,6 +22,15 @@ sealed class NostrIncomingMessage {
         val message: String? = null,
     ) : NostrIncomingMessage()
 
+    /**
+     * `["CLOSED", <subId>, <reason>]` — the relay has ended the subscription on its side
+     * (auth-required, rate-limited, unsupported filter). Terminal: no EOSE will follow.
+     */
+    data class ClosedMessage(
+        val subscriptionId: String,
+        val message: String? = null,
+    ) : NostrIncomingMessage()
+
     data class AuthMessage(
         val challenge: String,
     ) : NostrIncomingMessage()

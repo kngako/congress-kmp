@@ -78,6 +78,12 @@ interface NostrRepository {
 
     suspend fun broadcastProcessed(broadcastNostrEventRequest: BroadcastNostrEventRequest, status: String = "processing")
 
+    /**
+     * Move broadcasts a previous process left in "processing"/"failed" back to "pending" so an
+     * interrupted or rejected publish is retried instead of stranded. Returns the row count.
+     */
+    suspend fun requeueStaleBroadcastNostrEventRequests(): Int
+
     suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 
     suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest)
@@ -237,6 +243,10 @@ interface NostrRepository {
                 broadcastNostrEventRequest: BroadcastNostrEventRequest,
                 status: String
             ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun requeueStaleBroadcastNostrEventRequests(): Int {
                 TODO("Not yet implemented")
             }
 

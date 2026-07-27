@@ -40,7 +40,10 @@ import com.vitorpamplona.quartz.nip25Reactions.ReactionEvent
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import com.vitorpamplona.quartz.nip50Search.SearchRelayListEvent
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
-import com.vitorpamplona.quartz.nip51Lists.tags.RelayTag
+// NIP-51 has two RelayTag classes with identical `assemble` signatures: the generic list one
+// uses "r", while the relay-list events (kind 10007 search, kind 10012 feeds) parse "relay".
+// Importing the wrong one compiled cleanly and produced lists nothing could read back.
+import com.vitorpamplona.quartz.nip51Lists.relayLists.tags.RelayTag
 import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -384,6 +387,16 @@ class DatabaseNostrRepository(
         )
     }
 
+    override suspend fun requeueStaleBroadcastNostrEventRequests(): Int {
+        val requeued = database.broadcastNostrEventRequestDao().requeueStaleBroadcastNostrEventRequests(
+            staleBefore = Clock.System.now()
+        )
+        if (requeued > 0) {
+            logger.i("Requeued $requeued stale broadcast request(s) left over from a previous run")
+        }
+        return requeued
+    }
+
     override suspend fun broadcastProcessed(
         broadcastNostrEventRequest: BroadcastNostrEventRequest,
         status: String
@@ -544,7 +557,7 @@ class DatabaseNostrRepository(
 
     override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> {
         return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestByPurposeAndStatusCount(
-            "feed",
+            purpose,
             listOf("pending", "processing")
         )
     }

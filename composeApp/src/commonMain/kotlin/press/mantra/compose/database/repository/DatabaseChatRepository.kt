@@ -116,6 +116,10 @@ class DatabaseChatRepository(
         return database.marmotKeyPackageDao().getMarmotKeyPackageForPublicKey(publicKey)
     }
 
+    override suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?> {
+        return database.marmotKeyPackageDao().observeMarmotKeyPackageForPublicKey(publicKey)
+    }
+
     override suspend fun createMlsDirectMessage(
         name: String?,
         description: String?,

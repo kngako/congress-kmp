@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.timeout
@@ -291,9 +292,21 @@ class RelayPool(
                         collectPublishResponse(eventId = nostrEvent.id)
                     }
                     sendEventResult.getOrNull()?.let {
+                        // A relay that answers ["OK", id, false, reason] has REJECTED the event.
+                        // Surfacing it as an error keeps the caller from recording a receipt for
+                        // an event that was never stored, and preserves the relay's reason.
+                        val rejection = if (!it.success) {
+                            logger.w { "relay $socketUrl rejected ${nostrEvent.id}: ${it.message}" }
+                            press.mantra.compose.exceptions.NostrPublishException(
+                                message = it.message ?: "rejected by $socketUrl"
+                            )
+                        } else {
+                            null
+                        }
                         responseFlow.emit(
                             NostrPublishResult(
                                 result = it,
+                                error = rejection,
                                 relayUrl = nostrSocketClient.socketUrl
                             )
                         )
@@ -332,15 +345,7 @@ class RelayPool(
     private suspend fun press.mantra.compose.network.sockets.NostrSocketClient.collectPublishResponse(eventId: String): press.mantra.compose.network.sockets.NostrIncomingMessage.OkMessage {
         return incomingMessages
             .filterByEventId(id = eventId)
-            .transform {
-                when (it) {
-                    is press.mantra.compose.network.sockets.NostrIncomingMessage.OkMessage -> emit(it)
-                    is press.mantra.compose.network.sockets.NostrIncomingMessage.NoticeMessage -> throw _root_ide_package_.press.mantra.compose.exceptions.NostrNoticeException(
-                        reason = it.message
-                    )
-                    else -> error("$it is not allowed")
-                }
-            }
+            .filterIsInstance<press.mantra.compose.network.sockets.NostrIncomingMessage.OkMessage>()
             .timeout(PUBLISH_TIMEOUT.milliseconds)
             .first()
     }

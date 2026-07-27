@@ -40,6 +40,9 @@ internal sealed class NostrVerb {
         @SerialName("NOTICE")
         NOTICE,
 
+        @SerialName("CLOSED")
+        CLOSED,
+
         @SerialName("OK")
         OK,
 

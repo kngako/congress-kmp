@@ -5,16 +5,17 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 @Dao
 interface SynchronizeNostrEventRequestDao {
-    @Query("SELECT * FROM SynchronizeNostrEventRequest WHERE status = :status AND createdAt > :createdAt")
-    fun observeSynchronizeNostrEventRequestsByStatus(status: String, createdAt: Instant = Clock.System.now()): Flow<press.mantra.compose.database.model.SynchronizeNostrEventRequest?>
+    // See NegentropySynchronizeRequestDao: the old `createdAt > :createdAt` bound a
+    // once-evaluated `Clock.System.now()` for the life of the Flow and hid every
+    // request queued before the observer subscribed.
+    @Query("SELECT * FROM SynchronizeNostrEventRequest WHERE status = :status ORDER BY createdAt ASC, id ASC LIMIT 1")
+    fun observeSynchronizeNostrEventRequestsByStatus(status: String): Flow<press.mantra.compose.database.model.SynchronizeNostrEventRequest?>
 
-    @Query("SELECT COUNT(*) FROM SynchronizeNostrEventRequest WHERE purpose = :purpose AND status IN (:status) AND createdAt > :createdAt")
-    fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String, status: List<String>, createdAt: Instant = Clock.System.now()): Flow<Int>
+    @Query("SELECT COUNT(*) FROM SynchronizeNostrEventRequest WHERE purpose = :purpose AND status IN (:status)")
+    fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String, status: List<String>): Flow<Int>
 
     @Upsert
     fun upsert(synchronizeNostrEventRequest: press.mantra.compose.database.model.SynchronizeNostrEventRequest)

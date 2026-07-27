@@ -23,6 +23,7 @@ fun String.parseIncomingMessage(): NostrIncomingMessage? {
             NostrVerb.Incoming.EOSE -> jsonArray.takeAsEoseIncomingMessage()
             NostrVerb.Incoming.OK -> jsonArray.takeAsOkIncomingMessage()
             NostrVerb.Incoming.NOTICE -> jsonArray.takeAsNoticeIncomingMessage()
+            NostrVerb.Incoming.CLOSED -> jsonArray.takeAsClosedIncomingMessage()
             NostrVerb.Incoming.AUTH -> jsonArray.takeAsAuthIncomingMessage()
             NostrVerb.Incoming.COUNT -> jsonArray.takeAsCountIncomingMessage()
             NostrVerb.Incoming.EVENTS -> jsonArray.takeAsEventsIncomingMessage()
@@ -115,10 +116,18 @@ private fun JsonObject.getMessageNostrEventKind(): Kind {
     return kind ?: -1
 }
 
+// NIP-01 NOTICE is the two-element `["NOTICE", <message>]` — there is no subscription id.
+// Reading the text out of element 2 left `message` permanently null and stuffed the human
+// readable reason into `subscriptionId`.
 private fun JsonArray.takeAsNoticeIncomingMessage(): NostrIncomingMessage {
-    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId()
+    val messageText = elementAtOrNull(1)?.jsonPrimitive?.content
+    return NostrIncomingMessage.NoticeMessage(subscriptionId = null, message = messageText)
+}
+
+private fun JsonArray.takeAsClosedIncomingMessage(): NostrIncomingMessage? {
+    val subscriptionId = elementAtOrNull(1)?.toSubscriptionId() ?: return null
     val messageText = elementAtOrNull(2)?.jsonPrimitive?.content
-    return NostrIncomingMessage.NoticeMessage(subscriptionId = subscriptionId, message = messageText)
+    return NostrIncomingMessage.ClosedMessage(subscriptionId = subscriptionId, message = messageText)
 }
 
 private fun JsonArray.takeAsOkIncomingMessage(): NostrIncomingMessage? {
@@ -177,6 +186,7 @@ private fun JsonElement.toIncomingMessageType(): NostrVerb.Incoming? {
         "COUNT" -> NostrVerb.Incoming.COUNT
         "EVENTS" -> NostrVerb.Incoming.EVENTS
         "NOTICE" -> NostrVerb.Incoming.NOTICE
+        "CLOSED" -> NostrVerb.Incoming.CLOSED
         "NEG-MSG" -> NostrVerb.Incoming.NEGENTROPY_MESSAGE
         "NEG-ERR" -> NostrVerb.Incoming.NEGENTROPY_ERROR
         else -> {

@@ -7,7 +7,6 @@ import androidx.room3.Upsert
 import press.mantra.compose.database.model.BroadcastNostrEventRequest
 import press.mantra.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import kotlinx.coroutines.flow.Flow
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Dao
@@ -18,11 +17,26 @@ interface BroadcastNostrEventRequestDao {
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId ORDER BY createdAt ASC")
     fun  getFirstBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): BroadcastNostrEventRequest?
 
-    @Query("SELECT * FROM BroadcastNostrEventRequest WHERE status = :status AND createdAt > :createdAt")
-    fun observeBroadcastNostrEventRequestsByStatus(status: String, createdAt: Instant = Clock.System.now()): Flow<LocalBroadcastNostrEventRequest?>
+    // See NegentropySynchronizeRequestDao: the old `createdAt > :createdAt` bound a
+    // once-evaluated `Clock.System.now()` for the life of the Flow. Because Instants are
+    // persisted at second resolution, that hid every broadcast enqueued in the observer's
+    // own start second — i.e. the entire profile-creation burst — plus everything left
+    // pending by a previous session. Nothing else drains this table, so those events were
+    // never sent to any relay.
+    @Query("SELECT * FROM BroadcastNostrEventRequest WHERE status = :status ORDER BY createdAt ASC, id ASC LIMIT 1")
+    fun observeBroadcastNostrEventRequestsByStatus(status: String): Flow<LocalBroadcastNostrEventRequest?>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId")
     fun observeBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): Flow<BroadcastNostrEventRequest?>
+
+    /**
+     * A request is flipped to "processing" before the publish is attempted, and the publish can
+     * end in a timeout or a socket error that leaves it there. Nothing observes "processing" or
+     * "failed", so those rows are dead weight. Requeue everything a previous process left behind
+     * when we start up, so an interrupted publish is retried instead of lost.
+     */
+    @Query("UPDATE BroadcastNostrEventRequest SET status = 'pending' WHERE status IN ('processing', 'failed') AND createdAt <= :staleBefore")
+    suspend fun requeueStaleBroadcastNostrEventRequests(staleBefore: Instant): Int
 
     @Upsert
     suspend fun upsert(broadcastNostrEventRequest: BroadcastNostrEventRequest): Long

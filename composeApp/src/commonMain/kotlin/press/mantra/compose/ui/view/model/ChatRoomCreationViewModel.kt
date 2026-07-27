@@ -80,7 +80,13 @@ class ChatRoomCreationViewModel(
 
                 viewModelScope.launch(Dispatchers.IO) {
                     val localChatRoom = chatRepository.getOrCreateChatRoom(
-                        chatRoomId = group.groupId.toHex(),
+                        // Key the room on the Marmot `nostr_group_id` baked into the group's
+                        // 0xF2EE extension, NOT on `MlsGroup`'s own randomly generated groupId —
+                        // they are unrelated 32-byte values. GroupEvents are h-tagged with the
+                        // room id, while every inbound path (and the invitee's own join) resolves
+                        // rooms by nostrGroupId, so using the MLS id meant the two sides could
+                        // never see each other's events.
+                        chatRoomId = gid,
                         activeUserPublicKey = keyPair.pubKey.toHexKey(),
                         relayHint = null,
                         defaultSubject = name.toString(),

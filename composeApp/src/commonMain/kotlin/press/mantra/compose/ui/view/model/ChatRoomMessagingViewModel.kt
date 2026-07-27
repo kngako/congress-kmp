@@ -25,7 +25,11 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class ChatRoomMessagingViewModel(
     val chatRoomId: String,
@@ -109,77 +113,108 @@ class ChatRoomMessagingViewModel(
                 }
             }
 
-            nostrRepository.observeProfileWithPublicKey(chatRoomId).collect { profile ->
-                if (profile != null) {
-                    logger.d("Create chat with: $profile")
+            // Observe BOTH halves of what we need. Watching only the profile meant a key
+            // package arriving later never re-triggered the check (indexing a kind-30443
+            // touches MarmotKeyPackage, not Profile), so a lost race latched permanently.
+            var creationStarted = false
 
-                    if (profile.createdAt > GENESIS_AT) {
-                        // Check if we have a keyPackageEvent...
-                        val keyPackageEvent = chatRepository.getMarmotKeyPackageForPublicKey(chatRoomId) // TODO: Observe
+            // Keep waiting (the collect below stays live, so a late arrival still works) but
+            // stop looking like nothing is happening if the peer's key package never shows up.
+            val lookupTimeout = viewModelScope.launch {
+                delay(RELAY_LOOKUP_TIMEOUT)
+                chatRoomMessagingUIState = ChatRoomMessagingUIState.Error(
+                    "Couldn't find this profile's chat details on the relays yet. They may not have finished setting up Torch."
+                )
+            }
 
-                        if (keyPackageEvent == null) {
-                            chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Missing Key Package") // TODO: Introduce missing key package UI State...
-                        } else {
-                            // Create new chat and invite local
-                            try {
-                                val chatRoomId = chatRepository.createMlsDirectMessage(
-                                    userPublicKey = activeUserPublicKey,
-                                    peerPublicKey = chatRoomId,
-                                    peerKeyPackage = keyPackageEvent,
-                                )
+            combine(
+                nostrRepository.observeProfileWithPublicKey(chatRoomId),
+                chatRepository.observeMarmotKeyPackageForPublicKey(chatRoomId)
+            ) { profile, keyPackage -> profile to keyPackage }
+                .distinctUntilChanged()
+                .collect { (profile, keyPackageEvent) ->
+                    val profileIsResolved = profile != null && profile.createdAt > GENESIS_AT
 
-                                viewModelScope.launch(Dispatchers.Main) {
-                                    onNavigateToChat.invoke(
-                                        ChatRoomMessagingRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
-                                    )
-                                }
-                            } catch (e: Throwable) {
-                                logger.e("Failed to create chat", e)
-                                chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Failed to create chat")
-                            }
-                        }
-                    } else {
-                        chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Couldn't find profile... searching relays.") // Looking for profile...
+                    if (!profileIsResolved || keyPackageEvent == null) {
+                        // Whatever is missing, ask the relays for it. This used to be queued
+                        // only when the Profile row was entirely absent, so the far more common
+                        // "we have a placeholder / we have the profile but not the key package"
+                        // cases sat there showing an error while nothing was being fetched.
+                        scheduleProfileAndKeyPackageSync()
+                        return@collect
                     }
-                } else {
-                    val synchronizationFilter = SynchronizationFilter(
-                        kinds = arrayOf(
-                            MetadataEvent.KIND,
-                            KeyPackageEvent.KIND,
-                            ChatMessageRelayListEvent.KIND
-                        ),
-                        authors = arrayOf(
-                            chatRoomId
-                        ),
-                        limit = 1
-                    )
-                    nostrRepository.queueNegentropySynchronizeRequest(
-                        Relays.DefaultDMRelayList.map { relay ->
-                            NegentropySynchronizeRequest(
-                                id = NegentropySynchronizeRequest.computeId(
-                                    relay.url,
-                                    synchronizationFilter = synchronizationFilter
-                                ),
-                                purpose = "initiate-chat",
-                                synchronizationFilter = synchronizationFilter,
-                                relayURL = relay.url,
-                                level = 0
+
+                    lookupTimeout.cancel()
+                    if (creationStarted) return@collect
+                    creationStarted = true
+
+                    logger.d("Create chat with: $profile")
+                    try {
+                        val newChatRoomId = chatRepository.createMlsDirectMessage(
+                            userPublicKey = activeUserPublicKey,
+                            peerPublicKey = chatRoomId,
+                            peerKeyPackage = keyPackageEvent,
+                        )
+
+                        viewModelScope.launch(Dispatchers.Main) {
+                            onNavigateToChat.invoke(
+                                ChatRoomMessagingRoute(
+                                    activeUserPublicKey = activeUserPublicKey,
+                                    chatRoomId = newChatRoomId,
+                                    relayHint = relayHint
+                                )
                             )
                         }
-                    )
-                    chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Couldn't find profile... queued to search for relay.") // Looking for profile...
+                    } catch (e: Throwable) {
+                        creationStarted = false
+                        logger.e("Failed to create chat", e)
+                        chatRoomMessagingUIState = ChatRoomMessagingUIState.Error("Failed to create chat")
+                    }
+                    return@collect
                 }
-            }
         }
+    }
+
+    /**
+     * Ask the DM relays for everything needed to start a chat with [chatRoomId] (a pubkey here):
+     * the peer's metadata, their MLS key package and their DM relay list.
+     */
+    private suspend fun scheduleProfileAndKeyPackageSync() {
+        val synchronizationFilter = SynchronizationFilter(
+            kinds = arrayOf(
+                MetadataEvent.KIND,
+                KeyPackageEvent.KIND,
+                ChatMessageRelayListEvent.KIND
+            ),
+            authors = arrayOf(
+                chatRoomId
+            )
+            // No `limit`: it is ignored on the negentropy path but honoured on the REQ
+            // fallback, where `limit = 1` returned a single newest event across all three
+            // kinds — almost always the kind-0 — so the key package never arrived.
+        )
+        nostrRepository.queueNegentropySynchronizeRequest(
+            Relays.DefaultDMRelayList.map { relay ->
+                NegentropySynchronizeRequest(
+                    id = NegentropySynchronizeRequest.computeId(
+                        relay.url,
+                        synchronizationFilter = synchronizationFilter
+                    ),
+                    purpose = "initiate-chat",
+                    synchronizationFilter = synchronizationFilter,
+                    relayURL = relay.url,
+                    level = 0
+                )
+            }
+        )
     }
 
 
     companion object {
         private const val TAG = "ChatRoomMessagingViewModel"
+
+        /** How long to wait on the relays before telling the user we came up empty. */
+        private val RELAY_LOOKUP_TIMEOUT = 20.seconds
 
         fun factory(
             activeUserPublicKey: HexKey,

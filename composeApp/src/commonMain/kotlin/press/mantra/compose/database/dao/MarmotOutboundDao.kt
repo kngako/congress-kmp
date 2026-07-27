@@ -17,6 +17,7 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.MarmotRetainedEpochSecret
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Participant
+import press.mantra.compose.exceptions.MarmotMissingChatGroupException
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.exporterSecret
 import press.mantra.compose.extensions.toHex
@@ -135,17 +136,47 @@ abstract class MarmotOutboundDao(
             senderPublicKey = localChatRoom.chatRoom.userPublicKey
         )
 
-        localChatRoom.chatRoom.toMlsGroup(sentGenerations)?.let { mlsGroup ->
-            inviteMember(
-                nostrGroupId = localChatRoom.chatRoom.id,
-                mlsGroup = mlsGroup,
-                userPublicKey = localChatRoom.chatRoom.userPublicKey,
-                peerPublicKey = peerPublicKey,
-                peerKeyPackage = peerKeyPackage,
-                relays = Relays.DefaultDMRelayList.map { it.url },
-                isOneMemberInitialGroupCreation = false
+        // A room restored from an inbound gift wrap has no persisted MLS state, so there is
+        // nothing to add a member to. Say so instead of silently doing nothing and letting the
+        // caller report success.
+        val mlsGroup = localChatRoom.chatRoom.toMlsGroup(sentGenerations)
+            ?: throw MarmotMissingChatGroupException(
+                "No MLS group state for chat room ${localChatRoom.chatRoom.id}; cannot invite $peerPublicKey"
             )
-        }
+
+        val relays = Relays.DefaultDMRelayList.map { it.url }
+
+        // The invitee needs a Participant row before the Welcome is sealed: sealGiftWrapPayload
+        // walks the participants of the room to decide who to wrap for, so without this the
+        // Welcome produced no gift wraps at all and sat unsealed forever.
+        database.participantDao().upsert(
+            listOf(
+                Participant(
+                    participantPublicKey = peerPublicKey,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    relayHint = relays.first()
+                )
+            )
+        )
+
+        inviteMember(
+            nostrGroupId = localChatRoom.chatRoom.id,
+            mlsGroup = mlsGroup,
+            userPublicKey = localChatRoom.chatRoom.userPublicKey,
+            peerPublicKey = peerPublicKey,
+            peerKeyPackage = peerKeyPackage,
+            relays = relays,
+            isOneMemberInitialGroupCreation = false
+        )
+
+        // `addMember` advanced the in-memory group to the next epoch. Without persisting it the
+        // creator kept encrypting under the old epoch — which the new member cannot decrypt —
+        // and the next invite would re-derive from stale state and produce a conflicting commit.
+        database.chatRoomDao().upsert(
+            localChatRoom.chatRoom.copy(
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+            )
+        )
     }
 
     private suspend fun inviteMember(
