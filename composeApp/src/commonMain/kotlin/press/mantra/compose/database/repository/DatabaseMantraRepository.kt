@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.CoroutineScope
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
@@ -13,11 +14,10 @@ import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
-import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
-import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -318,140 +318,55 @@ class DatabaseMantraRepository(
         database.mantraDialectDao().getDialectById(id)
 
     override suspend fun addDialect(
+        localChatRoom: LocalChatRoom,
         name: String,
         country: String,
         language: String,
-        chatRoomId: String,
         userPublicKey: HexKey,
-    ): MantraDialect? {
-        val dialectEventTemplate = DialectEvent.build(
+    ): MarmotInnerEvent? {
+        return database.mantraDao().addDialect(
+            localChatRoom = localChatRoom,
             name = name,
             country = country,
             language = language,
+            userPublicKey = userPublicKey
         )
-
-        val mantraDialect = MantraDialect.fromDialectEventTemplate(
-            dialectEventTemplate = dialectEventTemplate,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey,
-        ) ?: return null
-
-        val dialectInnerEvent = MarmotInnerEvent(
-            id = mantraDialect.id,
-            publicKey = mantraDialect.publicKey,
-            kind = DialectEvent.KIND,
-            createdAt = mantraDialect.createdAt,
-            tags = dialectEventTemplate.tags,
-            content = dialectEventTemplate.content,
-            chatRoomId = mantraDialect.chatRoomId,
-        )
-
-        return try {
-            database.mantraDialectDao().upsert(mantraDialect)
-            database.marmotInnerEventDao().upsert(dialectInnerEvent)
-            mantraDialect
-        } catch (error: Throwable) {
-            logger.e("Failed to add dialect \"$name\" to chat room $chatRoomId", error)
-            null
-        }
     }
 
     override suspend fun addArtifact(
+        localChatRoom: LocalChatRoom,
         name: String,
         url: String,
         versionLabel: String,
         dialectId: HexKey,
-        chatRoomId: String,
         userPublicKey: HexKey,
         visibility: String,
         license: String,
     ): MarmotInnerEvent? {
-        // TODO: Verify the active user is an admin of the chat room before allowing this.
-        val artifactEventTemplate = ArtifactEvent.build(
+        return database.mantraDao().addArtifact(
+            localChatRoom = localChatRoom,
             name = name,
             url = url,
-            visibility = visibility,
-            license = license,
+            versionLabel = versionLabel,
             dialectId = dialectId,
-        )
-
-        val mantraArtifact = MantraArtifact.fromArtifactEventTemplate(
-            artifactEventTemplate = artifactEventTemplate,
-            chatRoomId = chatRoomId,
             userPublicKey = userPublicKey,
-        ) ?: return null
-
-        // Persist the artifact together with an unprocessed marmot inner event
-        // (a rumor). Inner events with a null marmotGroupEventId are later
-        // picked up by the outbound pipeline and encrypted into a kind:445
-        // group event for the chat room.
-        //
-        // This covers the "private" visibility case. Permissioned artifacts
-        // (published as a PublicMessage) and public artifacts (published as a
-        // plain nostr event) are not implemented yet.
-        val artifactInnerEvent = MarmotInnerEvent(
-            id = mantraArtifact.id,
-            publicKey = mantraArtifact.publicKey,
-            kind = ArtifactEvent.KIND,
-            createdAt = mantraArtifact.createdAt,
-            tags = artifactEventTemplate.tags,
-            content = artifactEventTemplate.content,
-            chatRoomId = mantraArtifact.chatRoomId,
+            visibility = visibility,
+            license = license
         )
-
-        return try {
-            database.mantraArtifactDao().upsert(mantraArtifact)
-            database.marmotInnerEventDao().upsert(artifactInnerEvent)
-
-            // Every artifact starts with an initial version.
-            addArtifactVersion(
-                artifactId = mantraArtifact.id,
-                versionLabel = versionLabel,
-                chatRoomId = chatRoomId,
-                userPublicKey = userPublicKey,
-            )
-
-            artifactInnerEvent
-        } catch (error: Throwable) {
-            logger.e("Failed to add artifact \"$name\" to chat room $chatRoomId", error)
-            null
-        }
     }
 
     override suspend fun addArtifactVersion(
+        localChatRoom: LocalChatRoom,
         artifactId: HexKey,
         versionLabel: String,
-        chatRoomId: String,
         userPublicKey: HexKey,
     ): MarmotInnerEvent? {
-        // The version label is carried in the event content (see
-        // MantraArtifactVersion.fromArtifactVersionEvent).
-        val artifactVersionEventTemplate = ArtifactVersionEvent.build(
-            content = versionLabel,
-        ) {
-            addUnique(ArtifactIdTag.assemble(artifactId))
-        }
-
-        val mantraArtifactVersion = MantraArtifactVersion.fromArtifactVersionEventTemplate(
-            artifactVersionEventTemplate = artifactVersionEventTemplate,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey,
-        ) ?: return null
-
-        val versionInnerEvent = MarmotInnerEvent(
-            id = mantraArtifactVersion.id,
-            publicKey = mantraArtifactVersion.publicKey,
-            kind = ArtifactVersionEvent.KIND,
-            createdAt = mantraArtifactVersion.createdAt,
-            tags = artifactVersionEventTemplate.tags,
-            content = artifactVersionEventTemplate.content,
-            chatRoomId = mantraArtifactVersion.chatRoomId,
+        return database.mantraDao().addArtifactVersion(
+            localChatRoom = localChatRoom,
+            artifactId = artifactId,
+            versionLabel = versionLabel,
+            userPublicKey = userPublicKey
         )
-
-        database.mantraArtifactVersionDao().upsert(mantraArtifactVersion)
-        database.marmotInnerEventDao().upsert(versionInnerEvent)
-
-        return versionInnerEvent
     }
 
     companion object {

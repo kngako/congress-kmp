@@ -22,6 +22,7 @@ import press.mantra.compose.database.dao.MantraArtifactDao
 import press.mantra.compose.database.dao.MantraArtifactVersionDao
 import press.mantra.compose.database.dao.MantraChapterDao
 import press.mantra.compose.database.dao.MantraChunkDao
+import press.mantra.compose.database.dao.MantraDao
 import press.mantra.compose.database.dao.MantraDialectDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionContributorDao
@@ -183,6 +184,8 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun giftWrapPayloadDao(): GiftWrapPayloadDao
 
     abstract fun inReplyToRelationDao(): InReplyToRelationDao
+
+    abstract fun mantraDao(): MantraDao
 
     abstract fun mantraArtifactDao(): MantraArtifactDao
 

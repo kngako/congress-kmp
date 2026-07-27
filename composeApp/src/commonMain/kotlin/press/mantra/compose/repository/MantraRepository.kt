@@ -10,6 +10,7 @@ import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
 interface MantraRepository {
     suspend fun getArtifacts(chatRoomId: String): List<MantraArtifact>
@@ -85,28 +86,28 @@ interface MantraRepository {
     suspend fun getDialect(id: String): MantraDialect?
 
     suspend fun addDialect(
+        localChatRoom: LocalChatRoom,
         name: String,
         country: String,
         language: String,
-        chatRoomId: String,
         userPublicKey: HexKey,
-    ): MantraDialect?
+    ): MarmotInnerEvent?
 
     suspend fun addArtifact(
+        localChatRoom: LocalChatRoom,
         name: String,
         url: String,
         versionLabel: String,
         dialectId: HexKey,
-        chatRoomId: String,
         userPublicKey: HexKey,
         visibility: String = DEFAULT_VISIBILITY,
         license: String = DEFAULT_LICENSE,
     ): MarmotInnerEvent?
 
     suspend fun addArtifactVersion(
+        localChatRoom: LocalChatRoom,
         artifactId: HexKey,
         versionLabel: String,
-        chatRoomId: String,
         userPublicKey: HexKey,
     ): MarmotInnerEvent?
 
@@ -169,28 +170,28 @@ interface MantraRepository {
             override suspend fun getDialect(id: String): MantraDialect? = null
 
             override suspend fun addDialect(
+                localChatRoom: LocalChatRoom,
                 name: String,
                 country: String,
                 language: String,
-                chatRoomId: String,
                 userPublicKey: HexKey,
-            ): MantraDialect? = null
+            ): MarmotInnerEvent? = null
 
             override suspend fun addArtifact(
+                localChatRoom: LocalChatRoom,
                 name: String,
                 url: String,
                 versionLabel: String,
                 dialectId: HexKey,
-                chatRoomId: String,
                 userPublicKey: HexKey,
                 visibility: String,
                 license: String,
             ): MarmotInnerEvent? = null
 
             override suspend fun addArtifactVersion(
+                localChatRoom: LocalChatRoom,
                 artifactId: HexKey,
                 versionLabel: String,
-                chatRoomId: String,
                 userPublicKey: HexKey,
             ): MarmotInnerEvent? = null
         }

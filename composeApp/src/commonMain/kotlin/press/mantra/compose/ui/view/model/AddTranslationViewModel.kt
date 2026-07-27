@@ -81,10 +81,10 @@ class AddTranslationViewModel(
                 // Reuse the selected dialect, or create a new one for the translation.
                 val dialectId = if (creatingNewDialect) {
                     mantraRepository.addDialect(
+                        ,
                         name = dialectName,
                         country = dialectCountry,
                         language = dialectLanguage,
-                        chatRoomId = chatRoomId,
                         userPublicKey = activeUserPublicKey,
                     )?.id ?: return@runCatching null
                 } else {
