@@ -139,11 +139,20 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "artifact",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraArtifact.name} to artifacts"
+                                )
                             }
-
-                            null
                         }
-
                         ArtifactVersionEvent.KIND -> {
                             MantraArtifactVersion.fromArtifactVersionEvent(
                                 artifactVersionEvent = ArtifactVersionEvent(
@@ -161,10 +170,20 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
-                            }
-                            null
-                        }
 
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "artifactVersion",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraArtifactVersion.versionLabel} to artifact versions" // TODO: Use artifact name...
+                                )
+                            }
+                        }
                         ChapterEvent.KIND -> {
                             MantraChapter.fromChapterEvent(
                                 chapterEvent = ChapterEvent(
@@ -182,8 +201,19 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "chapter",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraChapter.name} to chapters" // TODO: Use artifact name...
+                                )
                             }
-                            null
                         }
 
                         ChunkEvent.KIND -> {
@@ -203,6 +233,8 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+
+                                // TODO: Chunks might be too noisy to show in chat...
                             }
                             null
                         }
@@ -223,8 +255,20 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+
+
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "dialect",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraDialect.name} to dialects" // TODO: Use artifact name...
+                                )
                             }
-                            null
                         }
                         TranslationArtifactVersionEvent.KIND -> {
                             MantraTranslationArtifactVersion.fromTranslationArtifactVersionEvent(
@@ -243,8 +287,19 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "translationArtifactVersion",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraTranslationArtifactVersion.name} to translation artifact versions" // TODO: Use artifact name...
+                                )
                             }
-                            null
                         }
                         TranslationArtifactVersionContributorListEvent.KIND -> {
                             // TODO: Consume contributors...
@@ -267,6 +322,7 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+                                // TODO: translation chapter might be too noisy for chat updates
                             }
                             null
                         }
@@ -287,8 +343,9 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
-                            }
 
+
+                            }
                             null
                         }
                         TranslationContributorListEvent.KIND -> {
@@ -312,8 +369,18 @@ data class ChatMessage(
                                         marmotGroupEventId = groupEvent.id,
                                     )
                                 )
+                                ChatMessage(
+                                    giftWrapPayloadId = null,
+                                    messageType = "translation",
+                                    marmotGroupEventId = groupEvent.id,
+                                    marmotInnerEventId = event.id,
+                                    senderPublicKey = event.pubKey,
+                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                                    chatRoomId = groupEventResult.groupId,
+                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
+                                    content = "Added ${mantraTranslation.text} to translations" // TODO: Reference original text
+                                )
                             }
-                            null
                         }
                         else -> {
                             ChatMessage(
