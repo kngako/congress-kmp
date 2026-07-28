@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MarmotInnerEventDao {
 
-    @Query("SELECT * FROM MarmotInnerEvent WHERE publicKey = :publicKey AND marmotGroupEventId IS NULL")
+    @Query("SELECT * FROM MarmotInnerEvent WHERE publicKey = :publicKey AND marmotGroupEventId IS NULL ORDER BY createdAt ASC")
     fun observeUnprocessedMarmotInnerEvents(publicKey: String): Flow<MarmotInnerEvent?>
 
     @Upsert
