@@ -60,12 +60,12 @@ interface MantraRepository {
      * MantraTranslationChunk (empty text) for each existing chunk. Returns null
      * when the artifact has no version to translate.
      */
-    suspend fun addTranslation(
+    suspend fun addTranslationArtifactVersion(
         artifactId: String,
         dialectId: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MantraTranslationArtifactVersion?
+    ): MarmotInnerEvent?
 
     /**
      * Add a chapter (markdown [originalText]) to the artifact's latest version.
@@ -150,12 +150,12 @@ interface MantraRepository {
 
             override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> = emptyList()
 
-            override suspend fun addTranslation(
+            override suspend fun addTranslationArtifactVersion(
                 artifactId: String,
                 dialectId: String,
                 chatRoomId: String,
                 userPublicKey: HexKey,
-            ): MantraTranslationArtifactVersion? = null
+            ): MarmotInnerEvent? = null
 
             override suspend fun addChapter(
                 artifactId: String,

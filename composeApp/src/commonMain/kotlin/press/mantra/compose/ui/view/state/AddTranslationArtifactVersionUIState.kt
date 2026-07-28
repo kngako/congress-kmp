@@ -4,16 +4,16 @@ import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
-sealed interface AddTranslationUIState {
+sealed interface AddTranslationArtifactVersionUIState {
     data class Loaded(
         val localChatRoom: LocalChatRoom,
         val artifact: MantraArtifact,
         val dialects: List<MantraDialect> = emptyList(),
-    ): AddTranslationUIState
+    ): AddTranslationArtifactVersionUIState
 
     data class Error(
         val message: String
-    ): AddTranslationUIState
+    ): AddTranslationArtifactVersionUIState
 
-    data object Loading: AddTranslationUIState
+    data object Loading: AddTranslationArtifactVersionUIState
 }

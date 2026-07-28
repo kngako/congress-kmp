@@ -50,36 +50,36 @@ import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
-import press.mantra.compose.ui.view.model.AddTranslationViewModel
-import press.mantra.compose.ui.view.state.AddTranslationUIState
+import press.mantra.compose.ui.view.model.AddTranslationArtifactVersionViewModel
+import press.mantra.compose.ui.view.state.AddTranslationArtifactVersionUIState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddTranslationScreen(
+fun AddTranslationArtifactVersionScreen(
     activeUserPublicKey: HexKey,
     artifactId: String,
     chatRoomId: String,
     relayHint: String?,
-    initialAddTranslationUIState: AddTranslationUIState = AddTranslationUIState.Loading,
+    initialAddTranslationArtifactVersionUIState: AddTranslationArtifactVersionUIState = AddTranslationArtifactVersionUIState.Loading,
     mantraRepository: MantraRepository,
     chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
-    val addTranslationViewModel: AddTranslationViewModel = viewModel(
-        factory = AddTranslationViewModel.factory(
+    val addTranslationArtifactVersionViewModel: AddTranslationArtifactVersionViewModel = viewModel(
+        factory = AddTranslationArtifactVersionViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             artifactId = artifactId,
             chatRoomId = chatRoomId,
             relayHint = relayHint,
-            initialAddTranslationUIState = initialAddTranslationUIState,
+            initialAddTranslationArtifactVersionUIState = initialAddTranslationArtifactVersionUIState,
             mantraRepository = mantraRepository,
             chatRepository = chatRepository
         )
     )
 
-    when (val addTranslationUIState = addTranslationViewModel.addTranslationUIState) {
-        is AddTranslationUIState.Error -> {
+    when (val addTranslationUIState = addTranslationArtifactVersionViewModel.addTranslationArtifactVersionUIState) {
+        is AddTranslationArtifactVersionUIState.Error -> {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -89,7 +89,7 @@ fun AddTranslationScreen(
             }
         }
 
-        is AddTranslationUIState.Loaded -> {
+        is AddTranslationArtifactVersionUIState.Loaded -> {
             val dialectNameFieldState = rememberTextFieldState()
             val dialectCountryFieldState = rememberTextFieldState()
             val dialectLanguageFieldState = rememberTextFieldState()
@@ -118,7 +118,7 @@ fun AddTranslationScreen(
                         floatingActionButton = {
                             ExtendedFloatingActionButton(
                                 onClick = {
-                                    addTranslationViewModel.addTranslation(
+                                    addTranslationArtifactVersionViewModel.addTranslation(
                                         localChatRoom = addTranslationUIState.localChatRoom,
                                         existingDialectId = selectedDialectId,
                                         dialectNameField = dialectNameFieldState,
@@ -228,7 +228,7 @@ fun AddTranslationScreen(
             }
         }
 
-        AddTranslationUIState.Loading -> {
+        AddTranslationArtifactVersionUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -247,23 +247,23 @@ fun AddTranslationScreen(
     }
 
     LaunchedEffect(true) {
-        if (initialAddTranslationUIState == AddTranslationUIState.Loading) {
-            addTranslationViewModel.initiateAddTranslation()
+        if (initialAddTranslationArtifactVersionUIState == AddTranslationArtifactVersionUIState.Loading) {
+            addTranslationArtifactVersionViewModel.initiateAddTranslation()
         }
     }
 }
 
 @Preview
 @Composable
-private fun AddTranslationScreenPreview() {
+private fun AddTranslationArtifactVersionScreenPreview() {
     TorchTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            AddTranslationScreen(
+            AddTranslationArtifactVersionScreen(
                 activeUserPublicKey = "",
                 artifactId = "artifactId",
                 chatRoomId = "chatRoomId",
                 relayHint = null,
-                initialAddTranslationUIState = AddTranslationUIState.Loaded(
+                initialAddTranslationArtifactVersionUIState = AddTranslationArtifactVersionUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",

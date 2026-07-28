@@ -11,6 +11,9 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraTranslationArtifactVersion
+import press.mantra.compose.database.model.MantraTranslationChapter
+import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
@@ -18,6 +21,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_LICENSE
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_VISIBILITY
@@ -299,6 +305,130 @@ abstract class MantraDao(
             chapterInnerEvent
         } catch (error: Throwable) {
             logger.e("Failed to add chapter \"$name\" to artifact $artifactId", error)
+            null
+        }
+    }
+
+    open suspend fun addTranslationArtifactVersion(
+        artifactId: String,
+        dialectId: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MarmotInnerEvent? {
+        val artifact = database.mantraArtifactDao().getArtifactById(artifactId) ?: return null
+        val version = database.mantraArtifactVersionDao()
+            .getArtifactVersionsByArtifactId(artifactId)
+            .firstOrNull() ?: return null
+        val dialect = database.mantraDialectDao().getDialectById(dialectId) ?: return null
+
+        // The translation is named after its dialect, and inherits the source
+        // artifact's visibility/license.
+        val translationVersionTemplate = TranslationArtifactVersionEvent.build(
+            artifactVersionId = version.id,
+            dialectId = dialectId,
+            name = dialect.name,
+            visibility = artifact.visibility,
+            license = artifact.license,
+        )
+        val translationVersion = MantraTranslationArtifactVersion.fromTranslationArtifactVersionEventTemplate(
+            translationArtifactVersionEventTemplate = translationVersionTemplate,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+        ) ?: return null
+
+        return try {
+            database.mantraTranslationArtifactVersionDao().upsert(translationVersion)
+            val translationArtifactVersionInnerEvent = MarmotInnerEvent(
+                id = translationVersion.id,
+                publicKey = translationVersion.publicKey,
+                kind = TranslationArtifactVersionEvent.KIND,
+                createdAt = translationVersion.createdAt,
+                tags = translationVersionTemplate.tags,
+                content = translationVersionTemplate.content,
+                chatRoomId = translationVersion.chatRoomId,
+            )
+
+            sendMarmotInnerEvent(
+                chatRoomId = chatRoomId,
+                userPublicKey = userPublicKey,
+                text = "Added ${dialect.name} translation",
+                marmotInnerEvent = translationArtifactVersionInnerEvent
+            )
+
+            // Mirror the source structure: a translation chapter per chapter and
+            // an (untranslated) translation chunk per chunk.
+            val chapters = database.mantraChapterDao().getChaptersByArtifactVersionId(version.id)
+            chapters.forEach { chapter ->
+                val translationChapterTemplate = TranslationChapterEvent.build(
+                    translationArtifactVersionId = translationVersion.id,
+                    chapterId = chapter.id,
+                    index = chapter.index,
+                )
+                val translationChapter = MantraTranslationChapter.fromTranslationChapterEventTemplate(
+                    translationChapterEventTemplate = translationChapterTemplate,
+                    chatRoomId = chatRoomId,
+                    userPublicKey = userPublicKey,
+                ) ?: return@forEach
+
+                database.mantraTranslationChapterDao().upsert(translationChapter)
+                val translationChapterInnerEvent =  MarmotInnerEvent(
+                    id = translationChapter.id,
+                    publicKey = translationChapter.publicKey,
+                    kind = TranslationChapterEvent.KIND,
+                    createdAt = translationChapter.createdAt,
+                    tags = translationChapterTemplate.tags,
+                    content = translationChapterTemplate.content,
+                    chatRoomId = translationChapter.chatRoomId,
+                )
+
+                sendMarmotInnerEvent(
+                    chatRoomId = chatRoomId,
+                    userPublicKey = userPublicKey,
+                    text = "Prepared ${dialect.name} translation of the chapter ${chapter.name}",
+                    marmotInnerEvent = translationChapterInnerEvent
+                )
+
+                // TODO: Don't scaffold translation chunks?
+                val chunks = database.mantraChunkDao().getChunksByChapterId(chapter.id)
+                chunks.forEach { chunk ->
+                    val translationChunkTemplate = TranslationChunkEvent.build(
+                        translationChapterId = translationChapter.id,
+                        chunkId = chunk.id,
+                        index = chunk.index,
+                        text = "", // Untranslated scaffold; filled in during authoring.
+                    )
+                    val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
+                        translationChunkEventTemplate = translationChunkTemplate,
+                        chatRoomId = chatRoomId,
+                        userPublicKey = userPublicKey,
+                    ) ?: return@forEach
+
+                    database.mantraTranslationChunkDao().upsert(translationChunk)
+                    val translationChunkInnerEvent = MarmotInnerEvent(
+                        id = translationChunk.id,
+                        publicKey = translationChunk.publicKey,
+                        kind = TranslationChunkEvent.KIND,
+                        createdAt = translationChunk.createdAt,
+                        tags = translationChunkTemplate.tags,
+                        content = translationChunkTemplate.content,
+                        chatRoomId = translationChunk.chatRoomId,
+                    )
+                    database.marmotInnerEventDao().upsert(
+                        translationChunkInnerEvent
+                    )
+
+                    sendMarmotInnerEvent(
+                        chatRoomId = chatRoomId,
+                        userPublicKey = userPublicKey,
+                        text = "Prepared translation chunk ${chunk.index}",
+                        marmotInnerEvent = translationChunkInnerEvent
+                    )
+                }
+            }
+
+            translationArtifactVersionInnerEvent
+        } catch (error: Throwable) {
+            logger.e("Failed to add translation for artifact $artifactId", error)
             null
         }
     }

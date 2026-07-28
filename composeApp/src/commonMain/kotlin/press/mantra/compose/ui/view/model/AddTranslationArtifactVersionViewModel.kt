@@ -16,24 +16,22 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
-import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
-import press.mantra.compose.repository.MarmotRepository
-import press.mantra.compose.ui.view.state.AddTranslationUIState
+import press.mantra.compose.ui.view.state.AddTranslationArtifactVersionUIState
 
-class AddTranslationViewModel(
+class AddTranslationArtifactVersionViewModel(
     val artifactId: String,
     val chatRoomId: String,
     val activeUserPublicKey: HexKey,
     val relayHint: String?,
-    initialAddTranslationUIState: AddTranslationUIState,
+    initialAddTranslationArtifactVersionUIState: AddTranslationArtifactVersionUIState,
     val mantraRepository: MantraRepository,
     val chatRepository: ChatRepository,
 ): ViewModel() {
 
-    var addTranslationUIState: AddTranslationUIState by mutableStateOf(initialAddTranslationUIState)
+    var addTranslationArtifactVersionUIState: AddTranslationArtifactVersionUIState by mutableStateOf(initialAddTranslationArtifactVersionUIState)
         private set
 
     private val logger = Logger.withTag(TAG)
@@ -44,10 +42,10 @@ class AddTranslationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val artifact = mantraRepository.getArtifact(artifactId)
             val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
-            addTranslationUIState = if (artifact == null || localChatRoom == null) {
-                AddTranslationUIState.Error("Couldn't find the artifact")
+            addTranslationArtifactVersionUIState = if (artifact == null || localChatRoom == null) {
+                AddTranslationArtifactVersionUIState.Error("Couldn't find the artifact")
             } else {
-                AddTranslationUIState.Loaded(
+                AddTranslationArtifactVersionUIState.Loaded(
                     artifact = artifact,
                     localChatRoom = localChatRoom,
                     dialects = mantraRepository.getDialects(chatRoomId),
@@ -96,10 +94,10 @@ class AddTranslationViewModel(
                         userPublicKey = activeUserPublicKey,
                     )?.id ?: return@runCatching null
                 } else {
-                    existingDialectId!!
+                    existingDialectId
                 }
 
-                mantraRepository.addTranslation(
+                mantraRepository.addTranslationArtifactVersion(
                     artifactId = artifactId,
                     dialectId = dialectId,
                     chatRoomId = chatRoomId,
@@ -136,17 +134,17 @@ class AddTranslationViewModel(
             artifactId: String,
             chatRoomId: String,
             relayHint: String?,
-            initialAddTranslationUIState: AddTranslationUIState = AddTranslationUIState.Loading,
+            initialAddTranslationArtifactVersionUIState: AddTranslationArtifactVersionUIState = AddTranslationArtifactVersionUIState.Loading,
             mantraRepository: MantraRepository,
             chatRepository: ChatRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                AddTranslationViewModel(
+                AddTranslationArtifactVersionViewModel(
                     activeUserPublicKey = activeUserPublicKey,
                     artifactId = artifactId,
                     chatRoomId = chatRoomId,
                     relayHint = relayHint,
-                    initialAddTranslationUIState = initialAddTranslationUIState,
+                    initialAddTranslationArtifactVersionUIState = initialAddTranslationArtifactVersionUIState,
                     mantraRepository = mantraRepository,
                     chatRepository = chatRepository
                 )

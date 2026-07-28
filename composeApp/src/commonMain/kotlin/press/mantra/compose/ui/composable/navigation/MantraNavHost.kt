@@ -99,7 +99,7 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRo
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
-import press.mantra.compose.ui.composable.AddTranslationScreen
+import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
 import press.mantra.compose.ui.composable.TranslationChapterScreen
@@ -803,7 +803,7 @@ fun MantraNavHost(
         composable<AddTranslationRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<AddTranslationRoute>()
 
-            AddTranslationScreen(
+            AddTranslationArtifactVersionScreen(
                 activeUserPublicKey = route.activeUserPublicKey,
                 artifactId = route.artifactId,
                 chatRoomId = route.chatRoomId,
