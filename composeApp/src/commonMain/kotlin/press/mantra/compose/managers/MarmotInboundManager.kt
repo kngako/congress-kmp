@@ -9,6 +9,8 @@ import press.mantra.compose.extensions.exporterSecret
 import press.mantra.compose.extensions.toHex
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.GroupEventResult
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
+import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.CommitOrdering
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEventEncryption
@@ -28,6 +30,13 @@ import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import press.mantra.compose.database.GENESIS_AT
+import press.mantra.compose.database.model.NegentropySynchronizeRequest
+import press.mantra.compose.database.model.Profile
+import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.nostr.Relays
 import kotlin.time.Clock
 
 object MarmotInboundManager {
@@ -105,6 +114,59 @@ object MarmotInboundManager {
         }
         logger.d("graduatedAdmins: $graduatedAdmins")
 
+        // Placeholder profiles for new participants...
+        newParticipants.forEach { newParticipant ->
+            logger.d("New Participant: ${newParticipant.participantPublicKey}")
+            val profile = database.profileDao().getProfileByPublicKey(newParticipant.participantPublicKey)
+
+            if (profile == null) {
+                // Create placeholder profile...
+                val nostrEvent = database.nostrEventDao().getNostrEvents(
+                    kinds = arrayOf(GroupEvent.KIND),
+                    since = GENESIS_AT,
+                    limit = 1
+                )
+
+                val placeholderProfile = Profile(
+                    displayName = "LOADING...",
+                    publicKey = newParticipant.participantPublicKey,
+                    createdAt = GENESIS_AT,
+                    nostrEventId = nostrEvent.first().id,  // Will hopefully get overwriting by sync,
+                )
+
+                database.profileDao().insertPlaceholderProfile(
+                    placeholderProfile
+                )
+
+                // Schedule sync for profile...
+                val synchronizationFilter = SynchronizationFilter(
+                    authors = arrayOf(
+                        placeholderProfile.publicKey
+                    ),
+                    kinds = arrayOf(
+                        MetadataEvent.KIND,
+                        ChatMessageRelayListEvent.KIND,
+                        KeyPackageEvent.KIND,
+                        KeyPackageRelayListEvent.KIND,
+                    )
+                )
+
+                database.negentropySynchronizeRequestDao().insert(
+                    Relays.DefaultDMRelayList.map { relayUrl ->
+                        NegentropySynchronizeRequest(
+                            id = NegentropySynchronizeRequest.computeId(
+                                relayURL = relayUrl.url,
+                                synchronizationFilter
+                            ),
+                            purpose = "synchronization",
+                            synchronizationFilter = synchronizationFilter,
+                            relayURL = relayUrl.url,
+                            level = 0
+                        )
+                    }
+                )
+            }
+        }
         // Handle membership changes...
         database.participantDao().upsert(removedAdmins)
         database.participantDao().delete(excludedParticipants)
