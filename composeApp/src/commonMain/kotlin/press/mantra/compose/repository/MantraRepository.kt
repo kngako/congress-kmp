@@ -79,7 +79,7 @@ interface MantraRepository {
         originalText: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MantraChapter?
+    ): MarmotInnerEvent?
 
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
 
@@ -163,7 +163,7 @@ interface MantraRepository {
                 originalText: String,
                 chatRoomId: String,
                 userPublicKey: HexKey,
-            ): MantraChapter? = null
+            ): MarmotInnerEvent? = null
 
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 

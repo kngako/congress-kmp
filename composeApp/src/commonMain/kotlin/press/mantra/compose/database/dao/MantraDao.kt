@@ -8,15 +8,20 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.MantraChapter
+import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_LICENSE
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_VISIBILITY
+import press.mantra.compose.text.Markdown
 
 @Dao
 abstract class MantraDao(
@@ -198,8 +203,122 @@ abstract class MantraDao(
         return versionInnerEvent
     }
 
+    @Transaction
+    open suspend fun addChapter(
+        artifactId: String,
+        name: String,
+        originalText: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MarmotInnerEvent? {
+
+        // Chapters attach to an artifact version; use the latest one.
+        val version = database.mantraArtifactVersionDao()
+            .getArtifactVersionsByArtifactId(artifactId)
+            .firstOrNull() ?: return null
+
+        val chapterIndex = database.mantraChapterDao()
+            .getChaptersByArtifactVersionId(version.id)
+            .size
+
+        val chapterEventTemplate = ChapterEvent.build(
+            artifactVersionId = version.id,
+            name = name,
+            originalText = originalText,
+            index = chapterIndex,
+            wordCount = Markdown.wordCount(originalText),
+            characterCount = Markdown.characterCount(originalText),
+        )
+
+        val chapter = MantraChapter.fromChapterEventTemplate(
+            chapterEventTemplate = chapterEventTemplate,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+        ) ?: return null
+
+        return try {
+            database.mantraChapterDao().upsert(chapter)
+            val chapterInnerEvent = MarmotInnerEvent(
+                id = chapter.id,
+                publicKey = chapter.publicKey,
+                kind = ChapterEvent.KIND,
+                createdAt = chapter.createdAt,
+                tags = chapterEventTemplate.tags,
+                content = chapterEventTemplate.content,
+                chatRoomId = chapter.chatRoomId,
+            )
+            database.marmotInnerEventDao().upsert(
+                chapterInnerEvent
+            )
+
+            sendMarmotInnerEvent(
+                chatRoomId = chatRoomId,
+                userPublicKey = userPublicKey,
+                text = "Added chapter to artifact", // TODO: Get artifact to use in text...
+                marmotInnerEvent = chapterInnerEvent
+            )
+
+            // Split the markdown into paragraph chunks.
+            Markdown.splitParagraphs(originalText).forEachIndexed { chunkIndex, paragraph ->
+                val chunkEventTemplate = ChunkEvent.build(
+                    chapterId = chapter.id,
+                    text = paragraph,
+                    index = chunkIndex,
+                    wordCount = Markdown.wordCount(paragraph),
+                    characterCount = Markdown.characterCount(paragraph),
+                )
+                MantraChunk.fromChunkEventTemplate(
+                    chunkEventTemplate = chunkEventTemplate,
+                    chatRoomId = chatRoomId,
+                    userPublicKey = userPublicKey,
+                )?.let { chunk ->
+                    database.mantraChunkDao().upsert(chunk)
+                    val chunkInnerEvent = MarmotInnerEvent(
+                        id = chunk.id,
+                        publicKey = chunk.publicKey,
+                        kind = ChunkEvent.KIND,
+                        createdAt = chunk.createdAt,
+                        tags = chunkEventTemplate.tags,
+                        content = chunkEventTemplate.content,
+                        chatRoomId = chunk.chatRoomId,
+                    )
+
+                    database.marmotInnerEventDao().upsert(
+                        chunkInnerEvent
+                    )
+
+                    sendMarmotInnerEvent(
+                        chatRoomId = chatRoomId,
+                        userPublicKey = userPublicKey,
+                        text = "${chapter.name} added chunk $chunkIndex", // TODO: Use a portion of the actual chunked text...
+                        marmotInnerEvent = chunkInnerEvent
+                    )
+                }
+            }
+
+            chapterInnerEvent
+        } catch (error: Throwable) {
+            logger.e("Failed to add chapter \"$name\" to artifact $artifactId", error)
+            null
+        }
+    }
+
     private suspend fun sendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,
+        text: String,
+        marmotInnerEvent: MarmotInnerEvent
+    ) {
+        sendMarmotInnerEvent(
+            chatRoomId = localChatRoom.chatRoom.id,
+            userPublicKey = localChatRoom.chatRoom.userPublicKey,
+            text = text,
+            marmotInnerEvent = marmotInnerEvent
+        )
+    }
+
+    private suspend fun sendMarmotInnerEvent(
+        chatRoomId: String,
+        userPublicKey: HexKey,
         text: String,
         marmotInnerEvent: MarmotInnerEvent
     ) {
@@ -210,8 +329,8 @@ abstract class MantraDao(
         database.chatMessageDao().upsert(
             ChatMessage(
                 content = text,
-                chatRoomId = localChatRoom.chatRoom.id,
-                senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                chatRoomId = chatRoomId,
+                senderPublicKey = userPublicKey,
                 isUserMessage = true,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
