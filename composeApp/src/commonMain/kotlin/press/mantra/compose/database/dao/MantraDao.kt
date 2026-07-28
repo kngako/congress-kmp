@@ -309,6 +309,7 @@ abstract class MantraDao(
         }
     }
 
+    @Transaction
     open suspend fun addTranslationArtifactVersion(
         artifactId: String,
         dialectId: String,
@@ -429,6 +430,65 @@ abstract class MantraDao(
             translationArtifactVersionInnerEvent
         } catch (error: Throwable) {
             logger.e("Failed to add translation for artifact $artifactId", error)
+            null
+        }
+    }
+
+    @Transaction
+    open suspend fun saveTranslation(
+        translationChapterId: String,
+        chunkId: String,
+        text: String,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): MantraTranslationChunk? {
+        // The translation chunk mirrors the source chunk's position.
+        val sourceChunk = database.mantraChunkDao().getChunkById(chunkId) ?: return null
+
+        val translationChunkTemplate = TranslationChunkEvent.build(
+            translationChapterId = translationChapterId,
+            chunkId = chunkId,
+            index = sourceChunk.index,
+            text = text,
+        )
+        val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
+            translationChunkEventTemplate = translationChunkTemplate,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+        ) ?: return null
+
+        return try {
+            // Replace any existing translation chunk for this source chunk. Its id
+            // is derived from the (now changed) content, so it becomes a new row —
+            // drop the old one (and its rumor) to keep one per source chunk.
+            database.mantraTranslationChunkDao()
+                .getTranslationChunksByTranslationChapterId(translationChapterId)
+                .filter { it.chunkId == chunkId && it.id != translationChunk.id }
+                .forEach { stale ->
+                    database.mantraTranslationChunkDao().deleteById(stale.id)
+                    database.marmotInnerEventDao().deleteById(stale.id)
+                }
+
+            database.mantraTranslationChunkDao().upsert(translationChunk)
+            val translationChunkInnerEvent = MarmotInnerEvent(
+                id = translationChunk.id,
+                publicKey = translationChunk.publicKey,
+                kind = TranslationChunkEvent.KIND,
+                createdAt = translationChunk.createdAt,
+                tags = translationChunkTemplate.tags,
+                content = translationChunkTemplate.content,
+                chatRoomId = translationChunk.chatRoomId,
+            )
+            sendMarmotInnerEvent(
+                chatRoomId = chatRoomId,
+                userPublicKey = userPublicKey,
+                text = "Translated chunk ${translationChunk.index}", // TODO: Use a portion of the translation and name the language
+                marmotInnerEvent = translationChunkInnerEvent
+            )
+
+            translationChunk
+        } catch (error: Throwable) {
+            logger.e("Failed to save translation for chunk $chunkId", error)
             null
         }
     }

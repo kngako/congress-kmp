@@ -69,51 +69,13 @@ class DatabaseMantraRepository(
         chatRoomId: String,
         userPublicKey: HexKey,
     ): MantraTranslationChunk? {
-        // The translation chunk mirrors the source chunk's position.
-        val sourceChunk = database.mantraChunkDao().getChunkById(chunkId) ?: return null
-
-        val translationChunkTemplate = TranslationChunkEvent.build(
+        return database.mantraDao().saveTranslation(
             translationChapterId = translationChapterId,
             chunkId = chunkId,
-            index = sourceChunk.index,
             text = text,
-        )
-        val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
-            translationChunkEventTemplate = translationChunkTemplate,
             chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey,
-        ) ?: return null
-
-        return try {
-            // Replace any existing translation chunk for this source chunk. Its id
-            // is derived from the (now changed) content, so it becomes a new row —
-            // drop the old one (and its rumor) to keep one per source chunk.
-            database.mantraTranslationChunkDao()
-                .getTranslationChunksByTranslationChapterId(translationChapterId)
-                .filter { it.chunkId == chunkId && it.id != translationChunk.id }
-                .forEach { stale ->
-                    database.mantraTranslationChunkDao().deleteById(stale.id)
-                    database.marmotInnerEventDao().deleteById(stale.id)
-                }
-
-            database.mantraTranslationChunkDao().upsert(translationChunk)
-            database.marmotInnerEventDao().upsert(
-                MarmotInnerEvent(
-                    id = translationChunk.id,
-                    publicKey = translationChunk.publicKey,
-                    kind = TranslationChunkEvent.KIND,
-                    createdAt = translationChunk.createdAt,
-                    tags = translationChunkTemplate.tags,
-                    content = translationChunkTemplate.content,
-                    chatRoomId = translationChunk.chatRoomId,
-                )
-            )
-
-            translationChunk
-        } catch (error: Throwable) {
-            logger.e("Failed to save translation for chunk $chunkId", error)
-            null
-        }
+            userPublicKey = userPublicKey
+        )
     }
 
     override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
