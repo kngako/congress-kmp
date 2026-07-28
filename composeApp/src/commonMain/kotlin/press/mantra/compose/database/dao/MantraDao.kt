@@ -389,42 +389,42 @@ abstract class MantraDao(
                     marmotInnerEvent = translationChapterInnerEvent
                 )
 
-                // TODO: Don't scaffold translation chunks?
-                val chunks = database.mantraChunkDao().getChunksByChapterId(chapter.id)
-                chunks.forEach { chunk ->
-                    val translationChunkTemplate = TranslationChunkEvent.build(
-                        translationChapterId = translationChapter.id,
-                        chunkId = chunk.id,
-                        index = chunk.index,
-                        text = "", // Untranslated scaffold; filled in during authoring.
-                    )
-                    val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
-                        translationChunkEventTemplate = translationChunkTemplate,
-                        chatRoomId = chatRoomId,
-                        userPublicKey = userPublicKey,
-                    ) ?: return@forEach
-
-                    database.mantraTranslationChunkDao().upsert(translationChunk)
-                    val translationChunkInnerEvent = MarmotInnerEvent(
-                        id = translationChunk.id,
-                        publicKey = translationChunk.publicKey,
-                        kind = TranslationChunkEvent.KIND,
-                        createdAt = translationChunk.createdAt,
-                        tags = translationChunkTemplate.tags,
-                        content = translationChunkTemplate.content,
-                        chatRoomId = translationChunk.chatRoomId,
-                    )
-                    database.marmotInnerEventDao().upsert(
-                        translationChunkInnerEvent
-                    )
-
-                    sendMarmotInnerEvent(
-                        chatRoomId = chatRoomId,
-                        userPublicKey = userPublicKey,
-                        text = "Prepared translation chunk ${chunk.index}",
-                        marmotInnerEvent = translationChunkInnerEvent
-                    )
-                }
+                // TODO: Figure out if we seriously need the scaffolding
+//                val chunks = database.mantraChunkDao().getChunksByChapterId(chapter.id)
+//                chunks.forEach { chunk ->
+//                    val translationChunkTemplate = TranslationChunkEvent.build(
+//                        translationChapterId = translationChapter.id,
+//                        chunkId = chunk.id,
+//                        index = chunk.index,
+//                        text = "", // Untranslated scaffold; filled in during authoring.
+//                    )
+//                    val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
+//                        translationChunkEventTemplate = translationChunkTemplate,
+//                        chatRoomId = chatRoomId,
+//                        userPublicKey = userPublicKey,
+//                    ) ?: return@forEach
+//
+//                    database.mantraTranslationChunkDao().upsert(translationChunk)
+//                    val translationChunkInnerEvent = MarmotInnerEvent(
+//                        id = translationChunk.id,
+//                        publicKey = translationChunk.publicKey,
+//                        kind = TranslationChunkEvent.KIND,
+//                        createdAt = translationChunk.createdAt,
+//                        tags = translationChunkTemplate.tags,
+//                        content = translationChunkTemplate.content,
+//                        chatRoomId = translationChunk.chatRoomId,
+//                    )
+//                    database.marmotInnerEventDao().upsert(
+//                        translationChunkInnerEvent
+//                    )
+//
+//                    sendMarmotInnerEvent(
+//                        chatRoomId = chatRoomId,
+//                        userPublicKey = userPublicKey,
+//                        text = "Prepared translation chunk ${chunk.index}",
+//                        marmotInnerEvent = translationChunkInnerEvent
+//                    )
+//                }
             }
 
             translationArtifactVersionInnerEvent
