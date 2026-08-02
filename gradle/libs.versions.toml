@@ -21,6 +21,10 @@ kotlinx-datetime = "0.8.0"
 kotlinxSerialization = "1.11.0"
 ksp = "2.3.6"
 ktor = "3.5.0"
+# pinned to a commit, not master-SNAPSHOT: jitpack advertises a unique-snapshot maven-metadata for
+# -SNAPSHOT versions but serves the files under their literal -SNAPSHOT names, so gradle looks for
+# library-<target>-master-<sha>-1.klib and gets a 404. bump this when the fork moves.
+lightningKmpApp = "59cc3e3c15"
 lightningKmpCore = "1.11.5"
 material3 = "1.10.0-alpha05"
 materialIconsCore = "1.7.3"
@@ -76,6 +80,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+lightning-kmp-app = { module = "com.github.kngako.lightning-kmp-app:library", version.ref = "lightningKmpApp" }
 lightning-kmp-core = { module = "fr.acinq.lightning:lightning-kmp-core", version.ref = "lightningKmpCore" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 okhttp-coroutines = { group = "com.squareup.okhttp3", name = "okhttp-coroutines", version.ref = "okhttp" }

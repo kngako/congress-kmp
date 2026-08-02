@@ -1,5 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -88,6 +89,7 @@ kotlin {
 
 
 
+            implementation(libs.lightning.kmp.app)
             implementation(libs.lightning.kmp.core)
 
             implementation(libs.navigation.compose)
@@ -154,7 +156,37 @@ android {
     }
 }
 
+// JitPack rewrites the version inside a published .module file, and in doing so drops the classifier
+// from every artifact name -- so lightning-kmp-app's apple targets advertise their host-specific
+// metadata as `library-<target>-<ver>.jar` when it is actually served as `...-<ver>-metadata.jar`.
+// The klib and the aar are unaffected (android compiles either way); this only bites the metadata
+// compilations, which is what every shared ios source set resolves through. Restore the classifier.
+abstract class RestoreJitPackClassifier @Inject constructor(
+    private val variant: String,
+) : ComponentMetadataRule {
+    override fun execute(context: ComponentMetadataContext) {
+        val id = context.details.id
+        context.details.withVariant(variant) {
+            withFiles {
+                removeAllFiles()
+                addFile("${id.name}-${id.version}-metadata.jar")
+            }
+        }
+    }
+}
+
 dependencies {
+    components {
+        mapOf(
+            "library-iosarm64" to "iosArm64MetadataElements-published",
+            "library-iossimulatorarm64" to "iosSimulatorArm64MetadataElements-published",
+        ).forEach { (module, variant) ->
+            withModule<RestoreJitPackClassifier>("com.github.kngako.lightning-kmp-app:$module") {
+                params(variant)
+            }
+        }
+    }
+
     debugImplementation(libs.compose.uiTooling)
 //    ksp(libs.androidx.room3.compiler)
     add("kspAndroid", libs.androidx.room3.compiler)
