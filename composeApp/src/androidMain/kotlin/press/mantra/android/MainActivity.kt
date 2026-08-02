@@ -7,13 +7,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
+import fr.acinq.phoenix.NFCActivity
 import press.mantra.compose.PlatformContext
 import press.mantra.compose.MantraApp
 import press.mantra.compose.MantraGlobal
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.android.services.HceService
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), NFCActivity {
 
     private var nfcAdapter: NfcAdapter? = null
 
@@ -41,11 +42,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun stopHceService() {
+    override fun stopHceService() {
         stopService(Intent(this@MainActivity, HceService::class.java))
     }
 
-    fun stopNfcReader() {
+    override fun stopNfcReader() {
         if (com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.isReading()) {
             com.machankura.compose.ui.composable.widgets.nfc.NfcStateRepository.updateState(
                 com.machankura.compose.ui.composable.widgets.nfc.NfcState.Inactive)

@@ -24,10 +24,10 @@ actual fun schedulePlatformLogic(phoenixGlobal: PhoenixGlobal) {
 }
 actual fun getShowIntroFlow(phoenixGlobal: PhoenixGlobal): Flow<Boolean> {
     val machankuraApplication = phoenixGlobal.ctx.applicationContext as MantraApplication
-    return machankuraApplication.globalPrefs.getShowIntro
+    return machankuraApplication.getGlobalPrefs().getShowIntro
 }
 
 actual fun getGlobalPrefs(phoenixGlobal: PhoenixGlobal): GlobalPrefs {
     val machankuraApplication = phoenixGlobal.ctx.applicationContext as MantraApplication
-    return machankuraApplication.globalPrefs
+    return machankuraApplication.getGlobalPrefs()
 }

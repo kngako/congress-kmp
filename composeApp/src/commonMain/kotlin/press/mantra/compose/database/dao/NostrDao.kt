@@ -361,7 +361,7 @@ abstract class NostrDao(
 
         // MLSGroupEvent handling...
         nostrEvent.toKeyPackageEvent()?.let { keyPackageEvent ->
-            logger.d("KeyPackageEvent: $keyPackageEvent")
+            logger.d("KeyPackageEvent: ${keyPackageEvent.toJson()}")
             database.marmotKeyPackageDao().upsert(
                 MarmotKeyPackage(
                     id = keyPackageEvent.id,

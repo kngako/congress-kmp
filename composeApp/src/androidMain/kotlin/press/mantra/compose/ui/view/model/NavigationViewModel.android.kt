@@ -36,12 +36,12 @@ actual fun loadAndDecryptSeed(phoenixGlobal: PhoenixGlobal): DecryptSeedResult {
 
 actual fun getAvailableWalletsMeta(phoenixGlobal: PhoenixGlobal): Flow<Map<WalletId, UserWalletMetadata>> {
     val machankuraApplication = phoenixGlobal.ctx.applicationContext as MantraApplication
-    return machankuraApplication.globalPrefs.getAvailableWalletsMeta
+    return machankuraApplication.getGlobalPrefs().getAvailableWalletsMeta
 }
 
 actual suspend fun saveAvailableWalletMeta(phoenixGlobal: PhoenixGlobal, metadata: UserWalletMetadata) {
     val machankuraApplication = phoenixGlobal.ctx.applicationContext as MantraApplication
-    machankuraApplication.globalPrefs.saveAvailableWalletMeta(metadata)
+    machankuraApplication.getGlobalPrefs().saveAvailableWalletMeta(metadata)
 }
 
 actual suspend fun saveAvailableWalletMeta(
@@ -52,7 +52,7 @@ actual suspend fun saveAvailableWalletMeta(
     isHidden: Boolean
 ) {
     val machankuraApplication = phoenixGlobal.ctx.applicationContext as MantraApplication
-    machankuraApplication.globalPrefs.saveAvailableWalletMeta(
+    machankuraApplication.getGlobalPrefs().saveAvailableWalletMeta(
         walletId = walletId,
         name = name,
         avatar = avatar,

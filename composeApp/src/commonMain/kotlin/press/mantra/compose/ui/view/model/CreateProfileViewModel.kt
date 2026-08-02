@@ -17,7 +17,6 @@ import fr.acinq.bitcoin.byteVector
 import fr.acinq.lightning.Lightning
 import fr.acinq.lightning.crypto.LocalKeyManager
 import fr.acinq.phoenix.managers.NodeParamsManager
-import fr.acinq.phoenix.managers.nostrPublicKey
 import fr.acinq.phoenix.managers.nsecPassword
 import fr.acinq.phoenix.utils.MnemonicLanguage
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -25,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import press.mantra.compose.extensions.nostrPublicKey
 import kotlin.time.Duration.Companion.seconds
 
 class CreateProfileViewModel(
@@ -129,11 +129,6 @@ class CreateProfileViewModel(
                             biography = createProfileFormState.biographyField.textFieldState.text.toString(),
                             onCompletion = {
                                 logger.d("Created: $pubkey" )
-
-                                marmotRepository.publishMarmotKeyPackageBundle(
-                                    publicKey = pubkey,
-                                    nsecPassword = localKeyManager.nsecPassword()
-                                )
                             }
                         )
                     }

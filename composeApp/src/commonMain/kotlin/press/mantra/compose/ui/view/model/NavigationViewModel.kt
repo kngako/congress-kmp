@@ -9,7 +9,6 @@ import press.mantra.compose.ui.composable.navigation.routes.SovereignWalletStart
 import press.mantra.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.data.ActiveWallet
-import fr.acinq.phoenix.managers.nostrPublicKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -21,6 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
+import press.mantra.compose.extensions.nostrPublicKey
 import kotlin.time.Duration.Companion.milliseconds
 
 class NavigationViewModel(
@@ -181,24 +181,26 @@ class NavigationViewModel(
                         NavigationUIState.StartupPhoenix
                     }
                 } else {
-                    if (activeWallet.business == null) {
-                        _navigationUIState.getAndUpdate {
-                            NavigationUIState.StartupPhoenix
-                        }
-                    } else {
-                        val activeUserPublicKey = activeWallet.business.walletManager.keyManager.value?.nostrPublicKey()
-
-                        if (activeUserPublicKey == null) {
+                    activeWallet.business.let { business ->
+                        if (business == null) {
                             _navigationUIState.getAndUpdate {
-                                NavigationUIState.Loading(text = "Couldn't get the nostrKey")
+                                NavigationUIState.StartupPhoenix
                             }
                         } else {
-                            logger.i("Observing: $activeUserPublicKey")
+                            val activeUserPublicKey = business.walletManager.keyManager.value?.nostrPublicKey()
 
-                            loadNostrProfile(activeUserPublicKey)
+                            if (activeUserPublicKey == null) {
+                                _navigationUIState.getAndUpdate {
+                                    NavigationUIState.Loading(text = "Couldn't get the nostrKey")
+                                }
+                            } else {
+                                logger.i("Observing: $activeUserPublicKey")
+
+                                loadNostrProfile(activeUserPublicKey)
+                            }
                         }
+                        logger.i("Navigation UI State is Landing")
                     }
-                    logger.i("Navigation UI State is Landing")
                 }
             }
         }

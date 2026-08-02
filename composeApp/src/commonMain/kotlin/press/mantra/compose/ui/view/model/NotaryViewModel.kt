@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.NostrEvent
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class NotaryViewModel(
@@ -204,8 +206,12 @@ class NotaryViewModel(
         marmotRepository.observeActiveMarmotKeyPackageBundle(
             publicKey = keyPair.pubKey.toHexKey()
         ).distinctUntilChanged().collect { marmotKeyPackageBundleOrNull ->
+
             if (marmotKeyPackageBundleOrNull == null) {
                 guardNotarization("key package bundle for ${keyPair.pubKey.toHexKey()}") {
+                    delay(3.seconds)
+                    // TODO: We shouldn't try to create a key package without profile
+                    //  we should be check profile in the query to get updates
                     logger.d("Need to create new key package bundle")
                     marmotRepository.publishMarmotKeyPackageBundle(
                         publicKey = keyPair.pubKey.toHexKey(),
