@@ -149,7 +149,7 @@ class FeedListViewModel(
                                 localNostrEvent.ListView(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
-                                            _root_ide_package_.press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                            press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )

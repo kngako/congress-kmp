@@ -58,11 +58,11 @@ sealed class NostrIncomingMessage {
 
 fun NostrIncomingMessage?.verifyOrThrow(subscriptionId: String) {
     if (this == null) {
-        throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException("No messages received.")
+        throw press.mantra.compose.exceptions.NetworkException("No messages received.")
     }
 
     if (this is NostrIncomingMessage.NoticeMessage) {
-        throw _root_ide_package_.press.mantra.compose.exceptions.NostrNoticeException(
+        throw press.mantra.compose.exceptions.NostrNoticeException(
             reason = this.message,
             subscriptionId = subscriptionId,
         )

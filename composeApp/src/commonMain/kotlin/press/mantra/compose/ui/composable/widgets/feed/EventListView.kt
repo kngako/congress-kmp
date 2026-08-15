@@ -121,12 +121,12 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
 @Preview
 @Composable
 private fun EventListViewRepostedPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
-            _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
-                nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+            press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
+                nostrEvent = press.mantra.compose.database.model.NostrEvent(
                     id = "hex",
                     content = "Reposting",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -134,13 +134,13 @@ private fun EventListViewRepostedPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                localRepostedNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalRepostedNostrEvent(
-                    repostedRelation = _root_ide_package_.press.mantra.compose.database.model.RepostedRelation(
+                localRepostedNostrEvent = press.mantra.compose.database.model.intermdiate.LocalRepostedNostrEvent(
+                    repostedRelation = press.mantra.compose.database.model.RepostedRelation(
                         repostingNostrEventId = "hex",
                         repostedNostrEventId = "repostedhex",
                         repostedProfilePublicKey = "reposterHex"
                     ),
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "hex",
                         content = "Something something something",
                         pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -148,7 +148,7 @@ private fun EventListViewRepostedPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "hesd",
                         nostrEventId = "referenced",
                         displayName = "Frank Talk",
@@ -156,7 +156,7 @@ private fun EventListViewRepostedPreview() {
                     ),
                     mentionedProfiles = emptyList()
                 ),
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Steve Biko",
@@ -172,12 +172,12 @@ private fun EventListViewRepostedPreview() {
 @Preview
 @Composable
 private fun EventListViewInReplyPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
-            _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
-                nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+            press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
+                nostrEvent = press.mantra.compose.database.model.NostrEvent(
                     id = "hex",
                     content = "Reposting",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -185,15 +185,15 @@ private fun EventListViewInReplyPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                localInReplyToNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
-                    inReplyToRelation = _root_ide_package_.press.mantra.compose.database.model.InReplyToRelation(
+                localInReplyToNostrEvent = press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
+                    inReplyToRelation = press.mantra.compose.database.model.InReplyToRelation(
                         inReplyToNostrEventId = "nostrEvent",
                         inReplyToRootNostrEventId = "rootId",
                         inReplyToProfilePublicKey = "inReplyToProfileKey",
                         inReplyToRootProfilePublicKey = "rootPubKey",
                         replyingNostrEventId = "hex"
                     ),
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "hex",
                         content = "Something something something",
                         pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -201,7 +201,7 @@ private fun EventListViewInReplyPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "hesd",
                         nostrEventId = "referenced",
                         displayName = "Frank Talk",
@@ -209,7 +209,7 @@ private fun EventListViewInReplyPreview() {
                     ),
                     mentionedProfiles = emptyList()
                 ),
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Steve Biko",

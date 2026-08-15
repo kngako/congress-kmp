@@ -56,10 +56,10 @@ class UnqueuedProfileSynchronizationViewModel(
 
             nostrRepository.queueSynchronizeNostrEvent(
                 press.mantra.compose.nostr.Relays.DefaultDMRelayList.map { normalizedRelayUrl ->
-                    _root_ide_package_.press.mantra.compose.database.model.SynchronizeNostrEventRequest(
+                    press.mantra.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "sign-in",
                         synchronizationFilters = arrayOf(
-                            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+                            press.mantra.compose.database.model.types.SynchronizationFilter(
                                 authors = arrayOf(profilePublicKey),
                                 kinds = arrayOf(
                                     MetadataEvent.KIND,

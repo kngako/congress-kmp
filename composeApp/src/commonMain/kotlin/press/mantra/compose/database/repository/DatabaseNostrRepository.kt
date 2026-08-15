@@ -136,8 +136,7 @@ class DatabaseNostrRepository(
         )
 
         val followUsers = listOf(ContactTag(publicKey, null, null))
-        val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
-                followUsers.map { it.toTagArray() }
+        val contactListTagList = followUsers.map { it.toTagArray() }
 
         unsignedNostrEvents.add(
             UnsignedNostrEvent(
@@ -166,7 +165,7 @@ class DatabaseNostrRepository(
                 pubKey = publicKey,
                 kind = KeyPackageRelayListEvent.KIND,
                 tags = Relays.DefaultDMRelayList.map { arrayOf("relay", it.url) }
-                    .plusElement(AltTag.assemble(KeyPackageRelayListEvent.ALT_DESCRIPTION))
+//                    .plusElement(AltTag.assemble(KeyPackageRelayListEvent.ALT_DESCRIPTION))
                     .toTypedArray(),
                 content = ""
             )
@@ -182,10 +181,7 @@ class DatabaseNostrRepository(
                     RelayTag.assemble(
                         it
                     )
-                }
-                    .plus(
-                        SearchRelayListEvent.ALT_TAG
-                    ).toTypedArray(),
+                }.toTypedArray(),
                 content = ""
             )
         )
@@ -195,7 +191,7 @@ class DatabaseNostrRepository(
                 pubKey = publicKey,
                 kind = RelayFeedsListEvent.KIND,
                 tags = arrayOf(
-                    AltTag.assemble(RelayFeedsListEvent.ALT)
+//                    AltTag.assemble(RelayFeedsListEvent.ALT)
                 ),
                 privateTags = Relays.DefaultDMRelayList.map {
                     RelayTag.assemble(
@@ -409,7 +405,7 @@ class DatabaseNostrRepository(
 
         if (status == "published") {
             val broadcastNostrEventReceiptId = database.broadcastNostrEventReceiptDao().upsert(
-                _root_ide_package_.press.mantra.compose.database.model.BroadcastNostrEventReceipt(
+                press.mantra.compose.database.model.BroadcastNostrEventReceipt(
                     nostrEventId = broadcastNostrEventRequest.nostrEventId,
                     unsignedNostrEventId = broadcastNostrEventRequest.unsignedNostrEventId,
                     isAccepted = true,
@@ -422,7 +418,7 @@ class DatabaseNostrRepository(
             )?.let { chatMessageBroadcastNostrEventRequestRelation ->
                 // This is actually a chatMessage related broadcast event...
                 database.chatMessageBroadcastNostrEventReceiptRelationDao().upsert(
-                    _root_ide_package_.press.mantra.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation(
+                    press.mantra.compose.database.model.ChatMessageBroadcastNostrEventReceiptRelation(
                         chatMessageId = chatMessageBroadcastNostrEventRequestRelation.chatMessageId,
                         broadcastNostrEventReceiptId = broadcastNostrEventReceiptId
                     )
@@ -796,7 +792,7 @@ class DatabaseNostrRepository(
         synchronizationFilterArray: press.mantra.compose.database.model.typealiases.SynchronizationFilterArray?
     ) {
         database.recentSearchDao().upsert(
-            _root_ide_package_.press.mantra.compose.database.model.RecentSearch(
+            press.mantra.compose.database.model.RecentSearch(
                 query = query,
                 synchronizationFilters = synchronizationFilterArray
             )

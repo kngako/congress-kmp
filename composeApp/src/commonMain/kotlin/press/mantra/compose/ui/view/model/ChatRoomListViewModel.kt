@@ -177,7 +177,7 @@ class ChatRoomListViewModel(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
                                             onNavigateToDirectMessageDetail.invoke(
-                                                _root_ide_package_.press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute(
+                                                press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute(
                                                     activeUserPublicKey = publicKey,
                                                     chatRoomId = localChatRoom.chatRoom.id,
                                                     relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint

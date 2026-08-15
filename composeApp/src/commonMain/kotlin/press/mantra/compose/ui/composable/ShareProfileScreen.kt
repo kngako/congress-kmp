@@ -220,7 +220,7 @@ fun ShareProfileScreen(
 @Preview
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -239,7 +239,7 @@ It has survived not only five centuries, but also the leap into electronic types
                             sig = "",
                             kind = MetadataEvent.KIND
                         ),
-                        profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                        profile = press.mantra.compose.database.model.Profile(
                             publicKey = "84dee6e676e5bb67b4ad4e042cf70cbd8681155db535942fcc6a0533858a7240",
                             displayName = "John Doe",
                             nostrEventId = "nostrEventId",

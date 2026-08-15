@@ -82,7 +82,7 @@ internal class NostrSocketClientImpl(
             logger.w("NostrSocketClient::acquireWebSocketSession($socketUrl) failed.", error)
             close()
             onSocketConnectionClosed?.invoke(socketUrl, error)
-            throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException(cause = error)
+            throw press.mantra.compose.exceptions.NetworkException(cause = error)
         }
     }
 

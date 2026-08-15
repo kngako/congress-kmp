@@ -51,7 +51,7 @@ fun UnsyncedProfileScreen(
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
+                press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -66,7 +66,7 @@ fun UnsyncedProfileScreen(
 @Preview
 @Composable
 private fun UnsyncedProfileScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

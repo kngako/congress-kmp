@@ -130,7 +130,7 @@ internal fun LiveStreamCardContent(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 6.dp)
                 ) {
-                    _root_ide_package_.press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
+                    press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
                         profile = profile,
                         publicKey = event.pubKey,
                         size = 20.dp

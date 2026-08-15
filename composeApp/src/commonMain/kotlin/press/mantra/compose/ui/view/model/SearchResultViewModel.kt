@@ -102,7 +102,7 @@ class SearchResultViewModel(
             // Sync Notifications... might want to also run this in the background
             searchRepository.submitSearch(
                 press.mantra.compose.nostr.Relays.eventFinderRelaySet.map { normalizedRelay -> // TODO: Search all relays instead of the first
-                    _root_ide_package_.press.mantra.compose.database.model.SynchronizeNostrEventRequest(
+                    press.mantra.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "search",
                         synchronizationFilters = arrayOf(
                             synchronizationFilter

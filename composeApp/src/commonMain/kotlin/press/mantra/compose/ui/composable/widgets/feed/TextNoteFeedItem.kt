@@ -88,7 +88,7 @@ internal fun TextNoteFeedItem(
                         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        _root_ide_package_.press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
+                        press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
                             publicKey = nostrEvent.pubKey,
                             profile = profile
                         )
@@ -116,7 +116,7 @@ internal fun TextNoteFeedItem(
                     )
                 }
 
-                _root_ide_package_.press.mantra.compose.ui.composable.widgets.content.RichContent(
+                press.mantra.compose.ui.composable.widgets.content.RichContent(
                     modifier = Modifier.fillMaxWidth(),
                     nostrEvent = nostrEvent,
                     localQuotedNostrEvent = localQuotedNostrEvent,
@@ -179,12 +179,12 @@ internal fun TextNoteFeedItem(
 @Preview
 @Composable
 private fun TextNoteFeedItemPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             TextNoteFeedItem(
-                nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                nostrEvent = press.mantra.compose.database.model.NostrEvent(
                     id = "hex",
                     content = "You are either alive and proud or you are dead, and when you are dead, you can't care anyway. https://www.brainyquote.com/authors/steven-biko-quotes",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -192,7 +192,7 @@ private fun TextNoteFeedItemPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk",
@@ -210,12 +210,12 @@ private fun TextNoteFeedItemPreview() {
 @Preview
 @Composable
 private fun TextNoteFeedItemInReplyToPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             TextNoteFeedItem(
-                nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                nostrEvent = press.mantra.compose.database.model.NostrEvent(
                     id = "hex",
                     content = "It is better to die for an idea that will live, than to live for an idea that will die",
                     pubKey = "hexpubkeypubkeypubkeypubkey",
@@ -223,22 +223,22 @@ private fun TextNoteFeedItemInReplyToPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk",
                     nip05 = "frank@talk.at"
                 ),
                 localQuotedNostrEvent = null,
-                localInReplyToNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
-                    inReplyToRelation = _root_ide_package_.press.mantra.compose.database.model.InReplyToRelation(
+                localInReplyToNostrEvent = press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
+                    inReplyToRelation = press.mantra.compose.database.model.InReplyToRelation(
                         inReplyToNostrEventId = "nostrEvent",
                         inReplyToRootNostrEventId = "rootId",
                         inReplyToProfilePublicKey = "inReplyToProfileKey",
                         inReplyToRootProfilePublicKey = "rootPubKey",
                         replyingNostrEventId = "hex"
                     ),
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "hex",
                         content = "Something something something",
                         pubKey = "hexie",
@@ -246,7 +246,7 @@ private fun TextNoteFeedItemInReplyToPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "hesd",
                         nostrEventId = "referenced",
                         displayName = "Steve Biko",
@@ -264,12 +264,12 @@ private fun TextNoteFeedItemInReplyToPreview() {
 @Preview
 @Composable
 private fun TextNoteFeedItemQuoteNostrEventPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             TextNoteFeedItem(
-                nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                nostrEvent = press.mantra.compose.database.model.NostrEvent(
                     id = "hex",
                     content = "The revolutionary sees his task as liberation not only of the oppressed but also of the oppressor. Happiness can never truly exist in a state of tension.\n" +
                             "Read more at nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nnostr:nevent1qqspcusnzxx5u97xht2udvg3yhcq2cvmc0jrxa90lwwdvjplve0atespzpmhxue69uhkummnw3ezuamfdejsyg8h5g639qhuv803hzwexfwhyud6t6suxfu364anddqvrmn9j4cahvxksr8q",
@@ -278,14 +278,14 @@ private fun TextNoteFeedItemQuoteNostrEventPreview() {
                     sig = "hexsig",
                     tags = emptyArray()
                 ),
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk",
                     nip05 = "frank@talk.at"
                 ),
-                localQuotedNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalQuotedNostrEvent(
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                localQuotedNostrEvent = press.mantra.compose.database.model.intermdiate.LocalQuotedNostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
                         content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
                         pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
@@ -293,26 +293,26 @@ private fun TextNoteFeedItemQuoteNostrEventPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    quotedRelation = _root_ide_package_.press.mantra.compose.database.model.QuotedRelation(
+                    quotedRelation = press.mantra.compose.database.model.QuotedRelation(
                         quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                         quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         nostrEventId = "referenced",
                         displayName = "Steve Biko"
                     ),
                 ),
-                localInReplyToNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
-                    inReplyToRelation = _root_ide_package_.press.mantra.compose.database.model.InReplyToRelation(
+                localInReplyToNostrEvent = press.mantra.compose.database.model.intermdiate.LocalInReplyToNostrEvent(
+                    inReplyToRelation = press.mantra.compose.database.model.InReplyToRelation(
                         inReplyToNostrEventId = "nostrEvent",
                         inReplyToRootNostrEventId = "rootId",
                         inReplyToProfilePublicKey = "inReplyToProfileKey",
                         inReplyToRootProfilePublicKey = "rootPubKey",
                         replyingNostrEventId = "hex"
                     ),
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "hex",
                         content = "Something something something",
                         pubKey = "hexie",
@@ -320,7 +320,7 @@ private fun TextNoteFeedItemQuoteNostrEventPreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "hesd",
                         nostrEventId = "referenced",
                         displayName = "Steve Biko",
@@ -329,12 +329,12 @@ private fun TextNoteFeedItemQuoteNostrEventPreview() {
                     mentionedProfiles = emptyList()
                 ),
                 mentionedProfiles = listOf(
-                    _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalMention(
-                        mention = _root_ide_package_.press.mantra.compose.database.model.Mention(
+                    press.mantra.compose.database.model.intermdiate.LocalMention(
+                        mention = press.mantra.compose.database.model.Mention(
                             mentioningNostrEventId = "000067b3f15cac88ba066b28c370083a4fc80dacc054e554ab1dc0def974c89c",
                             mentionedPublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522"
                         ),
-                        profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                        profile = press.mantra.compose.database.model.Profile(
                             publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                             nostrEventId = "referenced",
                             displayName = "Steve Biko",

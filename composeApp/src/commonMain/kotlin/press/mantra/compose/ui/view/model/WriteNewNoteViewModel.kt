@@ -25,7 +25,7 @@ class WriteNewNoteViewModel(
     val quotedNostrEventId: HexKey?,
 
     initialWriteNewNoteUIState: press.mantra.compose.ui.view.state.WriteNewNoteUIState,
-    val writeNewNoteFormState: press.mantra.compose.ui.view.state.form.WriteNewNoteFormState = _root_ide_package_.press.mantra.compose.ui.view.state.form.WriteNewNoteFormState(),
+    val writeNewNoteFormState: press.mantra.compose.ui.view.state.form.WriteNewNoteFormState = press.mantra.compose.ui.view.state.form.WriteNewNoteFormState(),
     val nostrRepository: press.mantra.compose.repository.NostrRepository
 ): ViewModel() {
     companion object {

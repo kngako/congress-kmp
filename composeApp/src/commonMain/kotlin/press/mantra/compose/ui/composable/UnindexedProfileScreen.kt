@@ -52,7 +52,7 @@ fun UnindexedProfileScreen() {
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
-                _root_ide_package_.press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
+                press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -70,7 +70,7 @@ fun UnindexedProfileScreen() {
 @Preview
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

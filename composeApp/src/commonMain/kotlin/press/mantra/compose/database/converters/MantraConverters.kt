@@ -1,6 +1,6 @@
 package press.mantra.compose.database.converters
 
-import androidx.room3.TypeConverter
+import androidx.room3.ColumnTypeConverter
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.Json
@@ -9,30 +9,30 @@ import kotlin.time.Instant
 class MantraConverters {
     val logger = Logger.withTag("MantraConverters")
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromTimestamp(value: Long?): Instant? {
         return value?.let { Instant.fromEpochSeconds(it) }
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun instantToTimestamp(instant: Instant?): Long? {
         return instant?.epochSeconds
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromTagArray(value: Array<Array<String>>?): String? {
         // Returns null if the value is null, otherwise serializes to JSON string
         return value?.let { Json.encodeToString(it) }
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toTagArray(value: String?): Array<Array<String>>? {
         // Decodes the JSON string back into the nested array structure
         return value?.let { Json.decodeFromString<Array<Array<String>>>(it) }
     }
 
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromHexArray(value: Array<String>?): String? = try {
         return value?.let {
             Json.encodeToString(it).lowercase()
@@ -42,7 +42,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toHexArray(value: String?): Array<String>? = try {
         return value?.let {
             Json.decodeFromString<Array<String>>(it)
@@ -52,7 +52,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromKindArray(value: Array<Int>?): String? = try {
         return value?.let {
             Json.encodeToString(it)
@@ -62,7 +62,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toKindArray(value: String?): Array<Int>? = try {
         return value?.let {
             Json.decodeFromString<Array<Int>>(it)
@@ -72,7 +72,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromFilterArray(value: Array<SynchronizationFilter>?): String? = try {
         return value?.let {
             Json.encodeToString(value)
@@ -82,7 +82,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toFilterArray(value: String?): Array<SynchronizationFilter>? = try {
         return value?.let {
             Json.decodeFromString<Array<SynchronizationFilter>>(it)
@@ -92,7 +92,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromSynchronizationFilter(value: SynchronizationFilter?): String? = try {
         return value?.let {
             Json.encodeToString(value)
@@ -102,7 +102,7 @@ class MantraConverters {
         return null
     }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toSynchronizationFilter(value: String?): SynchronizationFilter? = try {
         return value?.let {
             Json.decodeFromString<SynchronizationFilter>(it)

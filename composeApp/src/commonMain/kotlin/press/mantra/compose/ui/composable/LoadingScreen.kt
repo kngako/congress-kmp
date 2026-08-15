@@ -17,7 +17,7 @@ fun LoadingScreen(
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
-            _root_ide_package_.press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
+            press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
                 text = text
             )
         }
@@ -27,7 +27,7 @@ fun LoadingScreen(
 @Preview
 @Composable
 private fun LoadingScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

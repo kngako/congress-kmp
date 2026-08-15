@@ -127,7 +127,7 @@ class MetadataEventDetailViewModel(
         metadataEventDetailType: MetadataEventDetailType
     ) = when (metadataEventDetailType) {
         MetadataEventDetailType.Posts -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -139,7 +139,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Replies -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -152,7 +152,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Articles -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -163,7 +163,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Followers -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -175,7 +175,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Following -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -186,7 +186,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Zaps -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -198,7 +198,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Photos -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -209,7 +209,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Shorts -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -220,7 +220,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Videos -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -231,7 +231,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Bookmarks -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -242,7 +242,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Reports -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -253,7 +253,7 @@ class MetadataEventDetailViewModel(
             )
         }
         MetadataEventDetailType.Relays -> {
-            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            press.mantra.compose.database.model.types.SynchronizationFilter(
                 authors = arrayOf(
                     eventPublicKey
                 ),
@@ -294,11 +294,10 @@ class MetadataEventDetailViewModel(
                     ContactTag(eventPublicKey, null, null).toTagArray(),
                 )
             }
-            val contactListTagList = listOf(AltTag.assemble(ContactListEvent.ALT)) +
-                    followUsers.map { it }
+            val contactListTagList = followUsers.map { it }
 
             nostrRepository.saveUnsignedNostrEvent(
-                _root_ide_package_.press.mantra.compose.database.model.UnsignedNostrEvent(
+                press.mantra.compose.database.model.UnsignedNostrEvent(
                     pubKey = activeUserPublicKey,
                     kind = ContactListEvent.KIND,
                     tags = contactListTagList.toTypedArray(),
@@ -325,7 +324,7 @@ class MetadataEventDetailViewModel(
                     logger.d("User is not being followed so no need to unfollow: $eventPublicKey")
                 } else {
                     nostrRepository.saveUnsignedNostrEvent(
-                        _root_ide_package_.press.mantra.compose.database.model.UnsignedNostrEvent(
+                        press.mantra.compose.database.model.UnsignedNostrEvent(
                             pubKey = activeUserPublicKey,
                             kind = ContactListEvent.KIND,
                             tags = contactListEvent.tags.filter { it.size > 1 && it[1] != eventPublicKey }

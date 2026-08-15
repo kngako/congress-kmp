@@ -39,7 +39,7 @@ class NostrPublisherRepository(
                 relaysSocketManager.publishEvent(
                     nostrEvent = signedNostrEvent,
                     relays = outboxRelays.map {
-                        _root_ide_package_.press.mantra.compose.network.dto.RelayDTO(
+                        press.mantra.compose.network.dto.RelayDTO(
                             url = it,
                             read = false,
                             write = true

@@ -39,7 +39,7 @@ fun ImplementationPendingScreen(
 @Preview
 @Composable
 private fun ImplementationPendingScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

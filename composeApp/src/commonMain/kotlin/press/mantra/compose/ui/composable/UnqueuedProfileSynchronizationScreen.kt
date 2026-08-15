@@ -63,7 +63,7 @@ fun UnqueuedProfileSynchronizationScreen(
                     textAlign = TextAlign.Center
                 )
 
-                _root_ide_package_.press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
+                press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
                     fillScreen = false
                 )
 
@@ -82,7 +82,7 @@ fun UnqueuedProfileSynchronizationScreen(
 @Preview
 @Composable
 private fun UnqueuedProfileSynchronizationScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

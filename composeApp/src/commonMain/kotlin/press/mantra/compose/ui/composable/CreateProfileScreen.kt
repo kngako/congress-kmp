@@ -308,7 +308,7 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = _root_ide_package_.press.mantra.compose.ui.theme.RedPill,
+                                containerColor = press.mantra.compose.ui.theme.RedPill,
                                 contentColor = Color.White
                             ),
                             onClick = {
@@ -326,7 +326,7 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = _root_ide_package_.press.mantra.compose.ui.theme.BluePill,
+                                containerColor = press.mantra.compose.ui.theme.BluePill,
                                 contentColor = Color.DarkGray
                             ),
                             onClick = {
@@ -353,7 +353,7 @@ fun CreateProfileScreen(
 @Preview
 @Composable
 fun CreateAccountScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -386,8 +386,8 @@ fun CreateAccountScreenPreview() {
 //                        name = "Alan Turing",
 //                        bio = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
 //                    ),
-//                    _root_ide_package_.press.mantra.compose.ui.view.state.CreateProfileUIState.ProfileReady(
-//                        profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+//                    press.mantra.compose.ui.view.state.CreateProfileUIState.ProfileReady(
+//                        profile = press.mantra.compose.database.model.Profile(
 //                            publicKey = "",
 //                            nostrEventId = "",
 //                            displayName = "Alan Turing",

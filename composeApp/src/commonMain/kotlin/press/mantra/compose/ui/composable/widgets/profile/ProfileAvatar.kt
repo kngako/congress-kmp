@@ -58,18 +58,18 @@ fun ProfileAvatar(
     } else {
         // Load image...
         val placeHolderGraphic =
-            _root_ide_package_.press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
+            press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.Face5),
                 colorFilter = ColorFilter.tint(tintColor)
             )
 
         val fallbackGraphic =
-            _root_ide_package_.press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
+            press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.Face5),
                 colorFilter = ColorFilter.tint(tintColor)
             )
         val errorGraphic =
-            _root_ide_package_.press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
+            press.mantra.compose.ui.composable.widgets.coil.forwardingPainter(
                 painter = rememberVectorPainter(Icons.Default.FaceRetouchingOff),
                 colorFilter = ColorFilter.tint(tintColor)
             )
@@ -91,13 +91,13 @@ fun ProfileAvatar(
 @Preview
 @Composable
 fun ProfileAvatarPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
             ProfileAvatar(
                 publicKey = "hwgwefwase",
-                profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                profile = press.mantra.compose.database.model.Profile(
                     publicKey = "",
                     nostrEventId = "referenced",
                     displayName = "Frank Talk",

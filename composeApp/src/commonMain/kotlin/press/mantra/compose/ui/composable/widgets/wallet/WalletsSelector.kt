@@ -116,7 +116,7 @@ private fun AvailableWalletView(
 ) {
     var showWalletEditDialog by remember { mutableStateOf(false) }
     if (showWalletEditDialog) {
-        _root_ide_package_.press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
+        press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
             text = "Edit function coming soon"
         )
 //        EditWalletDialog(

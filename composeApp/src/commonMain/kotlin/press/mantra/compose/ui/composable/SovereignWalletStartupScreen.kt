@@ -117,7 +117,7 @@ fun SovereignWalletStartupScreen(
                                 }
                                 when (val wallet = loadingWallet) {
                                     null -> {
-                                        _root_ide_package_.press.mantra.compose.ui.composable.widgets.wallet.WalletsSelector(
+                                        press.mantra.compose.ui.composable.widgets.wallet.WalletsSelector(
                                             wallets = availableWallets,
                                             globalPrefs = globalPrefs,
                                             walletsMetadata = availableWalletMetadata,

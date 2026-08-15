@@ -62,13 +62,13 @@ class NostrNotaryRepository(
     }
 
     fun onFailure() {
-        setResponse(SignResult.Rejected(_root_ide_package_.press.mantra.compose.exceptions.SigningRejectedException()))
+        setResponse(SignResult.Rejected(press.mantra.compose.exceptions.SigningRejectedException()))
     }
 
     private fun findNsecOrThrow(activeUserPublicKey: String): String =
         runCatching {
             walletManager.keyManager.value?.nostrPrivateKey()?.value?.toByteArray()?.toNsec()
-        }.getOrNull() ?: throw _root_ide_package_.press.mantra.compose.exceptions.SigningKeyNotFoundException()
+        }.getOrNull() ?: throw press.mantra.compose.exceptions.SigningKeyNotFoundException()
 
     private fun signNostrEvent(publicKey: String, event: press.mantra.compose.database.model.UnsignedNostrEvent): press.mantra.compose.database.model.NostrEvent {
         val isExternalSignerLogin = runCatching {
@@ -85,7 +85,7 @@ class NostrNotaryRepository(
 
     suspend fun signRelayListMetadata(userId: String, relays: List<press.mantra.compose.network.dto.RelayDTO>): SignResult {
         return signNostrEvent(
-            unsignedNostrEvent = _root_ide_package_.press.mantra.compose.database.model.UnsignedNostrEvent(
+            unsignedNostrEvent = press.mantra.compose.database.model.UnsignedNostrEvent(
                 pubKey = userId,
                 content = "",
                 kind = RelayFeedsListEvent.KIND,

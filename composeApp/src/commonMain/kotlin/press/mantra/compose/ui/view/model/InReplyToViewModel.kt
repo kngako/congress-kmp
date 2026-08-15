@@ -78,7 +78,7 @@ class InReplyToViewModel(
 
             nostrRepository.queueNegentropySynchronizeRequest(
                 publicRelays.take(3).map { normalizedRelayUrl ->
-                    _root_ide_package_.press.mantra.compose.database.model.NegentropySynchronizeRequest(
+                    press.mantra.compose.database.model.NegentropySynchronizeRequest(
                         id = press.mantra.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter
@@ -153,7 +153,7 @@ class InReplyToViewModel(
                                 localNostrEvent.ListView(
                                     onNavigateToEvent = { nostrEventId ->
                                         onNavigateToEvent.invoke(
-                                            _root_ide_package_.press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                            press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
@@ -196,7 +196,7 @@ class InReplyToViewModel(
             profile: press.mantra.compose.database.model.Profile?,
             createdAt: Instant,
             initialFeedListUIState: press.mantra.compose.ui.view.state.FeedListUIState = press.mantra.compose.ui.view.state.FeedListUIState.Loading,
-            synchronizationFilter: press.mantra.compose.database.model.types.SynchronizationFilter = _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+            synchronizationFilter: press.mantra.compose.database.model.types.SynchronizationFilter = press.mantra.compose.database.model.types.SynchronizationFilter(
                 kinds = arrayOf(
                     TextNoteEvent.KIND,
                     ReactionEvent.KIND,

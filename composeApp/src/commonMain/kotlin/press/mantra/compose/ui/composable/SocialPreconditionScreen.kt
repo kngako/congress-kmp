@@ -114,7 +114,7 @@ fun SocialPreconditionScreen(
 @Preview
 @Composable
 private fun SocialPreconditionScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

@@ -48,11 +48,11 @@ class SovereignWalletStartupViewModel(
             state.value = StartupViewState.StartingBusiness(walletId)
 
             val startResult: StartBusinessResult =
-                _root_ide_package_.press.mantra.compose.extensions.platformStartupLogic(
+                press.mantra.compose.extensions.platformStartupLogic(
                     words
                 )
 
-            _root_ide_package_.press.mantra.compose.extensions.schedulePlatformLogic(
+            press.mantra.compose.extensions.schedulePlatformLogic(
                 phoenixGlobal = phoenixGlobal,
             )
             when (startResult) {
@@ -69,7 +69,7 @@ class SovereignWalletStartupViewModel(
     }
 
     fun getShowIntroFlow(): Flow<Boolean> {
-        return _root_ide_package_.press.mantra.compose.extensions.getShowIntroFlow(phoenixGlobal)
+        return press.mantra.compose.extensions.getShowIntroFlow(phoenixGlobal)
     }
 
     companion object {

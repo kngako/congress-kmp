@@ -4,7 +4,7 @@ class AuxDatabaseManager(
     mantraGlobal: press.mantra.compose.MantraGlobal
 ) {
     val auxDatabase by lazy {
-        _root_ide_package_.press.mantra.compose.database.builder.getRoomDatabase(
+        press.mantra.compose.database.builder.getRoomDatabase(
             press.mantra.compose.database.builder.PlatformDatabaseBuilder.getDatabaseBuilder(
                 mantraGlobal.platformContext
             )
@@ -17,7 +17,7 @@ class AuxDatabaseManager(
      * We may also decide to just use the normal DB and manage what's saved better...
      */
     val inMemoryAuxDatabase by lazy {
-        _root_ide_package_.press.mantra.compose.database.builder.getRoomDatabase(
+        press.mantra.compose.database.builder.getRoomDatabase(
             press.mantra.compose.database.builder.PlatformDatabaseBuilder.getInMemoryDatabaseBuilder(
                 mantraGlobal.platformContext
             )

@@ -213,7 +213,7 @@ class SovereignWalletViewModel(
     }
 
     fun getGlobalPrefs(): GlobalPrefs {
-        return _root_ide_package_.press.mantra.compose.extensions.getGlobalPrefs(
+        return press.mantra.compose.extensions.getGlobalPrefs(
             phoenixGlobal
         )
     }

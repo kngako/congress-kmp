@@ -14,7 +14,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 fun String.parseIncomingMessage(): NostrIncomingMessage? {
-    val jsonArray = _root_ide_package_.press.mantra.compose.network.serialization.SocketsJson.decodeFromStringOrNull<JsonArray>(this)
+    val jsonArray = press.mantra.compose.network.serialization.SocketsJson.decodeFromStringOrNull<JsonArray>(this)
     val verbElement = jsonArray?.elementAtOrNull(0) ?: return null
 
     return try {

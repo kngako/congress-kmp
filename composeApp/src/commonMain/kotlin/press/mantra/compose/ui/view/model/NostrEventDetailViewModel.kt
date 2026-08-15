@@ -37,10 +37,10 @@ class NostrEventDetailViewModel(
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueSynchronizeNostrEvent(
                 press.mantra.compose.nostr.Relays.DefaultDMRelayList.take(1).map { normalizedRelay -> // TODO: Sync from all relays instead of 1
-                    _root_ide_package_.press.mantra.compose.database.model.SynchronizeNostrEventRequest(
+                    press.mantra.compose.database.model.SynchronizeNostrEventRequest(
                         purpose = "detail",
                         synchronizationFilters = arrayOf(
-                            _root_ide_package_.press.mantra.compose.database.model.types.SynchronizationFilter(
+                            press.mantra.compose.database.model.types.SynchronizationFilter(
                                 kinds = arrayOf(
                                     TextNoteEvent.KIND,
                                     RepostEvent.KIND,

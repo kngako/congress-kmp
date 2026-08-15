@@ -114,14 +114,14 @@ fun QuotedNote(
 @Preview
 @Composable
 private fun QuotedNotePreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
 
             QuotedNote(
-                localQuotedNostrEvent = _root_ide_package_.press.mantra.compose.database.model.intermdiate.LocalQuotedNostrEvent(
-                    nostrEvent = _root_ide_package_.press.mantra.compose.database.model.NostrEvent(
+                localQuotedNostrEvent = press.mantra.compose.database.model.intermdiate.LocalQuotedNostrEvent(
+                    nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6",
                         content = "God is not in the habit of coming down from heaven to solve people’s problems on earth.",
                         pubKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
@@ -129,12 +129,12 @@ private fun QuotedNotePreview() {
                         sig = "hexsig",
                         tags = emptyArray()
                     ),
-                    quotedRelation = _root_ide_package_.press.mantra.compose.database.model.QuotedRelation(
+                    quotedRelation = press.mantra.compose.database.model.QuotedRelation(
                         quotingNostrEventId = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                         quotedProfilePublicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         quotedNostrEventId = "1c7213118d4e17c6bad5c6b11125f005619bc3e43374affb9cd6483f665fd5e6"
                     ),
-                    profile = _root_ide_package_.press.mantra.compose.database.model.Profile(
+                    profile = press.mantra.compose.database.model.Profile(
                         publicKey = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a522",
                         nostrEventId = "referenced",
                         displayName = "Steve Biko"

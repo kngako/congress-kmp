@@ -221,7 +221,7 @@ fun KeyPackageManagementScreen(
 @Preview
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

@@ -189,7 +189,7 @@ class RelayPool(
         val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         return coroutineScope {
             val eventFlow =  nostrSocketClient.queryAsFlow(reqCommand.subId)
@@ -213,7 +213,7 @@ class RelayPool(
         val negentropySyncRequest = OptimizedJsonMapper.toJson(negOpenCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         return coroutineScope {
             val eventFlow =  nostrSocketClient.queryAsFlow(negOpenCmd.subId)
@@ -236,7 +236,7 @@ class RelayPool(
         val closeSubscription = OptimizedJsonMapper.toJson(closeCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         coroutineScope {
             with(nostrSocketClient) {
@@ -258,7 +258,7 @@ class RelayPool(
         val closeNegentropySubscription = OptimizedJsonMapper.toJson(negCloseCmd)
 
         if (nostrSocketClient == null) {
-            throw _root_ide_package_.press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+            throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
         coroutineScope {
             with(nostrSocketClient) {

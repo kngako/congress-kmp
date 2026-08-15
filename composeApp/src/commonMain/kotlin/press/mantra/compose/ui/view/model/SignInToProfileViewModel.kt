@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 class SignInToProfileViewModel(
     initialWriteNewNoteUIState: press.mantra.compose.ui.view.state.SignInToProfileUIState,
-    val signInToProfileFormState: press.mantra.compose.ui.view.state.form.SignInToProfileFormState = _root_ide_package_.press.mantra.compose.ui.view.state.form.SignInToProfileFormState(),
+    val signInToProfileFormState: press.mantra.compose.ui.view.state.form.SignInToProfileFormState = press.mantra.compose.ui.view.state.form.SignInToProfileFormState(),
     val nostrRepository: press.mantra.compose.repository.NostrRepository
 ): ViewModel() {
     companion object {

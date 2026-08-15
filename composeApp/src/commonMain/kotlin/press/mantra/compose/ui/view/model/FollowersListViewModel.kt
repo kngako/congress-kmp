@@ -68,7 +68,7 @@ class FollowersListViewModel(
             // Sync Notifications... might want to also run this in the background
             nostrRepository.queueNegentropySynchronizeRequest(
                 press.mantra.compose.nostr.Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
-                    _root_ide_package_.press.mantra.compose.database.model.NegentropySynchronizeRequest(
+                    press.mantra.compose.database.model.NegentropySynchronizeRequest(
                         id = press.mantra.compose.database.model.NegentropySynchronizeRequest.computeId(
                             relayURL = normalizedRelayUrl.url,
                             synchronizationFilter = synchronizationFilter

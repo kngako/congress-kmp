@@ -245,7 +245,7 @@ fun SearchResultScreen(
                                                 localNostrEvent.ListView(
                                                     onNavigateToEvent = { nostrEventId ->
                                                         onNavigateToEvent.invoke(
-                                                            _root_ide_package_.press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
+                                                            press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute(
                                                                 activeUserPublicKey = activeUserPublicKey,
                                                                 nostrEventId = nostrEventId
                                                             )
@@ -292,7 +292,7 @@ fun SearchResultScreen(
 @Preview
 @Composable
 private fun SearchResultScreenPreview() {
-    _root_ide_package_.press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.TorchTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {
