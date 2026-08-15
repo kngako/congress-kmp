@@ -25,11 +25,6 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        maven("https://jitpack.io") {
-            mavenContent {
-                includeGroupAndSubgroups("com.github.kngako")
-            }
-        }
     }
 }
 
@@ -38,3 +33,13 @@ plugins {
 }
 
 include(":composeApp")
+
+// Composite builds: substitute the external module coordinates with the submodules' :library projects.
+includeBuild("secp256k1-frost-kmp")
+includeBuild("lightning-kmp-app") {
+    dependencySubstitution {
+        // the submodule's project stays named :library (compose-resources derives the Res package
+        // from it); only the coordinate consumers declare is renamed.
+        substitute(module("fr.acinq.phoenix:lightning-kmp-app")).using(project(":library"))
+    }
+}
