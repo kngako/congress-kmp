@@ -29,10 +29,23 @@ enum class ChatRoomType {
         const val MINIMUM_ROBUST_GROUP_SIZE = 3
 
         /**
-         * How many of [adminCount] admins have to approve a change — a simple
-         * majority, so no half of the group can move without the other.
+         * Fewest admins a [ROBUST] room can be made to run on. One approval is not a
+         * quorum — it is one person acting alone, which is [CONVENIENT].
          */
-        fun approvalThreshold(adminCount: Int): Int = adminCount / 2 + 1
+        const val MINIMUM_QUORUM = 2
+
+        /**
+         * The quorum a [ROBUST] group of [adminCount] starts on — a simple majority,
+         * so no half of the group can move without the other. The user can move it
+         * anywhere in [quorumRange] from there.
+         */
+        fun defaultQuorum(adminCount: Int): Int = maxOf(MINIMUM_QUORUM, adminCount / 2 + 1)
+
+        /**
+         * Quorums a [ROBUST] group of [adminCount] can be run on: never fewer than
+         * [MINIMUM_QUORUM], never more than the admins who exist to approve.
+         */
+        fun quorumRange(adminCount: Int): IntRange = MINIMUM_QUORUM..adminCount
 
         /** Whether a group of [memberCount] people can be run as [ROBUST]. */
         fun isRobustAvailable(memberCount: Int): Boolean = memberCount >= MINIMUM_ROBUST_GROUP_SIZE

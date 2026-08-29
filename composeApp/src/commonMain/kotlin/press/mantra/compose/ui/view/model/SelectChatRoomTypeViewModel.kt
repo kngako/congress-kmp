@@ -87,8 +87,14 @@ class SelectChatRoomTypeViewModel(
      */
     val adminCount: Int = (memberPublicKeys + activeUserPublicKey).distinct().size
 
-    /** How many of [adminCount] admins a change needs, under [ChatRoomType.ROBUST]. */
-    val approvalThreshold: Int = ChatRoomType.approvalThreshold(adminCount)
+    /** Quorums this group can be run on, under [ChatRoomType.ROBUST]. */
+    val quorumRange: IntRange = ChatRoomType.quorumRange(adminCount)
+
+    /**
+     * How many of [adminCount] admins have to approve a change, under
+     * [ChatRoomType.ROBUST]. Starts on a simple majority and is the user's to move.
+     */
+    val quorum: MutableState<Int> = mutableStateOf(ChatRoomType.defaultQuorum(adminCount))
 
     /** Whether this group is big enough to be run as [ChatRoomType.ROBUST]. */
     val isRobustAvailable: Boolean = ChatRoomType.isRobustAvailable(adminCount)
@@ -125,6 +131,25 @@ class SelectChatRoomTypeViewModel(
         if (chatRoomType == ChatRoomType.ROBUST && !isRobustAvailable) return
 
         selectedChatRoomType.value = chatRoomType
+    }
+
+    fun setQuorum(value: Int) {
+        // Same freeze as the type itself: past creation the group's governance is
+        // already stamped into its epoch-0 context.
+        if (isActionPending.value || createdChatRoomId.value != null) return
+
+        quorum.value = value.coerceIn(quorumRange)
+    }
+
+    /** Spells out what the chosen quorum costs the group day to day. */
+    fun quorumExplanation(): String {
+        val chosenQuorum = quorum.value
+
+        return if (chosenQuorum == adminCount) {
+            "Every admin has to agree. If one of you goes quiet, nothing about the group can change."
+        } else {
+            "Any $chosenQuorum of you can approve a change — the other ${adminCount - chosenQuorum} don't have to be around."
+        }
     }
 
     /** Names the member behind [publicKey], falling back to the key itself. */
@@ -175,7 +200,10 @@ class SelectChatRoomTypeViewModel(
         // exactly this list.
         // TODO: Robust rooms still need the t-of-n approval itself, i.e. FROST
         //  signing over admin changes. Today the list is set but every admin can
-        //  still commit on their own.
+        //  still commit on their own, and the quorum the user picked has nowhere to
+        //  live: MIP-01's wire format is fixed, so it cannot ride in MarmotGroupData
+        //  without breaking byte-compatibility with mdk/whitenoise. It needs a
+        //  ChatRoom column (and the Room migration that comes with it).
         val adminPubkeys = when (selectedChatRoomType.value) {
             ChatRoomType.CONVENIENT -> listOf(keyPair.pubKey.toHexKey())
             ChatRoomType.ROBUST -> (listOf(keyPair.pubKey.toHexKey()) + memberPublicKeys).distinct()

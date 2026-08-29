@@ -13,8 +13,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -102,8 +105,8 @@ fun SelectChatRoomTypeScreen(
             val selectedChatRoomType = selectChatRoomTypeViewModel.selectedChatRoomType.value
             val membersNotAdded = selectChatRoomTypeViewModel.membersNotAdded
             val adminCount = selectChatRoomTypeViewModel.adminCount
-            val approvalThreshold = selectChatRoomTypeViewModel.approvalThreshold
             val isRobustAvailable = selectChatRoomTypeViewModel.isRobustAvailable
+            val isRobustSelected = selectedChatRoomType == ChatRoomType.ROBUST
 
             Scaffold(
                 topBar = {
@@ -209,18 +212,30 @@ fun SelectChatRoomTypeScreen(
                         title = "Robust",
                         summary = "Every member is an admin.",
                         detail = if (isRobustAvailable) {
-                            "All $adminCount of you administer the group together. Any change — adding or removing someone, renaming the group — has to be approved by $approvalThreshold of the $adminCount admins before it takes effect."
+                            "All $adminCount of you administer the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of you before it takes effect."
                         } else {
-                            "Everyone administers the group together. Any change — adding or removing someone, renaming the group — has to be approved by a majority of the admins before it takes effect."
+                            "Everyone administers the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of the admins before it takes effect."
                         },
                         footnote = "No single admin can change the group alone, and the group outlives any one of you.",
-                        isSelected = selectedChatRoomType == ChatRoomType.ROBUST,
+                        isSelected = isRobustSelected,
                         isEnabled = isRobustAvailable,
                         disabledReason = selectChatRoomTypeViewModel.robustUnavailableReason,
                         onClick = {
                             selectChatRoomTypeViewModel.selectChatRoomType(ChatRoomType.ROBUST)
                         }
-                    )
+                    ) {
+                        // Ask for the quorum only once robust is the choice — before that
+                        // there is no decision to make.
+                        if (isRobustSelected) {
+                            QuorumPicker(
+                                quorum = selectChatRoomTypeViewModel.quorum.value,
+                                adminCount = adminCount,
+                                quorumRange = selectChatRoomTypeViewModel.quorumRange,
+                                explanation = selectChatRoomTypeViewModel.quorumExplanation(),
+                                onQuorumChange = selectChatRoomTypeViewModel::setQuorum
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -273,6 +288,7 @@ private fun ChatRoomTypeCard(
     onClick: () -> Unit,
     isEnabled: Boolean = true,
     disabledReason: String? = null,
+    content: @Composable () -> Unit = {},
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -335,7 +351,68 @@ private fun ChatRoomTypeCard(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+
+            content()
         }
+    }
+}
+
+/**
+ * Asks how many admins have to sign off on a change. Stepped rather than typed:
+ * the range is small, both ends are bounded, and the caption has to keep up.
+ */
+@Composable
+private fun QuorumPicker(
+    quorum: Int,
+    adminCount: Int,
+    quorumRange: IntRange,
+    explanation: String,
+    onQuorumChange: (Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(
+            text = "How many admins have to approve a change?",
+            style = MaterialTheme.typography.titleSmall
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledIconButton(
+                onClick = { onQuorumChange(quorum - 1) },
+                enabled = quorum > quorumRange.first
+            ) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Fewer approvals"
+                )
+            }
+
+            Text(
+                text = "$quorum of $adminCount",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            FilledIconButton(
+                onClick = { onQuorumChange(quorum + 1) },
+                enabled = quorum < quorumRange.last
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "More approvals"
+                )
+            }
+        }
+
+        Text(
+            text = explanation,
+            style = MaterialTheme.typography.labelMedium
+        )
     }
 }
 
