@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.database.repository.DatabaseChatRepository
+import press.mantra.compose.database.repository.DatabaseDkgRepository
 import press.mantra.compose.database.repository.DatabaseMarmotRepository
 import press.mantra.compose.database.repository.DatabaseNostrRepository
 import press.mantra.compose.database.repository.DatabaseSearchRepository
@@ -25,6 +26,7 @@ import press.mantra.compose.ui.composable.ChatRoomCreationScreen
 import press.mantra.compose.ui.composable.ChatRoomDetailScreen
 import press.mantra.compose.ui.composable.ChatRoomMessagingScreen
 import press.mantra.compose.ui.composable.CreateProfileScreen
+import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
@@ -54,6 +56,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ChatRoomCreationRout
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.CreateProfileRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
@@ -141,6 +144,13 @@ fun MantraNavHost(
 
     val databaseChatRepository = remember {
         DatabaseChatRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
+
+    val databaseDkgRepository = remember {
+        DatabaseDkgRepository(
             database = auxDatabaseManager.auxDatabase,
             applicationIOScope
         )
@@ -432,6 +442,17 @@ fun MantraNavHost(
                         selectChatRoomTypeRoute
                     )
                 }
+            )
+        }
+        composable<DkgRitualRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<DkgRitualRoute>()
+
+            DkgRitualScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                chatRepository = databaseChatRepository,
+                dkgRepository = databaseDkgRepository
             )
         }
         composable<SelectChatRoomTypeRoute> { backStackEntry ->

@@ -1,6 +1,7 @@
 package press.mantra.compose.database
 
 import androidx.room3.ColumnTypeConverters
+import androidx.room3.AutoMigration
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.immediateTransaction
@@ -14,6 +15,7 @@ import press.mantra.compose.database.dao.ChatMessageDao
 import press.mantra.compose.database.dao.ChatMessageNostrEventRelationDao
 import press.mantra.compose.database.dao.ChatRoomDao
 import press.mantra.compose.database.dao.ConnectionDao
+import press.mantra.compose.database.dao.DkgSessionDao
 import press.mantra.compose.database.dao.GiftWrapMessageDao
 import press.mantra.compose.database.dao.GiftWrapPayloadDao
 import press.mantra.compose.database.dao.GiftWrapSealDao
@@ -98,6 +100,8 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.QuotedRelation
 import press.mantra.compose.database.model.Reaction
 import press.mantra.compose.database.model.RecentSearch
+import press.mantra.compose.database.model.DkgParticipantMessage
+import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.Relay
 import press.mantra.compose.database.model.RepostedRelation
 import press.mantra.compose.database.model.SynchronizeNostrEventRequest
@@ -118,6 +122,8 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         ChatMessageBroadcastNostrEventReceiptRelation::class,
         ChatMessageNostrEventRelation::class,
         ChatRoom::class,
+        DkgParticipantMessage::class,
+        DkgSession::class,
         GiftWrapMessage::class,
         GiftWrapSeal::class,
         GiftWrapPayload::class,
@@ -158,7 +164,12 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 1
+    version = 2,
+    autoMigrations = [
+        // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
+        // generate the migration itself — nothing existing changes shape.
+        AutoMigration(from = 1, to = 2)
+    ]
 )
 @ColumnTypeConverters(MantraConverters::class)
 abstract class MantraDatabase: RoomDatabase() {
@@ -174,6 +185,8 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun chatMessageNostrEventRelationDao(): ChatMessageNostrEventRelationDao
 
     abstract fun chatRoomDao(): ChatRoomDao
+
+    abstract fun dkgSessionDao(): DkgSessionDao
 
     abstract fun connectionDao(): ConnectionDao
 

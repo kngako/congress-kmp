@@ -27,6 +27,8 @@ import press.mantra.compose.exceptions.MarmotMissingNostrGroupDataExtension
 import press.mantra.compose.exceptions.MarmotNotMemberOfChatGroupException
 import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
 import press.mantra.compose.extensions.toHex
+import press.mantra.compose.managers.ChillDkgRitualManager
+import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
@@ -919,6 +921,25 @@ abstract class NostrDao(
                                     logger.w("Chat Room already exists for $nostrGroupId")
                                 }
                                 // TODO: Check encoding...
+                            } else if (DkgRitualEvents.isDkgRitualKind(decryptedGiftWrapPayload.kind)) {
+                                // A ChillDKG ritual message for one of our NIP-17 groups.
+                                // The manager is idempotent, so a redelivered message
+                                // simply re-runs a step it has already taken.
+                                val localChatRoom = database.chatRoomDao().findChatRoomById(
+                                    decryptedGiftWrapPayload.chatRoomId
+                                )
+
+                                if (localChatRoom == null) {
+                                    logger.w("DKG payload for unknown chat room ${decryptedGiftWrapPayload.chatRoomId}")
+                                } else {
+                                    ChillDkgRitualManager.processRitualPayload(
+                                        database = database,
+                                        localChatRoom = localChatRoom,
+                                        giftWrapPayload = decryptedGiftWrapPayload,
+                                        userPublicKey = activeKeyPair.pubKey.toHex(),
+                                        nostrPrivateKey = activeKeyPair.privKey!!
+                                    )
+                                }
                             } else {
                                 logger.w("Unsupported event: $decryptedGiftWrapPayload")
                             }

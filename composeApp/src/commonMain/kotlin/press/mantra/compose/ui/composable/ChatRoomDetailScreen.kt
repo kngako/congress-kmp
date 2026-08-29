@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
@@ -50,6 +51,7 @@ import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -263,6 +265,35 @@ fun ChatRoomDetailScreen(
                                 text = "members",
                                 style = MaterialTheme.typography.labelMedium
                             )
+                        }
+
+                        // A shared threshold key only means something where every
+                        // member is an equal admin, which is the NIP-17 (robust) case.
+                        // MLS rooms have one admin and no group key to share.
+                        if (chatRoomDetailUIState.localChatRoom.chatRoom.mlsGroupState == null) {
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            DkgRitualRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Key,
+                                        contentDescription = "Shared key"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(10.dp)
+                                    )
+
+                                    Text("Shared Key")
+                                }
+                            }
                         }
 
                         item {
