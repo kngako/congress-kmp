@@ -12,8 +12,6 @@ import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
@@ -153,13 +151,7 @@ class DatabaseChatRepository(
         messageType: Kind
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")
-        val mlsGroup = localChatRoom.chatRoom.mlsGroupState?.let { mlsGroupState ->
-            MlsGroup.restore(
-                MlsGroupState.decodeTls(
-                    mlsGroupState.hexToByteArray()
-                )
-            )
-        }
+        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
 
         if (mlsGroup != null) {
             // Create ChatRumor...

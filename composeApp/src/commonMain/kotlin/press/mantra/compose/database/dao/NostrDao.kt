@@ -36,7 +36,6 @@ import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
@@ -382,15 +381,9 @@ abstract class NostrDao(
                 val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
 
                 if (localChatRoom != null) {
-                    val mlsGroupStateByteArray = localChatRoom.chatRoom.mlsGroupState?.hexToByteArray()
+                    val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
 
-                    if (mlsGroupStateByteArray != null) {
-                        val mlsGroup = MlsGroup.restore(
-                            MlsGroupState.decodeTls(
-                                mlsGroupStateByteArray
-                            )
-                        )
-
+                    if (mlsGroup != null) {
                         val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
 
                             val pubkey = when (val cred = leafNode.credential) {

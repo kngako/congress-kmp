@@ -14,8 +14,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -73,13 +71,7 @@ class AddArtifactViewModel(
         onSuccess: (artifactId: String) -> Unit,
         onFailure: () -> Unit
     ) {
-        localChatRoom.chatRoom.mlsGroupState?.let { mlsGroupState ->
-            MlsGroup.restore(
-                MlsGroupState.decodeTls(
-                    mlsGroupState.hexToByteArray()
-                )
-            )
-        }?.let { mlsGroup ->
+        localChatRoom.chatRoom.toMlsGroup()?.let { mlsGroup ->
             val name = nameField.text.toString()
             val url = urlField.text.toString()
             val versionLabel = versionLabelField.text.toString()
