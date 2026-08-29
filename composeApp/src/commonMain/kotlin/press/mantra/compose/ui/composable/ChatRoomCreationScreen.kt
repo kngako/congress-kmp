@@ -25,27 +25,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import press.mantra.compose.repository.ChatRepository
-import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.model.ChatRoomCreationViewModel
-import fr.acinq.phoenix.data.ActiveWallet
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 @Composable
 fun ChatRoomCreationScreen(
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
-    nostrRepository: NostrRepository,
-    chatRepository: ChatRepository,
-    onNavigateToChatRoom: (Route) -> Unit
+    activeUserPublicKey: HexKey,
+    onNavigateToRoute: (Route) -> Unit
 ) {
     val chatRoomCreationViewModel: ChatRoomCreationViewModel =  viewModel (
-        factory = ChatRoomCreationViewModel.factory(
-            activeWalletStateFlow = activeWalletStateFlow,
-            nostrRepository = nostrRepository,
-            chatRepository = chatRepository
-        )
+        factory = ChatRoomCreationViewModel.factory()
     )
 
     Scaffold { innerPadding ->
@@ -84,7 +74,7 @@ fun ChatRoomCreationScreen(
                     },
                     placeholder = {
                         Text(
-                            text = "Enter the name you want to use for your groupd",
+                            text = "Enter the name you want to use for your group",
                             maxLines = 1,
                         )
                     },
@@ -150,13 +140,14 @@ fun ChatRoomCreationScreen(
 
                 Button(
                     onClick = {
-                        chatRoomCreationViewModel.createChatRoom(
-                            onNavigateToChatRoom = onNavigateToChatRoom
+                        chatRoomCreationViewModel.selectMembers(
+                            activeUserPublicKey = activeUserPublicKey,
+                            onNavigateToRoute = onNavigateToRoute
                         )
                     }
                 ) {
                     Text(
-                        "Create chat"
+                        "Choose who to chat with"
                     )
                 }
             }
@@ -172,10 +163,8 @@ private fun LoadingScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             ChatRoomCreationScreen(
-                activeWalletStateFlow = MutableStateFlow(null),
-                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onNavigateToChatRoom = {}
+                activeUserPublicKey = "",
+                onNavigateToRoute = {}
             )
         }
     }

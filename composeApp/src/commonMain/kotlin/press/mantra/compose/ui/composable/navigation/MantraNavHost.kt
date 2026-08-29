@@ -34,6 +34,7 @@ import press.mantra.compose.ui.composable.NostrEventDetailScreen
 import press.mantra.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import press.mantra.compose.ui.composable.SearchResultScreen
 import press.mantra.compose.ui.composable.SearchScreen
+import press.mantra.compose.ui.composable.SelectChatRoomMembersScreen
 import press.mantra.compose.ui.composable.ShareProfileScreen
 import press.mantra.compose.ui.composable.SignInToProfileScreen
 import press.mantra.compose.ui.composable.SocialPreconditionScreen
@@ -61,6 +62,7 @@ import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRout
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
+import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomMembersRoute
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.SignInRoute
 import press.mantra.compose.ui.composable.navigation.routes.SocialPreconditionRoute
@@ -407,14 +409,37 @@ fun MantraNavHost(
             val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
 
             ChatRoomCreationScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                onNavigateToRoute = { selectMembersRoute ->
+                    navController.navigate(
+                        selectMembersRoute
+                    )
+                }
+            )
+        }
+        composable<SelectChatRoomMembersRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<SelectChatRoomMembersRoute>()
+
+            SelectChatRoomMembersScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                name = route.name,
+                description = route.description,
                 activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
-                onNavigateToChatRoom = { chatRoomResultRoute ->
+                onNavigateToRoute = { chatRoomResultRoute ->
                     navController.navigate(
                         chatRoomResultRoute
                     ) {
-                        popUpTo(route)
+                        // Drop both creation steps: backing out of the new chat should land
+                        // on whatever the user was doing before, not back in the form.
+                        popUpTo(
+                            ChatRoomCreationRoute(
+                                activeUserPublicKey = route.activeUserPublicKey
+                            )
+                        ) {
+                            inclusive = true
+                        }
                     }
                 }
             )
