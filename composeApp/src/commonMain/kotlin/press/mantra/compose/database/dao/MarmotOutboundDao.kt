@@ -131,15 +131,10 @@ abstract class MarmotOutboundDao(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
     ) {
-        val sentGenerations: Int = database.chatMessageDao().countChatMessagesBySenderPublicKey(
-            chatRoomId = localChatRoom.chatRoom.id,
-            senderPublicKey = localChatRoom.chatRoom.userPublicKey
-        )
-
         // A room restored from an inbound gift wrap has no persisted MLS state, so there is
         // nothing to add a member to. Say so instead of silently doing nothing and letting the
         // caller report success.
-        val mlsGroup = localChatRoom.chatRoom.toMlsGroup(sentGenerations)
+        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
             ?: throw MarmotMissingChatGroupException(
                 "No MLS group state for chat room ${localChatRoom.chatRoom.id}; cannot invite $peerPublicKey"
             )

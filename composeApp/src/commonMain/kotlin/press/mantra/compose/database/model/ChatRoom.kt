@@ -129,24 +129,13 @@ data class ChatRoom(
 
     }
 
-    fun toMlsGroup(pastGenerations: Int): MlsGroup? {
+    fun toMlsGroup(): MlsGroup? {
         return mlsGroupState?.let {
-            val mlsGroup = MlsGroup.restore(
+            return MlsGroup.restore(
                 MlsGroupState.decodeTls(
                     mlsGroupState.hexToByteArray()
                 )
             )
-
-            mlsGroup.skipGenerations(pastGenerations)
-
-            mlsGroup
         }
-    }
-}
-
-private fun MlsGroup.skipGenerations(generations: Int) {
-    val plainByteArray = ByteArray(0)
-    (0 until generations).forEach { _ ->
-        encrypt(plainByteArray)
     }
 }

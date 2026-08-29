@@ -133,12 +133,7 @@ class DatabaseMarmotRepository(
         nostrSignerSync: NostrSignerSync
     ) {
         database.chatRoomDao().findChatRoomById(marmotInnerEvent.chatRoomId)?.let { localChatRoom ->
-            val sentGenerations: Int = database.chatMessageDao().countChatMessagesBySenderPublicKey(
-                chatRoomId = localChatRoom.chatRoom.id,
-                senderPublicKey = nostrSignerSync.pubKey
-            )
-
-            localChatRoom.chatRoom.toMlsGroup(sentGenerations)?.let { mlsGroup ->
+            localChatRoom.chatRoom.toMlsGroup()?.let { mlsGroup ->
                 logger.d("mlsGroup: $mlsGroup")
 
                 database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
