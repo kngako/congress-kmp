@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
@@ -334,10 +335,14 @@ class ChatMessageListViewModel(
                                                         )
                                                     }
 
-                                                    Text(
-                                                        text = localChatMessage.chatMessage.content,
-                                                        style = MaterialTheme.typography.bodyMedium
-                                                    )
+                                                    SelectionContainer {
+
+                                                        Text(
+                                                            text = localChatMessage.chatMessage.content,
+                                                            style = MaterialTheme.typography.bodyMedium
+                                                        )
+
+                                                    }
 
                                                     Row(
                                                         horizontalArrangement = Arrangement.spacedBy(
