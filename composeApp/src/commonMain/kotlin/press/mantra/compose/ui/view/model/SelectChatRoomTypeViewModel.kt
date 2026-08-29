@@ -192,22 +192,21 @@ class SelectChatRoomTypeViewModel(
             privKey = nostrPrivateKey.value.toByteArray()
         )
 
-        val gid = RandomInstance.bytes(32).toHexKey() // TODO: Generate GID through frost...
-
-        // Convenient rooms keep the creator as the lone admin; robust rooms hand
-        // everyone the same authority. This is the whole behavioural difference
-        // between the two — the inbound path derives Participant.adminAt from
-        // exactly this list.
-        // TODO: Robust rooms still need the t-of-n approval itself, i.e. FROST
-        //  signing over admin changes. Today the list is set but every admin can
-        //  still commit on their own, and the quorum the user picked has nowhere to
-        //  live: MIP-01's wire format is fixed, so it cannot ride in MarmotGroupData
-        //  without breaking byte-compatibility with mdk/whitenoise. It needs a
-        //  ChatRoom column (and the Room migration that comes with it).
-        val adminPubkeys = when (selectedChatRoomType.value) {
-            ChatRoomType.CONVENIENT -> listOf(keyPair.pubKey.toHexKey())
-            ChatRoomType.ROBUST -> (listOf(keyPair.pubKey.toHexKey()) + memberPublicKeys).distinct()
+        when (selectedChatRoomType.value) {
+            ChatRoomType.CONVENIENT -> createMarmotChatRoom(keyPair, onNavigateToRoute)
+            ChatRoomType.ROBUST -> createNip17ChatRoom(keyPair, onNavigateToRoute)
         }
+    }
+
+    /**
+     * Convenient rooms are Marmot/MLS: one admin, forward secrecy, and members added
+     * by commit — which is why every invite needs the peer's key package first.
+     */
+    private fun createMarmotChatRoom(
+        keyPair: KeyPair,
+        onNavigateToRoute: (Route) -> Unit
+    ) {
+        val gid = RandomInstance.bytes(32).toHexKey() // TODO: Generate GID through frost...
 
         // Stamp initial metadata via the shared factory so UI + CLI stay
         // byte-identical. Bake the MarmotGroupData extension into the
@@ -221,8 +220,6 @@ class SelectChatRoomTypeViewModel(
             outboxRelays = Relays.DefaultDMRelayList.map { it.url },
             name = name,
             description = description.orEmpty()
-        ).copy(
-            adminPubkeys = adminPubkeys
         )
 
         val extras = listOf(metadata.toExtension())
@@ -280,6 +277,52 @@ class SelectChatRoomTypeViewModel(
                     membersNotAdded.clear()
                     membersNotAdded.addAll(notAdded)
                 }
+            }
+        }
+    }
+
+    /**
+     * Robust rooms are NIP-17: no MLS group, no admin, no privileged member. Membership
+     * is simply the p-tag set every message carries, which is why there is nothing to
+     * invite anyone to and no key package to wait on — everybody picked is in the room
+     * the moment it exists, and learns about it from the first message.
+     *
+     * TODO: the quorum the user picked has nowhere to live here. NIP-17 has no group
+     *  state to change and so nothing to approve — the member set is whatever a message
+     *  is addressed to, and a different set is simply a different room. Enforcing t-of-n
+     *  needs a governance layer this protocol does not have.
+     */
+    private fun createNip17ChatRoom(
+        keyPair: KeyPair,
+        onNavigateToRoute: (Route) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val localChatRoom = chatRepository.createNip17ChatRoom(
+                userPublicKey = keyPair.pubKey.toHexKey(),
+                participantPublicKeys = memberPublicKeys,
+                subject = name,
+                description = description
+            )
+
+            withContext(Dispatchers.Main) {
+                isActionPending.value = false
+
+                if (localChatRoom == null) {
+                    onNavigateToRoute.invoke(
+                        ImplementationPendingRoute("Something went wrong")
+                    )
+                    return@withContext
+                }
+
+                createdChatRoomId.value = localChatRoom.chatRoom.id
+
+                onNavigateToRoute.invoke(
+                    ChatRoomMessagingRoute(
+                        activeUserPublicKey = keyPair.pubKey.toHexKey(),
+                        chatRoomId = localChatRoom.chatRoom.id,
+                        relayHint = null
+                    )
+                )
             }
         }
     }

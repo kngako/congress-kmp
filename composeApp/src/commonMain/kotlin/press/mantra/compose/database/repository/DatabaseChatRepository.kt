@@ -118,6 +118,23 @@ class DatabaseChatRepository(
         return database.marmotKeyPackageDao().observeMarmotKeyPackageForPublicKey(publicKey)
     }
 
+    override suspend fun createNip17ChatRoom(
+        userPublicKey: HexKey,
+        participantPublicKeys: List<HexKey>,
+        subject: String?,
+        description: String?
+    ): LocalChatRoom? = try {
+        database.nostrNip17Dao().createNip17ChatRoom(
+            userPublicKey = userPublicKey,
+            participantPublicKeys = participantPublicKeys,
+            subject = subject,
+            description = description
+        )
+    } catch (e: Throwable) {
+        logger.e("Error creating nip-17 chat room", e)
+        null
+    }
+
     override suspend fun createMlsDirectMessage(
         name: String?,
         description: String?,

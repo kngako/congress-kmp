@@ -29,6 +29,58 @@ abstract class NostrNip17Dao(
 ) {
     val logger = Logger.withTag(TAG)
 
+    /**
+     * Stands up a NIP-17 group locally: no MLS group, no key packages, no invites.
+     * Membership under NIP-17 *is* the p-tag set on each message, so all that has to
+     * exist up front is the room and its participants — the first message carries the
+     * membership to everyone else.
+     *
+     * The id is [ChatRoom.deriveChatRoomId] over the members, the same aggregate the
+     * inbound path derives from an arriving gift wrap. That makes it idempotent: two
+     * people building the same group land on the same room rather than two.
+     */
+    @Transaction
+    open suspend fun createNip17ChatRoom(
+        userPublicKey: HexKey,
+        participantPublicKeys: List<HexKey>,
+        subject: String? = null,
+        description: String? = null,
+        relayHint: String? = Relays.DefaultDMRelayList.first().url
+    ): LocalChatRoom? {
+        val memberPublicKeys = (participantPublicKeys + userPublicKey).toSet()
+        val chatRoomId = ChatRoom.deriveChatRoomId(memberPublicKeys)
+
+        logger.d("createNip17ChatRoom: $chatRoomId for ${memberPublicKeys.size} member(s)")
+
+        database.chatRoomDao().findChatRoomById(chatRoomId)?.let { existingChatRoom ->
+            logger.i("Chat room $chatRoomId already exists; reusing it")
+            return existingChatRoom
+        }
+
+        val chatRoom = ChatRoom(
+            id = chatRoomId,
+            userPublicKey = userPublicKey,
+            subject = subject,
+            description = description,
+            // No MLS state is what marks this a NIP-17 room: `sendChatMessage` reads
+            // exactly this to decide between a group event and gift wraps.
+            mlsGroupState = null
+        )
+        database.chatRoomDao().upsert(chatRoom)
+
+        database.participantDao().upsert(
+            memberPublicKeys.map { participantPublicKey ->
+                Participant(
+                    participantPublicKey = participantPublicKey,
+                    chatRoomId = chatRoomId,
+                    relayHint = relayHint
+                )
+            }
+        )
+
+        return database.chatRoomDao().findChatRoomById(chatRoomId)
+    }
+
     @Transaction
     open suspend fun getOrCreateChatRoom(
         chatRoomId: HexKey,

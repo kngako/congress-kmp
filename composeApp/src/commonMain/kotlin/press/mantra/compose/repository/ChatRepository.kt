@@ -42,6 +42,17 @@ interface ChatRepository {
 
     suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?>
 
+    /**
+     * Creates a NIP-17 group: participants and a room, no MLS group. Membership is
+     * the p-tag set carried by each message, so there is nothing to invite anyone to.
+     */
+    suspend fun createNip17ChatRoom(
+        userPublicKey: HexKey,
+        participantPublicKeys: List<HexKey>,
+        subject: String? = null,
+        description: String? = null
+    ): LocalChatRoom?
+
     suspend fun createMlsDirectMessage(
         name: String? = null,
         description: String? = null,
@@ -131,6 +142,15 @@ interface ChatRepository {
 
             override suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?> {
                 TODO("Not yet implemented")
+            }
+
+            override suspend fun createNip17ChatRoom(
+                userPublicKey: HexKey,
+                participantPublicKeys: List<HexKey>,
+                subject: String?,
+                description: String?
+            ): LocalChatRoom? {
+                return null
             }
 
             override suspend fun createMlsDirectMessage(
