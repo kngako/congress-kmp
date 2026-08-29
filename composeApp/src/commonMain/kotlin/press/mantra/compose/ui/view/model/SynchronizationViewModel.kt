@@ -44,6 +44,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -69,6 +71,13 @@ class SynchronizationViewModel(
         private const val TAG = "SynchronizationViewModel"
 
         private const val MAX_CONCURRENT_PUBLISHES = 8
+
+        /**
+         * Well under the ~20-per-connection cap relays commonly enforce, and applied
+         * across all relays rather than per relay, which keeps the emulator's socket
+         * count sane too.
+         */
+        private const val MAX_CONCURRENT_SUBSCRIPTIONS = 4
 
         /**
          * Hard ceiling on a single publish attempt, covering the suspend calls that open the
@@ -106,6 +115,18 @@ class SynchronizationViewModel(
     private val publishSlots = Semaphore(MAX_CONCURRENT_PUBLISHES)
 
     /**
+     * Caps how many REQ/NEG-OPEN subscriptions may be open at once.
+     *
+     * The queue advances the moment a request is marked "sent", so without this the
+     * pump opened a subscription per pending row with nothing awaiting the previous
+     * one — relays answered with "too many concurrent REQs" and, because a NOTICE is
+     * delivered to every collector on the socket, logged it once per open collector.
+     * Requests queue on this semaphore instead, so the backlog still drains, just not
+     * all at once.
+     */
+    private val subscriptionSlots = Semaphore(MAX_CONCURRENT_SUBSCRIPTIONS)
+
+    /**
      * Keeps one bad request from killing the pump that is draining the queue. Mirrors
      * `NotaryViewModel.guardNotarization`.
      */
@@ -117,6 +138,21 @@ class SynchronizationViewModel(
         } catch (e: Throwable) {
             logger.e("Synchronization step failed: $what", e)
         }
+    }
+
+    /**
+     * Whether a relay's CLOSED/NOTICE reason means "you are asking for too much"
+     * rather than "I cannot serve this". NIP-01 gives `rate-limited:` as the
+     * machine-readable prefix; the free-text forms are what relays actually send.
+     */
+    private fun isBackPressure(reason: String?): Boolean {
+        val text = reason?.lowercase() ?: return false
+
+        return text.startsWith("rate-limited") ||
+            text.contains("rate limit") ||
+            text.contains("too many") ||
+            text.contains("concurrent") ||
+            text.contains("slow down")
     }
 
     init {
@@ -186,6 +222,7 @@ class SynchronizationViewModel(
                     nostrRepository.synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest)
 
                     launch(Dispatchers.IO) {
+                      subscriptionSlots.withPermit {
                         try {
                             relaysSocketManager.query(
                                 reqCommand,
@@ -221,14 +258,8 @@ class SynchronizationViewModel(
                                     }
                                     is NostrIncomingMessage.EoseMessage -> {
                                         logger.d("Sync request has been successfully processed (${synchronizeNostrEventRequest.relayURL}): $nostrIncomingMessage")
-                                        val closeCommand = CloseCmd(
-                                            subId = synchronizeNostrEventRequest.id,
-                                        )
-
-                                        relaysSocketManager.closeQuery(
-                                            closeCommand,
-                                            synchronizeNostrEventRequest.relayURL
-                                        )
+                                        // EOSE ends the flow (completeOnSubscriptionEnd);
+                                        // the finally below sends the CLOSE.
                                     }
                                     is NostrIncomingMessage.ClosedMessage -> {
                                         // The relay ended the subscription on its side (auth
@@ -247,7 +278,21 @@ class SynchronizationViewModel(
 
                         } catch (e: Throwable) {
                             logger.e("Failed to sync", e)
+                        } finally {
+                            // Close on every exit, not just the EOSE branch. A
+                            // subscription the relay never terminates would otherwise
+                            // hold a slot on both sides for the life of the app.
+                            // NonCancellable so a cancelled pump still says goodbye.
+                            withContext(NonCancellable) {
+                                runCatching {
+                                    relaysSocketManager.closeQuery(
+                                        CloseCmd(subId = synchronizeNostrEventRequest.id),
+                                        synchronizeNostrEventRequest.relayURL
+                                    )
+                                }
+                            }
                         }
+                      }
                     }
                 }
             }
@@ -311,11 +356,11 @@ class SynchronizationViewModel(
                         nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
 
                         launch(Dispatchers.IO) {
+                          subscriptionSlots.withPermit {
+                            val negCloseCmd = NegCloseCmd(
+                                subId = negentropySynchronizeRequest.uuid,
+                            )
                             try {
-                                val negCloseCmd = NegCloseCmd(
-                                    subId = negentropySynchronizeRequest.uuid,
-                                )
-
                                 relaysSocketManager.negentropySync(
                                     negOpenCmd,
                                     negentropySynchronizeRequest.relayURL
@@ -350,11 +395,6 @@ class SynchronizationViewModel(
                                         }
                                         is NostrIncomingMessage.EoseMessage -> {
                                             logger.d("Sync request has been successfully processed (${negentropySynchronizeRequest.relayURL}): $nostrIncomingMessage")
-
-                                            relaysSocketManager.closeNegentropySync(
-                                                negCloseCmd,
-                                                negentropySynchronizeRequest.relayURL
-                                            )
 
                                             return@collect
                                         }
@@ -415,11 +455,6 @@ class SynchronizationViewModel(
                                                 broadcastNostrEventRequests
                                             )
 
-                                            relaysSocketManager.closeNegentropySync(
-                                                negCloseCmd,
-                                                negentropySynchronizeRequest.relayURL
-                                            )
-
                                             return@collect
                                         }
                                         is NostrIncomingMessage.ClosedMessage -> {
@@ -430,7 +465,14 @@ class SynchronizationViewModel(
                                             // (`return@collect` ends handling of this message,
                                             // matching the EOSE and NEG-ERR branches.)
                                             logger.w("Relay closed negentropy subscription (${negentropySynchronizeRequest.relayURL}): ${nostrIncomingMessage.message}")
-                                            if (negentropySynchronizeRequest.purpose != "mlsMessages") {
+                                            // Falling back to a plain REQ is right when the
+                                            // relay cannot serve negentropy, and wrong when it
+                                            // is telling us to ease off: answering back-pressure
+                                            // by opening another subscription is what turned one
+                                            // refusal into a flood of them.
+                                            if (isBackPressure(nostrIncomingMessage.message)) {
+                                                logger.w("Relay ${negentropySynchronizeRequest.relayURL} is rate limiting; not retrying this request")
+                                            } else if (negentropySynchronizeRequest.purpose != "mlsMessages") {
                                                 nostrRepository.queueSynchronizeNostrEvent(
                                                     listOf(
                                                         negentropySynchronizeRequest.toSynchronizeNostrEventRequest()
@@ -466,7 +508,21 @@ class SynchronizationViewModel(
                                 logger.d("Queried Sync")
                             } catch (e: Throwable) {
                                 logger.e("Failed to sync", e)
+                            } finally {
+                                // Close on every exit. The EOSE and NEG-MSG branches used
+                                // to do this by hand while CLOSED and NEG-ERR did not, so a
+                                // subscription leaked every time a relay refused one —
+                                // exactly the case that needs the slot back most.
+                                withContext(NonCancellable) {
+                                    runCatching {
+                                        relaysSocketManager.closeNegentropySync(
+                                            negCloseCmd,
+                                            negentropySynchronizeRequest.relayURL
+                                        )
+                                    }
+                                }
                             }
+                          }
                         }
 
                         logger.i("After launch")

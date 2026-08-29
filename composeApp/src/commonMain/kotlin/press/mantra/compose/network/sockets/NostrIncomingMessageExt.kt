@@ -2,6 +2,43 @@ package press.mantra.compose.network.sockets
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.transformWhile
+
+/**
+ * True for a message that ends a subscription: the relay will send nothing more
+ * under this id.
+ *
+ * NOTICE is deliberately absent. It carries no subscription id, so it is
+ * delivered to every collector on the socket — treating it as terminal would
+ * let one relay notice tear down every unrelated subscription at once.
+ */
+fun NostrIncomingMessage.isTerminalFor(id: String): Boolean =
+    (this is NostrIncomingMessage.EoseMessage && subscriptionId == id) ||
+        (this is NostrIncomingMessage.ClosedMessage && subscriptionId == id) ||
+        (this is NostrIncomingMessage.NegentropyError && subscriptionId == id) ||
+        // A NEG-MSG ends the exchange because this client reconciles in a single
+        // round: it diffs once, queues the ids it needs as a plain REQ, schedules
+        // what the relay is missing, and closes. Waiting for an EOSE that a
+        // negentropy exchange need not send would hold the subscription open
+        // forever — and, now that slots are capped, stall the queue behind it.
+        (this is NostrIncomingMessage.NegentropyMessage && subscriptionId == id)
+
+/**
+ * Completes the flow once the subscription is over, emitting the terminal
+ * message first so callers still see the EOSE/CLOSED/NEG-ERR that ended it.
+ *
+ * Without this the returned flow is a filtered view of the socket's hot
+ * `incomingMessages` and so never completes: every collector started for a sync
+ * request stayed alive for the lifetime of the app, accumulating one per request
+ * ever made. Because a NOTICE is admitted on every id, each relay notice was then
+ * logged once per accumulated collector — which is what turned an occasional
+ * "too many concurrent REQs" into a flooded log.
+ */
+fun Flow<NostrIncomingMessage>.completeOnSubscriptionEnd(id: String) =
+    transformWhile { message ->
+        emit(message)
+        !message.isTerminalFor(id)
+    }
 
 fun Flow<NostrIncomingMessage>.filterBySubscriptionId(id: String) =
     filter {

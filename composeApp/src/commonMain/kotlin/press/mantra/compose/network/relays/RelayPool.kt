@@ -4,6 +4,7 @@ import androidx.annotation.VisibleForTesting
 import press.mantra.compose.network.dto.toRelayDTO
 import press.mantra.compose.network.sockets.filterByEventId
 import press.mantra.compose.network.sockets.filterBySubscriptionId
+import press.mantra.compose.network.sockets.completeOnSubscriptionEnd
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.OptimizedJsonMapper
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
@@ -277,7 +278,11 @@ class RelayPool(
     private suspend fun press.mantra.compose.network.sockets.NostrSocketClient.queryAsFlow(subscriptionId: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
         return this.incomingMessages
             .filterBySubscriptionId(id = subscriptionId)
-//            .transformWhileEventsAreIncoming()
+            // The socket's incomingMessages is a hot flow, so a filtered view of it
+            // never completes on its own. Ending it at EOSE/CLOSED/NEG-ERR is what
+            // lets a caller's collector finish, its subscription slot be released,
+            // and the relay-side subscription actually be closed.
+            .completeOnSubscriptionEnd(id = subscriptionId)
     }
 
     @OptIn(FlowPreview::class)
