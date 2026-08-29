@@ -7,16 +7,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -37,7 +34,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.Profile
-import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -46,15 +42,13 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Second step of group creation: pick who is in the group, then create it.
+ * Second step of group creation: pick who is in the group.
  *
  * The list is whatever profiles are already in the local store — no directory
- * lookup happens here.
+ * lookup happens here. Creating the group waits for the next step, where the
+ * user says how it should be run.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -63,9 +57,7 @@ fun SelectChatRoomMembersScreen(
     name: String,
     description: String?,
     initialSelectChatRoomMembersUIState: SelectChatRoomMembersUIState = SelectChatRoomMembersUIState.Loading,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
     nostrRepository: NostrRepository,
-    chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
 ) {
     val selectChatRoomMembersViewModel: SelectChatRoomMembersViewModel = viewModel(
@@ -74,9 +66,7 @@ fun SelectChatRoomMembersScreen(
             name = name,
             description = description,
             initialSelectChatRoomMembersUIState = initialSelectChatRoomMembersUIState,
-            activeWalletStateFlow = activeWalletStateFlow,
-            nostrRepository = nostrRepository,
-            chatRepository = chatRepository
+            nostrRepository = nostrRepository
         )
     )
 
@@ -96,9 +86,7 @@ fun SelectChatRoomMembersScreen(
             }
         }
         is SelectChatRoomMembersUIState.Loaded -> {
-            val isActionPending = selectChatRoomMembersViewModel.isActionPending.value
             val selectedCount = selectChatRoomMembersViewModel.selectedPublicKeys.size
-            val membersNotAdded = selectChatRoomMembersViewModel.membersNotAdded
 
             Scaffold(
                 topBar = {
@@ -117,27 +105,21 @@ fun SelectChatRoomMembersScreen(
                         floatingActionButton = {
                             ExtendedFloatingActionButton(
                                 onClick = {
-                                    selectChatRoomMembersViewModel.createChatRoom(
+                                    selectChatRoomMembersViewModel.selectChatRoomType(
                                         onNavigateToRoute = onNavigateToRoute
                                     )
                                 }
                             ) {
-                                if (isActionPending) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = "Create chat"
-                                    )
-                                }
+                                Icon(
+                                    Icons.AutoMirrored.Filled.NavigateNext,
+                                    contentDescription = "Next"
+                                )
 
                                 Text(
-                                    text = when {
-                                        selectChatRoomMembersViewModel.createdChatRoomId.value != null -> "Open chat"
-                                        selectedCount > 0 -> "Create chat with $selectedCount"
-                                        else -> "Create chat"
+                                    text = if (selectedCount > 0) {
+                                        "Next with $selectedCount"
+                                    } else {
+                                        "Next"
                                     }
                                 )
                             }
@@ -159,22 +141,6 @@ fun SelectChatRoomMembersScreen(
                 Column(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
-                    if (membersNotAdded.isNotEmpty()) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(10.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(15.dp),
-                                text = "${name} was created, but ${membersNotAdded.joinToString { it.humanReadableNameOrPubkey() }} couldn't be added yet. Invite them again from the chat once they're on Torch.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-
                     if (selectChatRoomMembersUIState.profiles.isEmpty()) {
                         Column(
                             modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
@@ -198,7 +164,7 @@ fun SelectChatRoomMembersScreen(
                             )
 
                             Text(
-                                text = "You can still create the chat now and invite people later.",
+                                text = "You can still carry on and invite people later.",
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center
                             )
@@ -317,9 +283,7 @@ private fun SelectChatRoomMembersScreenPreview() {
                         )
                     )
                 ),
-                activeWalletStateFlow = MutableStateFlow(null),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 onNavigateToRoute = {}
             )
         }
