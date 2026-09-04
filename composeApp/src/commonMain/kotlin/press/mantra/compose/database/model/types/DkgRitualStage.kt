@@ -5,6 +5,10 @@ package press.mantra.compose.database.model.types
  * holding the row. Coordinator and participants move through the same ladder;
  * the coordinator simply has extra work to do at [COLLECTING_HOST_KEYS],
  * [COLLECTING_ROUND_1] and [COLLECTING_ROUND_2].
+ *
+ * Declaration order is the ladder: `ChillDkgRitualManager` compares ordinals to
+ * keep the label moving forwards when messages arrive out of order, so the
+ * collecting stages must stay in the order the ritual runs them.
  */
 enum class DkgRitualStage {
     /** Proposal seen; waiting on every member's host public key. */

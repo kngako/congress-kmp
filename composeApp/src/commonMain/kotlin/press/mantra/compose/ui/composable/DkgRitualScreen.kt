@@ -46,6 +46,7 @@ import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -100,7 +101,7 @@ fun DkgRitualScreen(
         is DkgRitualUIState.Loaded -> {
             val session = dkgRitualUIState.session
             val participantCount = dkgRitualUIState.participantCount
-            val isCoordinator = dkgRitualViewModel.isCoordinator()
+            val canStartRitual = dkgRitualViewModel.canStartRitual()
             val isActionPending = dkgRitualViewModel.isActionPending.value
 
             Scaffold(
@@ -116,9 +117,9 @@ fun DkgRitualScreen(
                     )
                 },
                 bottomBar = {
-                    // Only the coordinator can open a ritual, and only when there
-                    // isn't one already running.
-                    if (isCoordinator && (session == null || session.stage == DkgRitualStage.FAILED)) {
+                    // Any member can open a ritual — the coordinator has no say in
+                    // the key — but only when there isn't one already running.
+                    if (canStartRitual) {
                         BottomAppBar(
                             floatingActionButton = {
                                 ExtendedFloatingActionButton(
@@ -165,7 +166,7 @@ fun DkgRitualScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
 
-                        if (isCoordinator) {
+                        if (canStartRitual) {
                             QuorumStepper(
                                 threshold = dkgRitualViewModel.threshold.value,
                                 participantCount = participantCount,
@@ -174,7 +175,8 @@ fun DkgRitualScreen(
                             )
                         } else {
                             Text(
-                                text = "Waiting for the group's creator to start it.",
+                                text = "A shared key needs at least " +
+                                    "${ChillDkgRitualManager.MINIMUM_PARTICIPANTS} members to split it between.",
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }

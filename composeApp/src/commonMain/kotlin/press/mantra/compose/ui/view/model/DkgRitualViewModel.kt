@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
@@ -26,7 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Watches a group's ChillDKG ritual and, for the coordinator, starts one.
+ * Watches a group's ChillDKG ritual, and opens one on request.
  *
  * Nothing here drives the protocol — the ritual advances in
  * [ChillDkgRitualManager] as messages arrive on the inbound path, so this only
@@ -61,16 +62,30 @@ class DkgRitualViewModel(
      */
     val threshold: MutableState<Int> = mutableStateOf(ChatRoomType.MINIMUM_QUORUM)
 
-    fun isCoordinator(): Boolean {
+    /**
+     * Whether this device can open a ceremony right now.
+     *
+     * Any member may: ChillDKG gives the coordinator no say in the outcome, and a
+     * NIP-17 room records no creator to reserve the job for. What rules it out is
+     * a ceremony already running, or a group too small to split a key across.
+     */
+    fun canStartRitual(): Boolean {
         val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return false
 
-        return ChillDkgRitualManager.coordinatorOf(loaded.localChatRoom) == activeUserPublicKey
+        if (loaded.session != null && loaded.session.stage != DkgRitualStage.FAILED) return false
+
+        return ChillDkgRitualManager.canRunRitual(loaded.localChatRoom)
     }
 
     fun quorumRange(): IntRange {
-        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return ChatRoomType.quorumRange(ChatRoomType.MINIMUM_QUORUM)
+        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded
+            ?: return ChatRoomType.quorumRange(ChatRoomType.MINIMUM_QUORUM)
 
-        return ChatRoomType.quorumRange(loaded.participantCount)
+        // Below the minimum the range runs backwards and is empty, which `coerceIn`
+        // rejects outright. There is no ritual to run at that size either.
+        return ChatRoomType.quorumRange(
+            maxOf(loaded.participantCount, ChatRoomType.MINIMUM_QUORUM)
+        )
     }
 
     fun setThreshold(value: Int) {
@@ -88,7 +103,9 @@ class DkgRitualViewModel(
             }
 
             dkgRitualUIState = DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
-            threshold.value = ChatRoomType.defaultQuorum(localChatRoom.localParticipants.size)
+            threshold.value = ChatRoomType
+                .defaultQuorum(ChillDkgRitualManager.memberPublicKeys(localChatRoom).size)
+                .coerceIn(quorumRange())
 
             dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
@@ -116,7 +133,7 @@ class DkgRitualViewModel(
         }
     }
 
-    /** Coordinator only: opens the ritual and publishes the proposal. */
+    /** Opens a ritual, making this device its coordinator, and publishes the proposal. */
     fun startRitual() {
         if (isActionPending.value) return
 
