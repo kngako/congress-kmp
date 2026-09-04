@@ -37,8 +37,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,6 +50,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.extensions.memberName
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
@@ -237,6 +241,19 @@ private fun RitualProgress(
     val round1Count = round1Participants.size
     val round2Count = round2Participants.size
 
+    // Above the failure branch so it holds in every state. Any member can open a
+    // ceremony and it settles the group's signing quorum for good, so who opened
+    // this one is worth saying whether it is running, finished or abandoned.
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(color = ProfileColor.fromPublicKey(session.coordinatorPublicKey))) {
+                append(session.coordinatorPublicKey.memberName(members, activeUserPublicKey))
+            }
+            append(" started this ceremony.")
+        },
+        style = MaterialTheme.typography.bodyMedium
+    )
+
     if (stage == DkgRitualStage.FAILED) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -394,11 +411,7 @@ private fun RitualRoster(
 
                         Text(
                             modifier = Modifier.weight(1f),
-                            text = if (publicKey == activeUserPublicKey) {
-                                "You"
-                            } else {
-                                member.profile?.humanReadableNameOrPubkey() ?: publicKey.take(8)
-                            },
+                            text = publicKey.memberName(members, activeUserPublicKey),
                             maxLines = 1,
                             overflow = TextOverflow.MiddleEllipsis,
                             color = ProfileColor.fromPublicKey(publicKey),

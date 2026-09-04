@@ -56,6 +56,7 @@ import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
@@ -530,7 +531,7 @@ private fun RitualNotice(
                                     "You"
                                 } else {
                                     localChatMessage.profile?.humanReadableNameOrPubkey()
-                                        ?: chatMessage.senderPublicKey.take(SHORTENED_PUBLIC_KEY_LENGTH)
+                                        ?: chatMessage.senderPublicKey.shortened()
                                 }
                             )
                         }
@@ -557,6 +558,3 @@ private fun RitualNotice(
         )
     }
 }
-
-/** Enough of a public key to tell two members apart when neither has a profile yet. */
-private const val SHORTENED_PUBLIC_KEY_LENGTH = 8
