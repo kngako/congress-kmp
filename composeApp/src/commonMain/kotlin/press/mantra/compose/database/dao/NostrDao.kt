@@ -8,6 +8,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.Connection
+import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.MarmotGroupEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.Mention
@@ -17,6 +18,7 @@ import press.mantra.compose.database.model.NostrEventRelay
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Post
 import press.mantra.compose.database.model.Profile
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.exceptions.GiftWrapImpersonationException
 import press.mantra.compose.exceptions.GiftWrapSealDecryptionException
@@ -925,8 +927,17 @@ abstract class NostrDao(
                                 // A ChillDKG ritual message for one of our NIP-17 groups.
                                 // The manager is idempotent, so a redelivered message
                                 // simply re-runs a step it has already taken.
-                                val localChatRoom = database.chatRoomDao().findChatRoomById(
-                                    decryptedGiftWrapPayload.chatRoomId
+                                //
+                                // The room is created on demand for the same reason a
+                                // chat message creates one: standing up a NIP-17 group
+                                // sends nothing to anybody, so the ritual's proposal is
+                                // routinely the first this group is heard of. Membership
+                                // is the payload's p-tags either way.
+                                val localChatRoom = getOrCreateNip17ChatRoom(
+                                    decryptedGiftWrapPayload = decryptedGiftWrapPayload,
+                                    activeKeyPair = activeKeyPair,
+                                    nostrEventId = nostrEvent.id,
+                                    relayURL = relayURL
                                 )
 
                                 if (localChatRoom == null) {
@@ -1226,6 +1237,70 @@ abstract class NostrDao(
         }
     }
 
+
+    /**
+     * The NIP-17 room a decrypted payload belongs to, standing it up if this is the
+     * first the device has heard of the group.
+     *
+     * Membership under NIP-17 *is* the p-tag set on the message, and the room id is
+     * the aggregate of it, so any payload that routes here carries everything the
+     * room needs. Creating a group locally sends nothing to anyone, which is why the
+     * first arrival for a group is just as likely to be a key ceremony as a message.
+     */
+    private suspend fun getOrCreateNip17ChatRoom(
+        decryptedGiftWrapPayload: GiftWrapPayload,
+        activeKeyPair: KeyPair,
+        nostrEventId: String,
+        relayURL: String
+    ): LocalChatRoom? {
+        database.chatRoomDao().findChatRoomById(decryptedGiftWrapPayload.chatRoomId)?.let { return it }
+
+        val participants = decryptedGiftWrapPayload.participantPTags(
+            NormalizedRelayUrl(relayURL) // TODO: Get relayURL for publicKey profile...
+        ).map {
+            Participant(
+                participantPublicKey = it.pubKey,
+                chatRoomId = decryptedGiftWrapPayload.chatRoomId,
+                relayHint = it.relayHint?.url
+            )
+        }
+
+        if (participants.none { it.participantPublicKey == activeKeyPair.pubKey.toHex() }) {
+            logger.w("Payload ${decryptedGiftWrapPayload.id} builds a room this device isn't in")
+            return null
+        }
+
+        // Both ChatRoom.userPublicKey and Participant.participantPublicKey are
+        // foreign keys onto Profile, so every member needs a row before either.
+        participants.forEach { participant ->
+            if (database.profileDao().getProfileByPublicKey(participant.participantPublicKey) == null) {
+                database.profileDao().insertPlaceholderProfile(
+                    Profile(
+                        displayName = "LOADING...",
+                        publicKey = participant.participantPublicKey,
+                        createdAt = GENESIS_AT,
+                        nostrEventId = nostrEventId, // Will get overwritten by sync
+                    )
+                )
+            }
+        }
+
+        database.chatRoomDao().upsert(
+            ChatRoom(
+                id = decryptedGiftWrapPayload.chatRoomId,
+                userPublicKey = activeKeyPair.pubKey.toHex(),
+                subject = decryptedGiftWrapPayload.parseSubject(),
+                description = null,
+                createdAt = decryptedGiftWrapPayload.createdAt,
+                initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
+                mlsGroupState = null
+            )
+        )
+
+        database.participantDao().upsert(participants)
+
+        return database.chatRoomDao().findChatRoomById(decryptedGiftWrapPayload.chatRoomId)
+    }
 
     /**
      * Persist the rescheduling using a transaction so that we are assured of the existence of the
