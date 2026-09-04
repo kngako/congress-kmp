@@ -18,6 +18,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.Crypto
+import fr.acinq.bitcoin.crypto.dkg.chill.ChillDKG
 import kotlin.time.Clock
 import kotlin.time.Instant
 
