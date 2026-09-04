@@ -1,6 +1,3 @@
-[submodule "secp256k1-frost-kmp"]
-	path = secp256k1-frost-kmp
-	url = https://github.com/ac-cord-ac/secp256k1-frost-kmp.git
 [submodule "lightning-kmp-app"]
 	path = lightning-kmp-app
 	url = https://github.com/kngako/lightning-kmp-app.git

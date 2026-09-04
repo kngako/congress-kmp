@@ -126,9 +126,6 @@ kotlin {
 
             implementation("com.ionspin.kotlin:bignum:0.3.10")
 
-            // resolved via the secp256k1-frost-kmp composite build (see settings.gradle.kts)
-            implementation("ac.cord.auxiliary:library:1.0.0")
-
             implementation("no.synth:kmp-zip:0.8.0")
             implementation("no.synth:kmp-zip-okio:0.8.0")
         }

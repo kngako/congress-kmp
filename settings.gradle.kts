@@ -34,8 +34,7 @@ plugins {
 
 include(":composeApp")
 
-// Composite builds: substitute the external module coordinates with the submodules' :library projects.
-includeBuild("secp256k1-frost-kmp")
+// Composite build: substitute the external module coordinate with the submodule's :library project.
 includeBuild("lightning-kmp-app") {
     dependencySubstitution {
         // the submodule's project stays named :library (compose-resources derives the Res package
