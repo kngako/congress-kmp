@@ -25,13 +25,21 @@ kotlin {
         }
     }
     
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+    // Declared only on a mac, mirroring the gate lightning-kmp-app's :library applies to its own ios
+    // targets. Down the composite chain secp256k1-kmp declares a libsecp256k1 cinterop, which makes
+    // gradle switch off klib cross compilation for apple targets, so on a linux/windows host nothing
+    // in the build tree offers an ios variant of fr.acinq.phoenix:lightning-kmp-app. Declaring these
+    // targets anyway leaves every ios compilation unable to resolve it and fails the build outright.
+    // Building an ios binary needs a mac regardless.
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64()
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "ComposeApp"
+                isStatic = true
+            }
         }
     }
     
@@ -119,8 +127,12 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
-        iosMain.dependencies {
-            implementation(libs.sqldelight.native.driver)
+        // Only exists when the ios targets above were declared; the default hierarchy template
+        // creates this source set from them.
+        if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+            iosMain.dependencies {
+                implementation(libs.sqldelight.native.driver)
+            }
         }
     }
 }
@@ -164,9 +176,13 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 //    ksp(libs.androidx.room3.compiler)
     add("kspAndroid", libs.androidx.room3.compiler)
-    add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
-//    add("kspIosX64", libs.androidx.room.compiler)
-    add("kspIosArm64", libs.androidx.room3.compiler)
+    // These configurations only exist when the ios targets are declared, which the kotlin block
+    // above does only on a mac.
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+        add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
+//        add("kspIosX64", libs.androidx.room.compiler)
+        add("kspIosArm64", libs.androidx.room3.compiler)
+    }
 //    add("kspJvm", libs.androidx.room3.compiler)
     // Add any other platform target you use in your project, for example kspDesktop
 }
