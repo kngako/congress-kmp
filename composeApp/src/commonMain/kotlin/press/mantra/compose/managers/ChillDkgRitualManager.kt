@@ -383,9 +383,10 @@ object ChillDkgRitualManager {
 
             DkgRitualEvents.FAILURE -> {
                 fail(
-                    database,
-                    session,
-                    "Abandoned by ${giftWrapPayload.publicKey.take(8)}: ${giftWrapPayload.content}"
+                    database = database,
+                    session = session,
+                    reason = "Abandoned by ${giftWrapPayload.publicKey.take(8)}: ${giftWrapPayload.content}",
+                    culprit = giftWrapPayload.publicKey
                 )
                 return false
             }
@@ -512,7 +513,8 @@ object ChillDkgRitualManager {
                 session = session,
                 messageType = ChatMessage.TYPE_DKG_COMPLETE,
                 content = "The group has a shared key. It takes ${session.threshold} of " +
-                    "${session.participantCount} members to sign with it."
+                    "${session.participantCount} members to sign with it.",
+                actor = session.coordinatorPublicKey
             )
 
             logger.i("DKG ritual $sessionId complete")
@@ -705,7 +707,15 @@ object ChillDkgRitualManager {
         if (settled || current.stage.ordinal >= stage.ordinal) current else current.copy(stage = stage)
     }
 
-    private suspend fun fail(database: MantraDatabase, session: DkgSession, reason: String) {
+    private suspend fun fail(
+        database: MantraDatabase,
+        session: DkgSession,
+        reason: String,
+        // Whoever ended it. A member who sent FAILURE, or this device when it hit a
+        // fault of its own -- which amounts to the same thing from the group's side,
+        // since hitting one makes this device broadcast FAILURE in turn.
+        culprit: HexKey = session.userPublicKey
+    ) {
         // Read before writing so the notice goes out once. A ritual can be failed
         // from two directions -- a FAILURE message from a member, and a fault raised
         // locally -- and the group does not need to be told twice.
@@ -719,8 +729,13 @@ object ChillDkgRitualManager {
             database = database,
             session = current,
             messageType = ChatMessage.TYPE_DKG_FAILED,
-            content = "The shared key ceremony was abandoned — $reason. " +
-                "No key was created, and it is safe to run it again."
+            // The fault itself is deliberately left out and kept on the ritual
+            // screen this line taps through to. "a participant is faulty
+            // (participant 2)" is worth having, but not in the middle of a
+            // sentence about who walked away.
+            content = "abandoned the shared key ceremony. No key was created, " +
+                "and it is safe to run it again.",
+            actor = culprit
         )
     }
 
@@ -728,9 +743,13 @@ object ChillDkgRitualManager {
         database = database,
         session = session,
         messageType = ChatMessage.TYPE_DKG_STARTED,
-        content = "A shared key ceremony started. It will take ${session.threshold} of " +
+        // Reads after the actor's name -- see ChatMessage.DKG_AUTHORED_TYPES. Who
+        // opened a ceremony matters: any member can, and it settles the group's
+        // signing quorum for good.
+        content = "started a shared key ceremony. It will take ${session.threshold} of " +
             "${session.participantCount} members to sign with the key, and it finishes once " +
-            "everyone has taken part."
+            "everyone has taken part.",
+        actor = session.coordinatorPublicKey
     )
 
     /**
@@ -752,12 +771,13 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         session: DkgSession,
         messageType: String,
-        content: String
+        content: String,
+        actor: HexKey
     ) {
         database.chatMessageDao().upsert(
             ChatMessage(
-                senderPublicKey = session.coordinatorPublicKey,
-                isUserMessage = session.isCoordinator(),
+                senderPublicKey = actor,
+                isUserMessage = actor == session.userPublicKey,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,

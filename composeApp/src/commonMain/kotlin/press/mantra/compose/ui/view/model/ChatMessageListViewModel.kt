@@ -40,8 +40,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -50,6 +53,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
+import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
@@ -306,7 +310,7 @@ class ChatMessageListViewModel(
                                     // started" to the coordinator as if they had said it.
                                     if (localChatMessage.chatMessage.messageType in ChatMessage.DKG_TYPES) {
                                         RitualNotice(
-                                            chatMessage = localChatMessage.chatMessage,
+                                            localChatMessage = localChatMessage,
                                             onClick = onOpenSharedKey
                                         )
                                         return@items
@@ -476,9 +480,11 @@ class ChatMessageListViewModel(
  */
 @Composable
 private fun RitualNotice(
-    chatMessage: ChatMessage,
+    localChatMessage: LocalChatMessage,
     onClick: () -> Unit,
 ) {
+    val chatMessage = localChatMessage.chatMessage
+
     val icon = when (chatMessage.messageType) {
         ChatMessage.TYPE_DKG_COMPLETE -> Icons.Default.CheckCircle
         ChatMessage.TYPE_DKG_FAILED -> Icons.Default.ErrorOutline
@@ -509,7 +515,30 @@ private fun RitualNotice(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = chatMessage.content,
+                text = buildAnnotatedString {
+                    // Somebody opened this ceremony, or somebody walked away from it,
+                    // and which member that was is the point of the line. Resolved
+                    // from the joined profile rather than written into the content,
+                    // so it follows a rename and is not stuck on the "LOADING..."
+                    // placeholder a member is given the moment they are first seen.
+                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES) {
+                        withStyle(
+                            SpanStyle(color = ProfileColor.fromPublicKey(chatMessage.senderPublicKey))
+                        ) {
+                            append(
+                                if (chatMessage.isUserMessage) {
+                                    "You"
+                                } else {
+                                    localChatMessage.profile?.humanReadableNameOrPubkey()
+                                        ?: chatMessage.senderPublicKey.take(SHORTENED_PUBLIC_KEY_LENGTH)
+                                }
+                            )
+                        }
+                        append(" ")
+                    }
+
+                    append(chatMessage.content)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = tint
             )
@@ -528,3 +557,6 @@ private fun RitualNotice(
         )
     }
 }
+
+/** Enough of a public key to tell two members apart when neither has a profile yet. */
+private const val SHORTENED_PUBLIC_KEY_LENGTH = 8

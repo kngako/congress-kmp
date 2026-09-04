@@ -103,6 +103,17 @@ data class ChatMessage(
 
         val DKG_TYPES = setOf(TYPE_DKG_STARTED, TYPE_DKG_COMPLETE, TYPE_DKG_FAILED)
 
+        /**
+         * The ritual milestones somebody did, as opposed to ones that simply
+         * happened. For these [senderPublicKey] is the member who acted -- the one
+         * who opened the ceremony, or the one who abandoned it -- and their content
+         * is written as a predicate for their name to be read in front of.
+         *
+         * A finished ceremony has no actor: the group ends up with a key, nobody
+         * hands it to them.
+         */
+        val DKG_AUTHORED_TYPES = setOf(TYPE_DKG_STARTED, TYPE_DKG_FAILED)
+
         suspend fun fromGroupEventResult(
             database: MantraDatabase,
             activeKeyPair: KeyPair,
