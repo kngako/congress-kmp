@@ -47,6 +47,18 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
+            // The android secp256k1 natives. Nothing pulls these in transitively: lightning-kmp-core
+            // publishes no android variant, so the android target resolves it to the jvm one, which
+            // asks for secp256k1-kmp-jni-jvm and gets desktop .so/.dylib/.dll files that cannot load
+            // on a device. The app has to name the android artifact itself.
+            //
+            // Resolved from source via the composite build, not from Maven Central -- bitcoin-kmp's
+            // settings.gradle.kts substitutes this coordinate for secp256k1-kmp's :jni:android. That
+            // matters: the stock artifact has no ChillDKG module, so ChillDKG would compile and then
+            // fail with UnsatisfiedLinkError. The version is never resolved; substitution matches on
+            // group:name.
+            implementation("fr.acinq.secp256k1:secp256k1-kmp-jni-android:0.24.0")
+
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.work.runtime.ktx)
 //            implementation(libs.androidx.room.sqlite.wrapper)
