@@ -18,6 +18,7 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.nostrPrivateKey
 import kotlinx.coroutines.Dispatchers
@@ -121,10 +122,15 @@ class DkgRitualViewModel(
                         dkgRepository.observeMessages(session.id).collect { messages ->
                             val current = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
 
+                            fun senders(kind: Kind) = messages
+                                .filter { it.kind == kind }
+                                .map { it.participantPublicKey }
+                                .toSet()
+
                             dkgRitualUIState = current.copy(
-                                hostKeyCount = messages.count { it.kind == DkgRitualEvents.HOST_KEY },
-                                round1Count = messages.count { it.kind == DkgRitualEvents.ROUND_1 },
-                                round2Count = messages.count { it.kind == DkgRitualEvents.ROUND_2 }
+                                hostKeyParticipants = senders(DkgRitualEvents.HOST_KEY),
+                                round1Participants = senders(DkgRitualEvents.ROUND_1),
+                                round2Participants = senders(DkgRitualEvents.ROUND_2)
                             )
                         }
                     }

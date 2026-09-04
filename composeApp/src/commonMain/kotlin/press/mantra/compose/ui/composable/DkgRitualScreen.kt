@@ -45,11 +45,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalParticipant
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
+import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.DkgRitualViewModel
 import press.mantra.compose.ui.view.state.DkgRitualUIState
@@ -184,9 +186,11 @@ fun DkgRitualScreen(
                         RitualProgress(
                             session = session,
                             participantCount = participantCount,
-                            hostKeyCount = dkgRitualUIState.hostKeyCount,
-                            round1Count = dkgRitualUIState.round1Count,
-                            round2Count = dkgRitualUIState.round2Count
+                            activeUserPublicKey = activeUserPublicKey,
+                            members = dkgRitualUIState.ritualMembers,
+                            hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
+                            round1Participants = dkgRitualUIState.round1Participants,
+                            round2Participants = dkgRitualUIState.round2Participants
                         )
                     }
                 }
@@ -217,16 +221,21 @@ fun DkgRitualScreen(
     }
 }
 
-/** The ladder. Each round names who it is still waiting on, by count. */
+/** The ladder, and the members it is climbing. */
 @Composable
 private fun RitualProgress(
     session: DkgSession,
     participantCount: Int,
-    hostKeyCount: Int,
-    round1Count: Int,
-    round2Count: Int,
+    activeUserPublicKey: HexKey,
+    members: List<LocalParticipant>,
+    hostKeyParticipants: Set<HexKey>,
+    round1Participants: Set<HexKey>,
+    round2Participants: Set<HexKey>,
 ) {
     val stage = session.stage
+    val hostKeyCount = hostKeyParticipants.size
+    val round1Count = round1Participants.size
+    val round2Count = round2Participants.size
 
     if (stage == DkgRitualStage.FAILED) {
         Card(
@@ -286,6 +295,16 @@ private fun RitualProgress(
         isDone = stage == DkgRitualStage.COMPLETE
     )
 
+    if (stage != DkgRitualStage.COMPLETE) {
+        RitualRoster(
+            members = members,
+            activeUserPublicKey = activeUserPublicKey,
+            hostKeyParticipants = hostKeyParticipants,
+            round1Participants = round1Participants,
+            round2Participants = round2Participants
+        )
+    }
+
     if (stage == DkgRitualStage.COMPLETE) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -318,6 +337,80 @@ private fun RitualProgress(
                     style = MaterialTheme.typography.labelMedium
                 )
             }
+        }
+    }
+}
+
+/**
+ * Every member, and how far each has got.
+ *
+ * The ladder above says "2 of 3", which is the one thing a stalled ceremony never
+ * needs explaining — what it needs is a name. A DKG finishes only once every
+ * member's device has taken part, so the group's whole recourse when it stops
+ * moving is knowing whose door to knock on.
+ */
+@Composable
+private fun RitualRoster(
+    members: List<LocalParticipant>,
+    activeUserPublicKey: HexKey,
+    hostKeyParticipants: Set<HexKey>,
+    round1Participants: Set<HexKey>,
+    round2Participants: Set<HexKey>,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(text = "Members", style = MaterialTheme.typography.titleSmall)
+
+            members
+                .sortedBy { it.participant.participantPublicKey }
+                .forEach { member ->
+                    val publicKey = member.participant.participantPublicKey
+
+                    // Named by the furthest round they have published, since that is
+                    // the only thing this device knows about them for certain.
+                    val progress = when (publicKey) {
+                        in round2Participants -> "confirmed everyone's part"
+                        in round1Participants -> "committed their part"
+                        in hostKeyParticipants -> "joined"
+                        else -> "not here yet"
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (publicKey in hostKeyParticipants) {
+                                Icons.Default.CheckCircle
+                            } else {
+                                Icons.Default.RadioButtonUnchecked
+                            },
+                            contentDescription = null
+                        )
+
+                        Text(
+                            modifier = Modifier.weight(1f),
+                            text = if (publicKey == activeUserPublicKey) {
+                                "You"
+                            } else {
+                                member.profile?.humanReadableNameOrPubkey() ?: publicKey.take(8)
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.MiddleEllipsis,
+                            color = ProfileColor.fromPublicKey(publicKey),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Text(
+                            text = progress,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
         }
     }
 }
