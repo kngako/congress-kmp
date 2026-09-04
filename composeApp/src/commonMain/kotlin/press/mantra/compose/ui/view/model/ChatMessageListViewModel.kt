@@ -1,5 +1,6 @@
 package press.mantra.compose.ui.view.model
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyOff
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material3.Card
@@ -43,6 +48,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
@@ -198,7 +204,7 @@ class ChatMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages() {
+    fun RenderMessages(onOpenSharedKey: () -> Unit) {
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -295,6 +301,17 @@ class ChatMessageListViewModel(
                                     items = chatRoomDetailMessageListUIState.chatMessageList,
                                     key = { it.chatMessage.id }
                                 ) { localChatMessage ->
+                                    // Not somebody's words -- see ChatMessage.DKG_TYPES.
+                                    // A bubble would attribute "a shared key ceremony
+                                    // started" to the coordinator as if they had said it.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.DKG_TYPES) {
+                                        RitualNotice(
+                                            chatMessage = localChatMessage.chatMessage,
+                                            onClick = onOpenSharedKey
+                                        )
+                                        return@items
+                                    }
+
                                     BoxWithConstraints(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
@@ -445,5 +462,69 @@ class ChatMessageListViewModel(
                 )
             }
         }
+    }
+}
+
+/**
+ * A ChillDKG milestone, as a system line across the transcript.
+ *
+ * Deliberately not a bubble: nobody said this, and giving it a sender and a side
+ * would make the coordinator appear to have announced it. It is tappable because
+ * the point of telling the group is to give them somewhere to go — a ritual only
+ * finishes once every member's device has taken part, and the ladder that shows
+ * who it is waiting on lives on the shared-key screen.
+ */
+@Composable
+private fun RitualNotice(
+    chatMessage: ChatMessage,
+    onClick: () -> Unit,
+) {
+    val icon = when (chatMessage.messageType) {
+        ChatMessage.TYPE_DKG_COMPLETE -> Icons.Default.CheckCircle
+        ChatMessage.TYPE_DKG_FAILED -> Icons.Default.ErrorOutline
+        else -> Icons.Default.Key
+    }
+
+    val tint = when (chatMessage.messageType) {
+        ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = chatMessage.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = tint
+            )
+
+            Text(
+                text = chatMessage.createdAt.toFormattedTimeAndDateString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "Open the shared key ceremony",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

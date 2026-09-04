@@ -85,6 +85,24 @@ data class ChatMessage(
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
 
     companion object {
+        /**
+         * A ChillDKG ritual reached a point the group should be told about.
+         *
+         * These rows are not anybody's words: no [ChatMessage.giftWrapPayloadId], no
+         * event behind them, and nothing sent to say them. Each device writes its own
+         * from the ritual messages it already received, which is why they cost no
+         * traffic and cannot disagree with the ritual they describe.
+         *
+         * [ChatMessageListViewModel] renders these as a system line rather than a
+         * bubble, since attributing "a shared key ceremony started" to the
+         * coordinator would read as something they said.
+         */
+        const val TYPE_DKG_STARTED = "dkgStarted"
+        const val TYPE_DKG_COMPLETE = "dkgComplete"
+        const val TYPE_DKG_FAILED = "dkgFailed"
+
+        val DKG_TYPES = setOf(TYPE_DKG_STARTED, TYPE_DKG_COMPLETE, TYPE_DKG_FAILED)
+
         suspend fun fromGroupEventResult(
             database: MantraDatabase,
             activeKeyPair: KeyPair,

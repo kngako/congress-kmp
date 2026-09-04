@@ -42,6 +42,7 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -132,7 +133,16 @@ fun ChatRoomMessagingScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
                         key(true) {
-                            chatMessageListViewModel.RenderMessages()
+                            chatMessageListViewModel.RenderMessages(
+                                onOpenSharedKey = {
+                                    onNavigateToRoute.invoke(
+                                        DkgRitualRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId
+                                        )
+                                    )
+                                }
+                            )
                         }
                     }
 
