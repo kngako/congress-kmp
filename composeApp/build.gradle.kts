@@ -60,10 +60,8 @@ kotlin {
             implementation("fr.acinq.secp256k1:secp256k1-kmp-jni-android:0.24.0")
 
             implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.work.runtime.ktx)
 //            implementation(libs.androidx.room.sqlite.wrapper)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.okhttp.coroutines)
 
             implementation(libs.sqldelight.android.driver)
         }
@@ -73,9 +71,6 @@ kotlin {
 
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-
-            implementation(libs.androidx.paging.common)
-            implementation(libs.androidx.paging.compose)
 
 //            implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room3.runtime)
@@ -123,11 +118,6 @@ kotlin {
             implementation(libs.sqldelight.coroutines.extensions)
 
             implementation(libs.vitorpamplona.quartz)
-
-            implementation("com.ionspin.kotlin:bignum:0.3.10")
-
-            implementation("no.synth:kmp-zip:0.8.0")
-            implementation("no.synth:kmp-zip-okio:0.8.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

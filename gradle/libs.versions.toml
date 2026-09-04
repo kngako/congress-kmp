@@ -26,15 +26,12 @@ material3 = "1.10.0-alpha05"
 materialIconsCore = "1.7.3"
 materialIconsExtended = "1.7.3"
 navigationCompose = "2.9.2"
-okhttp = "5.4.0"
 okio = "3.18.1"
-pagingCommon = "3.5.1"
 qrose = "1.1.2"
 quartz = "1.14.0"
 room3 = "3.0.1"
 sqldelight = "2.3.2"
 sqlite = "2.7.0"
-workRuntimeKtx = "2.11.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -44,13 +41,10 @@ androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "a
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastorePreferences" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
-androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "pagingCommon" }
-androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "pagingCommon" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 androidx-room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room3" }
 androidx-room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
 androidx-room3-sqlite-wrapper = { module = "androidx.room3:room3-sqlite-wrapper", version.ref = "room3" }
-androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
@@ -78,7 +72,6 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.re
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 lightning-kmp-core = { module = "fr.acinq.lightning:lightning-kmp-core", version.ref = "lightningKmpCore" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
-okhttp-coroutines = { group = "com.squareup.okhttp3", name = "okhttp-coroutines", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
