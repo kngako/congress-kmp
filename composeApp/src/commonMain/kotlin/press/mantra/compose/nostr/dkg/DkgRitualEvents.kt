@@ -17,11 +17,11 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
  *
  * ```
  *  coordinator --[ 30310 proposal      ]-> everyone   "let's make a t-of-n key"
- *  participant --[ 30311 host key      ]-> everyone   host pubkey for SessionParams
- *  participant --[ 30312 round 1       ]-> everyone   ChillDkg.ParticipantMsg1
- *  coordinator --[ 30313 coord round 1 ]-> everyone   ChillDkg.CoordinatorMsg1
- *  participant --[ 30314 round 2       ]-> everyone   ChillDkg.ParticipantMsg2
- *  coordinator --[ 30315 certificate   ]-> everyone   ChillDkg.CoordinatorMsg2
+ *  participant --[ 30311 host key      ]-> everyone   host pubkey for the participant set
+ *  participant --[ 30312 round 1       ]-> everyone   pmsg1
+ *  coordinator --[ 30313 coord round 1 ]-> everyone   cmsg1
+ *  participant --[ 30314 round 2       ]-> everyone   CertEq signature
+ *  coordinator --[ 30315 certificate   ]-> everyone   cmsg2, the success certificate
  *  anyone      --[ 30316 failure       ]-> everyone   abort + blame
  * ```
  *
@@ -38,16 +38,16 @@ object DkgRitualEvents {
     /** A participant's long-term ChillDKG host public key (33-byte compressed, hex). */
     val HOST_KEY: Kind = 30311
 
-    /** `ChillDkg.ParticipantMsg1` bytes, hex encoded. */
+    /** A participant's `pmsg1` from `ChillDKG.participantStep1`, hex encoded. */
     val ROUND_1: Kind = 30312
 
-    /** `ChillDkg.CoordinatorMsg1` bytes, hex encoded. */
+    /** The coordinator's `cmsg1` from `ChillDKG.coordinatorStep1`, hex encoded. */
     val COORDINATOR_ROUND_1: Kind = 30313
 
-    /** `ChillDkg.ParticipantMsg2` bytes (a 64-byte signature), hex encoded. */
+    /** A participant's 64-byte CertEq signature from `ChillDKG.participantStep2`, hex encoded. */
     val ROUND_2: Kind = 30314
 
-    /** `ChillDkg.CoordinatorMsg2` bytes (the success certificate), hex encoded. */
+    /** The coordinator's `cmsg2` — the success certificate — hex encoded. */
     val CERTIFICATE: Kind = 30315
 
     /** Ritual abandoned. Content is the reason, for showing to the group. */

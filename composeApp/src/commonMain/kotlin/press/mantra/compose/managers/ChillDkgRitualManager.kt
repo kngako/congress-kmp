@@ -8,7 +8,6 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
-import ac.cord.auxiliary.frost.dkg.chill.ChillDkg
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
@@ -17,8 +16,14 @@ import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.utils.RandomInstance
+import fr.acinq.bitcoin.ByteVector
+import fr.acinq.bitcoin.ByteVector32
+import fr.acinq.bitcoin.ByteVector64
 import fr.acinq.bitcoin.Crypto
+import fr.acinq.bitcoin.PrivateKey
+import fr.acinq.bitcoin.PublicKey
 import fr.acinq.bitcoin.crypto.dkg.chill.ChillDKG
+import fr.acinq.secp256k1.ChilldkgFault
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -62,11 +67,11 @@ object ChillDkgRitualManager {
      * session's outputs, and asking a chat user to back up a second secret is a
      * good way to lose keys.
      */
-    fun deriveHostSecretKey(nostrPrivateKey: ByteArray): ByteArray =
-        Crypto.sha256(HOST_KEY_DERIVATION_TAG.encodeToByteArray() + nostrPrivateKey)
+    fun deriveHostSecretKey(nostrPrivateKey: ByteArray): PrivateKey =
+        PrivateKey(Crypto.sha256(HOST_KEY_DERIVATION_TAG.encodeToByteArray() + nostrPrivateKey))
 
-    fun deriveHostPublicKey(nostrPrivateKey: ByteArray): ByteArray =
-        ChillDkg.hostpubkeyGen(deriveHostSecretKey(nostrPrivateKey))
+    fun deriveHostPublicKey(nostrPrivateKey: ByteArray): PublicKey =
+        ChillDKG.hostPublicKey(deriveHostSecretKey(nostrPrivateKey))
 
     /**
      * Opens a ritual. Only the room's creator should call this; every other
@@ -89,7 +94,7 @@ object ChillDkgRitualManager {
             userPublicKey = userPublicKey,
             threshold = threshold,
             participantCount = participantCount,
-            hostPublicKey = deriveHostPublicKey(nostrPrivateKey).toHex(),
+            hostPublicKey = deriveHostPublicKey(nostrPrivateKey).value.toHex(),
             // Fresh per session. Persisted because participantStep1/2 are pure in
             // it, which is what makes the whole ritual restart-safe.
             round1Random = RandomInstance.bytes(32).toHex(),
@@ -223,7 +228,7 @@ object ChillDkgRitualManager {
             userPublicKey = userPublicKey,
             threshold = threshold,
             participantCount = localChatRoom.localParticipants.size,
-            hostPublicKey = deriveHostPublicKey(nostrPrivateKey).toHex(),
+            hostPublicKey = deriveHostPublicKey(nostrPrivateKey).value.toHex(),
             round1Random = RandomInstance.bytes(32).toHex(),
             round2AuxRandom = RandomInstance.bytes(32).toHex()
         )
@@ -252,17 +257,18 @@ object ChillDkgRitualManager {
         val hostSeckey = deriveHostSecretKey(nostrPrivateKey)
 
         try {
-            val params = sessionParams(database, session) ?: return
+            val hostPublicKeys = hostPublicKeys(database, session) ?: return
 
             when (session.stage) {
                 DkgRitualStage.COLLECTING_HOST_KEYS -> {
-                    // Every host key is in, so the params are settled and round 1
-                    // can be computed. Publish ours and move on.
-                    val (_, pmsg1) = ChillDkg.participantStep1(
-                        hostseckey = hostSeckey,
-                        params = params,
-                        random = session.round1Random.hexToByteArray()
-                    )
+                    // Every host key is in, so the participant set is settled and
+                    // round 1 can be computed. Publish ours and move on.
+                    val pmsg1 = ChillDKG.participantStep1(
+                        hostSecretKey = hostSeckey,
+                        hostPublicKeys = hostPublicKeys,
+                        threshold = session.threshold,
+                        random = ByteVector32(session.round1Random)
+                    ).message
                     val moved = session.copy(
                         stage = DkgRitualStage.COLLECTING_ROUND_1,
                         updatedAt = Clock.System.now()
@@ -274,21 +280,19 @@ object ChillDkgRitualManager {
                 }
 
                 DkgRitualStage.COLLECTING_ROUND_1 -> {
-                    if (session.isCoordinator()) aggregateRound1(database, localChatRoom, session, params)
+                    if (session.isCoordinator()) aggregateRound1(database, localChatRoom, session, hostPublicKeys)
 
                     val coordinatorRound1 = database.dkgSessionDao()
                         .getSessionById(sessionId)?.coordinatorRound1 ?: return
 
-                    val (_, pmsg2) = ChillDkg.participantStep2(
-                        hostseckey = hostSeckey,
-                        state1 = ChillDkg.participantStep1(
-                            hostseckey = hostSeckey,
-                            params = params,
-                            random = session.round1Random.hexToByteArray()
-                        ).first,
-                        cmsg1 = coordinatorRound1.hexToByteArray(),
-                        auxRand = session.round2AuxRandom.hexToByteArray()
+                    val step2 = ChillDKG.participantStep2(
+                        hostSecretKey = hostSeckey,
+                        state = participantState1(hostSeckey, hostPublicKeys, session),
+                        coordinatorMessage = ByteVector(coordinatorRound1.hexToByteArray()),
+                        auxRand = ByteVector32(session.round2AuxRandom)
                     )
+                    step2.fault.raiseIfFaulty("round 2")
+                    val pmsg2 = step2.certEqSignature
 
                     val moved = session.copy(
                         stage = DkgRitualStage.COLLECTING_ROUND_2,
@@ -302,21 +306,22 @@ object ChillDkgRitualManager {
                 }
 
                 DkgRitualStage.COLLECTING_ROUND_2 -> {
-                    if (session.isCoordinator()) aggregateRound2(database, localChatRoom, session, params, hostSeckey)
+                    if (session.isCoordinator()) aggregateRound2(database, localChatRoom, session, hostPublicKeys)
 
                     val certificate = database.dkgSessionDao()
                         .getSessionById(sessionId)?.certificate ?: return
 
-                    finalize(database, session, params, hostSeckey, certificate)
+                    finalize(database, session, hostPublicKeys, hostSeckey, certificate)
                 }
 
                 DkgRitualStage.COMPLETE, DkgRitualStage.FAILED -> Unit
             }
         } catch (e: Throwable) {
-            // Any ChillDkg exception means the session is over for this device:
-            // FaultyParticipantError / FaultyCoordinatorError name a culprit,
-            // everything else is a local problem. Either way the key is not
-            // usable, so say so rather than leaving a spinner running forever.
+            // The session is over for this device. Either a protocol fault came
+            // back from a ChillDKG step -- [raiseIfFaulty] turns those into
+            // exceptions naming the culprit -- or a step rejected a local input.
+            // Either way the key is not usable, so say so rather than leaving a
+            // spinner running forever.
             logger.e("DKG ritual $sessionId failed", e)
             fail(database, session, e.message ?: e::class.simpleName ?: "Unknown error")
             broadcast(
@@ -334,13 +339,14 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
         session: DkgSession,
-        params: ChillDkg.SessionParams
+        hostPublicKeys: List<PublicKey>
     ) {
         if (session.coordinatorRound1 != null) return
 
         val pmsgs1 = orderedPayloads(database, session, DkgRitualEvents.ROUND_1) ?: return
 
-        val (_, cmsg1) = ChillDkg.coordinatorStep1(pmsgs1 = pmsgs1, params = params)
+        val step1 = coordinatorStep1(pmsgs1, hostPublicKeys, session)
+        val cmsg1 = step1.message
 
         database.dkgSessionDao().upsert(
             session.copy(coordinatorRound1 = cmsg1.toHex(), updatedAt = Clock.System.now())
@@ -359,8 +365,7 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
         session: DkgSession,
-        params: ChillDkg.SessionParams,
-        hostSeckey: ByteArray
+        hostPublicKeys: List<PublicKey>
     ) {
         if (session.certificate != null) return
 
@@ -371,9 +376,15 @@ object ChillDkgRitualManager {
         // holding it across rounds — same inputs, same state, and it survives a
         // restart between the two aggregations.
         val pmsgs1 = orderedPayloads(database, session, DkgRitualEvents.ROUND_1) ?: return
-        val (coordinatorState, _) = ChillDkg.coordinatorStep1(pmsgs1 = pmsgs1, params = params)
+        val coordinatorState = coordinatorStep1(pmsgs1, hostPublicKeys, session).state
 
-        val (cmsg2, _, _) = ChillDkg.coordinatorFinalize(state = coordinatorState, pmsgs2 = pmsgs2)
+        val certified = ChillDKG.coordinatorFinalize(
+            state = coordinatorState,
+            certEqSignatures = pmsgs2.map { ByteVector64(it) },
+            threshold = session.threshold
+        )
+        certified.fault.raiseIfFaulty("certificate")
+        val cmsg2 = certified.certificate
 
         database.dkgSessionDao().upsert(
             session.copy(
@@ -395,26 +406,25 @@ object ChillDkgRitualManager {
     private suspend fun finalize(
         database: MantraDatabase,
         session: DkgSession,
-        params: ChillDkg.SessionParams,
-        hostSeckey: ByteArray,
+        hostPublicKeys: List<PublicKey>,
+        hostSeckey: PrivateKey,
         certificate: HexKey
     ) {
-        val (state1, _) = ChillDkg.participantStep1(
-            hostseckey = hostSeckey,
-            params = params,
-            random = session.round1Random.hexToByteArray()
+        val step2 = ChillDKG.participantStep2(
+            hostSecretKey = hostSeckey,
+            state = participantState1(hostSeckey, hostPublicKeys, session),
+            coordinatorMessage = ByteVector((session.coordinatorRound1 ?: return).hexToByteArray()),
+            auxRand = ByteVector32(session.round2AuxRandom)
         )
-        val (state2, _) = ChillDkg.participantStep2(
-            hostseckey = hostSeckey,
-            state1 = state1,
-            cmsg1 = (session.coordinatorRound1 ?: return).hexToByteArray(),
-            auxRand = session.round2AuxRandom.hexToByteArray()
-        )
+        step2.fault.raiseIfFaulty("round 2")
 
-        val (dkgOutput, recoveryData) = ChillDkg.participantFinalize(
-            state2 = state2,
-            cmsg2 = certificate.hexToByteArray()
+        val output = ChillDKG.participantFinalize(
+            state = step2.state,
+            certificate = ByteVector(certificate.hexToByteArray()),
+            nParticipants = session.participantCount,
+            threshold = session.threshold
         )
+        output.fault.raiseIfFaulty("finalize")
 
         logger.i("DKG ritual ${session.id} complete")
 
@@ -422,24 +432,27 @@ object ChillDkgRitualManager {
             session.copy(
                 stage = DkgRitualStage.COMPLETE,
                 certificate = certificate,
-                thresholdPublicKey = dkgOutput.threshPk.toHex(),
-                secretShare = dkgOutput.secshare?.toHex(),
-                recoveryData = recoveryData.toHex(),
+                thresholdPublicKey = output.thresholdPublicKey?.value?.toHex(),
+                secretShare = output.secretShare?.value?.toHex(),
+                recoveryData = output.recovery?.toHex(),
                 updatedAt = Clock.System.now()
             )
         )
     }
 
     /**
-     * The agreed [ChillDkg.SessionParams], or null while host keys are still
-     * outstanding. Ordering is a bytewise sort of the host public keys: ChillDKG
-     * fails outright if the participants disagree on the order, and sorting is
-     * the only ordering every device can derive independently.
+     * The agreed participant set, or null while host keys are still outstanding.
+     * Ordering is a bytewise sort of the host public keys: ChillDKG fails outright
+     * if the participants disagree on the order, and sorting is the only ordering
+     * every device can derive independently.
+     *
+     * ChillDKG has no session-params object: every step takes this list and the
+     * threshold, and hashes them into the session identity itself.
      */
-    private suspend fun sessionParams(
+    private suspend fun hostPublicKeys(
         database: MantraDatabase,
         session: DkgSession
-    ): ChillDkg.SessionParams? {
+    ): List<PublicKey>? {
         val hostKeys = database.dkgSessionDao().getMessagesByKind(session.id, DkgRitualEvents.HOST_KEY)
 
         if (hostKeys.size < session.participantCount) {
@@ -447,16 +460,75 @@ object ChillDkgRitualManager {
             return null
         }
 
-        return ChillDkg.SessionParams(
-            hostpubkeys = hostKeys.map { it.payload }.sorted().map { it.hexToByteArray() },
-            t = session.threshold
-        )
+        return hostKeys.map { it.payload }.sorted().map { PublicKey(ByteVector(it.hexToByteArray())) }
+    }
+
+    /**
+     * This device's round-1 state, recomputed rather than stored.
+     *
+     * [ChillDKG.ParticipantState1] is serializable, so this could be persisted —
+     * but it is a pure function of the host key, the participant set and
+     * [DkgSession.round1Random], all of which are already stored, so recomputing
+     * keeps the ritual restart-safe without adding protocol state to the schema.
+     */
+    private fun participantState1(
+        hostSeckey: PrivateKey,
+        hostPublicKeys: List<PublicKey>,
+        session: DkgSession
+    ) = ChillDKG.participantStep1(
+        hostSecretKey = hostSeckey,
+        hostPublicKeys = hostPublicKeys,
+        threshold = session.threshold,
+        random = ByteVector32(session.round1Random)
+    ).state
+
+    /**
+     * The coordinator's round-1 aggregation. Called twice — once to publish
+     * `cmsg1`, once to rebuild the state the finalization needs — so the fault
+     * check lives here rather than at both call sites.
+     */
+    private fun coordinatorStep1(
+        pmsgs1: List<ByteArray>,
+        hostPublicKeys: List<PublicKey>,
+        session: DkgSession
+    ) = ChillDKG.coordinatorStep1(
+        participantMessages = pmsgs1.map { ByteVector(it) },
+        hostPublicKeys = hostPublicKeys,
+        threshold = session.threshold
+    ).also { it.fault.raiseIfFaulty("coordinator round 1") }
+
+    /**
+     * Turns a protocol fault into an exception so it joins [advance]'s single
+     * failure path.
+     *
+     * ChillDKG reports faults as values, not exceptions, because a faulty
+     * participant is a normal outcome of a DKG rather than a bug. This ritual has
+     * exactly one response to every one of them — the key is unusable, so the
+     * session dies and the group is told — so there is nothing to gain from
+     * handling them individually. What is worth keeping is the culprit: on a
+     * failed DKG, which participant to blame is the only actionable thing there
+     * is, and it goes into the failure reason shown to the user.
+     */
+    private fun ChilldkgFault.raiseIfFaulty(step: String) {
+        if (isOk) return
+
+        val culprit = participantIndex?.let { " (participant $it)" } ?: ""
+        val reason = when (code) {
+            ChilldkgFault.FAULTY_COORDINATOR -> "the coordinator is faulty"
+            ChilldkgFault.FAULTY_PARTICIPANT -> "a participant is faulty"
+            ChilldkgFault.FAULTY_PARTICIPANT_OR_COORDINATOR -> "a participant or the coordinator is faulty"
+            ChilldkgFault.UNKNOWN_FAULTY_PARTICIPANT_OR_COORDINATOR ->
+                "an unidentified participant or the coordinator is faulty"
+            ChilldkgFault.INVALID_INPUT -> "invalid input"
+            else -> "unrecognised fault code $code"
+        }
+        throw IllegalStateException("ChillDKG $step failed: $reason$culprit")
     }
 
     /**
      * Round messages in participant order — i.e. ordered by the sender's host key,
-     * matching the [ChillDkg.SessionParams] ordering. Null while any are missing:
-     * both coordinator steps require exactly `n` entries.
+     * matching the [hostPublicKeys] ordering. Null while any are missing: both
+     * coordinator steps require exactly `n` entries.
      */
     private suspend fun orderedPayloads(
         database: MantraDatabase,
@@ -475,7 +547,7 @@ object ChillDkgRitualManager {
 
         // Pair each message with its sender's host key so it can be sorted into
         // participant order. A message from someone who never published a host key
-        // cannot be placed, and a short list would be rejected by ChillDkg anyway.
+        // cannot be placed, and a short list would be rejected by ChillDKG anyway.
         val orderable = messages.mapNotNull { message ->
             hostKeyByParticipant[message.participantPublicKey]?.let { hostKey -> hostKey to message.payload }
         }

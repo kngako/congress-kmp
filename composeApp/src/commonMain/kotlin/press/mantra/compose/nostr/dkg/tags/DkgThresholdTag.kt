@@ -5,7 +5,8 @@ import com.vitorpamplona.quartz.utils.ensure
 
 /**
  * The `t` of the t-of-n the ritual is generating a key for. Carried on the
- * proposal so every participant validates the same [ChillDkg.SessionParams] —
+ * proposal so every participant runs the ritual with the same `t` — ChillDKG
+ * hashes the threshold and the participant set into the session identity, so
  * disagreement on `t` makes the session fail rather than silently produce a
  * weaker key.
  */

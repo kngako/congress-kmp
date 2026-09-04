@@ -14,7 +14,7 @@ import kotlin.time.Instant
 /**
  * One ChillDKG ritual, as this device sees it.
  *
- * Deliberately stores inputs rather than protocol state. `ChillDkg`'s
+ * Deliberately stores inputs rather than protocol state. `ChillDKG`'s
  * participant and coordinator steps are pure functions of their inputs — the
  * only randomness enters through the `random`/`auxRand` arguments — so keeping
  * [round1Random], [round2AuxRandom] and the received messages is enough to
