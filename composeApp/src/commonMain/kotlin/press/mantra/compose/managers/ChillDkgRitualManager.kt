@@ -7,6 +7,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.ChatRoomType
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
@@ -148,7 +149,12 @@ object ChillDkgRitualManager {
             // Fresh per session. Persisted because participantStep1/2 are pure in
             // it, which is what makes the whole ritual restart-safe.
             round1Random = RandomInstance.bytes(32).toHex(),
-            round2AuxRandom = RandomInstance.bytes(32).toHex()
+            round2AuxRandom = RandomInstance.bytes(32).toHex(),
+            // Opening a ceremony is already the act of agreeing to be in it, so this
+            // member is not asked again to publish the host key they just committed
+            // the group to. Rounds 1 and 2 are still asked for: those publish key
+            // material, and by then the ceremony has other people in it.
+            hostKeyApprovedAt = Clock.System.now()
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -289,9 +295,14 @@ object ChillDkgRitualManager {
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
 
-        logger.i("Joined DKG ritual $sessionId ($threshold-of-${members.size})")
+        logger.i("Recorded DKG ritual $sessionId ($threshold-of-${members.size}); awaiting approval")
 
-        publishHostKey(database, localChatRoom, session)
+        // Deliberately publishes nothing. This used to put the device's host key on
+        // the wire, which meant a relay delivering an event was enough to enrol its
+        // owner in the group's permanent signing quorum. The session is recorded so
+        // the ritual can be shown and stored messages replayed; [advance] sends
+        // nothing until [approve] has been called.
+        announceApprovalNeeded(database, session, DkgApprovalStep.HOST_KEY)
         replayStoredMessages(database, session)
 
         return session
@@ -450,9 +461,26 @@ object ChillDkgRitualManager {
         val hostSeckey = deriveHostSecretKey(nostrPrivateKey)
 
         try {
+            // Nothing of this device's own goes out before its owner has said so.
+            // Each gate returns rather than throwing: the ritual is not failing, it
+            // is waiting on a person, and everything already received stays stored
+            // so it resumes the moment they approve.
+            if (session.hostKeyApprovedAt == null) return
+
+            if (ownMessage(database, session, DkgRitualEvents.HOST_KEY) == null) {
+                publishHostKey(database, localChatRoom, session)
+            }
+
             // Waiting on host keys: the participant set isn't settled, so there is
             // nothing this device can compute yet.
             val hostPublicKeys = hostPublicKeys(database, session) ?: return
+
+            // A second decision, and a different one: the host key only joined the
+            // ceremony, this contributes to the key itself.
+            if (session.round1ApprovedAt == null) {
+                announceApprovalNeeded(database, session, DkgApprovalStep.ROUND_1)
+                return
+            }
 
             val step1 = ChillDKG.participantStep1(
                 hostSecretKey = hostSeckey,
@@ -481,6 +509,15 @@ object ChillDkgRitualManager {
             }
 
             val coordinatorRound1 = session.coordinatorRound1 ?: return
+
+            // The last decision, and a real check rather than a formality: signing
+            // here asserts the combined result matches what this device sent, which
+            // is what stops a coordinator swapping in a key the members never
+            // contributed to.
+            if (session.round2ApprovedAt == null) {
+                announceApprovalNeeded(database, session, DkgApprovalStep.ROUND_2)
+                return
+            }
 
             val step2 = ChillDKG.participantStep2(
                 hostSecretKey = hostSeckey,
@@ -783,6 +820,124 @@ object ChillDkgRitualManager {
             "everyone has taken part.",
         actor = session.coordinatorPublicKey
     )
+
+    /**
+     * What this ritual is waiting on its owner for, or null if it is waiting on
+     * somebody else — or on nothing, being finished.
+     *
+     * Mirrors the gates in [advance] rather than duplicating their reasoning: a step
+     * is pending exactly when [advance] would stop at it. The two must agree, or the
+     * screen offers an approval that does nothing, or none while the ritual sits
+     * still.
+     */
+    suspend fun pendingApproval(database: MantraDatabase, session: DkgSession): DkgApprovalStep? {
+        if (session.stage == DkgRitualStage.COMPLETE || session.stage == DkgRitualStage.FAILED) return null
+
+        if (session.hostKeyApprovedAt == null) return DkgApprovalStep.HOST_KEY
+
+        if (session.round1ApprovedAt == null) {
+            // Nothing to contribute to until the participant set is settled: round 1
+            // is computed over every member's host key, so asking earlier would be
+            // asking about a ceremony whose shape is not yet known.
+            val hostKeys = database.dkgSessionDao()
+                .countMessagesByKind(session.id, DkgRitualEvents.HOST_KEY)
+
+            return if (hostKeys >= session.participantCount) DkgApprovalStep.ROUND_1 else null
+        }
+
+        if (session.round2ApprovedAt == null) {
+            // Nothing to check until the coordinator has combined the contributions.
+            return if (session.coordinatorRound1 != null) DkgApprovalStep.ROUND_2 else null
+        }
+
+        return null
+    }
+
+    /**
+     * Records that this device's owner agreed to [step], then lets the ritual run as
+     * far as the next thing it is waiting on.
+     *
+     * Approving a step it is not actually waiting on is a no-op rather than an error:
+     * a stale screen left open across a redelivery should not publish anything, and
+     * the caller has no way to know the ritual has moved on since it was drawn.
+     */
+    suspend fun approve(
+        database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
+        sessionId: String,
+        step: DkgApprovalStep,
+        nostrPrivateKey: ByteArray
+    ) {
+        val session = database.dkgSessionDao().getSessionById(sessionId) ?: return
+
+        if (pendingApproval(database, session) != step) {
+            logger.i("Ritual $sessionId is not waiting on $step; ignoring the approval")
+            return
+        }
+
+        val now = Clock.System.now()
+        update(database, session) {
+            when (step) {
+                DkgApprovalStep.HOST_KEY -> it.copy(hostKeyApprovedAt = now)
+                DkgApprovalStep.ROUND_1 -> it.copy(round1ApprovedAt = now)
+                DkgApprovalStep.ROUND_2 -> it.copy(round2ApprovedAt = now)
+            }
+        }
+
+        logger.i("Ritual $sessionId: $step approved")
+
+        advance(
+            database = database,
+            localChatRoom = localChatRoom,
+            sessionId = sessionId,
+            nostrPrivateKey = nostrPrivateKey
+        )
+    }
+
+    /**
+     * Tells the group's chat that this ritual is waiting on the reader.
+     *
+     * The ritual is otherwise silent while it waits, and waiting is its normal
+     * state: it cannot finish until every member has taken part, so a member who
+     * never notices stalls it for everybody. The line is not addressed to the group
+     * — every device writes its own, and each only ever writes its own owner's.
+     *
+     * Written once per step by [DkgSession.approvalRequestedThrough], because
+     * [advance] runs on every arriving message and would otherwise ask again on each
+     * one.
+     */
+    private suspend fun announceApprovalNeeded(
+        database: MantraDatabase,
+        session: DkgSession,
+        step: DkgApprovalStep
+    ) {
+        val asked = current(database, session).approvalRequestedThrough
+        if (asked != null && asked.ordinal >= step.ordinal) return
+
+        update(database, session) { it.copy(approvalRequestedThrough = step) }
+
+        val (messageType, content) = when (step) {
+            DkgApprovalStep.HOST_KEY -> ChatMessage.TYPE_DKG_APPROVAL_NEEDED_HOST_KEY to
+                "Your approval is needed to join the shared key ceremony. Nothing has been " +
+                    "published from this device yet."
+
+            DkgApprovalStep.ROUND_1 -> ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1 to
+                "Everyone has joined the shared key ceremony. Your approval is needed to " +
+                    "contribute to the key."
+
+            DkgApprovalStep.ROUND_2 -> ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_2 to
+                "The contributions have been combined. Your approval is needed to check the " +
+                    "result and confirm it."
+        }
+
+        announce(
+            database = database,
+            session = session,
+            messageType = messageType,
+            content = content,
+            actor = session.userPublicKey
+        )
+    }
 
     /**
      * Puts one protocol message in the group's chat, as a line naming who sent it.

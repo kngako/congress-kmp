@@ -22,6 +22,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.CallMerge
+import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.PanTool
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyOff
@@ -255,6 +261,29 @@ class ChatMessageListViewModel(
                             )
                         } else {
 
+                            // A request line is answered when the step it asked for
+                            // has since been published by this device -- which is
+                            // exactly what approving it does. The transcript already
+                            // records that as an authored line, so the answer is here
+                            // in the list rather than in the session, and it stays
+                            // right for a room that has run more than one ceremony.
+                            val answeredRequests = chatRoomDetailMessageListUIState
+                                .chatMessageList
+                                .mapNotNull { request ->
+                                    val published = ChatMessage
+                                        .DKG_REQUEST_FULFILMENTS[request.chatMessage.messageType]
+                                        ?: return@mapNotNull null
+
+                                    val done = chatRoomDetailMessageListUIState.chatMessageList.any {
+                                        it.chatMessage.messageType == published &&
+                                            it.chatMessage.isUserMessage &&
+                                            it.chatMessage.createdAt >= request.chatMessage.createdAt
+                                    }
+
+                                    request.chatMessage.id.takeIf { done }
+                                }
+                                .toSet()
+
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth().padding(5.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -312,6 +341,7 @@ class ChatMessageListViewModel(
                                     if (localChatMessage.chatMessage.messageType in ChatMessage.DKG_TYPES) {
                                         RitualNotice(
                                             localChatMessage = localChatMessage,
+                                            isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                             onClick = onOpenSharedKey
                                         )
                                         return@items
@@ -482,18 +512,44 @@ class ChatMessageListViewModel(
 @Composable
 private fun RitualNotice(
     localChatMessage: LocalChatMessage,
+    isAnswered: Boolean,
     onClick: () -> Unit,
 ) {
     val chatMessage = localChatMessage.chatMessage
 
+    // One per stage. A ceremony puts a dozen-odd lines in a row into the transcript,
+    // and with a single icon on all of them the reader has to actually read each to
+    // tell "somebody joined" from "somebody contributed" from "you are being asked
+    // for something". A request shares its stage's icon rather than getting a
+    // distinct one: it is the same step, before rather than after, and the primary
+    // tint and the Review affordance already say which.
     val icon = when (chatMessage.messageType) {
+        ChatMessage.TYPE_DKG_STARTED -> Icons.Default.Key
+        ChatMessage.TYPE_DKG_HOST_KEY -> Icons.Default.PersonAdd
+        ChatMessage.TYPE_DKG_ROUND_1 -> Icons.Default.Upload
+        ChatMessage.TYPE_DKG_COORDINATOR_ROUND_1 -> Icons.Default.CallMerge
+        ChatMessage.TYPE_DKG_ROUND_2 -> Icons.Default.FactCheck
+        ChatMessage.TYPE_DKG_CERTIFICATE -> Icons.Default.WorkspacePremium
         ChatMessage.TYPE_DKG_COMPLETE -> Icons.Default.CheckCircle
         ChatMessage.TYPE_DKG_FAILED -> Icons.Default.ErrorOutline
-        else -> Icons.Default.Key
+
+        ChatMessage.TYPE_DKG_APPROVAL_NEEDED_HOST_KEY -> Icons.Default.PersonAdd
+        ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1 -> Icons.Default.Upload
+        ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_2 -> Icons.Default.FactCheck
+
+        else -> Icons.Default.PanTool
     }
 
-    val tint = when (chatMessage.messageType) {
-        ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+    // The requests are the ritual lines that ask rather than report, and the ones
+    // the ceremony cannot get past on its own. Everything else here is deliberately
+    // quiet; these are not.
+    // An answered request is history, not a summons: it keeps its stage's icon so
+    // the step is still recognisable, but drops the colour and the call to action.
+    val isRequest = chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES && !isAnswered
+
+    val tint = when {
+        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+        isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -551,10 +607,24 @@ private fun RitualNotice(
             )
         }
 
+        if (isRequest) {
+            Text(
+                text = "Review",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else if (isAnswered) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "You approved this",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "Open the shared key ceremony",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = tint
         )
     }
 }

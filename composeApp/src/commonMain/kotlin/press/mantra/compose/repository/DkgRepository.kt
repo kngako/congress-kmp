@@ -3,11 +3,18 @@ package press.mantra.compose.repository
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
-/** Reads and starts ChillDKG rituals. Advancing one is the inbound path's job. */
+/**
+ * Reads, starts and approves ChillDKG rituals.
+ *
+ * Advancing one is the inbound path's job, with one exception: a ritual waiting on
+ * this device's owner does not advance until [approve] is called, because it will
+ * not publish on their behalf until they say so.
+ */
 interface DkgRepository {
     /** The room's current ritual — abandoned attempts are superseded by the newest. */
     fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?>
@@ -24,6 +31,17 @@ interface DkgRepository {
         threshold: Int
     ): DkgSession?
 
+    /** What the ritual is waiting on this device's owner for, if anything. */
+    suspend fun pendingApproval(session: DkgSession): DkgApprovalStep?
+
+    /** Agrees to one step, letting the ritual publish it and run on. */
+    suspend fun approve(
+        localChatRoom: LocalChatRoom,
+        sessionId: String,
+        step: DkgApprovalStep,
+        nostrPrivateKey: ByteArray
+    )
+
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
             override fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?> = flowOf(null)
@@ -38,6 +56,15 @@ interface DkgRepository {
                 nostrPrivateKey: ByteArray,
                 threshold: Int
             ): DkgSession? = null
+
+            override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? = null
+
+            override suspend fun approve(
+                localChatRoom: LocalChatRoom,
+                sessionId: String,
+                step: DkgApprovalStep,
+                nostrPrivateKey: ByteArray
+            ) = Unit
         }
     }
 }

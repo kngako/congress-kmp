@@ -4,6 +4,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.repository.DkgRepository
 import co.touchlab.kermit.Logger
@@ -42,6 +43,30 @@ class DatabaseDkgRepository(
     } catch (e: Throwable) {
         logger.e("Error proposing DKG ritual for ${localChatRoom.chatRoom.id}", e)
         null
+    }
+
+    override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? =
+        ChillDkgRitualManager.pendingApproval(database, session)
+
+    override suspend fun approve(
+        localChatRoom: LocalChatRoom,
+        sessionId: String,
+        step: DkgApprovalStep,
+        nostrPrivateKey: ByteArray
+    ) {
+        try {
+            ChillDkgRitualManager.approve(
+                database = database,
+                localChatRoom = localChatRoom,
+                sessionId = sessionId,
+                step = step,
+                nostrPrivateKey = nostrPrivateKey
+            )
+        } catch (e: Throwable) {
+            // The ritual fails itself and tells the group; swallowing here keeps a
+            // protocol fault from taking the screen down with it.
+            logger.e("Error approving $step for DKG ritual $sessionId", e)
+        }
     }
 
     companion object {

@@ -6,6 +6,7 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import press.mantra.compose.database.model.traits.LocalStoreEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
@@ -85,6 +86,39 @@ data class DkgSession(
     val recoveryData: HexKey? = null,
 
     val failureReason: String? = null,
+
+    /**
+     * When this device's owner approved publishing their host key, and with it
+     * joining the ceremony at all. Null until they do, and nothing of theirs goes
+     * out before it is set.
+     *
+     * The ritual is otherwise driven entirely by arriving messages, which would
+     * mean a member is enrolled in the group's permanent signing quorum by a relay
+     * delivering an event to a phone in their pocket. Each of these three is a
+     * separate decision because each publishes something different and commits the
+     * member to something different -- see `ChillDkgRitualManager.pendingApproval`.
+     *
+     * Set at creation for the member who opened the ceremony: starting one is
+     * already the act of agreeing to be in it.
+     */
+    val hostKeyApprovedAt: Instant? = null,
+
+    /** When they approved publishing their contribution to the key. */
+    val round1ApprovedAt: Instant? = null,
+
+    /** When they approved signing to confirm the combined result. */
+    val round2ApprovedAt: Instant? = null,
+
+    /**
+     * The furthest step this device has already asked its owner about, so the chat
+     * line asking for it is written once.
+     *
+     * One column rather than a flag per step because the steps are strictly
+     * ordered: reaching [DkgApprovalStep.ROUND_1] means the host key was asked for
+     * and granted. ChatMessage has no session to key a row against and no unique
+     * constraint to lean on, so the guard has to live here.
+     */
+    val approvalRequestedThrough: DkgApprovalStep? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,

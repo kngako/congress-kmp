@@ -26,7 +26,10 @@ import press.mantra.compose.ui.composable.ChatRoomCreationScreen
 import press.mantra.compose.ui.composable.ChatRoomDetailScreen
 import press.mantra.compose.ui.composable.ChatRoomMessagingScreen
 import press.mantra.compose.ui.composable.CreateProfileScreen
+import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
+import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
+import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
@@ -56,7 +59,10 @@ import press.mantra.compose.ui.composable.navigation.routes.ChatRoomCreationRout
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.CreateProfileRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgJoinApprovalRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRound1ApprovalRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRound2ApprovalRoute
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
@@ -452,7 +458,46 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                 chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository
+                dkgRepository = databaseDkgRepository,
+                onNavigateToRoute = { approvalRoute ->
+                    navController.navigate(route = approvalRoute)
+                }
+            )
+        }
+        composable<DkgJoinApprovalRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<DkgJoinApprovalRoute>()
+
+            DkgJoinApprovalScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                chatRepository = databaseChatRepository,
+                dkgRepository = databaseDkgRepository,
+                onDone = { navController.popBackStack() }
+            )
+        }
+        composable<DkgRound1ApprovalRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<DkgRound1ApprovalRoute>()
+
+            DkgRound1ApprovalScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                chatRepository = databaseChatRepository,
+                dkgRepository = databaseDkgRepository,
+                onDone = { navController.popBackStack() }
+            )
+        }
+        composable<DkgRound2ApprovalRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<DkgRound2ApprovalRoute>()
+
+            DkgRound2ApprovalScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                chatRepository = databaseChatRepository,
+                dkgRepository = databaseDkgRepository,
+                onDone = { navController.popBackStack() }
             )
         }
         composable<SelectChatRoomTypeRoute> { backStackEntry ->

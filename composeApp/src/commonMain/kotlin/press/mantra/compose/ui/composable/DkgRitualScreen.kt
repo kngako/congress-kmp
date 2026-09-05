@@ -57,6 +57,11 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.database.model.types.DkgApprovalStep
+import press.mantra.compose.ui.composable.navigation.routes.DkgJoinApprovalRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRound1ApprovalRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRound2ApprovalRoute
+import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.model.DkgRitualViewModel
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -82,6 +87,7 @@ fun DkgRitualScreen(
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
+    onNavigateToRoute: (Route) -> Unit = {},
 ) {
     val dkgRitualViewModel: DkgRitualViewModel = viewModel(
         factory = DkgRitualViewModel.factory(
@@ -123,6 +129,50 @@ fun DkgRitualScreen(
                     )
                 },
                 bottomBar = {
+                    val pending = dkgRitualUIState.pendingApproval
+
+                    // The ceremony is stopped, waiting on this member, and will stay
+                    // stopped until they act -- so this outranks everything else the
+                    // bar could offer.
+                    if (pending != null) {
+                        BottomAppBar(
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    onClick = {
+                                        onNavigateToRoute(
+                                            when (pending) {
+                                                DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId
+                                                )
+                                                DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId
+                                                )
+                                                DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId
+                                                )
+                                            }
+                                        )
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Key, contentDescription = null)
+                                    Text(
+                                        text = when (pending) {
+                                            DkgApprovalStep.HOST_KEY -> "Review and join"
+                                            DkgApprovalStep.ROUND_1 -> "Review and contribute"
+                                            DkgApprovalStep.ROUND_2 -> "Review and confirm"
+                                        }
+                                    )
+                                }
+                            },
+                            actions = {}
+                        )
+
+                        return@Scaffold
+                    }
+
                     // Any member can open a ritual — the coordinator has no say in
                     // the key — but only when there isn't one already running.
                     if (canStartRitual) {

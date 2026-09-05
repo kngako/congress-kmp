@@ -4,6 +4,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.managers.ChillDkgRitualManager
 
@@ -23,6 +24,15 @@ sealed interface DkgRitualUIState {
         val hostKeyParticipants: Set<HexKey> = emptySet(),
         val round1Participants: Set<HexKey> = emptySet(),
         val round2Participants: Set<HexKey> = emptySet(),
+        /**
+         * What the ritual is waiting on this device's owner for, if anything.
+         *
+         * Null covers two very different situations that look the same from here —
+         * waiting on somebody else, and nothing left to wait for — because the
+         * screen already distinguishes them from [session]'s stage. What it cannot
+         * derive is this, which needs the stored messages as well as the row.
+         */
+        val pendingApproval: DkgApprovalStep? = null,
     ): DkgRitualUIState {
         val hostKeyCount: Int get() = hostKeyParticipants.size
         val round1Count: Int get() = round1Participants.size

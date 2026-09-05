@@ -164,11 +164,20 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 2,
+    version = 4,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
-        AutoMigration(from = 1, to = 2)
+        AutoMigration(from = 1, to = 2),
+        // v3 adds the three nullable approval timestamps to DkgSession. Nullable
+        // additions need no default and drop no data, so Room generates this one
+        // too. Rituals already in flight come back with all three null, which reads
+        // as "not approved yet" and simply asks the member for each step.
+        AutoMigration(from = 2, to = 3)
+        // v4 changes no schema at all -- it rewrites `dkgApprovalNeeded` chat rows
+        // into one type per ritual step. Data, not shape, so it is a manual
+        // migration passed to the builder rather than an entry here. See
+        // MIGRATION_3_4.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

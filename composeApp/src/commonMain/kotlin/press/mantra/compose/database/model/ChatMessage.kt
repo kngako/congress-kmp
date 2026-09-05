@@ -110,6 +110,50 @@ data class ChatMessage(
         const val TYPE_DKG_COMPLETE = "dkgComplete"
         const val TYPE_DKG_FAILED = "dkgFailed"
 
+        /**
+         * The ritual is waiting on this device's owner and will publish nothing
+         * until they act. Unauthored on purpose: these are addressed to the reader
+         * rather than said by anyone, so they read "Your approval is needed", not
+         * "You your approval is needed".
+         *
+         * One type per step rather than one for all three, because the row is the
+         * only thing the transcript keeps: a line rendered days later has no session
+         * to ask what was being requested, so which step it was has to be in the
+         * type. Sharing one type left every request wearing the same icon.
+         */
+        const val TYPE_DKG_APPROVAL_NEEDED_HOST_KEY = "dkgApprovalNeededHostKey"
+        const val TYPE_DKG_APPROVAL_NEEDED_ROUND_1 = "dkgApprovalNeededRound1"
+        const val TYPE_DKG_APPROVAL_NEEDED_ROUND_2 = "dkgApprovalNeededRound2"
+
+        /**
+         * The single type the three above replaced. Still recognised so rows already
+         * written keep rendering as system lines instead of turning into chat
+         * bubbles attributed to the reader. Nothing writes it any more.
+         */
+        const val TYPE_DKG_APPROVAL_NEEDED_LEGACY = "dkgApprovalNeeded"
+
+        /**
+         * The line each request is answered by: the step it asked for, published by
+         * this device. Approving is the only thing that causes that to be written,
+         * so its presence is what marks a request done.
+         *
+         * The legacy type is absent on purpose -- it does not say which step it was
+         * asking for, so nothing can be said about whether it was answered.
+         */
+        val DKG_REQUEST_FULFILMENTS = mapOf(
+            TYPE_DKG_APPROVAL_NEEDED_HOST_KEY to TYPE_DKG_HOST_KEY,
+            TYPE_DKG_APPROVAL_NEEDED_ROUND_1 to TYPE_DKG_ROUND_1,
+            TYPE_DKG_APPROVAL_NEEDED_ROUND_2 to TYPE_DKG_ROUND_2,
+        )
+
+        /** The lines that are asking rather than reporting. */
+        val DKG_REQUEST_TYPES = setOf(
+            TYPE_DKG_APPROVAL_NEEDED_HOST_KEY,
+            TYPE_DKG_APPROVAL_NEEDED_ROUND_1,
+            TYPE_DKG_APPROVAL_NEEDED_ROUND_2,
+            TYPE_DKG_APPROVAL_NEEDED_LEGACY,
+        )
+
         val DKG_TYPES = setOf(
             TYPE_DKG_STARTED,
             TYPE_DKG_HOST_KEY,
@@ -119,7 +163,7 @@ data class ChatMessage(
             TYPE_DKG_CERTIFICATE,
             TYPE_DKG_COMPLETE,
             TYPE_DKG_FAILED,
-        )
+        ) + DKG_REQUEST_TYPES
 
         /**
          * The ritual lines somebody did, as opposed to ones that simply happened.

@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.ChillDkgRitualManager
@@ -112,7 +113,10 @@ class DkgRitualViewModel(
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
                     ?: DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
 
-                dkgRitualUIState = loaded.copy(session = session)
+                dkgRitualUIState = loaded.copy(
+                    session = session,
+                    pendingApproval = session?.let { dkgRepository.pendingApproval(it) }
+                )
 
                 // Re-point the message watcher at whatever session is current. An
                 // abandoned ritual's counts must not keep ticking over the new one.
@@ -130,7 +134,12 @@ class DkgRitualViewModel(
                             dkgRitualUIState = current.copy(
                                 hostKeyParticipants = senders(DkgRitualEvents.HOST_KEY),
                                 round1Participants = senders(DkgRitualEvents.ROUND_1),
-                                round2Participants = senders(DkgRitualEvents.ROUND_2)
+                                round2Participants = senders(DkgRitualEvents.ROUND_2),
+                                // Recomputed here as well as on the session, because
+                                // whether round 1 can be asked for depends on how many
+                                // host keys have arrived, which only this flow sees.
+                                pendingApproval = current.session
+                                    ?.let { dkgRepository.pendingApproval(it) }
                             )
                         }
                     }
@@ -169,6 +178,41 @@ class DkgRitualViewModel(
             }
             // On success the session flow above delivers the new row; no need to
             // set it here and risk racing the observer.
+        }
+    }
+
+    /**
+     * Agrees to whatever the ritual is currently waiting on from this device.
+     *
+     * Takes the step rather than reading it back from the state so a screen opened
+     * for one step cannot approve a different one it has since moved on to — the
+     * manager checks it against the ritual again and ignores a mismatch.
+     */
+    fun approve(step: DkgApprovalStep) {
+        if (isActionPending.value) return
+
+        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return
+        val session = loaded.session ?: return
+
+        val nostrPrivateKey = activeWalletStateFlow.value?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()
+        if (nostrPrivateKey == null) {
+            dkgRitualUIState = DkgRitualUIState.Error("Couldn't read your keys. Please try again.")
+            return
+        }
+
+        isActionPending.value = true
+
+        viewModelScope.launch(Dispatchers.IO) {
+            dkgRepository.approve(
+                localChatRoom = loaded.localChatRoom,
+                sessionId = session.id,
+                step = step,
+                nostrPrivateKey = nostrPrivateKey.value.toByteArray()
+            )
+
+            isActionPending.value = false
+            // The session flow delivers the updated row and with it the next pending
+            // step, so nothing is set here.
         }
     }
 
