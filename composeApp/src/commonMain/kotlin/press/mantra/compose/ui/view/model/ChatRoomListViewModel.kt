@@ -50,7 +50,6 @@ class ChatRoomListViewModel(
 
     fun initiate() {
         logger.d("init")
-        scheduleSynchronization()
         observeChatRoomFeed()
     }
 
@@ -68,6 +67,16 @@ class ChatRoomListViewModel(
         }
     }
 
+    /**
+     * Reconciles this account's chat history against the relays: gift wraps addressed to us,
+     * and group events for every group we are in.
+     *
+     * No longer called on open. LiveSubscriptionManager holds both of those subscriptions
+     * open for as long as the app is in the foreground and runs exactly this reconciliation
+     * when it returns from the background, so opening the list is no longer a reason to ask.
+     * This stays for an explicit user-initiated refresh — the one case the live tier does not
+     * answer, because it is the user saying they believe something is missing.
+     */
     fun scheduleSynchronization() {
         logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {

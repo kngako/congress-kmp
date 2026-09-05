@@ -639,41 +639,15 @@ abstract class NostrDao(
                                                         }
                                                     }
 
-                                            if (chatMessageRelayListEvent != null) {
-                                                // Sync messages from this relay that were sent by us
-                                                val synchronizationFilter =
-                                                    SynchronizationFilter(
-                                                        kinds = arrayOf(
-                                                            GiftWrapEvent.KIND,
-                                                        ),
-                                                        authors = arrayOf(
-                                                            userPublicKey
-                                                        ),
-                                                        tags = mapOf(
-                                                            Pair(
-                                                                "p",
-                                                                listOf(participant.participantPublicKey)
-                                                            )
-                                                        ),
-                                                        limit = 50
-                                                    )
-                                                database.negentropySynchronizeRequestDao()
-                                                    .insert(
-                                                        chatMessageRelayListEvent.relays()
-                                                            .map { normalizedRelayUrl ->
-                                                                NegentropySynchronizeRequest(
-                                                                    id = NegentropySynchronizeRequest.computeId(
-                                                                        relayURL = normalizedRelayUrl.url,
-                                                                        synchronizationFilter = synchronizationFilter
-                                                                    ),
-                                                                    purpose = "sent-messages",
-                                                                    synchronizationFilter = synchronizationFilter,
-                                                                    relayURL = normalizedRelayUrl.url,
-                                                                    level = 0
-                                                                )
-                                                            }
-                                                    )
-                                            } else {
+                                            // A "sent-messages" reconciliation used to be queued here,
+                                            // for gift wraps with authors=[userPublicKey] p-tagged at this
+                                            // participant. It could never match anything: a gift wrap is
+                                            // signed with a throwaway key (see DatabaseChatRepository), so
+                                            // its pubkey is random and never ours. It was also unnecessary
+                                            // — createNip17ChatRoom puts us in our own participant list, so
+                                            // we wrap a copy to ourselves and the live gift wrap
+                                            // subscription picks our own sent messages up on every device.
+                                            if (chatMessageRelayListEvent == null) {
                                                 logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
@@ -875,35 +849,10 @@ abstract class NostrDao(
                                             }
                                         }
 
-                                        if (chatMessageRelayListEvent != null) {
-                                            // Sync messages from this relay that were sent by us
-                                            val synchronizationFilter = SynchronizationFilter(
-                                                kinds = arrayOf(
-                                                    GiftWrapEvent.KIND,
-                                                ),
-                                                authors = arrayOf(
-                                                    userPublicKey
-                                                ),
-                                                tags = mapOf(
-                                                    Pair("p", listOf(participant.participantPublicKey))
-                                                ),
-                                                limit = 50
-                                            )
-                                            database.negentropySynchronizeRequestDao().insert(
-                                                chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
-                                                    NegentropySynchronizeRequest(
-                                                        id = NegentropySynchronizeRequest.computeId(
-                                                            relayURL = normalizedRelayUrl.url,
-                                                            synchronizationFilter = synchronizationFilter
-                                                        ),
-                                                        purpose = "sent-messages",
-                                                        synchronizationFilter = synchronizationFilter,
-                                                        relayURL = normalizedRelayUrl.url,
-                                                        level = 0
-                                                    )
-                                                }
-                                            )
-                                        } else {
+                                        // See the identical block above: the "sent-messages"
+                                        // reconciliation that used to live here could never match, and is
+                                        // covered by the live gift wrap subscription regardless.
+                                        if (chatMessageRelayListEvent == null) {
                                             logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                             // Sync ChatMessageRelayListEvent publicKey...
