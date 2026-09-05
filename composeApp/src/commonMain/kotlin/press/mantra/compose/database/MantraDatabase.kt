@@ -16,6 +16,7 @@ import press.mantra.compose.database.dao.ChatMessageNostrEventRelationDao
 import press.mantra.compose.database.dao.ChatRoomDao
 import press.mantra.compose.database.dao.ConnectionDao
 import press.mantra.compose.database.dao.DkgSessionDao
+import press.mantra.compose.database.dao.FrostSigningSessionDao
 import press.mantra.compose.database.dao.GiftWrapMessageDao
 import press.mantra.compose.database.dao.GiftWrapPayloadDao
 import press.mantra.compose.database.dao.GiftWrapSealDao
@@ -102,6 +103,8 @@ import press.mantra.compose.database.model.Reaction
 import press.mantra.compose.database.model.RecentSearch
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.Relay
 import press.mantra.compose.database.model.RepostedRelation
 import press.mantra.compose.database.model.SynchronizeNostrEventRequest
@@ -124,6 +127,8 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         ChatRoom::class,
         DkgParticipantMessage::class,
         DkgSession::class,
+        FrostSignerMessage::class,
+        FrostSigningSession::class,
         GiftWrapMessage::class,
         GiftWrapSeal::class,
         GiftWrapPayload::class,
@@ -164,7 +169,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 5,
+    version = 6,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -183,7 +188,13 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // nip30303 event a SubmissionEvent rumor carries. Rumors queued before
         // this come back null, which reads as "not a submission" -- correct,
         // since none of them were.
-        AutoMigration(from = 4, to = 5)
+        AutoMigration(from = 4, to = 5),
+        // v6 adds the FrostSigningSession/FrostSignerMessage tables and the
+        // nullable DkgSession.publicShares. New tables and a nullable column are
+        // both shapes Room can migrate itself. A ceremony that completed before
+        // this reads back null, and signing falls back to not cross-checking
+        // shares rather than refusing to run.
+        AutoMigration(from = 5, to = 6)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
@@ -202,6 +213,8 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun chatRoomDao(): ChatRoomDao
 
     abstract fun dkgSessionDao(): DkgSessionDao
+
+    abstract fun frostSigningSessionDao(): FrostSigningSessionDao
 
     abstract fun connectionDao(): ConnectionDao
 

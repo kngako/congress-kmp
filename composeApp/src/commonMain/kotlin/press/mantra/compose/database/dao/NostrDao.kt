@@ -31,6 +31,8 @@ import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventI
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
@@ -958,6 +960,29 @@ abstract class NostrDao(
                                         giftWrapPayload = decryptedGiftWrapPayload,
                                         userPublicKey = activeKeyPair.pubKey.toHex(),
                                         nostrPrivateKey = activeKeyPair.privKey!!
+                                    )
+                                }
+                            } else if (FrostSigningEvents.isFrostSigningKind(decryptedGiftWrapPayload.kind)) {
+                                // A FROST signing session message for one of our
+                                // NIP-17 groups. Same reasoning as the ritual above:
+                                // the manager is idempotent, and the room is created
+                                // on demand because membership is the payload's
+                                // p-tags either way.
+                                val localChatRoom = getOrCreateNip17ChatRoom(
+                                    decryptedGiftWrapPayload = decryptedGiftWrapPayload,
+                                    activeKeyPair = activeKeyPair,
+                                    nostrEventId = nostrEvent.id,
+                                    relayURL = relayURL
+                                )
+
+                                if (localChatRoom == null) {
+                                    logger.w("FROST payload for unknown chat room ${decryptedGiftWrapPayload.chatRoomId}")
+                                } else {
+                                    FrostSigningManager.processSigningPayload(
+                                        database = database,
+                                        localChatRoom = localChatRoom,
+                                        giftWrapPayload = decryptedGiftWrapPayload,
+                                        userPublicKey = activeKeyPair.pubKey.toHex()
                                     )
                                 }
                             } else {

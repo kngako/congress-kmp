@@ -179,6 +179,51 @@ data class ChatMessage(
          * A finished ceremony is the exception, and has no actor: the group ends up
          * with a key, nobody hands it to them.
          */
+        /**
+         * A FROST signing session, as lines in the group's chat.
+         *
+         * The same shape as the ceremony's, and for the same reason: signing with
+         * the group's key is otherwise a black box, and a session stalled on one
+         * member gives no way to see whose door to knock on.
+         */
+        const val TYPE_FROST_STARTED = "frostStarted"
+        const val TYPE_FROST_NONCE = "frostNonce"
+        const val TYPE_FROST_SIGNER_SET = "frostSignerSet"
+        const val TYPE_FROST_PARTIAL_SIGNATURE = "frostPartialSignature"
+        const val TYPE_FROST_SIGNATURE = "frostSignature"
+        const val TYPE_FROST_COMPLETE = "frostComplete"
+        const val TYPE_FROST_FAILED = "frostFailed"
+
+        /** Addressed to the reader rather than said by anyone -- see [DKG_REQUEST_TYPES]. */
+        const val TYPE_FROST_APPROVAL_NEEDED = "frostApprovalNeeded"
+
+        /** Every signing line, for rendering them as system lines rather than bubbles. */
+        val FROST_TYPES = setOf(
+            TYPE_FROST_STARTED,
+            TYPE_FROST_NONCE,
+            TYPE_FROST_SIGNER_SET,
+            TYPE_FROST_PARTIAL_SIGNATURE,
+            TYPE_FROST_SIGNATURE,
+            TYPE_FROST_COMPLETE,
+            TYPE_FROST_FAILED,
+            TYPE_FROST_APPROVAL_NEEDED,
+        )
+
+        /**
+         * The signing lines somebody did, as opposed to ones that simply happened.
+         * Their content is written as a predicate for the actor's name to be read
+         * in front of. A finished signature has no actor: the group ends up with
+         * one, nobody hands it to them.
+         */
+        val FROST_AUTHORED_TYPES = setOf(
+            TYPE_FROST_STARTED,
+            TYPE_FROST_NONCE,
+            TYPE_FROST_SIGNER_SET,
+            TYPE_FROST_PARTIAL_SIGNATURE,
+            TYPE_FROST_SIGNATURE,
+            TYPE_FROST_FAILED,
+        )
+
         val DKG_AUTHORED_TYPES = setOf(
             TYPE_DKG_STARTED,
             TYPE_DKG_HOST_KEY,
