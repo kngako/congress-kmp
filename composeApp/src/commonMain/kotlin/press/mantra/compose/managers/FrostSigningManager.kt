@@ -26,6 +26,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -789,16 +790,32 @@ object FrostSigningManager {
      * to be outside of -- while a group event needs an MLS one, so the two
      * cannot be the same room.
      *
-     * They are still bound together, and by construction rather than by a
-     * column: the #admins room's id *is* the key, derived from it by
-     * [SharedKeyDerivation.marmotGroupId]. Rederiving is what finds the key
-     * here, which means a room cannot be pointed at a key it was not derived
-     * from.
+     * They are bound together by the room's [GroupKeyState]: the announcement
+     * the room opened with, naming the ceremony behind it. That is a lookup
+     * rather than a search, and it carries the derivation path, so a room
+     * derived anywhere other than [SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH]
+     * is findable at all -- which the rederivation below cannot manage, since it
+     * can only rederive at the one path the constant names.
      *
-     * Falls back to a ceremony held in this very room, which is not how the app
-     * wires things today but costs one lookup to keep honest.
+     * The state buys none of its authority from being written down. It is only
+     * ever stored having rederived the room it describes, so what actually binds
+     * a room to a key is still that the room's id *is* the key, and a room still
+     * cannot be pointed at a key it was not derived from.
+     *
+     * Two fallbacks behind it, both for rooms that predate the table: the
+     * original scan over every ceremony this device holds a share for, and then
+     * a ceremony held in this very room, which is not how the app wires things
+     * today but costs one lookup to keep honest.
      */
     suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
+        GroupKeyStateManager.keyStateFor(database, chatRoomId)?.let { state ->
+            database.dkgSessionDao().getSessionById(state.dkgSessionId)?.takeIf { key ->
+                key.stage == DkgRitualStage.COMPLETE &&
+                    key.secretShare != null &&
+                    key.thresholdPublicKey == state.thresholdPublicKey
+            }?.let { return it }
+        }
+
         database.dkgSessionDao().getKeyHoldingSessions().firstOrNull { session ->
             session.stage == DkgRitualStage.COMPLETE &&
                 session.thresholdPublicKey?.let {

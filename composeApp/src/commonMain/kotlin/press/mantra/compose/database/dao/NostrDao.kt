@@ -32,7 +32,9 @@ import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MlsGroupCache
 import press.mantra.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
@@ -469,16 +471,29 @@ abstract class NostrDao(
                                 // itself. The manager is idempotent, so a redelivered
                                 // message re-runs a step it has already taken.
                                 if (groupEventResult is GroupEventResult.ApplicationMessage) {
-                                    Event.fromJsonOrNull(groupEventResult.innerEventJson)
-                                        ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
-                                        ?.let { innerEvent ->
-                                            FrostSigningManager.processSigningPayload(
-                                                database = database,
-                                                localChatRoom = localChatRoom,
-                                                innerEvent = innerEvent,
-                                                userPublicKey = activeKeyPair.pubKey.toHex()
-                                            )
+                                    Event.fromJsonOrNull(groupEventResult.innerEventJson)?.let { innerEvent ->
+                                        when {
+                                            FrostSigningEvents.isFrostSigningKind(innerEvent.kind) ->
+                                                FrostSigningManager.processSigningPayload(
+                                                    database = database,
+                                                    localChatRoom = localChatRoom,
+                                                    innerEvent = innerEvent,
+                                                    userPublicKey = activeKeyPair.pubKey.toHex()
+                                                )
+
+                                            // What key this room signs with. Filed
+                                            // rather than acted on, and only after
+                                            // the room rederives from the key it
+                                            // names -- the manager drops anything
+                                            // that does not, whoever sent it.
+                                            GroupKeyStateEvent.isGroupKeyStateKind(innerEvent.kind) ->
+                                                GroupKeyStateManager.record(
+                                                    database = database,
+                                                    chatRoomId = localChatRoom.chatRoom.id,
+                                                    innerEvent = innerEvent
+                                                )
                                         }
+                                    }
                                 }
                             }
                         } else {

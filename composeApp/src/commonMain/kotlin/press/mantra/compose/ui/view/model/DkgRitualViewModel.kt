@@ -251,7 +251,8 @@ class DkgRitualViewModel(
         if (isActionPending.value) return
 
         val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return
-        val thresholdPublicKey = loaded.session?.thresholdPublicKey ?: return
+        val session = loaded.session ?: return
+        val thresholdPublicKey = session.thresholdPublicKey ?: return
 
         val nostrPrivateKey = activeWalletStateFlow.value?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()
         if (nostrPrivateKey == null) {
@@ -382,6 +383,28 @@ class DkgRitualViewModel(
             }.onFailure {
                 logger.e("Failed to add members to admin group $groupId", it)
             }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
+
+            // The room's first message: which ceremony's key it signs with, and
+            // the path its id was derived at. What a signer reaches for when a
+            // signing request arrives and it has to pick one of its shares.
+            //
+            // After the members are added rather than before, which is the only
+            // order that works: adding them commits a new epoch, and MLS will not
+            // let a member read what was encrypted before the epoch they joined
+            // at. Announced first, the announcement would reach nobody but its
+            // author. It is still the room's first *application* message -- what
+            // comes before it is handshake.
+            //
+            // A member invited later still misses it for the same reason, and is
+            // left where every member was before this event existed: falling back
+            // to FrostSigningManager.completedKey's rederivation. Re-announcing
+            // on invite is the fix, and is cheap because a repeat announcement
+            // folds away rather than accumulating.
+            dkgRepository.announceGroupKeyState(
+                chatRoomId = localChatRoom.chatRoom.id,
+                userPublicKey = activeUserPublicKey,
+                session = session
+            )
 
             isActionPending.value = false
 

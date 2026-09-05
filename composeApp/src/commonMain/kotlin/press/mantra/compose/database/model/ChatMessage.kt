@@ -18,6 +18,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -704,6 +705,13 @@ data class ChatMessage(
                 // what, so an "unsupported" row here would be a second, worse
                 // account of the same thing.
                 in FrostSigningEvents.ALL -> null
+
+                // The room saying what key it signs with. Standing state rather
+                // than something that happened, and the room's own id already
+                // says it to anyone who can derive -- so there is nothing here a
+                // reader of the transcript needs told. Falling through to
+                // "unsupported" would put the raw announcement in the chat.
+                GroupKeyStateEvent.KIND -> null
 
                 else -> {
                     ChatMessage(
