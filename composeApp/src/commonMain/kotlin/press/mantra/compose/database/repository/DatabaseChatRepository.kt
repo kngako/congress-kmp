@@ -324,19 +324,30 @@ class DatabaseChatRepository(
         giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
-        // An MLS room must never produce a NIP-17 gift wrap. Its messages already travel
-        // inside kind:445, and its direct messages are real, correctly signed NIP-59 wraps
-        // -- indistinguishable from something this path would be right to publish. The
-        // only thing keeping one off a relay is that it never becomes a GiftWrapPayload,
-        // so refuse here too rather than trusting every future caller to know that.
-        // See docs/marmot-direct-messages.md.
-        val chatRoom = database.chatRoomDao().findChatRoomById(giftWrapPayload.chatRoomId)
-        if (chatRoom?.chatRoom?.mlsGroupState != null) {
-            logger.e(
-                "Refusing to seal payload ${giftWrapPayload.id}: ${giftWrapPayload.chatRoomId} is an MLS room, " +
-                    "and sealing would broadcast it to relays"
-            )
-            return
+        // An MLS room must never produce a NIP-17 gift wrap of its *contents*. Its messages
+        // already travel inside kind:445, and its direct messages are real, correctly signed
+        // NIP-59 wraps -- indistinguishable from something this path would be right to
+        // publish. The only thing keeping one off a relay is that it never becomes a
+        // GiftWrapPayload, so refuse here too rather than trusting every future caller to
+        // know that. See docs/marmot-direct-messages.md.
+        //
+        // The Welcome is the one thing an MLS room is *supposed* to publish this way, and
+        // the reason it reaches this path at all. MIP-02 addresses kind:444 to a joiner who
+        // holds no group state yet: they cannot read a kind:445, so a relay-borne gift wrap
+        // is the only way to reach them, and `MarmotOutboundDao.deliveryWelcome` queues one
+        // here deliberately. Every Welcome carries its room's nostrGroupId, so a refusal
+        // keyed on `mlsGroupState` alone catches all of them and no invite is ever
+        // delivered -- and because the unsealed queue is a single-row flow, the refused
+        // Welcome sits at its head and blocks every payload behind it too.
+        if (giftWrapPayload.kind != WelcomeEvent.KIND) {
+            val chatRoom = database.chatRoomDao().findChatRoomById(giftWrapPayload.chatRoomId)
+            if (chatRoom?.chatRoom?.mlsGroupState != null) {
+                logger.e(
+                    "Refusing to seal payload ${giftWrapPayload.id}: ${giftWrapPayload.chatRoomId} is an MLS room, " +
+                        "and sealing would broadcast it to relays"
+                )
+                return
+            }
         }
 
         database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEach { participant ->

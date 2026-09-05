@@ -159,9 +159,20 @@ but the tables it is kept out of stops it going to a relay.
 `GiftWrapMessage` could not be written anyway without a `NostrEvent` row — its
 foreign key — and `NostrEvent` is the broadcast join target. The rule is also
 enforced at the other end: `sealGiftWrapPayload` refuses any payload whose room has
-a non-null `mlsGroupState`, and logs. An MLS room should never produce a NIP-17 gift
-wrap for any reason, and an invariant in code is what stops a later refactor from
-walking a direct message onto a relay without reading this page first.
+a non-null `mlsGroupState`, and logs. An invariant in code is what stops a later
+refactor from walking a direct message onto a relay without reading this page first.
+
+**The Welcome is exempt, and the exemption is not optional.** MIP-02 addresses
+kind:444 to someone who is not yet in the group and holds no key to read a
+kind:445 — a relay-borne gift wrap is the only way to reach them, and
+`MarmotOutboundDao.deliveryWelcome` writes exactly such a `GiftWrapPayload` row on
+purpose. Every Welcome carries its own room's `nostrGroupId`, so a refusal keyed on
+`mlsGroupState` alone matches all of them: while it did, no invite to any Marmot
+room was ever delivered, and — since the unsealed queue is a single-row flow — the
+first refused Welcome sat at its head and blocked every payload queued behind it.
+The check is therefore on kind first, room second. When adding a kind to that
+exemption, the question to answer is whether its recipient can read a kind:445; if
+they can, it does not belong on this path.
 
 ## Attribution comes from MLS, not from the payload
 
@@ -301,7 +312,7 @@ sender, `senderIdentity` is the only source of attribution there is.
 | `managers/MarmotInboundManager.kt` | the kind:1059 carve-out; requires the sender identity |
 | `database/model/ChatMessage.kt` | `TYPE_DIRECT_MESSAGE`; the kind:1059 arm and its three outcomes |
 | `database/dao/NostrDao.kt` | resolves `senderIdentity` and passes it in |
-| `database/repository/DatabaseChatRepository.kt` | queues the rumor; refuses to seal an MLS room's payload |
+| `database/repository/DatabaseChatRepository.kt` | queues the rumor; refuses to seal an MLS room's payload, except a Welcome |
 | `database/dao/MarmotOutboundDao.kt` | wraps on the way out; scrubs the plaintext |
 | `database/model/MarmotInnerEvent.kt` | `directMessageRecipientPublicKey`, the outbound signal |
 | `ui/view/model/ChatMessageListViewModel.kt` | armed state; the two renderings |
