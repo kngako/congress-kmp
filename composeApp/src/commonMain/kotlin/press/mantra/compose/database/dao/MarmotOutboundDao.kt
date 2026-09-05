@@ -442,7 +442,7 @@ abstract class MarmotOutboundDao(
                     commitBytes = commitResult.commitBytes,
                     preCommitExporterSecret = commitResult.preCommitExporterSecret,
                     welcomeBytes = commitResult.welcomeBytes,
-                    framedCommitBytes = commitResult.preCommitExporterSecret,
+                    framedCommitBytes = commitResult.framedCommitBytes,
                     groupInfoBytes = commitResult.groupInfoBytes,
                     userPublicKey = userPublicKey,
                     peerKeyPackageEventId = peerKeyPackage.id,
