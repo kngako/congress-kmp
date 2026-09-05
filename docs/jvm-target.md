@@ -90,25 +90,56 @@ Nothing here needs a decision; it is the groundwork the later phases assume.
 2. **Add the missing catalog entries** to `gradle/libs.versions.toml`:
 
    ```toml
-   androidx-room3-runtime-jvm  = { module = "androidx.room3:room3-runtime-jvm", version.ref = "room3" }
    androidx-sqlite-bundled-jvm = { module = "androidx.sqlite:sqlite-bundled-jvm", version.ref = "sqlite" }
-   sqldelight-jdbc-driver      = { module = "app.cash.sqldelight:jdbc-driver",   version.ref = "sqldelight" }
-   sqldelight-sqlite-driver    = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+   sqldelight-sqlite-driver    = { module = "app.cash.sqldelight:sqlite-driver",  version.ref = "sqldelight" }
    ```
 
-3. **Wire KSP for the JVM target.** Uncomment
-   [composeApp/build.gradle.kts:194](../composeApp/build.gradle.kts). Without it
-   there is no generated `MantraDatabase_Impl` or DAO implementation for the
-   host, and `MantraDatabaseConstructor` has no JVM actual — Room's KSP generates
-   that one, so it costs nothing once the processor runs.
+   Only these two, and only because neither can be reached any other way.
+   `sqlite-bundled-jvm` has to be named explicitly because variant-aware
+   resolution hands the *android* artifact to anything running on the host —
+   that is the whole trap described in the appendix. `sqlite-driver` is the jvm
+   counterpart to the `android-driver` and `native-driver` entries already here.
 
-4. **Leave `jvm()` commented out for now**, in both builds. It goes on at the
-   start of Phase 4, once there is something for it to resolve against. Turning
-   it on earlier just means living with a broken build through Phases 1–3.
+   No `room3-runtime-jvm` entry: once `jvm()` exists, `commonMain`'s existing
+   `androidx-room3-runtime` resolves to the `-jvm` variant on its own. And the
+   SQLDelight drivers Phase 2 needs belong in **lightning-kmp-app's own
+   catalog**, not this one — that is a separate gradle build with a separate
+   version catalog, and putting them here would not make them visible there.
+
+3. **Do not wire `kspJvm` yet.** It cannot be done at this point, and the reason
+   is already written down a few lines above it in the build file:
+
+   > These configurations only exist when the ios targets are declared, which
+   > the kotlin block above does only on a mac.
+
+   The same rule governs `kspJvm` — `dependencies { add("kspJvm", ...) }` throws
+   `UnknownConfigurationException` until a `jvm()` target creates that
+   configuration. So uncommenting [composeApp/build.gradle.kts:194](../composeApp/build.gradle.kts)
+   belongs in **Phase 4**, in the same edit that turns the target on, not here.
+
+4. **Leave `jvm()` commented out**, in both builds. It goes on at the start of
+   Phase 4, once there is something for it to resolve against. Turning it on
+   earlier just means living with a broken build through Phases 1–3.
 
 **Verification:** `./gradlew :composeApp:compileDebugKotlinAndroid` still passes.
 This phase changes nothing observable; the point is that it changes nothing
-observable.
+observable — a deleted orphan source set and two unreferenced catalog entries
+cannot alter a build.
+
+**If you are working in a git worktree, no gradle task will run at all** until
+the submodule is checked out there. Worktrees do not get submodules
+automatically, so `lightning-kmp-app/` is empty and the composite build fails
+during configuration:
+
+```
+Project with path ':library' not found in build ':lightning-kmp-app'
+```
+
+`git submodule update --init --recursive` fixes it, but note that a linked
+worktree shares `.git/modules/` with the main checkout, so both trees end up
+sharing one submodule git dir. That is fine while both want the same commit —
+check with `git submodule status` in each — and worth being careful about when
+they do not.
 
 ---
 
@@ -233,7 +264,11 @@ review it attracts.
 **~1–2 days. Blocked by Phases 1–3.**
 
 Now turn on `jvm()` — [composeApp/build.gradle.kts:46](../composeApp/build.gradle.kts)
-and `lightning-kmp-app/library/build.gradle.kts:18` — and let the compiler drive.
+and `lightning-kmp-app/library/build.gradle.kts:18` — and, in the same edit,
+uncomment `kspJvm` at [composeApp/build.gradle.kts:194](../composeApp/build.gradle.kts).
+Those two go together: the KSP configuration does not exist until the target
+does, which is why Phase 0 deliberately left it alone. Then let the compiler
+drive.
 
 Mantra declares 16 expects across 8 files. They split cleanly:
 
@@ -246,7 +281,7 @@ update Room 2 → Room 3 (`androidx.room` → `androidx.room3`), and point at
 `MantraDatabase` instead of `AuxDatabase`.
 
 `MantraDatabaseConstructor` needs no hand-written actual; Room's KSP generates it
-once Phase 0 wired `kspJvm`.
+once `kspJvm` is wired above.
 
 For `PlatformDatabaseBuilder.getDatabaseBuilder`, use the real application data
 directory from Phase 1 — not `java.io.tmpdir`, which is what the old Aux
