@@ -241,6 +241,21 @@ data class ChatMessage(
         /** The signing lines that ask rather than report. */
         val FROST_REQUEST_TYPES = setOf(TYPE_FROST_APPROVAL_NEEDED)
 
+        /**
+         * The signing lines that end a session, whichever way it went.
+         *
+         * A request usually stops being one by being answered, but that is not
+         * the only way. A member who declines publishes nothing, and a quorum
+         * that signs without them asks them for nothing further -- from the
+         * transcript both look the same, nothing of the reader's own either
+         * side of the request, so the session's own ending is the only thing
+         * left to read it from.
+         *
+         * A ceremony has no equivalent because a ceremony step can only be
+         * taken or waited for. Signing is the one thing a member can refuse.
+         */
+        val FROST_SETTLEMENTS = setOf(TYPE_FROST_COMPLETE, TYPE_FROST_FAILED)
+
         /** Every signing line, for rendering them as system lines rather than bubbles. */
         val FROST_TYPES = setOf(
             TYPE_FROST_STARTED,
@@ -277,6 +292,49 @@ data class ChatMessage(
             TYPE_DKG_CERTIFICATE,
             TYPE_DKG_FAILED,
         )
+
+        /**
+         * The request lines this device has since answered, by row id.
+         *
+         * A request is answered when the step it asked for has been published by
+         * this device -- which is exactly what approving it does. The transcript
+         * already records that as an authored line, so the answer is read from
+         * the list rather than from the session, and it stays right for a room
+         * that has run more than one ceremony.
+         */
+        fun answeredRequests(messages: List<ChatMessage>): Set<Long> = messages
+            .mapNotNull { request ->
+                val published = (DKG_REQUEST_FULFILMENTS + FROST_REQUEST_FULFILMENTS)[request.messageType]
+                    ?: return@mapNotNull null
+
+                val done = messages.any {
+                    it.messageType == published &&
+                        it.isUserMessage &&
+                        it.createdAt >= request.createdAt
+                }
+
+                request.id.takeIf { done }
+            }
+            .toSet()
+
+        /**
+         * The signing requests that are no longer open, by row id.
+         *
+         * Not the same thing as [answeredRequests], and deliberately kept apart
+         * from it: these are requests the reader never answered, so they have
+         * earned no tick and claiming otherwise would credit them with a
+         * signature they refused or were never needed for. What they have run
+         * out of is a decision to make -- see [FROST_SETTLEMENTS].
+         */
+        fun settledRequests(messages: List<ChatMessage>): Set<Long> = messages
+            .filter { request ->
+                request.messageType in FROST_REQUEST_TYPES &&
+                    messages.any {
+                        it.messageType in FROST_SETTLEMENTS && it.createdAt >= request.createdAt
+                    }
+            }
+            .map { it.id }
+            .toSet()
 
         /**
          * Files one direct message, from whichever side of it this device is on.
