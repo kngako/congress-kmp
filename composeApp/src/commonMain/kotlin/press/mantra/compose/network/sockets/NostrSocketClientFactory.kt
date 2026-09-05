@@ -27,6 +27,7 @@ object NostrSocketClientFactory {
         incomingCompressionEnabled: Boolean = false,
         onSocketConnectionOpened: SocketConnectionOpenedCallback? = null,
         onSocketConnectionClosed: SocketConnectionClosedCallback? = null,
+        onSocketConnectionReopened: SocketConnectionReopenedCallback? = null,
     ): NostrSocketClient {
         return NostrSocketClientImpl(
             httpClient = httpClient,
@@ -34,6 +35,7 @@ object NostrSocketClientFactory {
             incomingCompressionEnabled = incomingCompressionEnabled,
             onSocketConnectionOpened = onSocketConnectionOpened,
             onSocketConnectionClosed = onSocketConnectionClosed,
+            onSocketConnectionReopened = onSocketConnectionReopened,
         )
     }
 
@@ -42,11 +44,13 @@ object NostrSocketClientFactory {
         incomingCompressionEnabled: Boolean = false,
         onSocketConnectionOpened: SocketConnectionOpenedCallback? = null,
         onSocketConnectionClosed: SocketConnectionClosedCallback? = null,
+        onSocketConnectionReopened: SocketConnectionReopenedCallback? = null,
     ) = create(
         httpClient = defaultSocketsHttpClient,
         wssUrl = wssUrl,
         incomingCompressionEnabled = incomingCompressionEnabled,
         onSocketConnectionOpened = onSocketConnectionOpened,
         onSocketConnectionClosed = onSocketConnectionClosed,
+        onSocketConnectionReopened = onSocketConnectionReopened,
     )
 }

@@ -55,6 +55,20 @@ class RelayPool(
 
     private val relayMutex = Mutex()
 
+    /**
+     * The REQ text of every subscription still believed to be open, keyed by normalized
+     * relay url and then by subscription id, so a socket that comes back can be handed
+     * its subscriptions again.
+     *
+     * Only plain REQs live here. A negentropy exchange is stateful — NEG-OPEN carries a
+     * fingerprint of the local set and each round depends on the last — so replaying one
+     * mid-exchange would reconcile against a conversation the relay is no longer having.
+     * An interrupted negentropy request is abandoned and re-queued instead.
+     */
+    private val retainedRequests = mutableMapOf<String, MutableMap<String, String>>()
+
+    private val retainedRequestsMutex = Mutex()
+
     @VisibleForTesting
     var socketClients = setOf<press.mantra.compose.network.sockets.NostrSocketClient>()
 
@@ -75,6 +89,10 @@ class RelayPool(
         updateRelayStatus(url = url, connected = false)
     }
 
+    private val onSocketConnectionReopenedCallback: press.mantra.compose.network.sockets.SocketConnectionReopenedCallback = { url ->
+        scope.launch { replayRetainedRequests(url) }
+    }
+
     fun changeRelays(relays: List<press.mantra.compose.network.dto.RelayDTO>) {
         val existingRelayUrls = socketClients.map { it.socketUrl }
         val newRelayUrls = relays.map { it.url }
@@ -93,6 +111,7 @@ class RelayPool(
             updateRelayStatus(url = client.socketUrl, connected = false)
             scope.launch { client.close() }
         }
+        forgetRetainedRequests(toRemoveSocketClients.map { it.socketUrl })
         this.relays.clear()
         this.relays.addAll(relays)
     }
@@ -111,6 +130,7 @@ class RelayPool(
             updateRelayStatus(url = client.socketUrl, connected = false)
             scope.launch { client.close() }
         }
+        forgetRetainedRequests(toRemoveSocketClients.map { it.socketUrl })
         this.relays.removeAll(relays)
     }
 
@@ -139,6 +159,7 @@ class RelayPool(
             updateRelayStatus(url = client.socketUrl, connected = false)
             scope.launch { client.close() }
         }
+        forgetRetainedRequests(socketClients.map { it.socketUrl })
         socketClients = emptySet()
         relays.clear()
     }
@@ -151,12 +172,92 @@ class RelayPool(
         }
     }
 
+    private fun socketClientFor(relayUrl: String): press.mantra.compose.network.sockets.NostrSocketClient? {
+        val wanted = NormalizedRelayUrl(relayUrl).displayUrl()
+
+        return socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == wanted }
+    }
+
+    /**
+     * Remembers a subscription so it can be re-sent if this relay's socket comes back,
+     * and tells the socket it is now worth reconnecting.
+     */
+    private suspend fun retainRequest(relayUrl: String, subId: String, message: String) {
+        val key = NormalizedRelayUrl(relayUrl).displayUrl()
+
+        retainedRequestsMutex.withLock {
+            retainedRequests.getOrPut(key) { mutableMapOf() }[subId] = message
+        }
+        socketClientFor(relayUrl)?.autoReconnect = true
+    }
+
+    /**
+     * Forgets a subscription that has been closed. Once a relay is carrying none of ours,
+     * its socket stops reconnecting on its own: keeping a socket alive for a relay we have
+     * nothing open on is battery spent on nothing.
+     */
+    private suspend fun releaseRequest(relayUrl: String, subId: String) {
+        val key = NormalizedRelayUrl(relayUrl).displayUrl()
+
+        val stillWanted = retainedRequestsMutex.withLock {
+            val forRelay = retainedRequests[key]
+            forRelay?.remove(subId)
+            if (forRelay.isNullOrEmpty()) {
+                retainedRequests.remove(key)
+                false
+            } else {
+                true
+            }
+        }
+
+        if (!stillWanted) socketClientFor(relayUrl)?.autoReconnect = false
+    }
+
+    private fun forgetRetainedRequests(relayUrls: List<String>) {
+        if (relayUrls.isEmpty()) return
+
+        val keys = relayUrls.map { NormalizedRelayUrl(it).displayUrl() }
+        scope.launch {
+            retainedRequestsMutex.withLock {
+                keys.forEach { retainedRequests.remove(it) }
+            }
+        }
+    }
+
+    /**
+     * Hands a relay back the subscriptions it was serving before its socket dropped.
+     *
+     * Only ever called for a RE-connection. A relay answers a repeated REQ on the same
+     * subscription id by replacing the filter, so this is a send rather than a
+     * close-and-reopen, and the collector already attached to the socket's message flow
+     * simply starts receiving again.
+     */
+    private suspend fun replayRetainedRequests(relayUrl: String) {
+        val key = NormalizedRelayUrl(relayUrl).displayUrl()
+        val messages = retainedRequestsMutex.withLock { retainedRequests[key]?.toMap() }
+
+        if (messages.isNullOrEmpty()) return
+
+        val nostrSocketClient = socketClientFor(relayUrl)
+        if (nostrSocketClient == null) {
+            logger.w("Cannot replay ${messages.size} subscription(s): $relayUrl has no socket")
+            return
+        }
+
+        logger.i("Replaying ${messages.size} subscription(s) on $relayUrl: ${messages.keys}")
+        messages.forEach { (subId, message) ->
+            runCatching { nostrSocketClient.sendMESSAGE(message) }
+                .onFailure { logger.w(throwable = it) { "Failed to replay $subId on $relayUrl" } }
+        }
+    }
+
     private fun List<press.mantra.compose.network.dto.RelayDTO>.mapAsNostrSocketClient() =
         this.map {
             nostrSocketClientFactory.create(
                 wssUrl = it.url,
                 onSocketConnectionOpened = onSocketConnectionOpenedCallback,
                 onSocketConnectionClosed = onSocketConnectionClosedCallback,
+                onSocketConnectionReopened = onSocketConnectionReopenedCallback,
             )
         }
 
@@ -186,13 +287,19 @@ class RelayPool(
         )
 
         logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
-        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+        val nostrSocketClient = socketClientFor(relayUrl)
 
         val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
 
         if (nostrSocketClient == null) {
             throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
         }
+
+        // Retained BEFORE the send, so a socket that dies between here and the relay's
+        // first answer still gets the REQ replayed when it comes back. Released by
+        // closeQuery, which every pump calls from a NonCancellable finally.
+        retainRequest(relayUrl = relayUrl, subId = reqCommand.subId, message = filterRequest)
+
         return coroutineScope {
             val eventFlow =  nostrSocketClient.queryAsFlow(reqCommand.subId)
             with(nostrSocketClient) {
@@ -210,7 +317,7 @@ class RelayPool(
         )
 
         logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
-        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+        val nostrSocketClient = socketClientFor(relayUrl)
 
         val negentropySyncRequest = OptimizedJsonMapper.toJson(negOpenCmd)
 
@@ -232,20 +339,22 @@ class RelayPool(
      * [negentropySync] rather than opening a new one.
      */
     suspend fun sendNegentropyMessage(negMsgCmd: NegMsgCmd, relayUrl: String) {
-        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+        val nostrSocketClient = socketClientFor(relayUrl)
             ?: throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
 
         nostrSocketClient.sendMESSAGE(OptimizedJsonMapper.toJson(negMsgCmd))
     }
 
     suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {
+        releaseRequest(relayUrl = relayUrl, subId = closeCmd.subId)
+
         addRelaysIfMissing(
             setOf(
                 NormalizedRelayUrl(relayUrl).url.toRelayDTO()
             )
         )
 
-        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+        val nostrSocketClient = socketClientFor(relayUrl)
 
         val closeSubscription = OptimizedJsonMapper.toJson(closeCmd)
 
@@ -267,7 +376,7 @@ class RelayPool(
         )
 
         logger.d("socketClients: ${socketClients.map { it.socketUrl }}")
-        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+        val nostrSocketClient = socketClientFor(relayUrl)
 
         val closeNegentropySubscription = OptimizedJsonMapper.toJson(negCloseCmd)
 

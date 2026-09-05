@@ -9,6 +9,15 @@ interface NostrSocketClient {
 
     val incomingMessages: SharedFlow<NostrIncomingMessage>
 
+    /**
+     * Whether a socket that drops should be re-opened on its own, with backoff.
+     *
+     * Off by default, and owned by the pool rather than the socket: reconnecting a
+     * socket nobody is subscribed on is pure battery cost, so the pool turns this on
+     * for exactly as long as it is retaining at least one subscription for the relay.
+     */
+    var autoReconnect: Boolean
+
     suspend fun close()
 
     @Throws(
