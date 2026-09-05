@@ -95,6 +95,19 @@ data class ChatMessage(
 
     companion object {
         /**
+         * A one-to-one message inside a group, as a line in the group's chat.
+         *
+         * Written by both sides of the room. For its two parties [content] is the words;
+         * for everybody else it is empty, and the line says only that a private message
+         * was sent and to whom -- which is all the group can learn, and all it should.
+         *
+         * [directMessageRecipientPublicKey] is set on every one of these regardless of
+         * who can read it, because naming the recipient is the point of the line the
+         * bystanders get. See docs/marmot-direct-messages.md.
+         */
+        const val TYPE_DIRECT_MESSAGE = "directMessage"
+
+        /**
          * A ChillDKG ritual message, as a line in the group's chat.
          *
          * There is one per protocol message the ritual sends -- every member's host
