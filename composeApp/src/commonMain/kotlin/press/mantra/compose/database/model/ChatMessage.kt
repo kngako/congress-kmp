@@ -219,18 +219,19 @@ data class ChatMessage(
                     }
                     val payload = submission?.payload()
 
-                    val innerEvent = MarmotInnerEvent(
-                        id = event.id,
-                        publicKey = event.pubKey,
-                        marmotGroupEventId = groupEvent.id,
-                        tags = event.tags,
-                        content = event.content,
-                        chatRoomId = groupEventResult.groupId,
-                        kind = event.kind,
-                        payloadEventId = payload?.id,
-                        createdAt = Instant.fromEpochSeconds(event.createdAt)
+                    database.marmotInnerEventDao().upsert(
+                        MarmotInnerEvent(
+                            id = event.id,
+                            publicKey = event.pubKey,
+                            marmotGroupEventId = groupEvent.id,
+                            tags = event.tags,
+                            content = event.content,
+                            chatRoomId = groupEventResult.groupId,
+                            kind = event.kind,
+                            payloadEventId = payload?.id,
+                            createdAt = Instant.fromEpochSeconds(event.createdAt)
+                        )
                     )
-                    database.marmotInnerEventDao().upsert(innerEvent)
 
                     // A submission whose payload will not parse, or which carries
                     // another submission, is kept but not applied: there is nothing
@@ -248,13 +249,15 @@ data class ChatMessage(
                             content = event.content,
                         )
                     } else {
-                        applyOrHold(
+                        applyInnerEvent(
                             database = database,
                             activeKeyPair = activeKeyPair,
+                            groupEvent = groupEvent,
                             groupId = groupEventResult.groupId,
-                            innerEvent = innerEvent,
                             event = payload ?: event,
-                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            marmotInnerEventId = event.id,
+                            senderPublicKey = event.pubKey,
+                            createdAt = Instant.fromEpochSeconds(event.createdAt),
                         )
                     }
                 }
@@ -352,283 +355,14 @@ data class ChatMessage(
          * from [event], so the chat line says who added it and the row says who
          * wrote it.
          */
-        /**
-         * Apply [event] now, or hold it until what it references turns up.
-         *
-         * Foreign keys mean a payload cannot become a row before its parent
-         * does, and inserting one anyway does not fail politely: SQLite aborts
-         * the statement, which rolls back the whole transaction the inbound
-         * pipeline runs in -- losing the nostr event, the group event, this
-         * submission and the transcript line with it, none of which is retried.
-         *
-         * So the parent is checked first. A payload that arrives early is kept
-         * against the id it waits for and applied later, which is what makes
-         * order stop mattering: an admin submitting a backlog can send it in
-         * whatever order they hold it, and a member who joined last week can be
-         * sent what the group was told last month.
-         *
-         * A held payload writes no chat line. Nobody said anything yet -- the
-         * line appears when it is applied, in the transcript position its own
-         * timestamp gives it.
-         */
-        private suspend fun applyOrHold(
-            database: MantraDatabase,
-            activeKeyPair: KeyPair,
-            groupId: String,
-            innerEvent: MarmotInnerEvent,
-            event: Event,
-            isUserMessage: Boolean,
-        ): ChatMessage? {
-            missingParentOf(database, event)?.let { missingParent ->
-                database.marmotInnerEventDao().upsert(
-                    innerEvent.copy(awaitingEventId = missingParent)
-                )
-                return null
-            }
-
-            val chatMessage = applyInnerEvent(
-                database = database,
-                groupId = groupId,
-                event = event,
-                marmotGroupEventId = innerEvent.marmotGroupEventId,
-                marmotInnerEventId = innerEvent.id,
-                senderPublicKey = innerEvent.publicKey,
-                isUserMessage = isUserMessage,
-                createdAt = innerEvent.createdAt,
-            )
-
-            // This may be the parent something else was held for.
-            releaseAwaiting(database, activeKeyPair, groupId, event.id)
-
-            return chatMessage
-        }
-
-        /**
-         * Apply whatever was waiting on [arrivedEventId], now that it is here.
-         *
-         * Releasing one can release another -- a version unblocks its chapters,
-         * a chapter unblocks its chunks -- so this keeps going until nothing
-         * more comes unstuck. A payload with a second parent still missing is
-         * re-pointed at that one rather than applied, so it waits for the right
-         * thing instead of being retried on every arrival.
-         */
-        private suspend fun releaseAwaiting(
-            database: MantraDatabase,
-            activeKeyPair: KeyPair,
-            groupId: String,
-            arrivedEventId: HexKey,
-        ) {
-            val arrived = ArrayDeque(listOf(arrivedEventId))
-
-            while (arrived.isNotEmpty()) {
-                val parentId = arrived.removeFirst()
-
-                database.marmotInnerEventDao().getSubmissionsAwaiting(parentId).forEach { held ->
-                    // A submission's content is its payload verbatim; anything
-                    // else held is a bare nip30303 event, where the row is the
-                    // event and its own columns rebuild it. Reading both out of
-                    // the content would strand every bare one here forever.
-                    val payload = if (held.kind == SubmissionEvent.KIND) {
-                        Event.fromJsonOrNull(held.content)
-                    } else {
-                        Event(
-                            id = held.id,
-                            pubKey = held.publicKey,
-                            createdAt = held.createdAt.epochSeconds,
-                            kind = held.kind,
-                            tags = held.tags,
-                            content = held.content,
-                            sig = "",
-                        )
-                    } ?: return@forEach
-
-                    missingParentOf(database, payload)?.let { stillMissing ->
-                        database.marmotInnerEventDao().upsert(
-                            held.copy(awaitingEventId = stillMissing)
-                        )
-                        return@forEach
-                    }
-
-                    database.marmotInnerEventDao().upsert(held.copy(awaitingEventId = null))
-
-                    applyInnerEvent(
-                        database = database,
-                        groupId = groupId,
-                        event = payload,
-                        marmotGroupEventId = held.marmotGroupEventId,
-                        marmotInnerEventId = held.id,
-                        senderPublicKey = held.publicKey,
-                        // Held payloads are never ours: we hold the parents of
-                        // anything we wrote, having written those too.
-                        isUserMessage = false,
-                        createdAt = held.createdAt,
-                    )?.let { database.chatMessageDao().upsert(it) }
-
-                    arrived.addLast(payload.id)
-                }
-            }
-        }
-
-        /**
-         * The event [event] references but which is not on file yet, or null
-         * when everything it needs is already here.
-         */
-        private suspend fun missingParentOf(
-            database: MantraDatabase,
-            event: Event,
-        ): HexKey? = parentRefsOf(event).firstOrNull { !it.exists(database) }?.id
-
-        /**
-         * A row some event references, named by id and by the kind of event
-         * that would have created it.
-         */
-        internal data class ParentRef(
-            val id: HexKey,
-            val kind: Int,
-        ) {
-            suspend fun exists(database: MantraDatabase): Boolean = when (kind) {
-                DialectEvent.KIND ->
-                    database.mantraDialectDao().getDialectById(id) != null
-
-                ArtifactEvent.KIND ->
-                    database.mantraArtifactDao().getArtifactById(id) != null
-
-                ArtifactVersionEvent.KIND ->
-                    database.mantraArtifactVersionDao().getArtifactVersionById(id) != null
-
-                ChapterEvent.KIND ->
-                    database.mantraChapterDao().getChapterById(id) != null
-
-                ChunkEvent.KIND ->
-                    database.mantraChunkDao().getChunkById(id) != null
-
-                TranslationArtifactVersionEvent.KIND ->
-                    database.mantraTranslationArtifactVersionDao().getTranslationById(id) != null
-
-                TranslationChapterEvent.KIND ->
-                    database.mantraTranslationChapterDao().getTranslationChapterById(id) != null
-
-                TranslationChunkEvent.KIND ->
-                    database.mantraTranslationChunkDao().getTranslationChunkById(id) != null
-
-                // Not a parent anything waits on.
-                else -> true
-            }
-        }
-
-        /**
-         * Every row [event] references and the database will insist exists.
-         *
-         * This is the foreign keys on the Mantra* entities, read off the event
-         * instead of the schema. The two have to agree: a parent listed here
-         * that the schema does not enforce just delays a payload for no reason,
-         * and one the schema enforces but is missing here is a payload that
-         * takes the whole inbound transaction down with it.
-         *
-         * The chat room is deliberately not among them. It is a foreign key,
-         * but a payload for a room we are not in never reaches this far.
-         */
-        internal fun parentRefsOf(event: Event): List<ParentRef> = when (event.kind) {
-            ArtifactEvent.KIND ->
-                event.asArtifactEvent().let {
-                    listOfNotNull(it.dialectId()?.let { id -> ParentRef(id, DialectEvent.KIND) })
-                }
-
-            ArtifactVersionEvent.KIND ->
-                event.asArtifactVersionEvent().let {
-                    listOfNotNull(it.artifactId()?.let { id -> ParentRef(id, ArtifactEvent.KIND) })
-                }
-
-            ChapterEvent.KIND ->
-                event.asChapterEvent().let {
-                    listOfNotNull(
-                        it.artifactVersionId()?.let { id -> ParentRef(id, ArtifactVersionEvent.KIND) }
-                    )
-                }
-
-            ChunkEvent.KIND ->
-                event.asChunkEvent().let {
-                    listOfNotNull(it.chapterId()?.let { id -> ParentRef(id, ChapterEvent.KIND) })
-                }
-
-            TranslationArtifactVersionEvent.KIND ->
-                event.asTranslationArtifactVersionEvent().let {
-                    listOfNotNull(
-                        it.artifactVersionId()?.let { id -> ParentRef(id, ArtifactVersionEvent.KIND) },
-                        it.dialectId()?.let { id -> ParentRef(id, DialectEvent.KIND) },
-                    )
-                }
-
-            TranslationChapterEvent.KIND ->
-                event.asTranslationChapterEvent().let {
-                    listOfNotNull(
-                        it.translationArtifactVersionId()?.let { id ->
-                            ParentRef(id, TranslationArtifactVersionEvent.KIND)
-                        },
-                        it.chapterId()?.let { id -> ParentRef(id, ChapterEvent.KIND) },
-                    )
-                }
-
-            TranslationChunkEvent.KIND ->
-                event.asTranslationChunkEvent().let {
-                    listOfNotNull(
-                        it.translationChapterId()?.let { id ->
-                            ParentRef(id, TranslationChapterEvent.KIND)
-                        },
-                        it.chunkId()?.let { id -> ParentRef(id, ChunkEvent.KIND) },
-                    )
-                }
-
-            TranslationEvent.KIND ->
-                event.asTranslationEvent().let {
-                    listOfNotNull(
-                        it.translationChunkId()?.let { id ->
-                            ParentRef(id, TranslationChunkEvent.KIND)
-                        },
-                        it.translationArtifactVersionId()?.let { id ->
-                            ParentRef(id, TranslationArtifactVersionEvent.KIND)
-                        },
-                    )
-                }
-
-            // Kinds with no parent to wait for.
-            else -> emptyList()
-        }
-
-        // A submission's payload arrives as a base Event; these read it back as
-        // the kind it says it is, so its tag accessors can be used.
-        private fun Event.asArtifactEvent() =
-            ArtifactEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asArtifactVersionEvent() =
-            ArtifactVersionEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asChapterEvent() =
-            ChapterEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asChunkEvent() =
-            ChunkEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asTranslationArtifactVersionEvent() =
-            TranslationArtifactVersionEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asTranslationChapterEvent() =
-            TranslationChapterEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asTranslationChunkEvent() =
-            TranslationChunkEvent(id, pubKey, createdAt, tags, content, sig)
-
-        private fun Event.asTranslationEvent() =
-            TranslationEvent(id, pubKey, createdAt, tags, content, sig)
-
         private suspend fun applyInnerEvent(
             database: MantraDatabase,
+            activeKeyPair: KeyPair,
+            groupEvent: GroupEvent,
             groupId: String,
             event: Event,
-            marmotGroupEventId: HexKey?,
             marmotInnerEventId: HexKey,
             senderPublicKey: HexKey,
-            isUserMessage: Boolean,
             createdAt: Instant,
         ): ChatMessage? {
             return when (event.kind) {
@@ -636,10 +370,10 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         messageType = "message",
-                        marmotGroupEventId = marmotGroupEventId,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = marmotInnerEventId,
                         senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
+                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                         chatRoomId = groupId,
                         createdAt = createdAt,
                         content = event.content, // TODO: Figure out what to do here...
@@ -659,17 +393,17 @@ data class ChatMessage(
                     )?.let { mantraArtifact ->
                         database.mantraArtifactDao().upsert(
                             mantraArtifact.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "artifact",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraArtifact.name} to artifacts"
@@ -690,17 +424,17 @@ data class ChatMessage(
                     )?.let { mantraArtifactVersion ->
                         database.mantraArtifactVersionDao().upsert(
                             mantraArtifactVersion.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "artifactVersion",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraArtifactVersion.versionLabel} to artifact versions" // TODO: Use artifact name...
@@ -721,17 +455,17 @@ data class ChatMessage(
                     )?.let { mantraChapter ->
                         database.mantraChapterDao().upsert(
                             mantraChapter.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "chapter",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraChapter.name} to chapters" // TODO: Use artifact name...
@@ -753,7 +487,7 @@ data class ChatMessage(
                     )?.let { mantraChunk ->
                         database.mantraChunkDao().upsert(
                             mantraChunk.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
@@ -775,7 +509,7 @@ data class ChatMessage(
                     )?.let { mantraDialect ->
                         database.mantraDialectDao().upsert(
                             mantraDialect.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
@@ -783,10 +517,10 @@ data class ChatMessage(
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "dialect",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraDialect.name} to dialects" // TODO: Use artifact name...
@@ -807,17 +541,17 @@ data class ChatMessage(
                     )?.let { mantraTranslationArtifactVersion ->
                         database.mantraTranslationArtifactVersionDao().upsert(
                             mantraTranslationArtifactVersion.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "translationArtifactVersion",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraTranslationArtifactVersion.name} to translation artifact versions" // TODO: Use artifact name...
@@ -842,7 +576,7 @@ data class ChatMessage(
                     )?.let { mantraTranslationChapter ->
                         database.mantraTranslationChapterDao().upsert(
                             mantraTranslationChapter.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
                         // TODO: translation chapter might be too noisy for chat updates
@@ -863,7 +597,7 @@ data class ChatMessage(
                     )?.let { mantraTranslationChunk ->
                         database.mantraTranslationChunkDao().upsert(
                             mantraTranslationChunk.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
 
@@ -889,16 +623,16 @@ data class ChatMessage(
                     )?.let { mantraTranslation ->
                         database.mantraTranslationDao().upsert(
                             mantraTranslation.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                                marmotGroupEventId = groupEvent.id,
                             )
                         )
                         ChatMessage(
                             giftWrapPayloadId = null,
                             messageType = "translation",
-                            marmotGroupEventId = marmotGroupEventId,
+                            marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraTranslation.text} to translations" // TODO: Reference original text
@@ -909,10 +643,10 @@ data class ChatMessage(
                     ChatMessage(
                         giftWrapPayloadId = null,
                         messageType = "unsupported",
-                        marmotGroupEventId = marmotGroupEventId,
+                        marmotGroupEventId = groupEvent.id,
                         marmotInnerEventId = marmotInnerEventId,
                         senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
+                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
                         chatRoomId = groupId,
                         createdAt = createdAt,
                         content = event.toJson(),

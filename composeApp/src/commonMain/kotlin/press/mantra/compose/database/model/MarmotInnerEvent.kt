@@ -74,17 +74,6 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
     val payloadEventId: HexKey? = null,
 
     /**
-     * The event this one references but which has not arrived yet, or null
-     * when there is nothing left to wait for.
-     *
-     * Every nip30303 entity is a child of another and the database enforces
-     * that, so a payload cannot become a row before its parent does. Rather
-     * than drop one that arrives early, it is held here against the id it is
-     * waiting on and applied when that turns up.
-     */
-    val awaitingEventId: HexKey? = null,
-
-    /**
      * Associated MarmotGroupEvent
      */
     val marmotGroupEventId: String? = null,
@@ -138,7 +127,6 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
         if (content != other.content) return false
         if (quotedEventId != other.quotedEventId) return false
         if (payloadEventId != other.payloadEventId) return false
-        if (awaitingEventId != other.awaitingEventId) return false
         if (marmotGroupEventId != other.marmotGroupEventId) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
@@ -159,7 +147,6 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
         result = 31 * result + content.hashCode()
         result = 31 * result + (quotedEventId?.hashCode() ?: 0)
         result = 31 * result + (payloadEventId?.hashCode() ?: 0)
-        result = 31 * result + (awaitingEventId?.hashCode() ?: 0)
         result = 31 * result + (marmotGroupEventId?.hashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
