@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -43,6 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
@@ -393,10 +397,38 @@ private fun RitualProgress(
                 }
 
                 session.thresholdPublicKey?.let { thresholdPublicKey ->
-                    Text(
-                        text = "Key: ${thresholdPublicKey.take(16)}…",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    val clipboardManager = LocalClipboardManager.current
+
+                    Text(text = "Key", style = MaterialTheme.typography.labelMedium)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // In full, and wrapping rather than ellipsised. This is the
+                        // group's key: it is what members compare out of band to
+                        // check every device ended the ceremony on the same one, and
+                        // a truncated key cannot be compared. Monospaced so the
+                        // comparison is character by character.
+                        Text(
+                            text = thresholdPublicKey,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        FilledIconButton(
+                            onClick = {
+                                clipboardManager.setText(AnnotatedString(thresholdPublicKey))
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy the group's key"
+                            )
+                        }
+                    }
                 }
 
                 Text(
