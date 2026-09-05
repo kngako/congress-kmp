@@ -1,0 +1,194 @@
+# Messages are lost when two arrive out of order
+
+A group event that a relay hands back a moment late is dropped and cannot be
+recovered. Two messages published in the same second reliably lose one of them.
+
+This is a conformance gap in quartz's MLS implementation, not in this app. What
+this app can do about it from outside the library is partial, and is described
+at the end.
+
+## Symptom
+
+The receiver stores the kind:445 group event and produces nothing from it. No
+inner event, no chat line, no error the user sees. `MarmotGroupEvent` is written
+*before* the message is decrypted, so the row survives while everything
+downstream of it silently does not:
+
+```
+receiver, room 6d8ec3ad ("Frosty (#admins)")
+
+  20:36:55  kind 9   chat message      decrypted, applied
+  20:37:34  kind 30321  nonce          decrypted, applied
+  20:37:34  kind 30320  proposal       group event stored, no inner event
+```
+
+Both 20:37:34 events were published by the same sender in the same
+`proposeSigning` call. Every message that arrived on its own decrypted fine; the
+back-to-back pair lost exactly one.
+
+Downstream the failure reads as something else entirely. In the case above a
+FROST signing session never started on the receiver, because the proposal that
+opens one never arrived — leaving a nonce filed against a session that will
+never exist. An earlier instance of the same bug dropped a dialect, and the
+artifact referencing it then failed a foreign key and rolled back its whole
+transaction.
+
+## Cause
+
+MLS is specified to tolerate out-of-order delivery inside an epoch. RFC 9420
+§9.1: a receiver that gets generation `N+1` before `N` derives the intermediate
+keys and keeps them, so the older message can still be read when it turns up.
+
+Quartz does implement this. `SecretTree` caches them:
+
+```kotlin
+// SecretTree.kt
+private val skippedKeys = mutableMapOf<Pair<Int, Int>, KeyNonceGeneration>()
+
+fun applicationKeyNonceForGeneration(leafIndex: Int, generation: Int): KeyNonceGeneration {
+    val cachedKey = skippedKeys.remove(Pair(leafIndex, generation))
+    if (cachedKey != null) { /* ...replay check... */ return cachedKey }
+
+    val state = getOrInitSender(leafIndex)
+    require(generation >= state.applicationGeneration) {
+        "Generation $generation already consumed (current: ${state.applicationGeneration})"
+    }
+    ...
+}
+```
+
+The gap is that the cache is never persisted:
+
+```kotlin
+// SecretTree.kt
+fun exportSenderStates(): Map<Int, SenderRatchetState> = senderState.toMap()
+
+fun importSenderStates(states: Map<Int, SenderRatchetState>) {
+    senderState.putAll(states)
+}
+```
+
+`exportSenderStates()` returns the ratchet *positions* only. `MlsGroup.saveState()`
+calls it (`senderRatchetStates = secretTree.exportSenderStates()`) and
+`MlsGroup.restore()` calls `importSenderStates`. So `skippedKeys` exists only in
+one `SecretTree` instance's memory.
+
+That would be harmless if the group instance outlived the messages. It does not:
+`NostrDao` rebuilds it from stored state for every inbound event and saves it
+back afterwards. So the sequence is
+
+1. generation 1 arrives, ratchet advances 0 → 2, generation 0's key goes into
+   `skippedKeys`
+2. `saveState()` — `skippedKeys` is dropped on the floor
+3. generation 0 arrives, a fresh tree is restored with
+   `applicationGeneration = 2`, the cache is empty, `require` fails
+4. the exception is swallowed, the event yields no `ApplicationMessage`
+
+Step 3 is terminal. The key is derived from a ratchet that has moved past it and
+cannot be recovered, and nothing asks the sender to resend.
+
+Verified against the published artifact rather than a checkout:
+`quartz-1.14.0-sources.jar`, `commonMain/com/vitorpamplona/quartz/marmot/mls/schedule/SecretTree.kt`.
+
+## Why it is not an edge case here
+
+Nostr relays make no ordering guarantee at all, and negentropy reconciliation
+hands back a room's backlog in whatever order it likes. Any two messages close
+enough together can swap.
+
+Several flows publish in bursts, and each of them is a reliable trigger:
+
+| flow | messages in one pass |
+|---|---|
+| `FrostSigningManager.proposeSigning` | proposal, then the proposer's nonce |
+| `ChillDkgRitualManager.proposeRitual` | proposal, then the host key |
+| `MantraDao.addArtifact` | the artifact, then its first version |
+| `MantraDao.addChapter` | the chapter, then one per paragraph chunk |
+
+`addChapter` is the worst of these: a chapter with twenty paragraphs publishes
+twenty-one events at once, and only the ones that happen to arrive in ascending
+generation order survive.
+
+## The fix, in quartz
+
+Carry the skipped keys through `saveState`/`restore` alongside the ratchet
+positions.
+
+**1. Export and import them.** In `SecretTree`:
+
+```kotlin
+fun exportSkippedKeys(): Map<Pair<Int, Int>, KeyNonceGeneration> = skippedKeys.toMap()
+
+fun importSkippedKeys(keys: Map<Pair<Int, Int>, KeyNonceGeneration>) {
+    skippedKeys.putAll(keys)
+}
+```
+
+`MAX_SKIPPED_KEYS` already bounds the map, so the serialised size is bounded by
+the same constant and needs no separate cap.
+
+**2. Put them in the group state.** `MlsGroup.saveState()` already writes
+`senderRatchetStates = secretTree.exportSenderStates()`; add a sibling field, and
+have `restore()` call `importSkippedKeys` next to its existing
+`importSenderStates`.
+
+**3. Keep old state readable.** The persisted state is a TLS-encoded struct that
+existing installs already hold, so the new field has to be optional: absent means
+an empty map, which is exactly the behaviour today. Without that, every device
+with a stored group is broken by the upgrade.
+
+**4. Consumed-generation replay protection.** `consumedGenerations` guards
+against a replayed message re-using a cached key. It is in-memory too, so it
+should travel with the skipped keys or the guard weakens across restarts. Worth
+deciding deliberately rather than by omission.
+
+A test worth having with it: save and restore a group between the two messages
+of an out-of-order pair, and assert the older one still decrypts. That is the
+property, and it is invisible to any test that keeps one instance alive.
+
+### Getting the change into this build
+
+Quartz is **not** a local fork. It is `com.vitorpamplona.quartz:quartz`, pinned
+in `gradle/libs.versions.toml` and resolved from mavenCentral;
+`settings.gradle.kts` only `includeBuild`s `lightning-kmp-app`. Nothing in this
+repository can change it.
+
+There is a full amethyst clone at `~/Documents/development/nostr/amethyst` whose
+`SecretTree.kt` was byte-identical to published 1.14.0 when this was written, so
+the patch itself is a small delta against a known-good base. Landing it means one
+of:
+
+- **Upstream it.** It is a genuine RFC 9420 conformance gap and affects any
+  client that reloads group state per message, which is the ordinary shape for a
+  mobile app. Slowest, and the only option that leaves this repo's build
+  reproducible.
+- **Patch the clone and publish to mavenLocal**, then add `mavenLocal()` here and
+  pin the patched version. Fast, but the build then depends on a patched crypto
+  library built from one machine's filesystem.
+- **Wire quartz as a composite build**, the way `lightning-kmp-app` is. Same
+  coupling to a path outside the repo, but the source is at least visible.
+
+## What this app does in the meantime
+
+`MlsGroupCache` keeps a room's `MlsGroup` instance alive between messages instead
+of rebuilding it from stored state each time, so `skippedKeys` survives for as
+long as the process does. The inbound path in `NostrDao` goes through it.
+
+This covers the case that actually bites — a burst arriving in one sync, decrypted
+one after another against the same tree — and it is what makes the flows in the
+table above work.
+
+It is not the fix, and it is worth being precise about what it leaves broken:
+
+- **A restart loses the cache.** Messages skipped before the app closed cannot be
+  read after it reopens.
+- **Another writer invalidates it.** Sending a message advances the sender ratchet
+  and saves the room's state; adding a member does too. The cache reuses its
+  instance only while the stored state is still exactly what it last wrote, and
+  rebuilds otherwise — dropping the skipped keys at that point, exactly as before.
+- **Nothing helps a long reorder.** A message the relay holds back until after a
+  restart or an outbound send is gone.
+
+The staleness check is what keeps the cache from being *worse* than no cache: a
+group that has been overtaken by another writer is never carried on with, so the
+fallback is always the old behaviour rather than a diverged ratchet.
