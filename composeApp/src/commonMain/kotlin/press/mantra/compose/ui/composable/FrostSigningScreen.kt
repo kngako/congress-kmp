@@ -304,7 +304,15 @@ private fun WhatIsBeingSigned(event: Event?) {
                 .joinToString(" · ")
         }
 
-        ArtifactEvent.KIND -> "New artifact" to event.content
+        ArtifactEvent.KIND -> "New artifact" to ArtifactEvent(
+            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+        ).let { artifact ->
+            // The url is the substance of an artifact -- signing one is putting
+            // the group's name to what it points at -- so it goes next to the
+            // name rather than being left for the detail screen afterwards.
+            listOfNotNull(event.content, artifact.versionLabel(), artifact.url())
+                .joinToString(" · ")
+        }
 
         ChapterEvent.KIND -> "New chapter" to ChapterEvent(
             event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig

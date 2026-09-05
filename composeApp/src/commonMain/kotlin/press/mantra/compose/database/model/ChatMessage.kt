@@ -602,15 +602,17 @@ data class ChatMessage(
                     )
                 }
                 ArtifactEvent.KIND -> {
+                    val artifactEvent = ArtifactEvent(
+                        id = event.id,
+                        pubKey = event.pubKey,
+                        createdAt = event.createdAt,
+                        tags = event.tags,
+                        content = event.content,
+                        sig = event.sig,
+                    )
+
                     MantraArtifact.fromArtifactEvent(
-                        artifactEvent = ArtifactEvent(
-                            id = event.id,
-                            pubKey = event.pubKey,
-                            createdAt = event.createdAt,
-                            tags = event.tags,
-                            content = event.content,
-                            sig = event.sig,
-                        ),
+                        artifactEvent = artifactEvent,
                         chatRoomId = groupId,
                     )?.let { mantraArtifact ->
                         database.mantraArtifactDao().upsert(
@@ -618,6 +620,23 @@ data class ChatMessage(
                                 marmotGroupEventId = marmotGroupEventId,
                             )
                         )
+
+                        // An artifact arrives with the version it starts life
+                        // with, derived here rather than sent, so that every
+                        // device holding the artifact holds the same first
+                        // version. Nothing else can hang off an artifact until
+                        // one exists -- a chapter attaches to a version, not to
+                        // an artifact -- so an artifact without one is inert.
+                        MantraArtifactVersion.initialVersionOf(
+                            artifactEvent = artifactEvent,
+                            chatRoomId = groupId,
+                        )?.let { initialVersion ->
+                            database.mantraArtifactVersionDao().upsert(
+                                initialVersion.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                )
+                            )
+                        }
 
                         ChatMessage(
                             giftWrapPayloadId = null,

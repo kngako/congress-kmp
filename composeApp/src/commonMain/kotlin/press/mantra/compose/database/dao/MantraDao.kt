@@ -9,7 +9,6 @@ import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
-import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
@@ -19,7 +18,6 @@ import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
-import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
@@ -154,62 +152,6 @@ abstract class MantraDao(
             null
         }
 
-    }
-
-    @Transaction
-    open suspend fun addArtifact(
-        localChatRoom: LocalChatRoom,
-        name: String,
-        url: String,
-        versionLabel: String,
-        dialectId: HexKey,
-        userPublicKey: HexKey,
-        visibility: String = DEFAULT_VISIBILITY,
-        license: String = DEFAULT_LICENSE,
-    ): MantraArtifact? {
-        // TODO: Verify the active user is an admin of the chat room before allowing this.
-        val artifactEventTemplate = ArtifactEvent.build(
-            name = name,
-            url = url,
-            visibility = visibility,
-            license = license,
-            dialectId = dialectId,
-        )
-
-        val mantraArtifact = MantraArtifact.fromArtifactEventTemplate(
-            artifactEventTemplate = artifactEventTemplate,
-            chatRoomId = localChatRoom.chatRoom.id,
-            userPublicKey = userPublicKey,
-        ) ?: return null
-
-        // Persist the artifact locally and submit it to the group.
-        //
-        // This covers the "private" visibility case. Permissioned artifacts
-        // (published as a PublicMessage) and public artifacts (published as a
-        // plain nostr event) are not implemented yet.
-        return try {
-            database.mantraArtifactDao().upsert(mantraArtifact)
-
-            submitToGroup(
-                chatRoomId = mantraArtifact.chatRoomId,
-                submitterPublicKey = userPublicKey,
-                payload = rumorOf(artifactEventTemplate, userPublicKey),
-                text = "Added $name to artifacts",
-            )
-
-            // Every artifact starts with an initial version.
-            addArtifactVersionInternal(
-                localChatRoom = localChatRoom,
-                artifactId = mantraArtifact.id,
-                versionLabel = versionLabel,
-                userPublicKey = userPublicKey,
-            )
-
-            mantraArtifact
-        } catch (error: Throwable) {
-            logger.e("Failed to add artifact \"$name\" to chat room ${localChatRoom.chatRoom.id}", error)
-            null
-        }
     }
 
     @Transaction

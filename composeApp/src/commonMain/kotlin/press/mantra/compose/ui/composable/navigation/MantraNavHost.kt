@@ -830,9 +830,12 @@ fun MantraNavHost(
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
                 mantraRepository = databaseMantraRepository,
-                onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                    // Replace this add screen so back returns to the group rather
+                    // than to a form whose proposal has already gone out.
                     navController.navigate(
-                        route = chatRoomDetailRoute
+                        route = signingRoute
                     ) {
                         popUpTo(route) {
                             inclusive = true
