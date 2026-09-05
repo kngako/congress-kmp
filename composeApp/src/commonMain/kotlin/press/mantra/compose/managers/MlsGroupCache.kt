@@ -51,43 +51,14 @@ import kotlinx.coroutines.sync.withLock
  * before this existed, so the fallback is never worse than not caching.
  */
 object MlsGroupCache {
-    private const val TAG = "MlsGroupCache"
-
-    private val logger = Logger.withTag(TAG)
-
-    private class Entry(
-        val group: MlsGroup,
-        /** The state hex this cache last wrote, for spotting another writer. */
-        var stateHex: String,
-    )
-
-    private val entries = mutableMapOf<String, Entry>()
-
-    /**
-     * Serialises use of one room's group.
-     *
-     * The group is mutable and decryption advances it, so two events for the
-     * same room being decrypted at once would corrupt the ratchet. One lock per
-     * room rather than one overall, so a busy room cannot hold up a quiet one.
-     *
-     * Held across database work, which is safe here because a caller only ever
-     * takes this lock while it is already running -- it never waits on a
-     * resource the holder is waiting for.
-     */
-    private val locks = mutableMapOf<String, Mutex>()
-    private val locksGuard = Mutex()
-
-    private suspend fun lockFor(chatRoomId: String): Mutex =
-        locksGuard.withLock { locks.getOrPut(chatRoomId) { Mutex() } }
+    private val cache = LiveInstanceCache<MlsGroup> { it.saveState().encodeTls().toHex() }
 
     /**
      * Runs [block] against the room's live group, then stores whatever state it
      * left behind.
      *
      * [storedStateHex] is the room's state as the database currently has it, and
-     * [build] turns it into a group. [save] is handed the state to persist; it
-     * runs inside the lock so the stored state and the cached instance cannot
-     * disagree.
+     * [build] turns it into a group. [save] is handed the state to persist.
      *
      * Returns null without calling [block] when the room has no usable group
      * state, which is the same thing a failed `toMlsGroup()` meant before.
@@ -98,24 +69,84 @@ object MlsGroupCache {
         build: () -> MlsGroup?,
         save: suspend (String) -> Unit,
         block: suspend (MlsGroup) -> T,
-    ): T? = lockFor(chatRoomId).withLock {
-        val cached = entries[chatRoomId]
+    ): T? = cache.withInstance(
+        key = chatRoomId,
+        storedState = storedStateHex,
+        build = build,
+        save = save,
+        block = block
+    )
+}
 
-        val group = if (cached != null && cached.stateHex == storedStateHex) {
-            cached.group
+/**
+ * One live instance per key, reused only while the stored state is still the one
+ * this cache last wrote.
+ *
+ * Split out from [MlsGroupCache] so the decision it makes can be tested without
+ * standing up an MLS group. That decision is the whole safety argument: reuse
+ * when nothing else has written, rebuild when something has, and never carry on
+ * with an instance whose last use failed part-way through.
+ */
+internal class LiveInstanceCache<T : Any>(
+    /** The persisted form of an instance, for spotting another writer. */
+    private val stateOf: (T) -> String,
+) {
+    private val logger = Logger.withTag("LiveInstanceCache")
+
+    private class Entry<T>(val instance: T, val state: String)
+
+    private val entries = mutableMapOf<String, Entry<T>>()
+
+    /**
+     * Serialises use of one key's instance.
+     *
+     * The instance is mutable and [block] advances it, so two callers running at
+     * once would corrupt it. One lock per key rather than one overall, so a busy
+     * key cannot hold up a quiet one.
+     *
+     * Held across [block], which may touch the database. Safe here because a
+     * caller only ever takes this lock while it is already running -- it never
+     * waits on a resource the holder is itself waiting for.
+     */
+    private val locks = mutableMapOf<String, Mutex>()
+    private val locksGuard = Mutex()
+
+    private suspend fun lockFor(key: String): Mutex =
+        locksGuard.withLock { locks.getOrPut(key) { Mutex() } }
+
+    suspend fun <R> withInstance(
+        key: String,
+        storedState: String?,
+        build: () -> T?,
+        save: suspend (String) -> Unit,
+        block: suspend (T) -> R,
+    ): R? = lockFor(key).withLock {
+        val cached = entries[key]
+
+        val instance = if (cached != null && cached.state == storedState) {
+            cached.instance
         } else {
             if (cached != null) {
-                logger.d("Room $chatRoomId was written elsewhere; rebuilding its group")
+                logger.d("$key was written elsewhere; rebuilding")
             }
+            // Dropped before the block runs, so a build that fails does not leave
+            // the old instance behind to be picked up by the next caller.
+            entries.remove(key)
             build() ?: return@withLock null
         }
 
-        val result = block(group)
+        // Deliberately not in a finally: an instance whose use threw part-way is
+        // in an unknown state, and the next caller should rebuild from whatever
+        // was last persisted rather than carry on with it.
+        val result = block(instance)
 
-        val stateHex = group.saveState().encodeTls().toHex()
-        save(stateHex)
-        entries[chatRoomId] = Entry(group = group, stateHex = stateHex)
+        val state = stateOf(instance)
+        save(state)
+        entries[key] = Entry(instance = instance, state = state)
 
         result
     }
+
+    /** How many instances are held. For tests. */
+    internal fun size(): Int = entries.size
 }
