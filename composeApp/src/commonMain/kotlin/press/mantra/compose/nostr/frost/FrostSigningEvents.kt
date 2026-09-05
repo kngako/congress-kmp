@@ -8,10 +8,10 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
 /**
  * The nostr kinds a FROST signing session is carried on.
  *
- * Like the ChillDKG kinds these are **rumor** kinds: they only ever exist
- * inside a NIP-17 gift wrap addressed to the group, so no relay sees them
- * unencrypted and the replaceable semantics normally implied by the 3xxxx range
- * never apply.
+ * These are **rumor** kinds: they only ever exist inside a Marmot group event,
+ * MLS-encrypted to the group and then wrapped again under the group's exporter
+ * secret, so no relay sees them and the replaceable semantics normally implied
+ * by the 3xxxx range never apply.
  *
  * Who talks to whom, in order:
  *
@@ -24,18 +24,21 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
  *  anyone   --[ 30325 failure    ]-> everyone   abandon + blame
  * ```
  *
- * ### Why 3032x and not 3031x
+ * ### Why 3032x
  *
- * The DKG kinds run 30310-30316 and the nip30303 document kinds run 30300
- * upwards; those two have already met at 30310 and 30311, and
- * [press.mantra.compose.nostr.nip30303.SubmissionEvent] sits on 30312, which is
- * also the DKG's round-1 kind. They are kept apart today only by travelling on
- * different transports -- documents inside Marmot group events, rituals inside
- * NIP-17 wraps -- which is luck rather than design.
+ * These share the inner-event space with the nip30303 document kinds, which run
+ * 30300 up to [press.mantra.compose.nostr.nip30303.SubmissionEvent] at 30312 --
+ * the same space, because both are Marmot inner events and both are dispatched
+ * on kind by the same inbound path. Starting at 30320 leaves that family room to
+ * grow into.
  *
- * Signing runs on the same transport as the DKG and in the same rooms, so it
- * starts at 30320 with a deliberate gap. Anything added to either family has
- * room to grow without a second accident.
+ * The DKG's 30310-30316 look like a clash and are not: those exist only inside
+ * NIP-17 gift wraps, and nothing reads a kind across both transports. It is
+ * worth knowing that the numbers already overlap there -- the DKG's proposal and
+ * host-key kinds sit on 30310 and 30311 alongside two nip30303 kinds, and its
+ * round-1 kind is 30312, alongside SubmissionEvent -- because that separation is
+ * an accident of routing rather than a decision, and the next family added
+ * should not rely on it.
  */
 object FrostSigningEvents {
     /**

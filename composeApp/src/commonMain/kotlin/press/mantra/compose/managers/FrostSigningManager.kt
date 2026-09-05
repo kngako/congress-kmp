@@ -7,8 +7,6 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
-import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
-import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
@@ -28,7 +26,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningSession
-import press.mantra.compose.database.model.GiftWrapPayload
+import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.types.FrostSigningStage
@@ -37,15 +35,23 @@ import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 
 /**
- * Signs a nostr event with a group's FROST threshold key, over a NIP-17 group.
+ * Signs a nostr event with a group's FROST threshold key, in its #admins room.
  *
  * The shape is [ChillDkgRitualManager]'s, deliberately: the member who proposes
- * a signature coordinates it, every protocol message travels as a gift-wrapped
- * rumor on the kinds in [FrostSigningEvents], each inbound message is persisted
- * and then the session is asked whether it can move, and every step is
- * recomputed from stored inputs so a device killed mid-round resumes on the
- * next message. What that manager's own notes say about being message-driven
- * applies here unchanged.
+ * a signature coordinates it, protocol messages travel on the kinds in
+ * [FrostSigningEvents], each inbound message is persisted and then the session
+ * is asked whether it can move, and every step is recomputed from stored inputs
+ * so a device killed mid-round resumes on the next message. What that manager's
+ * own notes say about being message-driven applies here unchanged.
+ *
+ * The transport is not the same one. A ceremony runs over NIP-17 because it has
+ * to: its participants are not yet a Marmot group, and its whole purpose is to
+ * produce the key one would be keyed on. Signing has the opposite problem
+ * solved for it -- the #admins room already exists, its membership is exactly
+ * the share holders, and its id is derived from the key -- so a signing message
+ * is an ordinary Marmot inner event and needs no addressing of its own. One
+ * encrypted group event reaches everyone, rather than one sealed wrap per
+ * member per message.
  *
  * Three things are genuinely different, and each of them is why this is a
  * separate manager rather than another branch of that one.
@@ -148,43 +154,42 @@ object FrostSigningManager {
     suspend fun processSigningPayload(
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
-        giftWrapPayload: GiftWrapPayload,
+        innerEvent: Event,
         userPublicKey: HexKey
     ) {
-        val sessionId = FrostSigningEvents.parseSessionId(giftWrapPayload.tags)
+        val sessionId = FrostSigningEvents.parseSessionId(innerEvent.tags)
         if (sessionId == null) {
-            logger.w("FROST payload ${giftWrapPayload.id} has no session tag; dropping")
+            logger.w("FROST payload ${innerEvent.id} has no session tag; dropping")
             return
         }
 
-        val session = if (giftWrapPayload.kind == FrostSigningEvents.PROPOSAL) {
+        val session = if (innerEvent.kind == FrostSigningEvents.PROPOSAL) {
             acceptProposal(
                 database = database,
                 localChatRoom = localChatRoom,
-                giftWrapPayload = giftWrapPayload,
+                innerEvent = innerEvent,
                 sessionId = sessionId,
                 userPublicKey = userPublicKey
             )
         } else {
-            // Not knowing the session is normal: gift wraps carry a randomised
-            // created_at and relays hand them back in no particular order, so a
-            // nonce routinely lands before the proposal that asks for it. The
-            // payload is already stored, and [acceptProposal] replays it once the
-            // proposal turns up.
+            // Not knowing the session is normal: a member catching up applies a
+            // group's backlog in whatever order the epochs decrypt, so a nonce can
+            // land before the proposal that asks for it. The inner event is already
+            // stored, and [acceptProposal] replays it once the proposal turns up.
             database.frostSigningSessionDao().getSessionById(sessionId)
         }
 
         if (session == null) {
-            logger.i("No signing session $sessionId for kind ${giftWrapPayload.kind}; leaving it stored")
+            logger.i("No signing session $sessionId for kind ${innerEvent.kind}; leaving it stored")
             return
         }
 
         if (session.stage == FrostSigningStage.FAILED) {
-            logger.i("Session $sessionId already failed; ignoring kind ${giftWrapPayload.kind}")
+            logger.i("Session $sessionId already failed; ignoring kind ${innerEvent.kind}")
             return
         }
 
-        if (!record(database, session, giftWrapPayload)) return
+        if (!record(database, session, innerEvent)) return
 
         advance(database, localChatRoom, session.id)
     }
@@ -200,7 +205,7 @@ object FrostSigningManager {
     private suspend fun acceptProposal(
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
-        giftWrapPayload: GiftWrapPayload,
+        innerEvent: Event,
         sessionId: String,
         userPublicKey: HexKey
     ): FrostSigningSession? {
@@ -209,7 +214,7 @@ object FrostSigningManager {
             // under the same id carrying a different event is either a mistake or
             // an attempt to get two signatures out of one secret nonce, which is
             // how a share is extracted -- so it is refused, not applied.
-            val proposed = Event.fromJsonOrNull(giftWrapPayload.content)
+            val proposed = Event.fromJsonOrNull(innerEvent.content)
             if (proposed != null && proposed.id != existing.eventId) {
                 logger.w(
                     "Session $sessionId re-proposed with event ${proposed.id}, " +
@@ -219,7 +224,7 @@ object FrostSigningManager {
             return existing
         }
 
-        val dkgSessionId = FrostSigningEvents.parseKey(giftWrapPayload.tags)
+        val dkgSessionId = FrostSigningEvents.parseKey(innerEvent.tags)
         if (dkgSessionId == null) {
             logger.w("Signing proposal $sessionId names no key; dropping")
             return null
@@ -237,7 +242,7 @@ object FrostSigningManager {
             return null
         }
 
-        val proposed = Event.fromJsonOrNull(giftWrapPayload.content)
+        val proposed = Event.fromJsonOrNull(innerEvent.content)
         if (proposed == null) {
             logger.w("Signing proposal $sessionId does not carry an event; dropping")
             return null
@@ -268,7 +273,7 @@ object FrostSigningManager {
             // Whoever proposes coordinates. Aggregating nonces and partial
             // signatures gives no power over the outcome -- a wrong aggregate
             // produces a signature that does not verify, not a forged one.
-            coordinatorPublicKey = giftWrapPayload.publicKey,
+            coordinatorPublicKey = innerEvent.pubKey,
             userPublicKey = userPublicKey,
             dkgSessionId = key.id,
             threshold = key.threshold,
@@ -300,20 +305,30 @@ object FrostSigningManager {
         database: MantraDatabase,
         session: FrostSigningSession
     ) {
-        val stored = database.giftWrapPayloadDao().getByChatRoomAndKinds(
+        val stored = database.marmotInnerEventDao().getByChatRoomAndKinds(
             chatRoomId = session.chatRoomId,
             kinds = FrostSigningEvents.ALL.toList()
-        ).filter { payload ->
-            payload.kind != FrostSigningEvents.PROPOSAL &&
-                FrostSigningEvents.parseSessionId(payload.tags) == session.id
+        ).filter { stored ->
+            stored.kind != FrostSigningEvents.PROPOSAL &&
+                FrostSigningEvents.parseSessionId(stored.tags) == session.id
+        }.map { stored ->
+            Event(
+                id = stored.id,
+                pubKey = stored.publicKey,
+                createdAt = stored.createdAt.epochSeconds,
+                kind = stored.kind,
+                tags = stored.tags,
+                content = stored.content,
+                sig = ""
+            )
         }
 
         if (stored.isEmpty()) return
 
         logger.i("Replaying ${stored.size} stored message(s) for signing session ${session.id}")
 
-        stored.forEach { payload ->
-            if (!record(database, session, payload)) return
+        stored.forEach { innerEvent ->
+            if (!record(database, session, innerEvent)) return
         }
     }
 
@@ -324,34 +339,34 @@ object FrostSigningManager {
     private suspend fun record(
         database: MantraDatabase,
         session: FrostSigningSession,
-        giftWrapPayload: GiftWrapPayload
+        innerEvent: Event
     ): Boolean {
-        when (giftWrapPayload.kind) {
+        when (innerEvent.kind) {
             FrostSigningEvents.PROPOSAL -> Unit // handled by acceptProposal
 
             FrostSigningEvents.NONCE,
             FrostSigningEvents.PARTIAL_SIGNATURE -> {
                 val known = database.frostSigningSessionDao()
-                    .getMessage(session.id, giftWrapPayload.kind, giftWrapPayload.publicKey) != null
+                    .getMessage(session.id, innerEvent.kind, innerEvent.pubKey) != null
 
                 database.frostSigningSessionDao().upsert(
                     FrostSignerMessage(
                         sessionId = session.id,
-                        signerPublicKey = giftWrapPayload.publicKey,
-                        kind = giftWrapPayload.kind,
-                        payload = giftWrapPayload.content
+                        signerPublicKey = innerEvent.pubKey,
+                        kind = innerEvent.kind,
+                        payload = innerEvent.content
                     )
                 )
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
             FrostSigningEvents.SIGNER_SET -> {
-                if (!isFromCoordinator(session, giftWrapPayload)) return true
+                if (!isFromCoordinator(session, innerEvent)) return true
 
-                val signerIds = FrostSigningEvents.parseSignerIds(giftWrapPayload.tags)
+                val signerIds = FrostSigningEvents.parseSignerIds(innerEvent.tags)
                 if (signerIds == null) {
                     logger.w("Session ${session.id}: signer set carries no ids; ignoring")
                     return true
@@ -368,7 +383,7 @@ object FrostSigningManager {
                 update(database, session) { current ->
                     if (current.aggregatedNonce == null) {
                         current.copy(
-                            aggregatedNonce = giftWrapPayload.content,
+                            aggregatedNonce = innerEvent.content,
                             signerIds = signerIds.joinToString(",")
                         )
                     } else {
@@ -377,25 +392,25 @@ object FrostSigningManager {
                 }
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
             FrostSigningEvents.SIGNATURE -> {
-                if (!isFromCoordinator(session, giftWrapPayload)) return true
+                if (!isFromCoordinator(session, innerEvent)) return true
 
                 val known = current(database, session).signature != null
 
                 update(database, session) { current ->
                     if (current.signature == null) {
-                        current.copy(signature = giftWrapPayload.content)
+                        current.copy(signature = innerEvent.content)
                     } else {
                         current
                     }
                 }
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
@@ -403,8 +418,8 @@ object FrostSigningManager {
                 fail(
                     database = database,
                     session = session,
-                    reason = "Abandoned by ${giftWrapPayload.publicKey.take(8)}: ${giftWrapPayload.content}",
-                    culprit = giftWrapPayload.publicKey
+                    reason = "Abandoned by ${innerEvent.pubKey.take(8)}: ${innerEvent.content}",
+                    culprit = innerEvent.pubKey
                 )
                 return false
             }
@@ -415,13 +430,13 @@ object FrostSigningManager {
 
     private fun isFromCoordinator(
         session: FrostSigningSession,
-        giftWrapPayload: GiftWrapPayload
+        innerEvent: Event
     ): Boolean {
-        if (giftWrapPayload.publicKey == session.coordinatorPublicKey) return true
+        if (innerEvent.pubKey == session.coordinatorPublicKey) return true
 
         logger.w(
-            "Session ${session.id}: kind ${giftWrapPayload.kind} from " +
-                "${giftWrapPayload.publicKey.take(8)}, who is not the coordinator; ignoring"
+            "Session ${session.id}: kind ${innerEvent.kind} from " +
+                "${innerEvent.pubKey.take(8)}, who is not the coordinator; ignoring"
         )
         return false
     }
@@ -724,15 +739,34 @@ object FrostSigningManager {
     ): Int? = signerIds(database, key)[member]
 
     /**
-     * The group's usable key, or null when it has none.
+     * The key a room signs with, or null when it has none.
      *
-     * A group can have run more than one ceremony; the newest completed one is
-     * the live key, matching what the shared-key screen shows.
+     * Signing runs in the #admins room, which is not where the ceremony ran. A
+     * ceremony needs a NIP-17 group -- every member an equal admin, no MLS tree
+     * to be outside of -- while a group event needs an MLS one, so the two
+     * cannot be the same room.
+     *
+     * They are still bound together, and by construction rather than by a
+     * column: the #admins room's id *is* the key, derived from it by
+     * [SharedKeyDerivation.marmotGroupId]. Rederiving is what finds the key
+     * here, which means a room cannot be pointed at a key it was not derived
+     * from.
+     *
+     * Falls back to a ceremony held in this very room, which is not how the app
+     * wires things today but costs one lookup to keep honest.
      */
-    suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? =
-        database.dkgSessionDao()
+    suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
+        database.dkgSessionDao().getKeyHoldingSessions().firstOrNull { session ->
+            session.stage == DkgRitualStage.COMPLETE &&
+                session.thresholdPublicKey?.let {
+                    SharedKeyDerivation.marmotGroupId(it) == chatRoomId
+                } == true
+        }?.let { return it }
+
+        return database.dkgSessionDao()
             .getLatestSessionForChatRoom(chatRoomId)
             ?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
+    }
 
     /** Whether this group can sign at all, read by the UI so it offers nothing that would fail. */
     suspend fun canSign(database: MantraDatabase, chatRoomId: String): Boolean =
@@ -1082,9 +1116,16 @@ object FrostSigningManager {
     }
 
     /**
-     * Queues a signing message as a gift-wrap payload. `NotaryViewModel` picks it
-     * up, seals a copy per participant and broadcasts — the same path chat
-     * messages take, which is why this needs no transport of its own.
+     * Queues a signing message as an unprocessed marmot inner event.
+     * `NotaryViewModel` picks it up, MLS-encrypts it and broadcasts it as a
+     * kind:445 for the room — the same path every other event in a Marmot group
+     * takes, which is why this needs no transport of its own.
+     *
+     * No p-tags. A gift wrap is addressed and sealed once per recipient, so the
+     * ceremony has to name everybody on every message; a group event is
+     * encrypted to the group, and who is in it is the MLS tree's business rather
+     * than the message's. That also means the signer set genuinely comes from
+     * the ceremony rather than from whoever happened to be tagged.
      */
     private suspend fun broadcast(
         database: MantraDatabase,
@@ -1095,40 +1136,31 @@ object FrostSigningManager {
         includeKey: Boolean = false,
         signerIds: List<Int>? = null
     ) {
-        val receiverTags = localChatRoom.localParticipants
-            .distinctBy { it.participant.participantPublicKey }
-            .filter { it.participant.participantPublicKey != session.userPublicKey }
-            .map { localParticipant ->
-                PTag.assemble(
-                    localParticipant.participant.participantPublicKey,
-                    localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
-                )
-            }
-
-        val tags = receiverTags.toTypedArray() + FrostSigningEvents.assembleTags(
+        val tags = FrostSigningEvents.assembleTags(
             sessionId = session.id,
             dkgSessionId = if (includeKey) session.dkgSessionId else null,
             signerIds = signerIds
         )
 
         val createdAt = Clock.System.now().epochSeconds
-        val giftWrapPayloadId = EventHasher.hashId(
-            pubKey = session.userPublicKey,
-            createdAt = createdAt,
-            tags = tags,
-            content = content,
-            kind = kind
-        )
 
-        database.giftWrapPayloadDao().upsert(
-            GiftWrapPayload(
-                id = giftWrapPayloadId,
+        database.marmotInnerEventDao().upsert(
+            MarmotInnerEvent(
+                // The rumor id the outbound pipeline will recompute from these
+                // same fields when it assembles the event to encrypt.
+                id = EventHasher.hashId(
+                    pubKey = session.userPublicKey,
+                    createdAt = createdAt,
+                    tags = tags,
+                    content = content,
+                    kind = kind
+                ),
+                publicKey = session.userPublicKey,
                 kind = kind,
-                tags = tags,
                 createdAt = Instant.fromEpochSeconds(createdAt),
+                tags = tags,
                 content = content,
-                chatRoomId = localChatRoom.chatRoom.id,
-                publicKey = session.userPublicKey
+                chatRoomId = localChatRoom.chatRoom.id
             )
         )
     }

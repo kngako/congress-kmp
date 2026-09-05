@@ -45,6 +45,7 @@ import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -452,6 +453,25 @@ abstract class NostrDao(
                                     database.chatMessageDao().upsert(
                                         chatMessage
                                     )
+                                }
+
+                                // A FROST signing message for this group. Driven from
+                                // here rather than from ChatMessage because the
+                                // manager needs the room to publish its own replies
+                                // into, and because it writes its transcript lines
+                                // itself. The manager is idempotent, so a redelivered
+                                // message re-runs a step it has already taken.
+                                if (groupEventResult is GroupEventResult.ApplicationMessage) {
+                                    Event.fromJsonOrNull(groupEventResult.innerEventJson)
+                                        ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
+                                        ?.let { innerEvent ->
+                                            FrostSigningManager.processSigningPayload(
+                                                database = database,
+                                                localChatRoom = localChatRoom,
+                                                innerEvent = innerEvent,
+                                                userPublicKey = activeKeyPair.pubKey.toHex()
+                                            )
+                                        }
                                 }
                             }
                         } else {
@@ -960,29 +980,6 @@ abstract class NostrDao(
                                         giftWrapPayload = decryptedGiftWrapPayload,
                                         userPublicKey = activeKeyPair.pubKey.toHex(),
                                         nostrPrivateKey = activeKeyPair.privKey!!
-                                    )
-                                }
-                            } else if (FrostSigningEvents.isFrostSigningKind(decryptedGiftWrapPayload.kind)) {
-                                // A FROST signing session message for one of our
-                                // NIP-17 groups. Same reasoning as the ritual above:
-                                // the manager is idempotent, and the room is created
-                                // on demand because membership is the payload's
-                                // p-tags either way.
-                                val localChatRoom = getOrCreateNip17ChatRoom(
-                                    decryptedGiftWrapPayload = decryptedGiftWrapPayload,
-                                    activeKeyPair = activeKeyPair,
-                                    nostrEventId = nostrEvent.id,
-                                    relayURL = relayURL
-                                )
-
-                                if (localChatRoom == null) {
-                                    logger.w("FROST payload for unknown chat room ${decryptedGiftWrapPayload.chatRoomId}")
-                                } else {
-                                    FrostSigningManager.processSigningPayload(
-                                        database = database,
-                                        localChatRoom = localChatRoom,
-                                        giftWrapPayload = decryptedGiftWrapPayload,
-                                        userPublicKey = activeKeyPair.pubKey.toHex()
                                     )
                                 }
                             } else {

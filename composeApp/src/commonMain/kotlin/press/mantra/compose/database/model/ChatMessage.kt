@@ -17,6 +17,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
+import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -684,6 +685,12 @@ data class ChatMessage(
                         )
                     }
                 }
+                // A signing session's own protocol messages. FrostSigningManager
+                // applies them and writes its own transcript lines naming who did
+                // what, so an "unsupported" row here would be a second, worse
+                // account of the same thing.
+                in FrostSigningEvents.ALL -> null
+
                 else -> {
                     ChatMessage(
                         giftWrapPayloadId = null,
