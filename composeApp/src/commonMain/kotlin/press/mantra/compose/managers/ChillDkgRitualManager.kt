@@ -574,6 +574,12 @@ object ChillDkgRitualManager {
                     stage = DkgRitualStage.COMPLETE,
                     thresholdPublicKey = output.thresholdPublicKey?.value?.toHex(),
                     secretShare = output.secretShare?.value?.toHex(),
+                    // Kept for signing, which needs every participant's public
+                    // share to place and check the signers. In participant order,
+                    // the same order the ids are derived from.
+                    publicShares = output.publicShares
+                        .joinToString(",") { share -> share.value.toHex() }
+                        .takeIf { output.publicShares.isNotEmpty() },
                     recoveryData = output.recovery?.toHex()
                 )
             }

@@ -55,6 +55,7 @@ class ChatRoomDetailViewModel(
                 ChatRoomDetailUIState.Loaded(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
+                    dialects = mantraRepository.getDialects(chatRoomId),
                 )
             }
         }

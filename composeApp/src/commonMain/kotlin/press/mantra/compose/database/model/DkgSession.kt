@@ -9,6 +9,9 @@ import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import fr.acinq.bitcoin.ByteVector
+import fr.acinq.bitcoin.PublicKey
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -82,6 +85,17 @@ data class DkgSession(
     /** Result, secret: this device's FROST secret share, hex. */
     val secretShare: HexKey? = null,
 
+    /**
+     * Result: every participant's public share, comma-separated hex, in
+     * participant order.
+     *
+     * Not secret, and not needed to finish the ceremony -- kept because signing
+     * is what the key is for and FROST validates each signer's secret share
+     * against its public one. Null on a ceremony that completed before this
+     * column existed; signing still works there, without that check.
+     */
+    val publicShares: String? = null,
+
     /** Result: recovery data, to be backed up alongside the host key. */
     val recoveryData: HexKey? = null,
 
@@ -125,4 +139,11 @@ data class DkgSession(
     override val savedAt: Instant = createdAt,
 ): TimestampedEntity, LocalStoreEntity {
     fun isCoordinator(): Boolean = coordinatorPublicKey == userPublicKey
+
+    /** The participants' public shares in participant order, or null if unrecorded. */
+    fun publicShareList(): List<PublicKey>? = publicShares
+        ?.split(",")
+        ?.mapNotNull { hex -> hex.trim().takeIf { it.isNotEmpty() } }
+        ?.map { PublicKey(ByteVector(it.hexToByteArray())) }
+        ?.takeIf { it.isNotEmpty() }
 }

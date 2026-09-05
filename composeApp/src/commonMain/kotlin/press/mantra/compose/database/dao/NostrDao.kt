@@ -31,6 +31,9 @@ import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventI
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.MlsGroupCache
 import press.mantra.compose.managers.MarmotInboundManager
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
@@ -43,6 +46,7 @@ import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -385,9 +389,21 @@ abstract class NostrDao(
                 val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
 
                 if (localChatRoom != null) {
-                    val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
-
-                    if (mlsGroup != null) {
+                    // Through the cache rather than rebuilt here, so the secret
+                    // tree's skipped-generation keys survive from one message to
+                    // the next. Two events published in the same instant arrive in
+                    // whatever order the relay feels like, and rebuilding between
+                    // them loses the earlier one for good -- see MlsGroupCache.
+                    val handled = MlsGroupCache.withGroup(
+                        chatRoomId = chatRoomId,
+                        storedStateHex = localChatRoom.chatRoom.mlsGroupState,
+                        build = { localChatRoom.chatRoom.toMlsGroup() },
+                        save = { stateHex ->
+                            database.chatRoomDao().upsert(
+                                localChatRoom.chatRoom.copy(mlsGroupState = stateHex)
+                            )
+                        }
+                    ) { mlsGroup ->
                         val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
 
                             val pubkey = when (val cred = leafNode.credential) {
@@ -434,12 +450,6 @@ abstract class NostrDao(
                                     }
                                 }
 
-                                // Save the mls chatRoom state...
-                                database.chatRoomDao().upsert(
-                                    localChatRoom.chatRoom.copy(
-                                        mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-                                    )
-                                )
                                 ChatMessage.fromGroupEventResult(
                                     database = database,
                                     activeKeyPair = activeKeyPair,
@@ -451,11 +461,34 @@ abstract class NostrDao(
                                         chatMessage
                                     )
                                 }
+
+                                // A FROST signing message for this group. Driven from
+                                // here rather than from ChatMessage because the
+                                // manager needs the room to publish its own replies
+                                // into, and because it writes its transcript lines
+                                // itself. The manager is idempotent, so a redelivered
+                                // message re-runs a step it has already taken.
+                                if (groupEventResult is GroupEventResult.ApplicationMessage) {
+                                    Event.fromJsonOrNull(groupEventResult.innerEventJson)
+                                        ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
+                                        ?.let { innerEvent ->
+                                            FrostSigningManager.processSigningPayload(
+                                                database = database,
+                                                localChatRoom = localChatRoom,
+                                                innerEvent = innerEvent,
+                                                userPublicKey = activeKeyPair.pubKey.toHex()
+                                            )
+                                        }
+                                }
                             }
                         } else {
                             throw MarmotNotMemberOfChatGroupException("We are not a member of the chat room ${localChatRoom.chatRoom.id}")
                         }
-                    } else {
+                    }
+
+                    // Null means the room has no usable group state, which is what
+                    // a failed toMlsGroup() meant before the cache existed.
+                    if (handled == null) {
                         throw MarmotMissingNostrGroupDataExtension("Couldn't find chatRoom for $nostrEvent")
                     }
                 } else {

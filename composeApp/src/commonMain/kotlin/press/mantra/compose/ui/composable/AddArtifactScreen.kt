@@ -18,15 +18,14 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -108,13 +110,20 @@ fun AddArtifactScreen(
             val nameFieldState = rememberTextFieldState()
             val urlFieldState = rememberTextFieldState()
             val versionLabelFieldState = rememberTextFieldState("1.0")
-            val dialectNameFieldState = rememberTextFieldState()
-            val dialectCountryFieldState = rememberTextFieldState()
-            val dialectLanguageFieldState = rememberTextFieldState()
 
-            // null = "New dialect" (show the create fields); otherwise the id of
-            // an existing dialect to reuse.
+            // The id of the group dialect this artifact is written in. Null until
+            // one is picked; dialects are defined from the group detail screen.
             var selectedDialectId: String? by remember { mutableStateOf(null) }
+
+            // Of the required fields this is the only one the screen cannot ask
+            // for again: a dialect has to already exist, and nothing here can
+            // create one. So an unpicked dialect is a dead end rather than
+            // something to submit and be told about, and the button says so.
+            val canAddArtifact = selectedDialectId != null
+
+            // M3 gives a FAB no `enabled`, so borrow the disabled colours every
+            // other button in the app uses rather than inventing a shade here.
+            val buttonColors = ButtonDefaults.buttonColors()
 
             Scaffold(
                 topBar = {
@@ -132,16 +141,33 @@ fun AddArtifactScreen(
                         actions = {},
                         floatingActionButton = {
                             ExtendedFloatingActionButton(
+                                modifier = if (canAddArtifact) {
+                                    Modifier
+                                } else {
+                                    // Looking unavailable is not being unavailable:
+                                    // without this a screen reader still announces
+                                    // a button it is happy to press.
+                                    Modifier.semantics { disabled() }
+                                },
+                                containerColor = if (canAddArtifact) {
+                                    FloatingActionButtonDefaults.containerColor
+                                } else {
+                                    buttonColors.disabledContainerColor
+                                },
+                                contentColor = if (canAddArtifact) {
+                                    contentColorFor(FloatingActionButtonDefaults.containerColor)
+                                } else {
+                                    buttonColors.disabledContentColor
+                                },
                                 onClick = {
+                                    if (!canAddArtifact) return@ExtendedFloatingActionButton
+
                                     addArtifactViewModel.addArtifact(
                                         localChatRoom = addArtifactUIState.localChatRoom,
                                         nameField = nameFieldState,
                                         urlField = urlFieldState,
                                         versionLabelField = versionLabelFieldState,
-                                        existingDialectId = selectedDialectId,
-                                        dialectNameField = dialectNameFieldState,
-                                        dialectCountryField = dialectCountryFieldState,
-                                        dialectLanguageField = dialectLanguageFieldState,
+                                        dialectId = selectedDialectId,
                                         onSuccess = { artifactId ->
                                             // Open the newly created artifact, removing this
                                             // add screen from the back stack.
@@ -266,112 +292,24 @@ fun AddArtifactScreen(
 
                         Text("Source dialect")
 
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            addArtifactUIState.dialects.forEach { dialect ->
-                                FilterChip(
-                                    selected = selectedDialectId == dialect.id,
-                                    onClick = { selectedDialectId = dialect.id },
-                                    label = { Text(dialect.name) }
-                                )
+                        if (addArtifactUIState.dialects.isEmpty()) {
+                            Text(
+                                text = "No dialects have been defined in this group yet. Add one from the group's detail screen first.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                addArtifactUIState.dialects.forEach { dialect ->
+                                    FilterChip(
+                                        selected = selectedDialectId == dialect.id,
+                                        onClick = { selectedDialectId = dialect.id },
+                                        label = { Text(dialect.name) }
+                                    )
+                                }
                             }
-                            FilterChip(
-                                selected = selectedDialectId == null,
-                                onClick = { selectedDialectId = null },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "Create a new dialect"
-                                    )
-                                },
-                                label = { Text("New dialect") }
-                            )
-                        }
-
-                        // Only collect new-dialect details when not reusing an existing one.
-                        if (selectedDialectId == null) {
-                            OutlinedTextField(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(BottomAppBarDefaults.containerColor),
-                                state = dialectNameFieldState,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent
-                                ),
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Title,
-                                        contentDescription = "Name of the dialect"
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = "Dialect Name"
-                                    )
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "eg. Sesotho"
-                                    )
-                                },
-                            )
-
-                            OutlinedTextField(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(BottomAppBarDefaults.containerColor),
-                                state = dialectCountryFieldState,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent
-                                ),
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Public,
-                                        contentDescription = "Country of the dialect"
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = "Country"
-                                    )
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "eg. Lesotho"
-                                    )
-                                },
-                            )
-
-                            OutlinedTextField(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(BottomAppBarDefaults.containerColor),
-                                state = dialectLanguageFieldState,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent
-                                ),
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Translate,
-                                        contentDescription = "Language of the dialect"
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = "Language"
-                                    )
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "eg. st"
-                                    )
-                                },
-                            )
                         }
 
                         // TODO: Add Visibility

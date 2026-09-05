@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Upload
@@ -215,7 +217,7 @@ class ChatMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages(onOpenSharedKey: () -> Unit) {
+    fun RenderMessages(onOpenSharedKey: () -> Unit, onOpenSigning: () -> Unit) {
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -270,8 +272,10 @@ class ChatMessageListViewModel(
                             val answeredRequests = chatRoomDetailMessageListUIState
                                 .chatMessageList
                                 .mapNotNull { request ->
-                                    val published = ChatMessage
-                                        .DKG_REQUEST_FULFILMENTS[request.chatMessage.messageType]
+                                    val published = (
+                                        ChatMessage.DKG_REQUEST_FULFILMENTS +
+                                            ChatMessage.FROST_REQUEST_FULFILMENTS
+                                        )[request.chatMessage.messageType]
                                         ?: return@mapNotNull null
 
                                     val done = chatRoomDetailMessageListUIState.chatMessageList.any {
@@ -343,6 +347,20 @@ class ChatMessageListViewModel(
                                             localChatMessage = localChatMessage,
                                             isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                             onClick = onOpenSharedKey
+                                        )
+                                        return@items
+                                    }
+
+                                    // Signing lines are the same kind of thing and get
+                                    // the same treatment -- nobody said them either --
+                                    // but they lead somewhere else, because what a
+                                    // reader needs from one is the event being signed
+                                    // rather than the state of the key.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.FROST_TYPES) {
+                                        RitualNotice(
+                                            localChatMessage = localChatMessage,
+                                            isAnswered = localChatMessage.chatMessage.id in answeredRequests,
+                                            onClick = onOpenSigning
                                         )
                                         return@items
                                     }
@@ -537,6 +555,15 @@ private fun RitualNotice(
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1 -> Icons.Default.Upload
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_2 -> Icons.Default.FactCheck
 
+        ChatMessage.TYPE_FROST_STARTED -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_NONCE -> Icons.Default.Upload
+        ChatMessage.TYPE_FROST_SIGNER_SET -> Icons.Default.Groups
+        ChatMessage.TYPE_FROST_PARTIAL_SIGNATURE -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_SIGNATURE -> Icons.Default.WorkspacePremium
+        ChatMessage.TYPE_FROST_COMPLETE -> Icons.Default.CheckCircle
+        ChatMessage.TYPE_FROST_FAILED -> Icons.Default.ErrorOutline
+        ChatMessage.TYPE_FROST_APPROVAL_NEEDED -> Icons.Default.Draw
+
         else -> Icons.Default.PanTool
     }
 
@@ -545,10 +572,15 @@ private fun RitualNotice(
     // quiet; these are not.
     // An answered request is history, not a summons: it keeps its stage's icon so
     // the step is still recognisable, but drops the colour and the call to action.
-    val isRequest = chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES && !isAnswered
+    val isRequest = (
+        chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES ||
+            chatMessage.messageType in ChatMessage.FROST_REQUEST_TYPES
+        ) && !isAnswered
 
     val tint = when {
-        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||
+            chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ->
+            MaterialTheme.colorScheme.error
         isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -578,7 +610,9 @@ private fun RitualNotice(
                     // from the joined profile rather than written into the content,
                     // so it follows a rename and is not stuck on the "LOADING..."
                     // placeholder a member is given the moment they are first seen.
-                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES) {
+                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES ||
+                        chatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES
+                    ) {
                         withStyle(
                             SpanStyle(color = ProfileColor.fromPublicKey(chatMessage.senderPublicKey))
                         ) {

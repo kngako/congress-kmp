@@ -169,6 +169,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    testOptions {
+        unitTests {
+            // Quartz logs through android.util.Log on the error paths -- parsing a
+            // malformed event, for one. Unmocked, those methods throw, so a test
+            // covering such a path fails on the log line rather than on what it
+            // came to check. Default values let the code under test carry on.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
