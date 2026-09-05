@@ -22,6 +22,7 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
@@ -199,6 +200,25 @@ data class ChatMessage(
                     val event = Event.fromJsonOrNull(groupEventResult.innerEventJson)
                         ?: throw MarmotUnprocessableInnerEventException("Can't process ${groupEventResult.innerEventJson}")
 
+                    // A submission is an envelope: the nip30303 event it delivers
+                    // is in its content, written by whoever wrote it. Everything
+                    // else on the wire is the nip30303 event itself. Either way the
+                    // row on disk is the outer event -- that is what the group sent
+                    // and what the chat line is attributed to.
+                    val submission = if (event.kind == SubmissionEvent.KIND) {
+                        SubmissionEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig,
+                        )
+                    } else {
+                        null
+                    }
+                    val payload = submission?.payload()
+
                     database.marmotInnerEventDao().upsert(
                         MarmotInnerEvent(
                             id = event.id,
@@ -208,296 +228,37 @@ data class ChatMessage(
                             content = event.content,
                             chatRoomId = groupEventResult.groupId,
                             kind = event.kind,
+                            payloadEventId = payload?.id,
                             createdAt = Instant.fromEpochSeconds(event.createdAt)
                         )
                     )
-                    when (event.kind) {
-                        ChatEvent.KIND -> {
-                            ChatMessage(
-                                giftWrapPayloadId = null,
-                                messageType = "message",
-                                marmotGroupEventId = groupEvent.id,
-                                marmotInnerEventId = event.id,
-                                senderPublicKey = event.pubKey,
-                                isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                chatRoomId = groupEventResult.groupId,
-                                createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                content = event.content, // TODO: Figure out what to do here...
-                            )
-                        }
-                        ArtifactEvent.KIND -> {
-                            MantraArtifact.fromArtifactEvent(
-                                artifactEvent = ArtifactEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig,
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraArtifact ->
-                                database.mantraArtifactDao().upsert(
-                                    mantraArtifact.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
 
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "artifact",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraArtifact.name} to artifacts"
-                                )
-                            }
-                        }
-                        ArtifactVersionEvent.KIND -> {
-                            MantraArtifactVersion.fromArtifactVersionEvent(
-                                artifactVersionEvent = ArtifactVersionEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraArtifactVersion ->
-                                database.mantraArtifactVersionDao().upsert(
-                                    mantraArtifactVersion.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "artifactVersion",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraArtifactVersion.versionLabel} to artifact versions" // TODO: Use artifact name...
-                                )
-                            }
-                        }
-                        ChapterEvent.KIND -> {
-                            MantraChapter.fromChapterEvent(
-                                chapterEvent = ChapterEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraChapter ->
-                                database.mantraChapterDao().upsert(
-                                    mantraChapter.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "chapter",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraChapter.name} to chapters" // TODO: Use artifact name...
-                                )
-                            }
-                        }
-
-                        ChunkEvent.KIND -> {
-                            MantraChunk.fromChunkEvent(
-                                chunkEvent = ChunkEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraChunk ->
-                                database.mantraChunkDao().upsert(
-                                    mantraChunk.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-                                // TODO: Chunks might be too noisy to show in chat...
-                            }
-                            null
-                        }
-                        DialectEvent.KIND -> {
-                            MantraDialect.fromDialectEvent(
-                                dialectEvent = DialectEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraDialect ->
-                                database.mantraDialectDao().upsert(
-                                    mantraDialect.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "dialect",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraDialect.name} to dialects" // TODO: Use artifact name...
-                                )
-                            }
-                        }
-                        TranslationArtifactVersionEvent.KIND -> {
-                            MantraTranslationArtifactVersion.fromTranslationArtifactVersionEvent(
-                                translationArtifactVersionEvent = TranslationArtifactVersionEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraTranslationArtifactVersion ->
-                                database.mantraTranslationArtifactVersionDao().upsert(
-                                    mantraTranslationArtifactVersion.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "translationArtifactVersion",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraTranslationArtifactVersion.name} to translation artifact versions" // TODO: Use artifact name...
-                                )
-                            }
-                        }
-                        TranslationArtifactVersionContributorListEvent.KIND -> {
-                            // TODO: Consume contributors...
-                            null
-                        }
-                        TranslationChapterEvent.KIND -> {
-                            MantraTranslationChapter.fromTranslationChapterEvent(
-                                translationChapterEvent = TranslationChapterEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraTranslationChapter ->
-                                database.mantraTranslationChapterDao().upsert(
-                                    mantraTranslationChapter.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-                                // TODO: translation chapter might be too noisy for chat updates
-                            }
-                            null
-                        }
-                        TranslationChunkEvent.KIND -> {
-                            MantraTranslationChunk.fromTranslationChunkEvent(
-                                translationChunkEvent = TranslationChunkEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraTranslationChunk ->
-                                database.mantraTranslationChunkDao().upsert(
-                                    mantraTranslationChunk.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-
-
-                            }
-                            null
-                        }
-                        TranslationContributorListEvent.KIND -> {
-                            // TODO: Consume contributors...
-                            null
-                        }
-                        TranslationEvent.KIND -> {
-                            MantraTranslation.fromTranslationEvent(
-                                translationEvent = TranslationEvent(
-                                    id = event.id,
-                                    pubKey = event.pubKey,
-                                    createdAt = event.createdAt,
-                                    tags = event.tags,
-                                    content = event.content,
-                                    sig = event.sig
-                                ),
-                                chatRoomId = groupEventResult.groupId,
-                            )?.let { mantraTranslation ->
-                                database.mantraTranslationDao().upsert(
-                                    mantraTranslation.copy(
-                                        marmotGroupEventId = groupEvent.id,
-                                    )
-                                )
-                                ChatMessage(
-                                    giftWrapPayloadId = null,
-                                    messageType = "translation",
-                                    marmotGroupEventId = groupEvent.id,
-                                    marmotInnerEventId = event.id,
-                                    senderPublicKey = event.pubKey,
-                                    isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                    chatRoomId = groupEventResult.groupId,
-                                    createdAt = Instant.fromEpochSeconds(event.createdAt),
-                                    content = "Added ${mantraTranslation.text} to translations" // TODO: Reference original text
-                                )
-                            }
-                        }
-                        else -> {
-                            ChatMessage(
-                                giftWrapPayloadId = null,
-                                messageType = "unsupported",
-                                marmotGroupEventId = groupEvent.id,
-                                marmotInnerEventId = event.id,
-                                senderPublicKey = groupEvent.pubKey,
-                                isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
-                                chatRoomId = groupEventResult.groupId,
-                                createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                                content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
-                            )
-                        }
+                    // A submission whose payload will not parse, or which carries
+                    // another submission, is kept but not applied: there is nothing
+                    // here we can turn into a row.
+                    if (submission != null && (payload == null || payload.kind == SubmissionEvent.KIND)) {
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "unsupported",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = event.id,
+                            senderPublicKey = event.pubKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupEventResult.groupId,
+                            createdAt = Instant.fromEpochSeconds(event.createdAt),
+                            content = event.content,
+                        )
+                    } else {
+                        applyInnerEvent(
+                            database = database,
+                            activeKeyPair = activeKeyPair,
+                            groupEvent = groupEvent,
+                            groupId = groupEventResult.groupId,
+                            event = payload ?: event,
+                            marmotInnerEventId = event.id,
+                            senderPublicKey = event.pubKey,
+                            createdAt = Instant.fromEpochSeconds(event.createdAt),
+                        )
                     }
                 }
                 is GroupEventResult.CommitPending -> {
@@ -577,6 +338,318 @@ data class ChatMessage(
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Undecryptable Message", // TODO: Figure out what to do here...
+                    )
+                }
+            }
+        }
+
+        /**
+         * Apply one nip30303 [event] the group delivered, and describe it for
+         * the transcript.
+         *
+         * [event] is what is being applied; the other parameters are how it
+         * arrived. They come apart for submissions: the payload is written by
+         * whoever wrote it -- possibly nobody in this group -- while
+         * [marmotInnerEventId], [senderPublicKey] and [createdAt] all belong to
+         * the envelope a member actually sent. Entity rows take their author
+         * from [event], so the chat line says who added it and the row says who
+         * wrote it.
+         */
+        private suspend fun applyInnerEvent(
+            database: MantraDatabase,
+            activeKeyPair: KeyPair,
+            groupEvent: GroupEvent,
+            groupId: String,
+            event: Event,
+            marmotInnerEventId: HexKey,
+            senderPublicKey: HexKey,
+            createdAt: Instant,
+        ): ChatMessage? {
+            return when (event.kind) {
+                ChatEvent.KIND -> {
+                    ChatMessage(
+                        giftWrapPayloadId = null,
+                        messageType = "message",
+                        marmotGroupEventId = groupEvent.id,
+                        marmotInnerEventId = marmotInnerEventId,
+                        senderPublicKey = senderPublicKey,
+                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        chatRoomId = groupId,
+                        createdAt = createdAt,
+                        content = event.content, // TODO: Figure out what to do here...
+                    )
+                }
+                ArtifactEvent.KIND -> {
+                    MantraArtifact.fromArtifactEvent(
+                        artifactEvent = ArtifactEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig,
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraArtifact ->
+                        database.mantraArtifactDao().upsert(
+                            mantraArtifact.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "artifact",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraArtifact.name} to artifacts"
+                        )
+                    }
+                }
+                ArtifactVersionEvent.KIND -> {
+                    MantraArtifactVersion.fromArtifactVersionEvent(
+                        artifactVersionEvent = ArtifactVersionEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraArtifactVersion ->
+                        database.mantraArtifactVersionDao().upsert(
+                            mantraArtifactVersion.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "artifactVersion",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraArtifactVersion.versionLabel} to artifact versions" // TODO: Use artifact name...
+                        )
+                    }
+                }
+                ChapterEvent.KIND -> {
+                    MantraChapter.fromChapterEvent(
+                        chapterEvent = ChapterEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraChapter ->
+                        database.mantraChapterDao().upsert(
+                            mantraChapter.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "chapter",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraChapter.name} to chapters" // TODO: Use artifact name...
+                        )
+                    }
+                }
+
+                ChunkEvent.KIND -> {
+                    MantraChunk.fromChunkEvent(
+                        chunkEvent = ChunkEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraChunk ->
+                        database.mantraChunkDao().upsert(
+                            mantraChunk.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+                        // TODO: Chunks might be too noisy to show in chat...
+                    }
+                    null
+                }
+                DialectEvent.KIND -> {
+                    MantraDialect.fromDialectEvent(
+                        dialectEvent = DialectEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraDialect ->
+                        database.mantraDialectDao().upsert(
+                            mantraDialect.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "dialect",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraDialect.name} to dialects" // TODO: Use artifact name...
+                        )
+                    }
+                }
+                TranslationArtifactVersionEvent.KIND -> {
+                    MantraTranslationArtifactVersion.fromTranslationArtifactVersionEvent(
+                        translationArtifactVersionEvent = TranslationArtifactVersionEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraTranslationArtifactVersion ->
+                        database.mantraTranslationArtifactVersionDao().upsert(
+                            mantraTranslationArtifactVersion.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "translationArtifactVersion",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraTranslationArtifactVersion.name} to translation artifact versions" // TODO: Use artifact name...
+                        )
+                    }
+                }
+                TranslationArtifactVersionContributorListEvent.KIND -> {
+                    // TODO: Consume contributors...
+                    null
+                }
+                TranslationChapterEvent.KIND -> {
+                    MantraTranslationChapter.fromTranslationChapterEvent(
+                        translationChapterEvent = TranslationChapterEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraTranslationChapter ->
+                        database.mantraTranslationChapterDao().upsert(
+                            mantraTranslationChapter.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+                        // TODO: translation chapter might be too noisy for chat updates
+                    }
+                    null
+                }
+                TranslationChunkEvent.KIND -> {
+                    MantraTranslationChunk.fromTranslationChunkEvent(
+                        translationChunkEvent = TranslationChunkEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraTranslationChunk ->
+                        database.mantraTranslationChunkDao().upsert(
+                            mantraTranslationChunk.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+
+
+                    }
+                    null
+                }
+                TranslationContributorListEvent.KIND -> {
+                    // TODO: Consume contributors...
+                    null
+                }
+                TranslationEvent.KIND -> {
+                    MantraTranslation.fromTranslationEvent(
+                        translationEvent = TranslationEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraTranslation ->
+                        database.mantraTranslationDao().upsert(
+                            mantraTranslation.copy(
+                                marmotGroupEventId = groupEvent.id,
+                            )
+                        )
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "translation",
+                            marmotGroupEventId = groupEvent.id,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Added ${mantraTranslation.text} to translations" // TODO: Reference original text
+                        )
+                    }
+                }
+                else -> {
+                    ChatMessage(
+                        giftWrapPayloadId = null,
+                        messageType = "unsupported",
+                        marmotGroupEventId = groupEvent.id,
+                        marmotInnerEventId = marmotInnerEventId,
+                        senderPublicKey = senderPublicKey,
+                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        chatRoomId = groupId,
+                        createdAt = createdAt,
+                        content = event.toJson(),
                     )
                 }
             }
