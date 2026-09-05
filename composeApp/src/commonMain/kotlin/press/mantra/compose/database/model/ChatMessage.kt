@@ -86,7 +86,11 @@ data class ChatMessage(
 
     companion object {
         /**
-         * A ChillDKG ritual reached a point the group should be told about.
+         * A ChillDKG ritual message, as a line in the group's chat.
+         *
+         * There is one per protocol message the ritual sends -- every member's host
+         * key, both of their rounds, and both of the coordinator's aggregates --
+         * plus the three that bracket them: started, complete, abandoned.
          *
          * These rows are not anybody's words: no [ChatMessage.giftWrapPayloadId], no
          * event behind them, and nothing sent to say them. Each device writes its own
@@ -98,21 +102,47 @@ data class ChatMessage(
          * coordinator would read as something they said.
          */
         const val TYPE_DKG_STARTED = "dkgStarted"
+        const val TYPE_DKG_HOST_KEY = "dkgHostKey"
+        const val TYPE_DKG_ROUND_1 = "dkgRound1"
+        const val TYPE_DKG_COORDINATOR_ROUND_1 = "dkgCoordinatorRound1"
+        const val TYPE_DKG_ROUND_2 = "dkgRound2"
+        const val TYPE_DKG_CERTIFICATE = "dkgCertificate"
         const val TYPE_DKG_COMPLETE = "dkgComplete"
         const val TYPE_DKG_FAILED = "dkgFailed"
 
-        val DKG_TYPES = setOf(TYPE_DKG_STARTED, TYPE_DKG_COMPLETE, TYPE_DKG_FAILED)
+        val DKG_TYPES = setOf(
+            TYPE_DKG_STARTED,
+            TYPE_DKG_HOST_KEY,
+            TYPE_DKG_ROUND_1,
+            TYPE_DKG_COORDINATOR_ROUND_1,
+            TYPE_DKG_ROUND_2,
+            TYPE_DKG_CERTIFICATE,
+            TYPE_DKG_COMPLETE,
+            TYPE_DKG_FAILED,
+        )
 
         /**
-         * The ritual milestones somebody did, as opposed to ones that simply
-         * happened. For these [senderPublicKey] is the member who acted -- the one
-         * who opened the ceremony, or the one who abandoned it -- and their content
-         * is written as a predicate for their name to be read in front of.
+         * The ritual lines somebody did, as opposed to ones that simply happened.
+         * For these [senderPublicKey] is the member who acted, and their content is
+         * written as a predicate for their name to be read in front of.
          *
-         * A finished ceremony has no actor: the group ends up with a key, nobody
-         * hands it to them.
+         * Every protocol message is one of these: each is a thing a named member's
+         * device sent, and which member it was is the whole point of showing it --
+         * a ritual finishes only once every member has taken part, so a stalled one
+         * is a question about who has not.
+         *
+         * A finished ceremony is the exception, and has no actor: the group ends up
+         * with a key, nobody hands it to them.
          */
-        val DKG_AUTHORED_TYPES = setOf(TYPE_DKG_STARTED, TYPE_DKG_FAILED)
+        val DKG_AUTHORED_TYPES = setOf(
+            TYPE_DKG_STARTED,
+            TYPE_DKG_HOST_KEY,
+            TYPE_DKG_ROUND_1,
+            TYPE_DKG_COORDINATOR_ROUND_1,
+            TYPE_DKG_ROUND_2,
+            TYPE_DKG_CERTIFICATE,
+            TYPE_DKG_FAILED,
+        )
 
         suspend fun fromGroupEventResult(
             database: MantraDatabase,

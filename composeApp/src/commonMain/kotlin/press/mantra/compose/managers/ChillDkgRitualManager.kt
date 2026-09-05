@@ -345,20 +345,35 @@ object ChillDkgRitualManager {
 
             DkgRitualEvents.HOST_KEY,
             DkgRitualEvents.ROUND_1,
-            DkgRitualEvents.ROUND_2 -> database.dkgSessionDao().upsert(
-                DkgParticipantMessage(
-                    sessionId = session.id,
-                    participantPublicKey = giftWrapPayload.publicKey,
-                    kind = giftWrapPayload.kind,
-                    payload = giftWrapPayload.content
+            DkgRitualEvents.ROUND_2 -> {
+                // Read before writing so the line goes out once. Relays redeliver,
+                // and a replay feeds the whole backlog through here again; the
+                // upsert below absorbs that, but a chat row has no key to absorb it
+                // with.
+                val known = database.dkgSessionDao()
+                    .getMessage(session.id, giftWrapPayload.kind, giftWrapPayload.publicKey) != null
+
+                database.dkgSessionDao().upsert(
+                    DkgParticipantMessage(
+                        sessionId = session.id,
+                        participantPublicKey = giftWrapPayload.publicKey,
+                        kind = giftWrapPayload.kind,
+                        payload = giftWrapPayload.content
+                    )
                 )
-            )
+
+                if (!known) {
+                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                }
+            }
 
             // Both aggregates come from the coordinator and only ever once. Taking
             // them from anyone else lets any member stall the ritual by getting a
             // bogus one in first, since the real one would then be ignored.
             DkgRitualEvents.COORDINATOR_ROUND_1 -> {
                 if (!isFromCoordinator(session, giftWrapPayload)) return true
+
+                val known = current(database, session).coordinatorRound1 != null
 
                 update(database, session) { current ->
                     if (current.coordinatorRound1 == null) {
@@ -367,10 +382,16 @@ object ChillDkgRitualManager {
                         current
                     }
                 }
+
+                if (!known) {
+                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                }
             }
 
             DkgRitualEvents.CERTIFICATE -> {
                 if (!isFromCoordinator(session, giftWrapPayload)) return true
+
+                val known = current(database, session).certificate != null
 
                 update(database, session) { current ->
                     if (current.certificate == null) {
@@ -378,6 +399,10 @@ object ChillDkgRitualManager {
                     } else {
                         current
                     }
+                }
+
+                if (!known) {
+                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
                 }
             }
 
@@ -447,6 +472,12 @@ object ChillDkgRitualManager {
 
                 session = update(database, session) { it.copy(coordinatorRound1 = cmsg1) }
                 broadcast(database, localChatRoom, session, DkgRitualEvents.COORDINATOR_ROUND_1, cmsg1)
+                announceStep(
+                    database,
+                    session,
+                    DkgRitualEvents.COORDINATOR_ROUND_1,
+                    session.userPublicKey
+                )
             }
 
             val coordinatorRound1 = session.coordinatorRound1 ?: return
@@ -487,6 +518,7 @@ object ChillDkgRitualManager {
 
                 session = update(database, session) { it.copy(certificate = cmsg2) }
                 broadcast(database, localChatRoom, session, DkgRitualEvents.CERTIFICATE, cmsg2)
+                announceStep(database, session, DkgRitualEvents.CERTIFICATE, session.userPublicKey)
             }
 
             val certificate = session.certificate ?: return
@@ -753,6 +785,69 @@ object ChillDkgRitualManager {
     )
 
     /**
+     * Puts one protocol message in the group's chat, as a line naming who sent it.
+     *
+     * The ritual is otherwise a black box. Its kinds are gift-wrapped payloads that
+     * never become chat messages, so a ceremony that fixes the group's signing
+     * quorum for good ran with nothing to watch, and a stalled one gave no way to
+     * see which member it was waiting on. Naming the sender is the point: every one
+     * of these is a thing a particular member's device did.
+     *
+     * The wording describes what the step accomplishes rather than what it is
+     * called. "sent their contribution to the key" is a true and useful thing to
+     * read in a group chat; "sent pmsg1" is not, and the protocol names are on the
+     * shared-key screen for anyone who wants them.
+     *
+     * Each is written once per device, guarded at the point of first arrival --
+     * relays redeliver and [replayStoredMessages] feeds the whole backlog through
+     * again, both of which the keyed [DkgParticipantMessage] absorbs and a chat row
+     * cannot.
+     */
+    private suspend fun announceStep(
+        database: MantraDatabase,
+        session: DkgSession,
+        kind: Kind,
+        actor: HexKey
+    ) {
+        val (messageType, content) = when (kind) {
+            DkgRitualEvents.HOST_KEY -> ChatMessage.TYPE_DKG_HOST_KEY to
+                "joined the shared key ceremony, publishing the key their device is " +
+                    "identified by for the rest of it."
+
+            DkgRitualEvents.ROUND_1 -> ChatMessage.TYPE_DKG_ROUND_1 to
+                "sent their contribution to the key. Every member's is mixed in, so no " +
+                    "single device ever holds the whole thing."
+
+            DkgRitualEvents.COORDINATOR_ROUND_1 -> ChatMessage.TYPE_DKG_COORDINATOR_ROUND_1 to
+                "combined everyone's contributions and sent the result back to be checked."
+
+            DkgRitualEvents.ROUND_2 -> ChatMessage.TYPE_DKG_ROUND_2 to
+                "checked the combined result and signed to confirm it matches what they sent."
+
+            DkgRitualEvents.CERTIFICATE -> ChatMessage.TYPE_DKG_CERTIFICATE to
+                "gathered everyone's confirmations into a certificate. A device that has " +
+                    "it can finish and keep its share of the key."
+
+            // PROPOSAL and FAILURE are announced by the code that acts on them --
+            // both say more than the message itself carries, the quorum in one case
+            // and who walked away in the other.
+            else -> return
+        }
+
+        announce(
+            database = database,
+            session = session,
+            messageType = messageType,
+            content = content,
+            actor = actor
+        )
+    }
+
+    /** The stored session, for reading a column back before overwriting it. */
+    private suspend fun current(database: MantraDatabase, session: DkgSession): DkgSession =
+        database.dkgSessionDao().getSessionById(session.id) ?: session
+
+    /**
      * Puts a ritual milestone in the group's chat.
      *
      * The ritual is otherwise invisible: its kinds never become chat messages, so a
@@ -761,11 +856,12 @@ object ChillDkgRitualManager {
      * its own row from the ritual messages it has already received, so this costs no
      * traffic and cannot disagree with the ritual it describes.
      *
-     * Written once per milestone by construction, not by de-duplication: a session
-     * is created once (its caller returns early if the row exists), [advance] leaves
-     * a completed ritual alone, and [fail] checks the stage before it writes. There
-     * is no key on ChatMessage to make a second insert idempotent -- its id is
-     * autogenerated -- so those guards are what keep the transcript honest.
+     * Written once by construction, not by de-duplication. There is no key on
+     * ChatMessage to make a second insert idempotent -- its id is autogenerated --
+     * so every caller checks before it writes: a session is created once (its caller
+     * returns early if the row exists), [advance] leaves a completed ritual alone,
+     * [fail] checks the stage, and [announceStep] reads the row it is about to
+     * write over. Those guards are what keep the transcript honest.
      */
     private suspend fun announce(
         database: MantraDatabase,
@@ -813,6 +909,11 @@ object ChillDkgRitualManager {
     ) {
         broadcast(database, localChatRoom, session, kind, content)
 
+        // Guarded here rather than trusting the callers: every one of them already
+        // checks before publishing, but the chat row is the thing with no key to
+        // fall back on, so the check that matters lives next to the write.
+        val known = ownMessage(database, session, kind) != null
+
         database.dkgSessionDao().upsert(
             DkgParticipantMessage(
                 sessionId = session.id,
@@ -821,6 +922,8 @@ object ChillDkgRitualManager {
                 payload = content
             )
         )
+
+        if (!known) announceStep(database, session, kind, session.userPublicKey)
     }
 
     /**
