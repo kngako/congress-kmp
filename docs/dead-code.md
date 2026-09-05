@@ -19,6 +19,9 @@ every `.kt` file outside `build/` and counts occurrences:
 grep -rn "\bidentifierName\b" --include=*.kt composeApp/src | grep -v '/build/'
 ```
 
+Line numbers below were correct at `f5eb744` and drift with every edit to those
+files; treat them as a hint and confirm with the grep.
+
 Two things that method cannot see, so each item was also read in context:
 
 - **Room DAOs** are called through generated code as `database.xDao().method()`,
@@ -54,16 +57,17 @@ Each of these predates the sync work.
 
 | what | where | note |
 |---|---|---|
-| `RelayPool.removeRelays` | [RelayPool.kt:119](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:119) | never called; `changeRelays` and `closePool` cover every path that removes a relay |
-| `RelayPool.hasRelays` | [RelayPool.kt:167](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:167) | never called |
-| `RelayPool.transformWhileEventsAreIncoming` | [RelayPool.kt:482](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:482) | private, never called. Superseded by `completeOnSubscriptionEnd`, which ends a flow on EOSE/CLOSED/NEG-ERR rather than on "the last message was not an event" |
-| the commented-out publish gate | [RelayPool.kt:543-556](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:543) | the only thing keeping `import kotlinx.coroutines.flow.transform` ([:30](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:30)) alive |
+| `RelayPool.removeRelays` | [RelayPool.kt:123](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:123) | never called; `changeRelays` and `closePool` cover every path that removes a relay |
+| `RelayPool.hasRelays` | [RelayPool.kt:171](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:171) | never called |
+| `RelayPool.transformWhileEventsAreIncoming` | [RelayPool.kt:486](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:486) | private, never called. Superseded by `completeOnSubscriptionEnd`, which ends a flow on EOSE/CLOSED/NEG-ERR rather than on "the last message was not an event" |
+| the commented-out publish gate | [RelayPool.kt:547-560](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:547) | the only thing keeping `import kotlinx.coroutines.flow.transform` ([:30](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelayPool.kt:30)) alive |
 | `RelaysSocketManager.clearRelayPools` | [RelaysSocketManager.kt:100](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt:100) | private, never called. Nothing tears the pool down on sign-out |
-| `RelaysSocketManager.tryConnectingToAllRelays` | [RelaysSocketManager.kt:132](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt:132) | never called; the only caller of `RelayPool.tryConnectingToRelay`, which is otherwise dead too |
-| the commented `tryConnectingToUserRelay` | [RelaysSocketManager.kt:140](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt:140) | |
+| `RelaysSocketManager.tryConnectingToAllRelays` | [RelaysSocketManager.kt:131](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt:131) | never called; the only caller of `RelayPool.tryConnectingToRelay`, which is otherwise dead too |
+| the commented `tryConnectingToUserRelay` | [RelaysSocketManager.kt:139](composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt:139) | |
 | `NostrIncomingMessage?.verifyOrThrow` | [NostrIncomingMessage.kt:59](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrIncomingMessage.kt:59) | never called. It also treats any NOTICE as a failure, which is wrong for the reason `filterByEventId` documents — a NOTICE has no subscription id and reaches every collector |
 | `String?.decodeFromJsonStringOrNull` | [CommonJson.kt:37](composeApp/src/commonMain/kotlin/press/mantra/compose/network/serialization/CommonJson.kt:37) | never called |
-| `NostrSocketClientImpl.compressMessage` | [NostrSocketClientImpl.kt:384](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:384) | already carries `@Suppress("unused")`. Outgoing compression is not a thing any relay here asks for |
+| `NostrSocketClientImpl.compressMessage` | [NostrSocketClientImpl.kt:368](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:368) | already carries `@Suppress("unused")`. Outgoing compression is not a thing any relay here asks for |
+| `DefaultNostrSocketClientFactory.create(httpClient = …)` | [NostrSocketClientFactory.kt](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientFactory.kt) | the overload taking an explicit `HttpClient` has no caller; everything goes through the interface method and `defaultSocketsHttpClient` |
 
 ### `RelaysSocketManager.userRelays` is a field that is never written
 
@@ -98,10 +102,10 @@ command with `OptimizedJsonMapper` and goes through `sendMESSAGE`.
 
 | declaration | impl |
 |---|---|
-| `sendREQ` [:37](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:37) | [:349](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:349) |
-| `sendCLOSE` [:31](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:31) | [:361](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:361) |
-| `sendCOUNT` [:33](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:33) | [:354](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:354) |
-| `sendAUTH` [:29](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:29) | [:365](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:365) |
+| `sendREQ` [:37](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:37) | [:349](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:333) |
+| `sendCLOSE` [:31](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:31) | [:361](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:345) |
+| `sendCOUNT` [:33](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:33) | [:354](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:338) |
+| `sendAUTH` [:29](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClient.kt:29) | [:365](composeApp/src/commonMain/kotlin/press/mantra/compose/network/sockets/NostrSocketClientImpl.kt:349) |
 
 Removing them also orphans `buildNostrREQMessage`, `buildNostrCOUNTMessage`,
 `buildNostrCLOSEMessage` and `buildNostrAUTHMessage` in

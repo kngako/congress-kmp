@@ -199,6 +199,41 @@ and its indexes, so two of those interleaving is a lost update — survivable wh
 a single queue was the only writer, not survivable with a live subscription
 writing alongside a backfill.
 
+## What is tested, and what is not
+
+Every failure mode in this subsystem is silent — a filter that drops messages, a
+subscription that stops being replayed, a group id that never reaches an `#h`
+tag. None of them throws, and all of them present as "some messages didn't
+arrive", later, on someone else's phone. So the tests are aimed at the decisions
+rather than at the plumbing:
+
+| file | pins |
+|---|---|
+| `RelayPoolSubscriptionTest` | retain on query, replay on reconnect, release on close, never replay negentropy, per-relay scoping — and that a live subscription keeps delivering after EOSE while a one-shot query still ends at it |
+| `LiveSubscriptionReconcileTest` | the group filter following membership: widening in place rather than reopening, dropping a left group, closing when the last one goes, collapsing churn inside the debounce, and the CLOSED/back-pressure reopen behaviour |
+| `LiveSubscriptionPlanTest` | the filter shapes, led by `since` being absent from the gift wrap filter |
+| `RelayBackPressureTest`, `ReconnectBackoffTest` | the two pure decisions: which CLOSED reasons mean "ease off", and the backoff arithmetic including the exponent clamp |
+
+They were checked by mutation rather than by passing: reintroducing a `since`,
+making EOSE terminal, dropping the `leftGroupAt` filter, removing retention from
+`query()`, reconciling by close-and-reopen, removing the debounce and removing
+the back-pressure branch each produce failures.
+
+Three things this does **not** cover, and could not without a real relay or a
+database:
+
+- **`NostrSocketClientImpl` itself.** The reconnect loop, the session-identity
+  check on teardown, and the ordered inbound emission are exercised only through
+  their extracted arithmetic. Testing them wants a fake `WebSocketSession`.
+- **Anything downstream of `saveNostrEvent`.** Indexing, gift wrap unwrapping,
+  Welcome handling and MLS decryption are Room-backed, and there is no sqlite
+  driver on the JVM test classpath (see the note in `build-verification-commands`).
+  The tests assert the event reaches the repository with the right relay and
+  level, and stop there.
+- **The app on a device.** Nothing here proves a DM lands with the chat list
+  closed; that still wants the two manual checks — send yourself a message from
+  another client, and have a second device add you to a group.
+
 ## Not done
 
 - **Connectivity changes.** A network switch mid-foreground is only noticed by
