@@ -4,11 +4,14 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import com.vitorpamplona.quartz.nip01Core.crypto.verify
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip44Encryption.Nip44
+import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.rumors.RumorAssembler
 import com.vitorpamplona.quartz.nip59Giftwrap.seals.SealedRumorEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
@@ -41,6 +44,87 @@ object MarmotDirectMessage {
         val seal: Event,
         val rumor: Event,
     )
+
+    /**
+     * What this device should do with an arriving wrap.
+     *
+     * Separated from the filing of it so the decision can be tested: the persistence it
+     * drives needs a database, which cannot be unit-tested in this project, and the
+     * decision includes the check that replaces MIP-03 for kind:1059. That check is the
+     * only thing standing between somebody else's words and being rendered as a member's
+     * own, so it is not somewhere to rely on integration testing that does not exist.
+     */
+    sealed interface Delivery {
+        /**
+         * Our own message coming back, which we cannot open -- the wrap's key was
+         * discarded at send time -- and so cannot tell apart from [Unreadable] by
+         * decryption alone. Only the MLS sender identity distinguishes them.
+         *
+         * File nothing: the row written on send holds the only copy of these words, and
+         * an unreadable line would replace them with a placeholder.
+         */
+        data object Ours : Delivery
+
+        /** Somebody else's. The group sees that it happened, and to whom. */
+        data object Unreadable : Delivery
+
+        /** Addressed to us, opened, and consistent with the leaf that sent it. */
+        data class Readable(
+            val opened: Opened,
+        ) : Delivery
+
+        /** Something is wrong with it. Drop it; do not render it as anybody's. */
+        data class Rejected(
+            val reason: String,
+        ) : Delivery
+    }
+
+    /**
+     * Decides what [wrap] is to this device, given the identity MLS says sent it.
+     *
+     * [senderIdentity] is not optional and is not read from the payload: a wrap names
+     * nobody, so the MLS frame is the only source of who sent it. Absent one there is
+     * nothing to attribute a line to and nothing to check the seal against.
+     */
+    fun classify(
+        wrap: Event,
+        me: KeyPair,
+        senderIdentity: HexKey?,
+    ): Delivery {
+        if (senderIdentity == null) {
+            return Delivery.Rejected("no MLS sender identity to attribute it to")
+        }
+
+        if (senderIdentity == me.pubKey.toHexKey()) return Delivery.Ours
+
+        val opened = open(wrap, me) ?: return Delivery.Unreadable
+
+        // The seal is the one layer the sender signs. Binding it to the leaf MLS says
+        // sent this message is what replaces MIP-03's pubkey check for kind:1059 --
+        // a verified signature bound to a leaf, rather than a plaintext field compared
+        // to one. A divergence here is somebody passing off words as another member's.
+        if (opened.seal.pubKey != senderIdentity) {
+            return Delivery.Rejected(
+                "sealed by ${opened.seal.pubKey} but sent by $senderIdentity",
+            )
+        }
+
+        if (!opened.seal.verify()) {
+            return Delivery.Rejected("the seal's signature does not verify")
+        }
+
+        if (opened.rumor.pubKey != opened.seal.pubKey) {
+            return Delivery.Rejected(
+                "rumor by ${opened.rumor.pubKey} inside a seal by ${opened.seal.pubKey}",
+            )
+        }
+
+        if (opened.rumor.kind != ChatMessageEvent.KIND) {
+            return Delivery.Rejected("unsupported rumor kind ${opened.rumor.kind}")
+        }
+
+        return Delivery.Readable(opened)
+    }
 
     /**
      * Builds the payload for a direct message to [recipientPublicKey].
