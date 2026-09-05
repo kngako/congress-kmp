@@ -355,13 +355,22 @@ class RelayPool(
      * Re-retained too, so a reconnect replays the new filter rather than the old one.
      */
     suspend fun updateLiveSubscription(reqCommand: ReqCmd, relayUrl: String) {
-        val nostrSocketClient = socketClientFor(relayUrl)
-            ?: throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
-
         val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
 
+        // Retained first, and unconditionally. Recording the new filter is what matters: if
+        // the send below cannot happen the reconnect replays this, whereas a throw here would
+        // leave the OLD filter retained and a reconnect would restore a subscription the
+        // caller has already moved on from.
         retainRequest(relayUrl = relayUrl, subId = reqCommand.subId, message = filterRequest)
-        nostrSocketClient.sendMESSAGE(filterRequest)
+
+        val nostrSocketClient = socketClientFor(relayUrl)
+        if (nostrSocketClient == null) {
+            logger.w("No socket for $relayUrl; ${reqCommand.subId} will be sent when one opens")
+            return
+        }
+
+        runCatching { nostrSocketClient.sendMESSAGE(filterRequest) }
+            .onFailure { logger.w(throwable = it) { "Failed to update ${reqCommand.subId} on $relayUrl; retained for reconnect" } }
     }
 
     /** Ends a live subscription: forgets the retained REQ and tells the relay to stop. */

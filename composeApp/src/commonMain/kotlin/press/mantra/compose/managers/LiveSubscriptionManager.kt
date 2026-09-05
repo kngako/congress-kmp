@@ -1,6 +1,7 @@
 package press.mantra.compose.managers
 
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -8,12 +9,19 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -23,8 +31,10 @@ import press.mantra.compose.network.relays.RelaysSocketManager
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
 import press.mantra.compose.nostr.Relays
+import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
-import kotlin.time.Duration
+import kotlin.concurrent.Volatile
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -37,6 +47,11 @@ import kotlin.time.Duration.Companion.seconds
  * subscription is closed — which is structurally incapable of delivering a message that
  * arrives one second after EOSE.
  *
+ * Two subscriptions, on every DM relay:
+ *  - [GIFT_WRAP_SUB_ID], kind 1059 p-tagged to us: direct messages, and the Marmot Welcome
+ *    events that make us a member of a group.
+ *  - [GROUP_SUB_ID_PREFIX]`<n>`, kind 445 h-tagged with the groups we belong to, in chunks.
+ *
  * This deliberately does NOT share `SynchronizationViewModel`'s subscription semaphore. That
  * budget is four permits across all relays, sized for requests that finish; a subscription
  * that never finishes would hold one forever and permanently halve the backfill throughput.
@@ -46,6 +61,7 @@ import kotlin.time.Duration.Companion.seconds
 class LiveSubscriptionManager(
     private val relaysSocketManager: RelaysSocketManager,
     private val nostrRepository: NostrRepository,
+    private val chatRepository: ChatRepository,
 ) {
     private val logger = Logger.withTag(TAG)
 
@@ -59,8 +75,19 @@ class LiveSubscriptionManager(
          */
         const val GIFT_WRAP_SUB_ID = "live-giftwrap"
 
+        const val GROUP_SUB_ID_PREFIX = "live-groups-"
+
         /**
-         * How much history to ask for when the subscription is opened.
+         * Group ids per `#h` filter. One subscription per group would be simpler, but every
+         * Marmot group here lives on the same DM relay set, so carrying many ids in one
+         * filter costs a fraction of the subscriptions. Conservative rather than maximal:
+         * relays cap the size of a filter's tag arrays, and a chunk that is refused is a
+         * chunk of conversations that go quiet.
+         */
+        private const val MAX_GROUPS_PER_SUBSCRIPTION = 100
+
+        /**
+         * How much history to ask for when a subscription is opened.
          *
          * NIP-01 scopes `limit` to the initial query — the stored events a relay sends before
          * EOSE — and explicitly not to the stream that follows. So this bounds what a
@@ -69,10 +96,33 @@ class LiveSubscriptionManager(
          */
         private const val INITIAL_HISTORY_LIMIT = 100
 
+        /**
+         * A group chunk covers up to [MAX_GROUPS_PER_SUBSCRIPTION] conversations at once, so
+         * the same initial window has to stretch much further than the gift wrap one.
+         */
+        private const val INITIAL_GROUP_HISTORY_LIMIT = 500
+
+        /**
+         * Joining a group writes the room, its participants and placeholder profiles in quick
+         * succession, each of which re-emits the room list. Without this the group filter
+         * would be re-sent several times per join.
+         */
+        private val GROUP_CHANGE_DEBOUNCE = 500.milliseconds
+
         private val INITIAL_REOPEN_DELAY = 5.seconds
 
         private val MAX_REOPEN_DELAY = 5.minutes
     }
+
+    /**
+     * The group ids each `live-groups-<n>` subscription is currently responsible for.
+     *
+     * Read by the subscription coroutines when they (re-)open, written by the single coroutine
+     * collecting the room list. Replaced wholesale rather than mutated, so a reader always
+     * sees a coherent chunking.
+     */
+    @Volatile
+    private var groupIdChunks: List<List<HexKey>> = emptyList()
 
     /**
      * Runs until cancelled. Cancellation is the only exit: the caller scopes this to the
@@ -88,11 +138,13 @@ class LiveSubscriptionManager(
                 runLiveSubscription(
                     subId = GIFT_WRAP_SUB_ID,
                     relayUrl = relay.url,
-                    filters = listOf(giftWrapFilter(publicKey)),
+                    filters = { listOf(giftWrapFilter(publicKey)) },
                     keyPair = keyPair,
                 )
             }
         }
+
+        launch(Dispatchers.IO) { followGroupMembership(publicKey = publicKey, keyPair = keyPair) }
     }
 
     /**
@@ -112,6 +164,132 @@ class LiveSubscriptionManager(
     )
 
     /**
+     * Marmot group messages for a chunk of the groups we belong to.
+     *
+     * Unlike gift wraps these carry honest timestamps (`MarmotOutboundDao` stamps them with
+     * `TimeUtils.now()`), so a `since` watermark would be safe here. It is still not used:
+     * `limit` already bounds the initial burst, and a watermark would have to be recomputed
+     * every time the chunk's membership changed.
+     */
+    private fun groupFilter(groupIds: List<HexKey>) = Filter(
+        kinds = listOf(GroupEvent.KIND),
+        tags = mapOf("h" to groupIds),
+        limit = INITIAL_GROUP_HISTORY_LIMIT,
+    )
+
+    /**
+     * Keeps the group subscriptions matching the groups we are actually in.
+     *
+     * Derived from the room list rather than wired into the places a group is joined, because
+     * a group id can appear four ways and only one of them is somewhere anyone would think to
+     * call a subscribe function: we create a group, we are added to one (a Welcome processed
+     * deep inside `NostrDao.storeNostrEvent`), membership shifts under us via a commit, or we
+     * leave. Observing the table catches all four.
+     *
+     * It also closes the loop: a Welcome arrives on the gift wrap subscription above, a
+     * ChatRoom row is written, this flow re-emits, and the group filter widens — so the first
+     * message in a group we were just added to arrives without anyone opening a chat.
+     */
+    @OptIn(FlowPreview::class)
+    private suspend fun followGroupMembership(publicKey: HexKey, keyPair: KeyPair): Unit = coroutineScope {
+        val subscriptions = mutableMapOf<String, Job>()
+
+        chatRepository.observeChatRoomListByPublicKey(publicKey)
+            .map { rooms ->
+                rooms
+                    // An MLS group is a room with group state; a NIP-17 room has none and is
+                    // served by the gift wrap subscription instead. A room we have left or
+                    // deleted keeps its history locally but must stop pulling new messages.
+                    .filter { it.chatRoom.mlsGroupState != null }
+                    .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
+                    .map { it.chatRoom.id }
+                    .sorted()
+            }
+            // Sorted first so that the same membership in a different row order is the same
+            // value, and a re-emit that changes nothing costs nothing.
+            .distinctUntilChanged()
+            .debounce(GROUP_CHANGE_DEBOUNCE)
+            .collect { groupIds ->
+                reconcileGroupSubscriptions(
+                    groupIds = groupIds,
+                    subscriptions = subscriptions,
+                    keyPair = keyPair,
+                    scope = this,
+                )
+            }
+    }
+
+    /**
+     * Brings the open group subscriptions in line with [groupIds].
+     *
+     * A chunk that already has a subscription is updated in place — the relay replaces that
+     * subscription's filter and the collector never notices — so a new group does not
+     * interrupt delivery on the groups that were already being watched. Chunks that no longer
+     * exist have their coroutine cancelled, which sends the CLOSE from its `finally`.
+     */
+    private suspend fun reconcileGroupSubscriptions(
+        groupIds: List<HexKey>,
+        subscriptions: MutableMap<String, Job>,
+        keyPair: KeyPair,
+        scope: CoroutineScope,
+    ) {
+        val chunks = groupIds.chunked(MAX_GROUPS_PER_SUBSCRIPTION)
+        groupIdChunks = chunks
+
+        logger.i("Live group membership: ${groupIds.size} group(s) over ${chunks.size} subscription(s)")
+
+        Relays.DefaultDMRelayList.forEach { relay ->
+            val relayUrl = relay.url
+
+            chunks.forEachIndexed { index, chunk ->
+                val subId = "$GROUP_SUB_ID_PREFIX$index"
+                val key = subscriptionKey(relayUrl = relayUrl, subId = subId)
+
+                if (subscriptions[key]?.isActive == true) {
+                    relaysSocketManager.updateLiveSubscription(
+                        reqCommand = ReqCmd(subId = subId, filters = listOf(groupFilter(chunk))),
+                        relayUrl = relayUrl,
+                    )
+                } else {
+                    subscriptions[key] = scope.launch(Dispatchers.IO) {
+                        runLiveSubscription(
+                            subId = subId,
+                            relayUrl = relayUrl,
+                            // Read at every open rather than captured, so a subscription that
+                            // has to be re-opened after a CLOSED comes back with the current
+                            // membership rather than the membership it was created with.
+                            filters = {
+                                groupIdChunks.getOrNull(index)
+                                    ?.takeIf { it.isNotEmpty() }
+                                    ?.let { listOf(groupFilter(it)) }
+                                    .orEmpty()
+                            },
+                            keyPair = keyPair,
+                        )
+                    }
+                }
+            }
+
+            // Membership shrank far enough to need fewer subscriptions.
+            subscriptions.keys
+                .filter { it.startsWith("$relayUrl|$GROUP_SUB_ID_PREFIX") }
+                .filter { subscriptionIndex(it) >= chunks.size }
+                .forEach { key ->
+                    logger.i("Closing $key: no groups left in that chunk")
+                    // Joined, not just cancelled. The CLOSE is sent from that coroutine's
+                    // finally, so returning before it lands would let a later reconcile open a
+                    // subscription on the same id that the old one then closes out from under.
+                    subscriptions.remove(key)?.cancelAndJoin()
+                }
+        }
+    }
+
+    private fun subscriptionKey(relayUrl: String, subId: String) = "$relayUrl|$subId"
+
+    private fun subscriptionIndex(key: String) =
+        key.substringAfterLast(GROUP_SUB_ID_PREFIX).toIntOrNull() ?: Int.MAX_VALUE
+
+    /**
      * Keeps one subscription open on one relay, re-opening it if the relay ends it.
      *
      * A socket that merely drops needs nothing from here: the pool replays the REQ on
@@ -122,18 +300,26 @@ class LiveSubscriptionManager(
     private suspend fun runLiveSubscription(
         subId: String,
         relayUrl: String,
-        filters: List<Filter>,
+        filters: () -> List<Filter>,
         keyPair: KeyPair,
     ) {
         var reopenDelay = INITIAL_REOPEN_DELAY
 
         try {
             while (currentCoroutineContext().isActive) {
+                val currentFilters = filters()
+                if (currentFilters.isEmpty()) {
+                    // Nothing to ask for right now — a group chunk emptied out and the
+                    // reconcile that will cancel this coroutine has not run yet.
+                    delay(INITIAL_REOPEN_DELAY)
+                    continue
+                }
+
                 val end = try {
                     collectUntilClosed(
                         subId = subId,
                         relayUrl = relayUrl,
-                        filters = filters,
+                        filters = currentFilters,
                         keyPair = keyPair,
                     )
                 } catch (error: CancellationException) {

@@ -80,6 +80,7 @@ class SynchronizationViewModel(
     private val liveSubscriptionManager = LiveSubscriptionManager(
         relaysSocketManager = relaysSocketManager,
         nostrRepository = nostrRepository,
+        chatRepository = chatRepository,
     )
 
     companion object {
