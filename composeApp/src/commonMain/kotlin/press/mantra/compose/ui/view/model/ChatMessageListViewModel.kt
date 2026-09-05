@@ -123,15 +123,19 @@ class ChatMessageListViewModel(
                     val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
                     val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
-                        // Sync messages from this relay...
+                        // Refresh our own inbox. A wrap names only its recipient, so
+                        // "the messages in this conversation" is not something a filter
+                        // can ask for, and the recipient's relays hold their mail, not
+                        // ours. p-tagging the peer here fetched other people's wraps,
+                        // which no key of ours can open.
                         Pair(
-                            chatMessageRelayListEvent.relays(),
+                            Relays.DefaultDMRelayList,
                             SynchronizationFilter(
                                 kinds = arrayOf(
                                     GiftWrapEvent.KIND,
                                 ),
                                 tags = mapOf(
-                                    Pair("p", listOf(recipients.participant.participantPublicKey))
+                                    Pair("p", listOf(localChatRoom.chatRoom.userPublicKey))
                                 ),
                                 limit = 50
                             )
@@ -166,7 +170,7 @@ class ChatMessageListViewModel(
                             purpose = if (isReceiverChatMessageRelayListMissing.value) {
                                 "chat-message-relays"
                             } else {
-                                "sent-messages"
+                                "chat"
                             },
                             synchronizationFilter = relayAndSynchronizationFilter.second,
                             relayURL = normalizedRelayUrl.url,
