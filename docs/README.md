@@ -10,6 +10,7 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
 | [mls-skipped-keys.md](./mls-skipped-keys.md) | why a group event that arrives a moment late is dropped for good, which flows trigger it, the quartz fix, and the partial mitigation in this app |
+| [jvm-target.md](./jvm-target.md) | what desktop support would cost, phased — why the native chain is already done, why an empty source set in our phoenix fork is the real blocker, and why DAO tests do not need any of it |
 
 Start with the ceremony if you are new to this area; the other two both assume it.
 Read the skipped-keys note before debugging any "the other device never got it"
