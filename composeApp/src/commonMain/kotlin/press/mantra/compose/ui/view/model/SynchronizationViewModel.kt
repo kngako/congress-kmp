@@ -8,10 +8,13 @@ import press.mantra.compose.database.model.BroadcastNostrEventRequest
 import press.mantra.compose.database.model.SynchronizeNostrEventRequest
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.network.dto.toRelayDTO
+import press.mantra.compose.AppLifecycle
+import press.mantra.compose.managers.LiveSubscriptionManager
 import press.mantra.compose.network.relays.RelayPool
 import press.mantra.compose.network.relays.RelaysSocketManager
+import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
-import press.mantra.compose.network.sockets.NostrSocketClientFactory
+import press.mantra.compose.network.sockets.DefaultNostrSocketClientFactory
 import press.mantra.compose.repository.CachingImportRepository
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -65,9 +68,21 @@ class SynchronizationViewModel(
 
     val relaysSocketManager = RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
-        nostrSocketClientFactory = NostrSocketClientFactory,
+        nostrSocketClientFactory = DefaultNostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
+    )
+
+    /**
+     * The chat subscriptions that stay open while a wallet is active. Built here because it
+     * has to share this class's RelaysSocketManager — a second one would mean a second
+     * RelayPool and a duplicate socket per relay.
+     */
+    private val liveSubscriptionManager = LiveSubscriptionManager(
+        relaysSocketManager = relaysSocketManager,
+        nostrRepository = nostrRepository,
+        chatRepository = chatRepository,
+        isForeground = AppLifecycle.isForeground,
     )
 
     companion object {
@@ -150,6 +165,10 @@ class SynchronizationViewModel(
      * delivered to every collector on the socket, logged it once per open collector.
      * Requests queue on this semaphore instead, so the backlog still drains, just not
      * all at once.
+     *
+     * Live subscriptions are deliberately outside this budget (see LiveSubscriptionManager):
+     * a subscription that never finishes would hold a permit forever. The two have to be
+     * read together against what a relay tolerates per connection, not separately.
      */
     private val subscriptionSlots = Semaphore(MAX_CONCURRENT_SUBSCRIPTIONS)
 
@@ -165,21 +184,6 @@ class SynchronizationViewModel(
         } catch (e: Throwable) {
             logger.e("Synchronization step failed: $what", e)
         }
-    }
-
-    /**
-     * Whether a relay's CLOSED/NOTICE reason means "you are asking for too much"
-     * rather than "I cannot serve this". NIP-01 gives `rate-limited:` as the
-     * machine-readable prefix; the free-text forms are what relays actually send.
-     */
-    private fun isBackPressure(reason: String?): Boolean {
-        val text = reason?.lowercase() ?: return false
-
-        return text.startsWith("rate-limited") ||
-            text.contains("rate limit") ||
-            text.contains("too many") ||
-            text.contains("concurrent") ||
-            text.contains("slow down")
     }
 
     init {
@@ -213,6 +217,10 @@ class SynchronizationViewModel(
                         launch(Dispatchers.IO) { observePendingBroadcastNostrEventRequests(keyPair) }
                         launch(Dispatchers.IO) { observePendingSyncNostrEventRequests(keyPair) }
                         launch(Dispatchers.IO) { observePendingNegentropySynchronizeRequests(keyPair) }
+                        // Runs until cancelled rather than draining a queue, but it belongs
+                        // here for the same reason the pumps do: it needs the active wallet's
+                        // key pair, and a wallet switch must tear it down.
+                        launch(Dispatchers.IO) { liveSubscriptionManager.observe(keyPair) }
                     }
                 }
             }
@@ -512,7 +520,7 @@ class SynchronizationViewModel(
                                             // is telling us to ease off: answering back-pressure
                                             // by opening another subscription is what turned one
                                             // refusal into a flood of them.
-                                            if (isBackPressure(nostrIncomingMessage.message)) {
+                                            if (isRelayBackPressure(nostrIncomingMessage.message)) {
                                                 logger.w("Relay ${negentropySynchronizeRequest.relayURL} is rate limiting; not retrying this request")
                                             } else if (negentropySynchronizeRequest.purpose != "mlsMessages") {
                                                 nostrRepository.queueSynchronizeNostrEvent(

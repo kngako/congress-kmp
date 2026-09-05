@@ -115,12 +115,40 @@ object SharedKeyDerivation {
             ?.firstOrNull { it.trimStart().startsWith(PATH_MARKER) }
             ?: return null
 
-        val path = line.trimStart().removePrefix(PATH_MARKER).trim()
+        return parsePathString(line.trimStart().removePrefix(PATH_MARKER).trim())
+    }
+
+    /** The indices [tweakScalar] can actually tell apart: a BIP32-shaped uint32. */
+    private val INDEX_RANGE = 0L..0xFFFFFFFFL
+
+    /**
+     * A bare `m/9420/0/0` as indices, or null if it is not one.
+     *
+     * Split out from [parsePath] because a path also travels on its own, in a
+     * `GroupKeyStateEvent`'s [press.mantra.compose.nostr.frost.tags.FrostDerivationPathTag],
+     * where there is no description to dig it out of. Both spellings have to
+     * agree on what a path is, so there is only one reader of one.
+     *
+     * Indices outside a uint32 are rejected, which matters because a path now
+     * arrives from the wire rather than only from [MARMOT_ADMIN_GROUP_PATH].
+     * [tweakScalar] serialises an index as its low four bytes, so without this
+     * `m/4294967296/0/0` walks to the same key as `m/0/0/0` and a room could be
+     * described by a path nobody would write. Nothing is stolen by that -- a
+     * state still has to derive the room it names -- but it would make
+     * [formatPath] a lossy round trip and leave two spellings of one path for
+     * any later code to disagree over. Negative indices go the same way: they
+     * are not a thing a path has.
+     */
+    fun parsePathString(path: String): List<Long>? {
         if (!path.startsWith("m/")) return null
 
         return path.removePrefix("m/")
             .split("/")
-            .map { segment -> segment.toLongOrNull() ?: return null }
+            .map { segment ->
+                val index = segment.toLongOrNull() ?: return null
+                if (index !in INDEX_RANGE) return null
+                index
+            }
             .takeIf { it.isNotEmpty() }
     }
 

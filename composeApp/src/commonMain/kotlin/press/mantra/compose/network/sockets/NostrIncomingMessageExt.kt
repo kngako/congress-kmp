@@ -29,6 +29,19 @@ fun NostrIncomingMessage.isTerminalFor(id: String): Boolean =
         (this is NostrIncomingMessage.NegentropyError && subscriptionId == id)
 
 /**
+ * True for the message that ends a subscription meant to stay OPEN.
+ *
+ * Only CLOSED. EOSE emphatically does not end one: it is the boundary between the stored
+ * history a relay had and the live tail it will now stream, and treating it as an end is
+ * exactly what makes a subscription a poll. Compare [isTerminalFor], which is the rule for a
+ * one-shot request, where EOSE is the whole point.
+ *
+ * No subscription-id argument, unlike [isTerminalFor]: a live collector is already filtered by
+ * id before it gets here.
+ */
+fun NostrIncomingMessage.endsLiveSubscription(): Boolean = this is NostrIncomingMessage.ClosedMessage
+
+/**
  * Completes the flow once the subscription is over, emitting the terminal
  * message first so callers still see the EOSE/CLOSED/NEG-ERR that ended it.
  *

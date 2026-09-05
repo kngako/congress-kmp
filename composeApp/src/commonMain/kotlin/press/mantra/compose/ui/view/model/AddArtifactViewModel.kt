@@ -19,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.view.state.AddArtifactUIState
 
@@ -30,6 +32,7 @@ class AddArtifactViewModel(
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val mantraRepository: MantraRepository,
+    val frostSigningRepository: FrostSigningRepository,
 ): ViewModel() {
 
     var addArtifactUIState: AddArtifactUIState by mutableStateOf(initialAddArtifactUIState)
@@ -52,11 +55,25 @@ class AddArtifactViewModel(
                 AddArtifactUIState.Loaded(
                     localChatRoom = localChatRoom,
                     dialects = mantraRepository.getDialects(localChatRoom.chatRoom.id),
+                    canSign = frostSigningRepository.canSign(chatRoomId),
                 )
             }
         }
     }
 
+    /**
+     * Asks the group to sign an artifact into its library.
+     *
+     * The artifact is not created here and does not exist yet. What goes out is
+     * a proposal to sign it, and the artifact appears -- on every member's
+     * device at once, authored by the group's shared key rather than by whoever
+     * typed it -- when enough members have signed.
+     *
+     * That is the difference from submitting one. A submission says "I am
+     * putting this in front of the group" and the group's only recourse
+     * afterwards is social. A signature is the group saying it, and it takes a
+     * quorum to say. A library is the group's, so the second is the honest one.
+     */
     fun addArtifact(
         localChatRoom: LocalChatRoom,
         nameField: TextFieldState,
@@ -65,57 +82,65 @@ class AddArtifactViewModel(
         dialectId: HexKey?,
         visibility: String = MantraRepository.DEFAULT_VISIBILITY,
         license: String = MantraRepository.DEFAULT_LICENSE,
-        onSuccess: (artifactId: String) -> Unit,
+        onSuccess: (sessionId: String) -> Unit,
         onFailure: () -> Unit
     ) {
-        localChatRoom.chatRoom.toMlsGroup()?.let { mlsGroup ->
-            val name = nameField.text.toString()
-            val url = urlField.text.toString()
-            val versionLabel = versionLabelField.text.toString()
+        val name = nameField.text.toString()
+        val url = urlField.text.toString()
+        val versionLabel = versionLabelField.text.toString()
 
-            // addArtifact requires an existing source dialect; they are defined
-            // from the group detail screen, not here.
-            if (name.isBlank() || url.isBlank() || versionLabel.isBlank() || dialectId.isNullOrBlank()) {
-                onFailure.invoke()
-                return
-            }
+        // An artifact requires an existing source dialect; they are signed into
+        // existence from the group detail screen, not here.
+        if (name.isBlank() || url.isBlank() || versionLabel.isBlank() || dialectId.isNullOrBlank()) {
+            onFailure.invoke()
+            return
+        }
 
-            // Guard against double submits from repeated FAB taps.
-            if (isActionPending.value) return
-            isActionPending.value = true
+        // Guard against double submits from repeated FAB taps.
+        if (isActionPending.value) return
+        isActionPending.value = true
 
-            viewModelScope.launch(Dispatchers.IO) {
-                val artifact = runCatching {
-                    mantraRepository.addArtifact(
-                        localChatRoom = localChatRoom,
-                        name = name,
-                        url = url,
-                        versionLabel = versionLabel,
-                        dialectId = dialectId,
-                        userPublicKey = activeUserPublicKey,
-                        visibility = visibility,
-                        license = license,
-                    )
-                }.onFailure { error ->
-                    logger.e("Failed to add artifact", error)
-                }.getOrNull()
+        viewModelScope.launch(Dispatchers.IO) {
+            // The version label rides on the artifact rather than following it as
+            // a second event. The group signs the artifact; a first version
+            // proposed on its own would cost a second quorum for one form, and
+            // every device derives the same first version from what was signed.
+            val artifactEventTemplate = ArtifactEvent.build(
+                name = name,
+                url = url,
+                visibility = visibility,
+                license = license,
+                dialectId = dialectId,
+                versionLabel = versionLabel,
+            )
 
-                if (artifact != null) {
-                    nameField.clearText()
-                    urlField.clearText()
-                    versionLabelField.clearText()
+            val session = runCatching {
+                frostSigningRepository.proposeSigning(
+                    localChatRoom = localChatRoom,
+                    userPublicKey = activeUserPublicKey,
+                    kind = artifactEventTemplate.kind,
+                    tags = artifactEventTemplate.tags,
+                    content = artifactEventTemplate.content,
+                )
+            }.onFailure { error ->
+                logger.e("Failed to propose an artifact for signing", error)
+            }.getOrNull()
 
-                    viewModelScope.launch(Dispatchers.Main) {
-                        onSuccess.invoke(artifact.id)
-                    }
-                } else {
-                    viewModelScope.launch(Dispatchers.Main) {
-                        onFailure.invoke()
-                    }
+            if (session != null) {
+                nameField.clearText()
+                urlField.clearText()
+                versionLabelField.clearText()
+
+                viewModelScope.launch(Dispatchers.Main) {
+                    onSuccess.invoke(session.id)
                 }
-
-                isActionPending.value = false
+            } else {
+                viewModelScope.launch(Dispatchers.Main) {
+                    onFailure.invoke()
+                }
             }
+
+            isActionPending.value = false
         }
     }
 
@@ -129,7 +154,8 @@ class AddArtifactViewModel(
             initialAddArtifactUIState: AddArtifactUIState = AddArtifactUIState.Loading,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
-            mantraRepository: MantraRepository
+            mantraRepository: MantraRepository,
+            frostSigningRepository: FrostSigningRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AddArtifactViewModel(
@@ -139,7 +165,8 @@ class AddArtifactViewModel(
                     initialAddArtifactUIState = initialAddArtifactUIState,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
-                    mantraRepository = mantraRepository
+                    mantraRepository = mantraRepository,
+                    frostSigningRepository = frostSigningRepository
                 )
             }
         }

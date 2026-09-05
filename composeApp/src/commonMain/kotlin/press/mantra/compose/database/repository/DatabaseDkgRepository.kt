@@ -3,9 +3,11 @@ package press.mantra.compose.database.repository
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.managers.ChillDkgRitualManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.repository.DkgRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -47,6 +49,31 @@ class DatabaseDkgRepository(
 
     override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? =
         ChillDkgRitualManager.pendingApproval(database, session)
+
+    override suspend fun announceGroupKeyState(
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        session: DkgSession
+    ): GroupKeyState? {
+        val thresholdPublicKey = session.thresholdPublicKey ?: return null
+
+        return try {
+            GroupKeyStateManager.announce(
+                database = database,
+                chatRoomId = chatRoomId,
+                userPublicKey = userPublicKey,
+                dkgSessionId = session.id,
+                thresholdPublicKey = thresholdPublicKey
+            )
+        } catch (e: Throwable) {
+            // The room not deriving from the key it is about to announce is a
+            // bug rather than a condition, but it is not worth failing the room
+            // over: the group still has a working chat, and signing simply falls
+            // back to the rederivation scan it used before there was a state.
+            logger.e("Error announcing the key state for $chatRoomId", e)
+            null
+        }
+    }
 
     override suspend fun approve(
         localChatRoom: LocalChatRoom,

@@ -26,6 +26,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -463,6 +464,19 @@ object FrostSigningManager {
             ?: return
 
         try {
+            // A signature the group has already made settles this session whether
+            // or not its owner ever answered: a t-of-n key does not need everybody,
+            // so a quorum can finish while one member's phone is still in a pocket.
+            // Ahead of the gate below because that gate is about keeping this
+            // device's own material off the wire, and finishing puts none of it
+            // there -- while going on to ask would be asking for a decision that
+            // can no longer change anything, and would let a late "don't sign"
+            // abandon a signature that exists.
+            if (session.signature != null) {
+                complete(database, session)
+                return
+            }
+
             // Nothing of this device's own goes out before its owner has said so.
             // Returns rather than throws: the session is not failing, it is waiting
             // on a person, and everything received stays stored so it resumes the
@@ -579,43 +593,7 @@ object FrostSigningManager {
                 announceStep(database, session, FrostSigningEvents.SIGNATURE, session.userPublicKey)
             }
 
-            val signature = session.signature ?: return
-
-            // The payoff: a signature that verifies is one the group made, whoever
-            // relayed it. Checking rather than trusting is what keeps a faulty or
-            // dishonest coordinator from passing off something that will be
-            // rejected by every relay it reaches.
-            val signedEvent = signedEvent(session, signature)
-            val verified = Nip01Crypto.verify(
-                signature = signature.hexToByteArray(),
-                hash = session.eventId.hexToByteArray(),
-                pubKey = signedEvent.pubKey.hexToByteArray()
-            )
-            if (!verified) {
-                throw IllegalStateException("The aggregated signature does not verify against ${session.eventId}")
-            }
-
-            update(database, session) { it.copy(stage = FrostSigningStage.COMPLETE) }
-
-            // A signature exists to be used. Every device has the event and the
-            // signature by now, so each applies the result itself rather than
-            // waiting to be sent something it can already build -- the same
-            // reasoning the transcript lines are written on. Nothing goes on the
-            // wire: a signed event authored by the threshold key cannot travel as
-            // an inner event anyway, because the outbound pipeline re-authors
-            // rumors as their sender and would strip the group's signature off.
-            applySignedEvent(database, session, signedEvent)
-
-            announce(
-                database = database,
-                session = session,
-                messageType = ChatMessage.TYPE_FROST_COMPLETE,
-                content = "The group signed the event. It took ${session.threshold} of " +
-                    "${session.participantCount} members.",
-                actor = session.coordinatorPublicKey
-            )
-
-            logger.i("Signing session $sessionId complete")
+            complete(database, session)
         } catch (e: CancellationException) {
             // The sync was torn down mid-step, which says nothing about the session.
             throw e
@@ -630,6 +608,54 @@ object FrostSigningManager {
                 content = e.message ?: "Signing failed"
             )
         }
+    }
+
+    /**
+     * Verifies the group's signature, uses the event, and closes the session.
+     *
+     * The payoff: a signature that verifies is one the group made, whoever
+     * relayed it. Checking rather than trusting is what keeps a faulty or
+     * dishonest coordinator from passing off something that will be rejected by
+     * every relay it reaches.
+     *
+     * Reached only with the session still open -- [advance] returns above this
+     * on a settled one -- so the milestone is written once by construction,
+     * like every other line in the transcript.
+     */
+    private suspend fun complete(database: MantraDatabase, session: FrostSigningSession) {
+        val signature = session.signature ?: return
+
+        val signedEvent = signedEvent(session, signature)
+        val verified = Nip01Crypto.verify(
+            signature = signature.hexToByteArray(),
+            hash = session.eventId.hexToByteArray(),
+            pubKey = signedEvent.pubKey.hexToByteArray()
+        )
+        if (!verified) {
+            throw IllegalStateException("The aggregated signature does not verify against ${session.eventId}")
+        }
+
+        update(database, session) { it.copy(stage = FrostSigningStage.COMPLETE) }
+
+        // A signature exists to be used. Every device has the event and the
+        // signature by now, so each applies the result itself rather than
+        // waiting to be sent something it can already build -- the same
+        // reasoning the transcript lines are written on. Nothing goes on the
+        // wire: a signed event authored by the threshold key cannot travel as
+        // an inner event anyway, because the outbound pipeline re-authors
+        // rumors as their sender and would strip the group's signature off.
+        applySignedEvent(database, session, signedEvent)
+
+        announce(
+            database = database,
+            session = session,
+            messageType = ChatMessage.TYPE_FROST_COMPLETE,
+            content = "The group signed the event. It took ${session.threshold} of " +
+                "${session.participantCount} members.",
+            actor = session.coordinatorPublicKey
+        )
+
+        logger.i("Signing session ${session.id} complete")
     }
 
     /**
@@ -789,16 +815,32 @@ object FrostSigningManager {
      * to be outside of -- while a group event needs an MLS one, so the two
      * cannot be the same room.
      *
-     * They are still bound together, and by construction rather than by a
-     * column: the #admins room's id *is* the key, derived from it by
-     * [SharedKeyDerivation.marmotGroupId]. Rederiving is what finds the key
-     * here, which means a room cannot be pointed at a key it was not derived
-     * from.
+     * They are bound together by the room's [GroupKeyState]: the announcement
+     * the room opened with, naming the ceremony behind it. That is a lookup
+     * rather than a search, and it carries the derivation path, so a room
+     * derived anywhere other than [SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH]
+     * is findable at all -- which the rederivation below cannot manage, since it
+     * can only rederive at the one path the constant names.
      *
-     * Falls back to a ceremony held in this very room, which is not how the app
-     * wires things today but costs one lookup to keep honest.
+     * The state buys none of its authority from being written down. It is only
+     * ever stored having rederived the room it describes, so what actually binds
+     * a room to a key is still that the room's id *is* the key, and a room still
+     * cannot be pointed at a key it was not derived from.
+     *
+     * Two fallbacks behind it, both for rooms that predate the table: the
+     * original scan over every ceremony this device holds a share for, and then
+     * a ceremony held in this very room, which is not how the app wires things
+     * today but costs one lookup to keep honest.
      */
     suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
+        GroupKeyStateManager.keyStateFor(database, chatRoomId)?.let { state ->
+            database.dkgSessionDao().getSessionById(state.dkgSessionId)?.takeIf { key ->
+                key.stage == DkgRitualStage.COMPLETE &&
+                    key.secretShare != null &&
+                    key.thresholdPublicKey == state.thresholdPublicKey
+            }?.let { return it }
+        }
+
         database.dkgSessionDao().getKeyHoldingSessions().firstOrNull { session ->
             session.stage == DkgRitualStage.COMPLETE &&
                 session.thresholdPublicKey?.let {
@@ -956,6 +998,12 @@ object FrostSigningManager {
         if (session.stage == FrostSigningStage.COMPLETE || session.stage == FrostSigningStage.FAILED) {
             return false
         }
+
+        // The group signed it without needing this member, and [advance] closes
+        // the session on its next pass without asking them anything. Offering the
+        // decision anyway would be offering two bad answers: a nonce nobody is
+        // waiting for, or a refusal that abandons a signature already made.
+        if (session.signature != null) return false
 
         return session.signApprovedAt == null
     }

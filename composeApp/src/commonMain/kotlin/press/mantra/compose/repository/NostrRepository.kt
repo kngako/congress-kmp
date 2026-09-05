@@ -107,6 +107,23 @@ interface NostrRepository {
         activeKeyPair: KeyPair
     )
 
+    /**
+     * Save a nostrEvent that arrived on a subscription rather than in answer to a queued
+     * request.
+     *
+     * The other two overloads take the request row an event was fetched for, because they
+     * also have to record which request produced it and flip that row to "processed". A
+     * live subscription has no row and never finishes, so it carries the relay and level
+     * itself.
+     */
+    suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        relayURL: String,
+        synchronizationRelayURLs: List<String>,
+        level: Int,
+        activeKeyPair: KeyPair
+    )
+
     suspend fun queueSynchronizeNostrEvent(
         synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>,
     )
@@ -275,6 +292,16 @@ interface NostrRepository {
                 nostrEvent: NostrEvent,
                 negentropySynchronizeRequest: NegentropySynchronizeRequest,
                 synchronizationRelayURLs: List<String>,
+                activeKeyPair: KeyPair
+            ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun saveNostrEvent(
+                nostrEvent: NostrEvent,
+                relayURL: String,
+                synchronizationRelayURLs: List<String>,
+                level: Int,
                 activeKeyPair: KeyPair
             ) {
                 TODO("Not yet implemented")

@@ -131,28 +131,6 @@ class DatabaseMantraRepository(
         )
     }
 
-    override suspend fun addArtifact(
-        localChatRoom: LocalChatRoom,
-        name: String,
-        url: String,
-        versionLabel: String,
-        dialectId: HexKey,
-        userPublicKey: HexKey,
-        visibility: String,
-        license: String,
-    ): MantraArtifact? {
-        return database.mantraDao().addArtifact(
-            localChatRoom = localChatRoom,
-            name = name,
-            url = url,
-            versionLabel = versionLabel,
-            dialectId = dialectId,
-            userPublicKey = userPublicKey,
-            visibility = visibility,
-            license = license
-        )
-    }
-
     override suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
         artifactId: HexKey,

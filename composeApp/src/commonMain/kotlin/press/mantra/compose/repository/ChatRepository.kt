@@ -80,10 +80,20 @@ interface ChatRepository {
         peers: List<Pair<HexKey, MarmotKeyPackage>>,
     ): List<HexKey>
 
+    /**
+     * Sends [text] to the room, or -- when [directMessageRecipientPublicKey] is given --
+     * to that one member of it.
+     *
+     * A direct message still travels as one group event that every member receives and
+     * can see the shape of; only its contents are private. See
+     * docs/marmot-direct-messages.md. NIP-17 rooms do not support it: there is no group
+     * for the rest of to see it, so a private message there is just a message.
+     */
     suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
-        messageType: Kind = ChatMessageEvent.KIND
+        messageType: Kind = ChatMessageEvent.KIND,
+        directMessageRecipientPublicKey: HexKey? = null
     )
 
     fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
@@ -206,7 +216,8 @@ interface ChatRepository {
             override suspend fun sendChatMessage(
                 text: String,
                 localChatRoom: LocalChatRoom,
-                messageType: Kind
+                messageType: Kind,
+                directMessageRecipientPublicKey: HexKey?
             ) {
                 // TODO("Not yet implemented")
             }

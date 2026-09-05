@@ -18,6 +18,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -30,6 +31,10 @@ import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.nostr.nip30303.TranslationContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationEvent
+import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.firstTagValue
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import press.mantra.compose.nostr.MarmotDirectMessage
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -79,6 +84,15 @@ data class ChatMessage(
     val content: String,
     val messageType: String = "message",
 
+    /**
+     * Who a direct message was for, or null for anything else.
+     *
+     * Carried on the row rather than read back off the wrap so the transcript can name
+     * the recipient without a join, on both the line the two of them can read and the
+     * line everybody else gets. See docs/marmot-direct-messages.md.
+     */
+    val directMessageRecipientPublicKey: HexKey? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
@@ -87,6 +101,21 @@ data class ChatMessage(
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
 
     companion object {
+        private val logger = Logger.withTag("ChatMessage")
+
+        /**
+         * A one-to-one message inside a group, as a line in the group's chat.
+         *
+         * Written by both sides of the room. For its two parties [content] is the words;
+         * for everybody else it is empty, and the line says only that a private message
+         * was sent and to whom -- which is all the group can learn, and all it should.
+         *
+         * [directMessageRecipientPublicKey] is set on every one of these regardless of
+         * who can read it, because naming the recipient is the point of the line the
+         * bystanders get. See docs/marmot-direct-messages.md.
+         */
+        const val TYPE_DIRECT_MESSAGE = "directMessage"
+
         /**
          * A ChillDKG ritual message, as a line in the group's chat.
          *
@@ -212,6 +241,21 @@ data class ChatMessage(
         /** The signing lines that ask rather than report. */
         val FROST_REQUEST_TYPES = setOf(TYPE_FROST_APPROVAL_NEEDED)
 
+        /**
+         * The signing lines that end a session, whichever way it went.
+         *
+         * A request usually stops being one by being answered, but that is not
+         * the only way. A member who declines publishes nothing, and a quorum
+         * that signs without them asks them for nothing further -- from the
+         * transcript both look the same, nothing of the reader's own either
+         * side of the request, so the session's own ending is the only thing
+         * left to read it from.
+         *
+         * A ceremony has no equivalent because a ceremony step can only be
+         * taken or waited for. Signing is the one thing a member can refuse.
+         */
+        val FROST_SETTLEMENTS = setOf(TYPE_FROST_COMPLETE, TYPE_FROST_FAILED)
+
         /** Every signing line, for rendering them as system lines rather than bubbles. */
         val FROST_TYPES = setOf(
             TYPE_FROST_STARTED,
@@ -312,11 +356,173 @@ data class ChatMessage(
             )
         }
 
+        /**
+         * The request lines this device has since answered, by row id.
+         *
+         * A request is answered when the step it asked for has been published by
+         * this device -- which is exactly what approving it does. The transcript
+         * already records that as an authored line, so the answer is read from
+         * the list rather than from the session, and it stays right for a room
+         * that has run more than one ceremony.
+         */
+        fun answeredRequests(messages: List<ChatMessage>): Set<Long> = messages
+            .mapNotNull { request ->
+                val published = (DKG_REQUEST_FULFILMENTS + FROST_REQUEST_FULFILMENTS)[request.messageType]
+                    ?: return@mapNotNull null
+
+                val done = messages.any {
+                    it.messageType == published &&
+                        it.isUserMessage &&
+                        it.createdAt >= request.createdAt
+                }
+
+                request.id.takeIf { done }
+            }
+            .toSet()
+
+        /**
+         * The signing requests that are no longer open, by row id.
+         *
+         * Not the same thing as [answeredRequests], and deliberately kept apart
+         * from it: these are requests the reader never answered, so they have
+         * earned no tick and claiming otherwise would credit them with a
+         * signature they refused or were never needed for. What they have run
+         * out of is a decision to make -- see [FROST_SETTLEMENTS].
+         */
+        fun settledRequests(messages: List<ChatMessage>): Set<Long> = messages
+            .filter { request ->
+                request.messageType in FROST_REQUEST_TYPES &&
+                    messages.any {
+                        it.messageType in FROST_SETTLEMENTS && it.createdAt >= request.createdAt
+                    }
+            }
+            .map { it.id }
+            .toSet()
+
+        /**
+         * Files one direct message, from whichever side of it this device is on.
+         *
+         * The decision is [MarmotDirectMessage.classify]'s, which is where it is tested;
+         * this turns it into rows. See docs/marmot-direct-messages.md.
+         */
+        private suspend fun directMessage(
+            database: MantraDatabase,
+            activeKeyPair: KeyPair,
+            groupEvent: GroupEvent,
+            chatRoomId: String,
+            wrap: Event,
+            senderIdentity: HexKey?
+        ): ChatMessage? {
+            val recipientPublicKey = wrap.tags.firstTagValue("p")
+
+            return when (val delivery = MarmotDirectMessage.classify(wrap, activeKeyPair, senderIdentity)) {
+                // Our own words coming back. We cannot open our own wrap -- its key was
+                // discarded at send time -- so this is indistinguishable from a
+                // bystander's view by decryption alone, and filing it as one would
+                // replace the words on the row `sendChatMessage` wrote with an empty
+                // placeholder. That row is the only copy of them that exists.
+                // `NostrDao.persistInboundChatMessage` carries the same guard, for the
+                // same reason, on the NIP-17 path.
+                MarmotDirectMessage.Delivery.Ours -> {
+                    logger.d("Direct message ${wrap.id} is ours; the row written on send is the only copy")
+                    null
+                }
+
+                // A forged or malformed message costs its own line and nothing else. It
+                // is dropped rather than thrown because the caller is inside
+                // storeNostrEvent's transaction, and this must not cost the whole event.
+                is MarmotDirectMessage.Delivery.Rejected -> {
+                    logger.e("Dropping direct message ${wrap.id}: ${delivery.reason}")
+                    null
+                }
+
+                // Not ours to read. The group is meant to see that a private message was
+                // sent and to whom, and nothing more.
+                MarmotDirectMessage.Delivery.Unreadable -> {
+                    // Relays redeliver and negentropy re-syncs; the wrap yields the same
+                    // id every time, so this is what keeps a second delivery from becoming
+                    // a second line. ChatMessage.id is autogenerated and would take a
+                    // duplicate.
+                    if (database.chatMessageDao().getChatMessagesByMarmotInnerEventId(wrap.id) != null) {
+                        return null
+                    }
+
+                    ChatMessage(
+                        giftWrapPayloadId = null,
+                        messageType = TYPE_DIRECT_MESSAGE,
+                        marmotGroupEventId = groupEvent.id,
+                        marmotInnerEventId = wrap.id,
+                        senderPublicKey = senderIdentity ?: wrap.pubKey,
+                        directMessageRecipientPublicKey = recipientPublicKey,
+                        isUserMessage = false,
+                        chatRoomId = chatRoomId,
+                        createdAt = Instant.fromEpochSeconds(wrap.createdAt),
+                        content = ""
+                    )
+                }
+
+                is MarmotDirectMessage.Delivery.Readable -> {
+                    val opened = delivery.opened
+
+                    if (database.chatMessageDao().getChatMessagesByMarmotInnerEventId(opened.rumor.id) != null) {
+                        return null
+                    }
+
+                    // Keyed on the rumor, not the wrap. This is the id the sender queued,
+                    // so both sides of the conversation hold the same message under the
+                    // same identity.
+                    database.marmotInnerEventDao().upsert(
+                        MarmotInnerEvent(
+                            id = opened.rumor.id,
+                            publicKey = opened.rumor.pubKey,
+                            marmotGroupEventId = groupEvent.id,
+                            tags = opened.rumor.tags,
+                            content = opened.rumor.content,
+                            chatRoomId = chatRoomId,
+                            kind = opened.rumor.kind,
+                            createdAt = Instant.fromEpochSeconds(opened.rumor.createdAt)
+                        )
+                    )
+
+                    ChatMessage(
+                        giftWrapPayloadId = null,
+                        messageType = TYPE_DIRECT_MESSAGE,
+                        marmotGroupEventId = groupEvent.id,
+                        marmotInnerEventId = opened.rumor.id,
+                        senderPublicKey = opened.seal.pubKey,
+                        directMessageRecipientPublicKey = recipientPublicKey,
+                        isUserMessage = false,
+                        chatRoomId = chatRoomId,
+                        createdAt = Instant.fromEpochSeconds(opened.rumor.createdAt),
+                        content = opened.rumor.content
+                    )
+                }
+            }
+        }
+
+        /**
+         * [senderIdentity] is the MLS credential identity of the leaf that sent this,
+         * resolved by the caller, which holds the group. It is not derivable from the
+         * payload: a direct message's wrap is keyed to a throwaway key and names nobody,
+         * and even for kinds that do carry a pubkey the MLS frame is the authenticated
+         * source while the field is merely asserted.
+         *
+         * It is also the only thing [ChatMessage.isUserMessage] can honestly be computed
+         * from. Every arm below used to compare the active key against `groupEvent.pubKey`
+         * -- the kind:445's signer, which is a fresh random ephemeral key on every send
+         * (`NostrSignerInternal(KeyPair())` in `encryptAndSendMarmotInnerEvent`). That can
+         * never equal anybody's identity, so it was false for every Marmot message in
+         * every room, and every one of them rendered as somebody else's.
+         *
+         * Null for results that carry no leaf index -- the commit and proposal statuses --
+         * which yields false, exactly as before.
+         */
         suspend fun fromGroupEventResult(
             database: MantraDatabase,
             activeKeyPair: KeyPair,
             groupEvent: GroupEvent,
-            groupEventResult: GroupEventResult
+            groupEventResult: GroupEventResult,
+            senderIdentity: HexKey? = null
         ): ChatMessage? {
             return when(groupEventResult) {
                 is GroupEventResult.ApplicationMessage -> {
@@ -356,6 +562,20 @@ data class ChatMessage(
                         )
                     )
 
+                    // A direct message is not a nip30303 payload to apply. It is
+                    // gift wrapped for one member, and what this device does with it
+                    // depends only on whether its key opens it.
+                    if (event.kind == GiftWrapEvent.KIND) {
+                        return directMessage(
+                            database = database,
+                            activeKeyPair = activeKeyPair,
+                            groupEvent = groupEvent,
+                            chatRoomId = groupEventResult.groupId,
+                            wrap = event,
+                            senderIdentity = senderIdentity
+                        )
+                    }
+
                     // A submission whose payload will not parse, or which carries
                     // another submission, is kept but not applied: there is nothing
                     // here we can turn into a row.
@@ -366,7 +586,7 @@ data class ChatMessage(
                             marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = event.id,
                             senderPublicKey = event.pubKey,
-                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                             chatRoomId = groupEventResult.groupId,
                             createdAt = Instant.fromEpochSeconds(event.createdAt),
                             content = event.content,
@@ -379,7 +599,7 @@ data class ChatMessage(
                             marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = event.id,
                             senderPublicKey = event.pubKey,
-                            isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                            isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                             createdAt = Instant.fromEpochSeconds(event.createdAt),
                         )
                     }
@@ -391,7 +611,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = TYPE_PENDING_COMMIT,
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Pending Commit in epoch ${groupEventResult.epoch}", // TODO: Figure out what to do here...
@@ -404,7 +624,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = "processedCommit",
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Processed Commit in epoch ${groupEventResult.newEpoch}", // TODO: Figure out what to do here...
@@ -417,7 +637,7 @@ data class ChatMessage(
 //                        groupEventId = groupEvent.id,
 //                        messageType = "duplicate",
 //                        senderPublicKey = groupEvent.pubKey,
-//                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+//                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
 //                        chatRoomId = groupEventResult.groupId,
 //                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
 //                        content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
@@ -430,7 +650,7 @@ data class ChatMessage(
 //                        groupEventId = groupEvent.id,
 //                        messageType = "error",
 //                        senderPublicKey = groupEvent.pubKey,
-//                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+//                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
 //                        chatRoomId = groupEventResult.groupId,
 //                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
 //                        content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
@@ -444,7 +664,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = "proposalStaged",
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Proposal staged: ${groupEventResult.senderLeafIndex}", // TODO: Figure out what to do here...
@@ -457,7 +677,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = TYPE_UNDECRYPTABLE_OUTER_LAYER,
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = activeKeyPair.pubKey.toHex() == groupEvent.pubKey,
+                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Undecryptable Message", // TODO: Figure out what to do here...
@@ -503,15 +723,17 @@ data class ChatMessage(
                     )
                 }
                 ArtifactEvent.KIND -> {
+                    val artifactEvent = ArtifactEvent(
+                        id = event.id,
+                        pubKey = event.pubKey,
+                        createdAt = event.createdAt,
+                        tags = event.tags,
+                        content = event.content,
+                        sig = event.sig,
+                    )
+
                     MantraArtifact.fromArtifactEvent(
-                        artifactEvent = ArtifactEvent(
-                            id = event.id,
-                            pubKey = event.pubKey,
-                            createdAt = event.createdAt,
-                            tags = event.tags,
-                            content = event.content,
-                            sig = event.sig,
-                        ),
+                        artifactEvent = artifactEvent,
                         chatRoomId = groupId,
                     )?.let { mantraArtifact ->
                         database.mantraArtifactDao().upsert(
@@ -519,6 +741,23 @@ data class ChatMessage(
                                 marmotGroupEventId = marmotGroupEventId,
                             )
                         )
+
+                        // An artifact arrives with the version it starts life
+                        // with, derived here rather than sent, so that every
+                        // device holding the artifact holds the same first
+                        // version. Nothing else can hang off an artifact until
+                        // one exists -- a chapter attaches to a version, not to
+                        // an artifact -- so an artifact without one is inert.
+                        MantraArtifactVersion.initialVersionOf(
+                            artifactEvent = artifactEvent,
+                            chatRoomId = groupId,
+                        )?.let { initialVersion ->
+                            database.mantraArtifactVersionDao().upsert(
+                                initialVersion.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                )
+                            )
+                        }
 
                         ChatMessage(
                             giftWrapPayloadId = null,
@@ -767,6 +1006,13 @@ data class ChatMessage(
                 // what, so an "unsupported" row here would be a second, worse
                 // account of the same thing.
                 in FrostSigningEvents.ALL -> null
+
+                // The room saying what key it signs with. Standing state rather
+                // than something that happened, and the room's own id already
+                // says it to anyone who can derive -- so there is nothing here a
+                // reader of the transcript needs told. Falling through to
+                // "unsupported" would put the raw announcement in the chat.
+                GroupKeyStateEvent.KIND -> null
 
                 else -> {
                     ChatMessage(

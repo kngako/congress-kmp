@@ -9,6 +9,7 @@ import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.nip50Search.SearchableEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
+import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
 import press.mantra.compose.nostr.nip30303.tags.LicenseTag
 import press.mantra.compose.nostr.nip30303.tags.UrlTag
@@ -31,6 +32,17 @@ class ArtifactEvent(
     fun dialectIdReference() = tags.firstNotNullOfOrNull(DialectIdTag::parse)?.ref
     fun dialectId() = dialectIdReference()?.eventId
 
+    /**
+     * The label of the version this artifact starts life with.
+     *
+     * Carried on the artifact rather than in an event of its own because the
+     * group signs the artifact and nothing else. A first version proposed
+     * separately would need either a second quorum for one form or an id each
+     * device invents for itself, and invented ids differ on every device holding
+     * the same artifact. Null on artifacts written before this was declared.
+     */
+    fun versionLabel() = tags.firstNotNullOfOrNull(ArtifactVersionMetadataTag::parse)?.versionLabel
+
     companion object {
         const val KIND = 30300
         const val ALT_DESCRIPTION = "Artifact"
@@ -41,6 +53,7 @@ class ArtifactEvent(
             visibility: String,
             license: String,
             dialectId: String,
+            versionLabel: String,
             createdAt: Long = TimeUtils.now(),
             initializer: TagArrayBuilder<ArtifactEvent>.() -> Unit = {},
         ) = eventTemplate(KIND, name, createdAt) {
@@ -51,6 +64,7 @@ class ArtifactEvent(
             addUnique(
                 DialectIdTag.assemble(dialectId)
             )
+            addUnique(ArtifactVersionMetadataTag.assemble(versionLabel))
             initializer()
         }
     }

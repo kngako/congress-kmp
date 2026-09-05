@@ -33,7 +33,9 @@ import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MlsGroupCache
 import press.mantra.compose.managers.MarmotInboundManager
 import press.mantra.compose.managers.MarmotReindexSweep
@@ -435,6 +437,15 @@ abstract class NostrDao(
                 giftWrapMessage
             )
 
+            if (!giftWrapMessage.isAddressedTo(activeKeyPair)) {
+                // Undecryptable by design rather than by failure, so keep the event and
+                // the wrap we just stored and stop here. Throwing would roll the whole
+                // transaction back and lose both.
+                logger.d("GiftWrap ${nostrEvent.id} is addressed to ${giftWrapMessage.receiverPublicKey}, nothing to index")
+
+                return@let
+            }
+
             giftWrapMessage.decryptGiftWrapSeal(
                 activeKeyPair
             ).let { giftWrapSeal ->
@@ -573,41 +584,14 @@ abstract class NostrDao(
                                                         }
                                                     }
 
-                                            if (chatMessageRelayListEvent != null) {
-                                                // Sync messages from this relay that were sent by us
-                                                val synchronizationFilter =
-                                                    SynchronizationFilter(
-                                                        kinds = arrayOf(
-                                                            GiftWrapEvent.KIND,
-                                                        ),
-                                                        authors = arrayOf(
-                                                            userPublicKey
-                                                        ),
-                                                        tags = mapOf(
-                                                            Pair(
-                                                                "p",
-                                                                listOf(participant.participantPublicKey)
-                                                            )
-                                                        ),
-                                                        limit = 50
-                                                    )
-                                                database.negentropySynchronizeRequestDao()
-                                                    .insert(
-                                                        chatMessageRelayListEvent.relays()
-                                                            .map { normalizedRelayUrl ->
-                                                                NegentropySynchronizeRequest(
-                                                                    id = NegentropySynchronizeRequest.computeId(
-                                                                        relayURL = normalizedRelayUrl.url,
-                                                                        synchronizationFilter = synchronizationFilter
-                                                                    ),
-                                                                    purpose = "sent-messages",
-                                                                    synchronizationFilter = synchronizationFilter,
-                                                                    relayURL = normalizedRelayUrl.url,
-                                                                    level = 0
-                                                                )
-                                                            }
-                                                    )
-                                            } else {
+                                            // Nothing to sync when we do have the relay list: a gift
+                                            // wrap is authored by a throwaway key, so authors=us matched
+                                            // nothing and this request was always empty. Our own inbox is
+                                            // synced by p-tag instead — by the live gift wrap
+                                            // subscription, which also picks up the copy we wrap to
+                                            // ourselves (createNip17ChatRoom puts us in our own
+                                            // participant list), on every device.
+                                            if (chatMessageRelayListEvent == null) {
                                                 logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
@@ -809,35 +793,9 @@ abstract class NostrDao(
                                             }
                                         }
 
-                                        if (chatMessageRelayListEvent != null) {
-                                            // Sync messages from this relay that were sent by us
-                                            val synchronizationFilter = SynchronizationFilter(
-                                                kinds = arrayOf(
-                                                    GiftWrapEvent.KIND,
-                                                ),
-                                                authors = arrayOf(
-                                                    userPublicKey
-                                                ),
-                                                tags = mapOf(
-                                                    Pair("p", listOf(participant.participantPublicKey))
-                                                ),
-                                                limit = 50
-                                            )
-                                            database.negentropySynchronizeRequestDao().insert(
-                                                chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
-                                                    NegentropySynchronizeRequest(
-                                                        id = NegentropySynchronizeRequest.computeId(
-                                                            relayURL = normalizedRelayUrl.url,
-                                                            synchronizationFilter = synchronizationFilter
-                                                        ),
-                                                        purpose = "sent-messages",
-                                                        synchronizationFilter = synchronizationFilter,
-                                                        relayURL = normalizedRelayUrl.url,
-                                                        level = 0
-                                                    )
-                                                }
-                                            )
-                                        } else {
+                                        // See the identical block above: authors=us never matches a
+                                        // gift wrap, so only the missing-relay-list case has work to do.
+                                        if (chatMessageRelayListEvent == null) {
                                             logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                             // Sync ChatMessageRelayListEvent publicKey...
@@ -1264,6 +1222,13 @@ abstract class NostrDao(
                         activeKeyPair = activeKeyPair,
                         groupEvent = groupEvent,
                         groupEventResult = groupEventResult,
+                        // Who sent it comes from the MLS frame, not the
+                        // payload. Resolved here because this is where the
+                        // group is; the leaf index is on the result, and the
+                        // tree has not moved -- an application message
+                        // advances no epoch.
+                        senderIdentity = (groupEventResult as? GroupEventResult.ApplicationMessage)
+                            ?.let { mlsGroup.memberIdentityHex(it.senderLeafIndex) },
                     )?.let { chatMessage ->
                         logger.d("chatMessage: $chatMessage")
                         persistMarmotChatMessage(chatMessage)
@@ -1276,16 +1241,29 @@ abstract class NostrDao(
                     // itself. The manager is idempotent, so a redelivered
                     // message re-runs a step it has already taken.
                     if (groupEventResult is GroupEventResult.ApplicationMessage) {
-                        Event.fromJsonOrNull(groupEventResult.innerEventJson)
-                            ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
-                            ?.let { innerEvent ->
-                                FrostSigningManager.processSigningPayload(
-                                    database = database,
-                                    localChatRoom = localChatRoom,
-                                    innerEvent = innerEvent,
-                                    userPublicKey = activeKeyPair.pubKey.toHex()
-                                )
+                        Event.fromJsonOrNull(groupEventResult.innerEventJson)?.let { innerEvent ->
+                            when {
+                                FrostSigningEvents.isFrostSigningKind(innerEvent.kind) ->
+                                    FrostSigningManager.processSigningPayload(
+                                        database = database,
+                                        localChatRoom = localChatRoom,
+                                        innerEvent = innerEvent,
+                                        userPublicKey = activeKeyPair.pubKey.toHex()
+                                    )
+
+                                // What key this room signs with. Filed
+                                // rather than acted on, and only after
+                                // the room rederives from the key it
+                                // names -- the manager drops anything
+                                // that does not, whoever sent it.
+                                GroupKeyStateEvent.isGroupKeyStateKind(innerEvent.kind) ->
+                                    GroupKeyStateManager.record(
+                                        database = database,
+                                        chatRoomId = localChatRoom.chatRoom.id,
+                                        innerEvent = innerEvent
+                                    )
                             }
+                        }
                     }
                 }
             } else {

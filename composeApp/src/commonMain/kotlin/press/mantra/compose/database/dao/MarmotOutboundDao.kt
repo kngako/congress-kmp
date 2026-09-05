@@ -22,6 +22,8 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.exporterSecret
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.MarmotInboundManager.EPOCH_RETENTION_WINDOW
+import press.mantra.compose.nostr.MarmotDelivery
+import press.mantra.compose.nostr.MarmotDirectMessage
 import press.mantra.compose.nostr.Relays
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.tags.EncodingTag
@@ -33,6 +35,7 @@ import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
@@ -435,17 +438,13 @@ abstract class MarmotOutboundDao(
 
             // Save commitResult... in case we need to broadcast welcomeEvent after relay acknowledgement...
             database.marmotCommitResultDao().upsert(
-                MarmotCommitResult(
-                    id = commitEvent.id,
-                    isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
+                MarmotCommitResult.from(
+                    commitEventId = commitEvent.id,
+                    commitResult = commitResult,
                     chatRoomId = nostrGroupId,
-                    commitBytes = commitResult.commitBytes,
-                    preCommitExporterSecret = commitResult.preCommitExporterSecret,
-                    welcomeBytes = commitResult.welcomeBytes,
-                    framedCommitBytes = commitResult.preCommitExporterSecret,
-                    groupInfoBytes = commitResult.groupInfoBytes,
                     userPublicKey = userPublicKey,
                     peerKeyPackageEventId = peerKeyPackage.id,
+                    isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
                     createdAt = Instant.fromEpochSeconds(commitEvent.createdAt)
                 )
             )
@@ -545,7 +544,20 @@ abstract class MarmotOutboundDao(
         marmotInnerEvent: MarmotInnerEvent,
         nostrSignerSync: NostrSignerSync
     ): GroupEvent {
-        val innerEvent = RumorAssembler.assembleRumor(
+        // A direct message is gift wrapped for one member before it goes into MLS, so
+        // what the group carries is a kind:1059 whose id is not this row's. Everything
+        // downstream -- MLS encrypt, outer ChaCha20, kind:445, persistence, broadcast --
+        // is the same either way. See MarmotDirectMessage.
+        val innerEvent: Event = marmotInnerEvent.directMessageRecipientPublicKey?.let { recipient ->
+            MarmotDirectMessage.wrap(
+                signer = nostrSignerSync,
+                recipientPublicKey = recipient,
+                kind = marmotInnerEvent.kind,
+                createdAt = marmotInnerEvent.createdAt.epochSeconds,
+                tags = marmotInnerEvent.tags,
+                content = marmotInnerEvent.content
+            )
+        } ?: RumorAssembler.assembleRumor(
             pubKey = nostrSignerSync.pubKey,
             ev = EventTemplate(
                 createdAt = marmotInnerEvent.createdAt.epochSeconds,
@@ -628,13 +640,38 @@ abstract class MarmotOutboundDao(
 
         database.marmotInnerEventDao().upsert(
             marmotInnerEvent.copy(
-                marmotGroupEventId = groupEvent.id
+                marmotGroupEventId = groupEvent.id,
+                // A direct message's plaintext is already on its ChatMessage row, which is
+                // the sender's only copy of it. A second one here would be cleartext left
+                // in a table that otherwise holds nothing but wire events.
+                content = if (marmotInnerEvent.directMessageRecipientPublicKey != null) {
+                    ""
+                } else {
+                    marmotInnerEvent.content
+                }
             )
         )
 
-        val chatMessageOrNull = database.chatMessageDao().getChatMessagesByMarmotInnerEventId(innerEvent.id)
+        // Keyed on the queued row, not on `innerEvent.id`. For a direct message those
+        // differ -- the row is the rumor, the wire event is the wrap built around it --
+        // and the wrap's id matches no ChatMessage, so this lookup comes back null. That
+        // costs only the transcript linkage, not the send.
+        val chatMessageOrNull = database.chatMessageDao().getChatMessagesByMarmotInnerEventId(marmotInnerEvent.id)
 
         logger.d("chatMessageOrNull: $chatMessageOrNull")
+
+        val delivery = MarmotDelivery.plan(
+            groupEventId = groupEvent.id,
+            relays = Relays.DefaultDMRelayList, // TODO: Get these from localChatRoom...
+            chatMessage = chatMessageOrNull,
+        )
+
+        // Sync broadcast to all the required relays. Unconditional, and before any
+        // transcript bookkeeping: see MarmotDelivery for what gating it on a chat line
+        // cost the signing sessions that have none.
+        val broadcastNostrEventRequestIds =
+            database.broadcastNostrEventRequestDao().insert(delivery.broadcasts)
+
         chatMessageOrNull?.let { chatMessage ->
             database.chatMessageNostrEventRelationDao().upsert(
                 ChatMessageNostrEventRelation(
@@ -647,16 +684,6 @@ abstract class MarmotOutboundDao(
                 chatMessage.copy(
                     marmotGroupEventId = groupEvent.id
                 )
-            )
-
-            // Sync broadcast to all the required relays...
-            val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
-                Relays.DefaultDMRelayList.map { // TODO: Get these from localChatRoom...
-                    BroadcastNostrEventRequest(
-                        nostrEventId = groupEvent.id,
-                        relayURL = it.url
-                    )
-                }
             )
 
             broadcastNostrEventRequestIds.forEach { broadcastNostrEventRequestId ->

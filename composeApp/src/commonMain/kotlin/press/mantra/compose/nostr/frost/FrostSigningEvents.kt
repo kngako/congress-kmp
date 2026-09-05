@@ -24,6 +24,11 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
  *  anyone   --[ 30325 failure    ]-> everyone   abandon + blame
  * ```
  *
+ * [GroupKeyStateEvent] sits just past them on 30326. It is not part of a
+ * session -- it is the standing fact a session is opened against, saying which
+ * key the room signs with -- so it is deliberately outside [ALL], which is what
+ * the inbound path dispatches a session message on.
+ *
  * ### Why 3032x
  *
  * These share the inner-event space with the nip30303 document kinds, which run
