@@ -445,6 +445,13 @@ abstract class NostrDao(
                                     activeKeyPair = activeKeyPair,
                                     groupEvent = groupEvent,
                                     groupEventResult = groupEventResult,
+                                    // Who sent it comes from the MLS frame, not the
+                                    // payload. Resolved here because this is where the
+                                    // group is; the leaf index is on the result, and the
+                                    // tree has not moved -- an application message
+                                    // advances no epoch.
+                                    senderIdentity = (groupEventResult as? GroupEventResult.ApplicationMessage)
+                                        ?.let { mlsGroup.memberIdentityHex(it.senderLeafIndex) },
                                 )?.let { chatMessage ->
                                     logger.d("chatMessage: $chatMessage")
                                     database.chatMessageDao().upsert(

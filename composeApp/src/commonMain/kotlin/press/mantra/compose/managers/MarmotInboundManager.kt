@@ -32,6 +32,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.Profile
@@ -267,7 +268,28 @@ object MarmotInboundManager {
 
                 if (innerEvent != null) {
                     val senderIdentity = mlsGroup.memberIdentityHex(decrypted.senderLeafIndex)
-                    if (senderIdentity == null || innerEvent.pubKey != senderIdentity) {
+
+                    // Required rather than merely compared. Every sender-derived field
+                    // downstream now reads from here -- who a message is from, and whether
+                    // it is ours -- because a gift wrap payload carries no author of its
+                    // own. Without an identity there is nothing to attribute a line to.
+                    if (senderIdentity == null) {
+                        return GroupEventResult.Error(
+                            groupId,
+                            "No MLS credential identity for sender leaf ${decrypted.senderLeafIndex}",
+                        )
+                    }
+
+                    // A gift wrap's pubkey is a throwaway key by construction, so there is
+                    // no author field here to compare against and MIP-03's check cannot be
+                    // applied as written. The authorship claim moves inside, to the signed
+                    // kind:13 seal, which ChatMessage.fromGroupEventResult binds to this
+                    // same senderIdentity before it renders a word -- a verified signature
+                    // bound to an MLS leaf, rather than a plaintext field compared to one.
+                    //
+                    // Other Marmot clients do not have this carve-out and will drop these
+                    // as impersonation. See docs/marmot-direct-messages.md.
+                    if (innerEvent.kind != GiftWrapEvent.KIND && innerEvent.pubKey != senderIdentity) {
                         return GroupEventResult.Error(
                             groupId,
                             "MIP-03: inner event pubkey (${innerEvent.pubKey}) does not match MLS sender identity ($senderIdentity)",
