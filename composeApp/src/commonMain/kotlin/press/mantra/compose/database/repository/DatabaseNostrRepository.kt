@@ -718,6 +718,7 @@ class DatabaseNostrRepository(
                     database.nostrEventDao().getMarmotGroupEvents(
                         chatRoomIds = chatRoomIds,
                         since = synchronizationFilter.since ?: GENESIS_AT,
+                        until = synchronizationFilter.until ?: Instant.DISTANT_FUTURE,
                         limit = if (applyLimits) {
                             synchronizationFilter.limit ?: 50
                         } else {

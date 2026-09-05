@@ -107,13 +107,28 @@ interface NostrEventDao {
         limit: Int
     ): List<NostrEvent>
 
+    /**
+     * The events a relay would still serve for `{"kinds":[445],"#h":[...]}`.
+     *
+     * `createdAt >= :since AND createdAt <= :until` because NIP-01 bounds are inclusive, and
+     * `expiresAt > :now` because a NIP-40 expiring event is one a relay has stopped serving.
+     * The predicate here used to read `expiresAt < :now`, which kept exactly the expired
+     * messages and dropped every live one — so for the whole group-chat sync path the set
+     * handed to negentropy was the complement of the relay's.
+     */
     @Transaction
-    @Query("SELECT * FROM MarmotGroupEvent WHERE chatRoomId in (:chatRoomIds) AND createdAt > :since AND (expiresAt IS NULL OR expiresAt < :expiresAt) ORDER BY createdAt ASC LIMIT :limit")
+    @Query(
+        "SELECT * FROM MarmotGroupEvent WHERE chatRoomId in (:chatRoomIds) " +
+            "AND createdAt >= :since AND createdAt <= :until " +
+            "AND (expiresAt IS NULL OR expiresAt > :now) " +
+            "ORDER BY createdAt DESC LIMIT :limit"
+    )
     fun  getMarmotGroupEvents(
         chatRoomIds: Array<HexKey>,
         since: Instant,
-        expiresAt: Instant = Clock.System.now(),
-        limit: Int
+        until: Instant,
+        limit: Int,
+        now: Instant = Clock.System.now(),
     ): List<MarmotGroupEvent>
 
     @Transaction
