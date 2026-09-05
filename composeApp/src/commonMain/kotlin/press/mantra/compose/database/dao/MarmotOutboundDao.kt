@@ -22,6 +22,7 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.exporterSecret
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.MarmotInboundManager.EPOCH_RETENTION_WINDOW
+import press.mantra.compose.nostr.MarmotDelivery
 import press.mantra.compose.nostr.MarmotDirectMessage
 import press.mantra.compose.nostr.Relays
 import co.touchlab.kermit.Logger
@@ -653,13 +654,24 @@ abstract class MarmotOutboundDao(
 
         // Keyed on the queued row, not on `innerEvent.id`. For a direct message those
         // differ -- the row is the rumor, the wire event is the wrap built around it --
-        // and the wrap's id matches no ChatMessage, so this lookup would come back null,
-        // the message would never be linked, and no BroadcastNostrEventRequest would ever
-        // be inserted. Encrypted, stored, and silently never sent. They are the same value
-        // for every other kind of message.
+        // and the wrap's id matches no ChatMessage, so this lookup comes back null. That
+        // costs only the transcript linkage, not the send.
         val chatMessageOrNull = database.chatMessageDao().getChatMessagesByMarmotInnerEventId(marmotInnerEvent.id)
 
         logger.d("chatMessageOrNull: $chatMessageOrNull")
+
+        val delivery = MarmotDelivery.plan(
+            groupEventId = groupEvent.id,
+            relays = Relays.DefaultDMRelayList, // TODO: Get these from localChatRoom...
+            chatMessage = chatMessageOrNull,
+        )
+
+        // Sync broadcast to all the required relays. Unconditional, and before any
+        // transcript bookkeeping: see MarmotDelivery for what gating it on a chat line
+        // cost the signing sessions that have none.
+        val broadcastNostrEventRequestIds =
+            database.broadcastNostrEventRequestDao().insert(delivery.broadcasts)
+
         chatMessageOrNull?.let { chatMessage ->
             database.chatMessageNostrEventRelationDao().upsert(
                 ChatMessageNostrEventRelation(
@@ -672,16 +684,6 @@ abstract class MarmotOutboundDao(
                 chatMessage.copy(
                     marmotGroupEventId = groupEvent.id
                 )
-            )
-
-            // Sync broadcast to all the required relays...
-            val broadcastNostrEventRequestIds = database.broadcastNostrEventRequestDao().insert(
-                Relays.DefaultDMRelayList.map { // TODO: Get these from localChatRoom...
-                    BroadcastNostrEventRequest(
-                        nostrEventId = groupEvent.id,
-                        relayURL = it.url
-                    )
-                }
             )
 
             broadcastNostrEventRequestIds.forEach { broadcastNostrEventRequestId ->
