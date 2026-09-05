@@ -111,8 +111,7 @@ abstract class MarmotOutboundDao(
             userPublicKey = userPublicKey,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage,
-            relays = relays,
-            isOneMemberInitialGroupCreation = true
+            relays = relays
         )
 
         // Update chatRoom
@@ -160,8 +159,7 @@ abstract class MarmotOutboundDao(
             userPublicKey = localChatRoom.chatRoom.userPublicKey,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage,
-            relays = relays,
-            isOneMemberInitialGroupCreation = false
+            relays = relays
         )
 
         // `addMember` advanced the in-memory group to the next epoch. Without persisting it the
@@ -181,9 +179,24 @@ abstract class MarmotOutboundDao(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
         relays: List<String> = Relays.DefaultDMRelayList.map { it.url },
-        isOneMemberInitialGroupCreation: Boolean = false
     ) {
         logger.d("inviteMember: $peerPublicKey")
+
+        // Read before `addMember` advances the tree. A group holding only its
+        // creator has nobody to tell about the commit -- no other member exists, and
+        // nobody outside the group can decrypt it -- so broadcasting one is noise,
+        // and deferring the welcome until a relay acknowledges that noise is how the
+        // first invitee ends up never hearing anything at all.
+        //
+        // Derived here rather than passed in because no caller is in a better
+        // position to know it, and both of the ones that tried got it wrong:
+        // inviteMemberToChatRoom hardcoded false, so every group's first invite took
+        // the deferred path. `members()` skips empty leaves, so this stays right for
+        // a group that has had members removed.
+        //
+        // True exactly once per group, whatever its final size: see
+        // docs/marmot-membership.md.
+        val isOneMemberInitialGroupCreation = mlsGroup.members().size == 1
         val keyPackage = MlsKeyPackage.decodeTls(
             TlsReader(
                 peerKeyPackage.tlsEncodedMarmotKeyPackage

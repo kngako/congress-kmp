@@ -27,26 +27,24 @@ and only then calls `deliveryWelcome`.
 The deferral is deliberate: the invitee must not join an epoch the existing
 members have not reached yet.
 
-## The flag is not reachable from callers
+## Which branch is taken, and why nobody chooses it
 
-`inviteMemberToChatRoom` hardcodes `isOneMemberInitialGroupCreation = false`, and
-`ChatRepository.inviteMember` does not expose it at all. Only
-`createMlsDirectMessageChatRoom` passes `true`, for the single peer of a DM.
+`inviteMember` derives it:
 
-So every group invite — `SelectChatRoomTypeViewModel.inviteMembers` when a room is
-created, and `DkgRitualViewModel.inviteAdmins` for the `#admins` room — takes the
-deferred path, **including the first one, when the group is still just the
-creator**.
+```kotlin
+val isOneMemberInitialGroupCreation = mlsGroup.members().size == 1
+```
 
-For that first invite this is wrong twice over:
+Read before `addMember` advances the tree, and `members()` skips empty leaves so it
+stays right for a group that has had members removed.
 
-- the commit has no audience. Nobody else is a member, and nobody outside the
-  group can decrypt it. It is noise on the relay.
-- the Welcome is then gated on a relay acknowledging that pointless commit. If the
-  ack never arrives, the first invitee never receives anything.
-
-That second point sharpened when `Relays.DefaultDMRelayList` became a single relay:
-every Welcome now depends on one relay acking.
+No caller passes it, deliberately. None of them is in a better position to know,
+and both that tried got it wrong: `inviteMemberToChatRoom` hardcoded `false`, so
+**every group's first invite took the deferred path** even though the group was
+still just its creator. That was wrong twice over — the commit had no audience,
+and the Welcome was then gated on a relay acknowledging it. With
+`Relays.DefaultDMRelayList` down to a single relay, that meant the first invitee
+of every group depended on one ack for an event nobody needed.
 
 ## Why this fails silently
 
@@ -63,38 +61,26 @@ recipient's Welcome is **dropped, not deferred**, and that member never advances
 `EPOCH_RETENTION_WINDOW` (5) retains *past* epochs so late messages can still be
 decrypted; it does nothing for messages from ahead.
 
-Now consider inviting two admins back to back under the current behaviour:
+Under the old hardcoded `false`, inviting two admins back to back went:
 
 1. invite admin 1 → commit 1 broadcast immediately, Welcome 1 waits for ack 1
 2. invite admin 2 → commit 2 broadcast immediately, Welcome 2 waits for ack 2
 
-Both commits are on the wire before either Welcome. If commit 2 reaches admin 1
-before Welcome 1 does — different transports, no ordering guarantee, one is a gift
-wrap and the other a kind:445 — admin 1 drops it and is stuck an epoch behind. The
-coordinator sees nothing wrong: both invites returned successfully.
+Both commits were on the wire before either Welcome. If commit 2 reached admin 1
+before Welcome 1 did — different transports, no ordering guarantee, one a gift
+wrap and the other a kind:445 — admin 1 dropped it and was stuck an epoch behind,
+while the coordinator saw two successful invites.
 
-## Options
+Deriving the flag narrows this: Welcome 1 is now sent before commit 2 exists at
+all, so admin 1 is already at epoch 1 when it arrives.
 
-### 1. Expose the flag, pass `true` for the first invite
+**It does not close it.** For n ≥ 3 the window between Welcome 1 and commit 2
+remains, and losing it is still silent. See "Batching every add" below.
 
-Smallest change. Removes the pointless commit and the ack dependency for the first
-invitee. Leaves n−1 sequential commits, and leaves every other caller unfixed
-unless they are each updated.
+## The condition holds at any group size
 
-### 2. Derive it in the DAO (recommended as the immediate fix)
-
-`inviteMemberToChatRoom` can decide for itself:
-
-```kotlin
-isOneMemberInitialGroupCreation = mlsGroup.members().size == 1
-```
-
-`MlsGroup.members()` already exists. No signature changes, and it fixes every
-caller at once — group creation as well as the `#admins` room.
-
-The condition is right for any group size, not just DMs. "The group has nobody to
-inform" is true exactly once, on the first invite, whether the group will end up
-with 2 members or 30:
+"The group has nobody to inform" is true exactly once, on the first invite, whether
+the group ends up with 2 members or 30:
 
 | invite  | `members().size` | branch                       | correct because           |
 |---------|------------------|------------------------------|---------------------------|
@@ -106,14 +92,10 @@ Commit 2 is encrypted with `commitResult.preCommitExporterSecret` — the epoch-
 secret, which admin 1 received in their Welcome — so they can decrypt it and
 advance.
 
-This also *narrows* the race above rather than widening it. Welcome 1 is sent
-before commit 2 exists at all, so admin 1 is already at epoch 1 when commit 2
-arrives.
+## Batching every add into one commit
 
-It does not close the race. For n ≥ 3 the window between Welcome 1 and commit 2
-still exists, and losing it is still silent.
-
-### 3. Batch every add into one commit
+This is the remaining work, and the only thing that closes the race rather than
+narrowing it.
 
 `MlsGroup.addMember` is `proposeAdd` + `commit()` in one call, but those are
 separate functions and `pendingProposals` is a list. Staging every member with
