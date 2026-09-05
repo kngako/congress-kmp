@@ -6,6 +6,8 @@ import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayInfo
 import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayType
 
 object Relays {
+    val ephemeral = RelayUrlNormalizer.normalize("wss://ephemeral.mantra.press")
+
     val nos = RelayUrlNormalizer.normalize("wss://nos.lol")
     val mom = RelayUrlNormalizer.normalize("wss://nostr.mom")
     val primal = RelayUrlNormalizer.normalize("wss://relay.primal.net")
@@ -33,11 +35,11 @@ object Relays {
     val yabu = RelayUrlNormalizer.normalize("wss://directory.yabu.me")
     val nostr1 = RelayUrlNormalizer.normalize("wss://profiles.nostr1.com")
 
-    val bootstrapInboxRelaySet = setOf(damus, primal, mom, nos, bitcoiner, oxtr, yabu)
-    val eventFinderRelaySet = setOf(wine, damus, mom, primal, nos, bitcoiner, oxtr)
-    val eventPublishRelaySet = setOf(oxtr, damus, wine, mom, primal, nos, bitcoiner)
+    val bootstrapInboxRelaySet = setOf(ephemeral, damus, primal, mom, nos, bitcoiner, oxtr, yabu)
+    val eventFinderRelaySet = setOf(ephemeral, wine, damus, mom, primal, nos, bitcoiner, oxtr)
+    val eventPublishRelaySet = setOf(ephemeral, oxtr, damus, wine, mom, primal, nos, bitcoiner)
 
-    val negentropicRelaySet = setOf(damus, yabu, oxtr, bitcoiner, nos)
+    val negentropicRelaySet = setOf(ephemeral, damus, yabu, oxtr, bitcoiner, nos)
     val searchQuerableRelaySet = setOf(primal)
 
     val DefaultNIP65RelaySet = setOf(mom, nos, bitcoiner, wine)
@@ -51,9 +53,9 @@ object Relays {
 
     val DefaultGlobalRelays = listOf(wine, news)
 
-    val DefaultDMRelayList = listOf(damus, nos)
+    val DefaultDMRelayList = listOf(ephemeral)
 
-    val DefaultSearchRelayList = setOf(wine, where, nostoday, antiprimal, ditto)
+    val DefaultSearchRelayList = setOf(ephemeral, wine, where, nostoday, antiprimal, ditto)
 
     val DefaultIndexerRelayList = setOf(purplepages, coracle, userkinds, yabu, nostr1)
 
