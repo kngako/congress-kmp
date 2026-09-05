@@ -86,6 +86,15 @@ passing it to a third party as its author's; that fails because the MLS frame sa
 who actually sent *this* one. Forging one outright needs the other member's private
 key.
 
+A seal is harder to relabel than it looks, and not because of the signature.
+NIP-44 derives the conversation key from the pubkey being claimed, so writing
+another member's key over a seal makes it undecryptable by the person it was
+encrypted for — it fails at the decryption, before any check runs, and comes out as
+a message the recipient simply cannot read. The label is bound to the key rather
+than asserted alongside it. `verify()` is what catches the remaining case: a seal
+altered after signing in a way that survives decryption. Both have tests, because
+the first was asserted the wrong way round until one of them failed.
+
 > **Compatibility.** Every member's client needs this carve-out. A Marmot client
 > implementing MIP-03 as written drops these messages as impersonation — silently,
 > as a `GroupEventResult.Error` — so a group with one unpatched member has one
@@ -239,8 +248,11 @@ bare rumor, and everything downstream is unchanged. Once sent, the plaintext is
 scrubbed from the queued row: it is already on the `ChatMessage`, and a second copy
 would be cleartext left in a table that otherwise holds nothing but wire events.
 
-**In.** `MarmotInboundManager` decrypts and resolves the sender's identity;
-`ChatMessage.directMessage` files one of three things. The recipient opens the wrap,
+**In.** `MarmotInboundManager` decrypts and resolves the sender's identity, and
+`MarmotDirectMessage.classify` decides what the wrap is to this device — ours,
+readable, unreadable, or rejected. `ChatMessage.directMessage` turns that into rows.
+The split is so the decision can be tested: only the filing needs a database, and
+Room-backed code cannot be unit-tested here. The recipient opens the wrap,
 validates the seal against `senderIdentity`, stores the rumor as its own
 `MarmotInnerEvent` keyed on the rumor's id, and gets the words. A bystander cannot
 open it and gets a line with no content. The sender gets nothing, because their
@@ -283,7 +295,9 @@ sender, `senderIdentity` is the only source of attribution there is.
 | file | what |
 |---|---|
 | `nostr/MarmotDirectMessage.kt` | wrap / open, the pure seam both directions call |
-| `commonTest/.../MarmotDirectMessageTest.kt` | ten cases, against real secp256k1 and real NIP-44 |
+| `commonTest/.../MarmotDirectMessageTest.kt` | the envelope: ten cases, against real secp256k1 and real NIP-44 |
+| `commonTest/.../MarmotDirectMessageDeliveryTest.kt` | what a device does with an arriving wrap, including every forgery it must refuse |
+| `commonTest/.../MarmotMip03CarveOutTest.kt` | the kind:1059 exemption and its edges |
 | `managers/MarmotInboundManager.kt` | the kind:1059 carve-out; requires the sender identity |
 | `database/model/ChatMessage.kt` | `TYPE_DIRECT_MESSAGE`; the kind:1059 arm and its three outcomes |
 | `database/dao/NostrDao.kt` | resolves `senderIdentity` and passes it in |
@@ -336,3 +350,11 @@ a coding one, because the reaction itself would be visible to the group.
 **No member picker.** The only way to start a private message is to reply to one the
 member already sent, so you cannot open a conversation with somebody who has not
 spoken.
+
+**Three things have no automated test**, all of them for want of infrastructure
+rather than by choice. The recipient validation in `sendChatMessage` (refusing a
+non-member, refusing yourself) and the outbound id lookup both need a database; the
+invariant the lookup depends on — that the queued row's id is the rumor's — is
+tested in its place. The two transcript renderings need Compose UI testing, which
+this project has no dependency on. Anything touching a real `MlsGroup` is likewise
+untested: the carve-out is tested through `mip03Rejection`, not through a group.
