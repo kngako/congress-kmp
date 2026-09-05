@@ -309,6 +309,65 @@ class RelayPool(
         }
     }
 
+    /**
+     * Opens a subscription that is meant to stay open, and returns a flow that never
+     * completes on its own.
+     *
+     * The difference from [query] is the absence of `completeOnSubscriptionEnd`. For a
+     * one-shot request EOSE is the end — it is what finishes the collector, frees the
+     * subscription slot and triggers the CLOSE. For a live subscription EOSE is only the
+     * boundary between the stored history and the live tail, and the relay owes us nothing
+     * further to mark the end. The flow therefore ends when, and only when, the caller
+     * stops collecting it.
+     *
+     * The returned flow is attached to the socket CLIENT's message flow, not to a session,
+     * so it survives a drop: the socket reconnects, [replayRetainedRequests] re-sends this
+     * REQ, and the same collector starts receiving again without anything being rebuilt.
+     */
+    suspend fun openLiveSubscription(reqCommand: ReqCmd, relayUrl: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
+        addRelaysIfMissing(
+            setOf(
+                NormalizedRelayUrl(relayUrl).url.toRelayDTO()
+            )
+        )
+
+        val nostrSocketClient = socketClientFor(relayUrl)
+            ?: throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+
+        val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
+
+        // Attached before the send: the socket's message flow is buffered but not replayed,
+        // so a collector subscribing after the first events arrived would miss them.
+        val eventFlow = nostrSocketClient.incomingMessages.filterBySubscriptionId(id = reqCommand.subId)
+
+        retainRequest(relayUrl = relayUrl, subId = reqCommand.subId, message = filterRequest)
+        nostrSocketClient.sendMESSAGE(filterRequest)
+
+        return eventFlow
+    }
+
+    /**
+     * Narrows or widens a live subscription in place.
+     *
+     * A relay answers a repeated REQ on an existing subscription id by replacing that
+     * subscription's filter, so this never closes anything: the collector opened by
+     * [openLiveSubscription] keeps running and simply starts matching the new filter.
+     * Re-retained too, so a reconnect replays the new filter rather than the old one.
+     */
+    suspend fun updateLiveSubscription(reqCommand: ReqCmd, relayUrl: String) {
+        val nostrSocketClient = socketClientFor(relayUrl)
+            ?: throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+
+        val filterRequest = OptimizedJsonMapper.toJson(reqCommand)
+
+        retainRequest(relayUrl = relayUrl, subId = reqCommand.subId, message = filterRequest)
+        nostrSocketClient.sendMESSAGE(filterRequest)
+    }
+
+    /** Ends a live subscription: forgets the retained REQ and tells the relay to stop. */
+    suspend fun closeLiveSubscription(subId: String, relayUrl: String) =
+        closeQuery(CloseCmd(subId = subId), relayUrl)
+
     suspend fun negentropySync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
         addRelaysIfMissing(
             setOf(

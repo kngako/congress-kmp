@@ -144,6 +144,30 @@ class RelaysSocketManager(
     }
 
 
+    /** @see RelayPool.openLiveSubscription */
+    suspend fun openLiveSubscription(reqCommand: ReqCmd, relayUrl: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
+        return relayPool.openLiveSubscription(
+            reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    /** @see RelayPool.updateLiveSubscription */
+    suspend fun updateLiveSubscription(reqCommand: ReqCmd, relayUrl: String) {
+        return relayPool.updateLiveSubscription(
+            reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    /** @see RelayPool.closeLiveSubscription */
+    suspend fun closeLiveSubscription(subId: String, relayUrl: String) {
+        return relayPool.closeLiveSubscription(
+            subId = subId,
+            relayUrl = relayUrl
+        )
+    }
+
     suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {
         return relayPool.closeQuery(
             closeCmd = closeCmd,

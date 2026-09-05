@@ -36,7 +36,6 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.random.Random
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -71,6 +70,14 @@ internal class NostrSocketClientImpl(
          * back in lockstep for as long as the outage lasts.
          */
         private const val RECONNECT_JITTER = 0.25
+
+        /**
+         * How far a collector may lag before its socket's reader is made to wait for it.
+         * Deep enough to absorb the burst a relay sends between a REQ and its EOSE while a
+         * collector writes each event to SQLite; not so deep that a genuinely stuck
+         * collector is invisible.
+         */
+        private const val INBOUND_BUFFER = 256
     }
 
     /** Outcome of a connect attempt, so the caller can tell a first connect from a repair. */
@@ -103,7 +110,19 @@ internal class NostrSocketClientImpl(
     @Volatile
     override var autoReconnect: Boolean = false
 
-    private val _incomingMessages = MutableSharedFlow<NostrIncomingMessage>()
+    /**
+     * Buffered on purpose. This used to be a rendezvous flow emitted into from a coroutine
+     * launched per message, which had two consequences a short-lived request/response
+     * collector never noticed and a permanent one would: messages reached collectors in
+     * whatever order those coroutines were scheduled, and an emit with every collector busy
+     * blocked on the slowest of them.
+     *
+     * With a buffer, a collector may fall [INBOUND_BUFFER] messages behind before it slows
+     * the socket reader down, and the reader emits in wire order.
+     */
+    private val _incomingMessages = MutableSharedFlow<NostrIncomingMessage>(
+        extraBufferCapacity = INBOUND_BUFFER,
+    )
     override val incomingMessages = _incomingMessages.asSharedFlow()
 
     override val socketUrl = wssUrl.cleanWebSocketUrl()
@@ -179,13 +198,13 @@ internal class NostrSocketClientImpl(
                     is Frame.Text -> {
                         val text = frame.readText()
                         logLargeText(text = text, url = socketUrl, incoming = true)
-                        processIncomingMessage(text = text)
+                        emitIncomingMessage(text = text)
                     }
 
                     is Frame.Binary -> {
                         val decompressedMessage = decompressMessage(frame.data)
                         logLargeText(text = decompressedMessage, url = socketUrl, incoming = true)
-                        processIncomingMessage(text = decompressedMessage)
+                        emitIncomingMessage(text = decompressedMessage)
                     }
 
                     is Frame.Close -> {
@@ -302,15 +321,14 @@ internal class NostrSocketClientImpl(
         }
     }
 
-    private fun processIncomingMessage(text: String) {
-        text.parseIncomingMessage()?.let {
-            scope.launch {
-                if (it is NostrIncomingMessage.EoseMessage) {
-                    delay(75.milliseconds)
-                }
-                _incomingMessages.emit(value = it)
-            }
-        }
+    /**
+     * Emits inline, on the reader, so messages reach collectors in the order the relay sent
+     * them. That replaces a 75ms delay this used to sleep before every EOSE — a way of
+     * hoping the events that preceded it had already been delivered by their own coroutines.
+     * Ordering is now a property rather than a race that usually resolved in time.
+     */
+    private suspend fun emitIncomingMessage(text: String) {
+        text.parseIncomingMessage()?.let { _incomingMessages.emit(value = it) }
     }
 
     override suspend fun sendMESSAGE(text: String, ensureSessionBeforeSend: Boolean) {
