@@ -53,6 +53,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class SynchronizationViewModel(
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
@@ -88,6 +89,15 @@ class SynchronizationViewModel(
         private val PUBLISH_ATTEMPT_TIMEOUT = (RelayPool.PUBLISH_TIMEOUT * 2).milliseconds
 
         /**
+         * Hard ceiling on one REQ or negentropy exchange. Both hold a subscription slot for
+         * their whole life, and a relay that opens a subscription and then goes quiet owes us
+         * no EOSE — without a bound, four such relays park every slot and the queue behind
+         * them never drains. Generous rather than tight: the cost of cutting a slow but live
+         * download short is re-fetching it next pass, and a REQ can carry MAX_IDS_PER_REQ ids.
+         */
+        private val SUBSCRIPTION_TIMEOUT = 120.seconds
+
+        /**
          * Backstop for a peer whose ranges never converge. Each round splits the disagreeing
          * ranges 16 ways, so a well-behaved exchange over even a very large set settles in a
          * handful; this only bounds the pathological case.
@@ -99,6 +109,8 @@ class SynchronizationViewModel(
          * common limit), and a first sync can reconcile far more than that.
          */
         private const val MAX_IDS_PER_REQ = 500
+
+        private const val NOSTR_EVENT_ID_HEX_LENGTH = 64
 
         private val mutex = Mutex()
 
@@ -239,6 +251,10 @@ class SynchronizationViewModel(
                     launch(Dispatchers.IO) {
                       subscriptionSlots.withPermit {
                         try {
+                            // Bounded for the same reason the negentropy exchange is: a relay
+                            // that answers a REQ with neither EOSE nor CLOSED would otherwise
+                            // hold a subscription slot for the life of the app.
+                            withTimeout(SUBSCRIPTION_TIMEOUT) {
                             relaysSocketManager.query(
                                 reqCommand,
                                 synchronizeNostrEventRequest.relayURL
@@ -290,6 +306,7 @@ class SynchronizationViewModel(
                                     }
                                 }
                             }
+                            }
 
                         } catch (e: Throwable) {
                             logger.e("Failed to sync", e)
@@ -332,24 +349,18 @@ class SynchronizationViewModel(
                             applyLimits = false
                         )
                         logger.d("Events: ${events.size}")
-                        val storage = StorageVector().apply {
-                            events.forEach { event ->
-                                // Nostr timestamps — and therefore every timestamp a relay
-                                // puts in its own negentropy vector — are in SECONDS. Feeding
-                                // milliseconds here sorted every local item ~1000x past every
-                                // remote one, so the fingerprint bounds could never match and
-                                // reconciliation degenerated into a full ID transfer.
-                                insert(
-                                    timestamp = event.createdAt.epochSeconds,
-                                    idHex = event.id
-                                )
-                            }
 
-                            seal()
-                        }
-                        val negentropy = Negentropy(
-                            storage,
-                        )
+                        // The vector is built before the request leaves "pending", and building it
+                        // can throw (a malformed id, a duplicate). The pending queue is a single
+                        // oldest-row-first observation, so a row that throws here and never
+                        // changes status is never retried AND blocks every negentropy request
+                        // behind it for the life of the process. Claim the row either way.
+                        val negentropy = runCatching { events.toNegentropy() }
+                            .onFailure { error ->
+                                logger.e("Failed to build the negentropy vector for ${negentropySynchronizeRequest.id}", error)
+                                nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
+                            }
+                            .getOrNull() ?: return@withLock
 
                         val negOpenCmd = NegOpenCmd(
                             subId = negentropySynchronizeRequest.uuid,
@@ -393,6 +404,7 @@ class SynchronizationViewModel(
                             var reconciliationOver = false
 
                             try {
+                                withTimeout(SUBSCRIPTION_TIMEOUT) {
                                 relaysSocketManager.negentropySync(
                                     negOpenCmd,
                                     negentropySynchronizeRequest.relayURL
@@ -535,6 +547,7 @@ class SynchronizationViewModel(
                                         }
                                     }
                                 }
+                                }
                                 logger.d("Queried Sync")
                             } catch (e: Throwable) {
                                 logger.e("Failed to sync", e)
@@ -576,6 +589,41 @@ class SynchronizationViewModel(
             }
         }
     }
+
+    /**
+     * Loads the local set into a sealed negentropy vector.
+     *
+     * `StorageVector` rejects an id that is not 32 bytes and, on seal, a duplicate item — either
+     * throws out of the whole request — so the set is filtered and de-duplicated on the way in.
+     * A row the vector cannot hold is a row this device cannot reconcile; dropping it costs one
+     * event's worth of extra transfer, where letting it through costs the entire sync.
+     */
+    private fun List<press.mantra.compose.database.model.NostrEvent>.toNegentropy(): Negentropy {
+        val storage = StorageVector()
+        val seen = HashSet<String>(size)
+
+        forEach { event ->
+            if (event.id.length != NOSTR_EVENT_ID_HEX_LENGTH || !event.id.all { it.isHex() }) {
+                logger.w("Skipping event with an id negentropy cannot index: ${event.id}")
+                return@forEach
+            }
+            if (!seen.add(event.id)) return@forEach
+
+            // Nostr timestamps — and therefore every timestamp a relay puts in its own
+            // negentropy vector — are in SECONDS. Feeding milliseconds here sorted every local
+            // item ~1000x past every remote one, so the fingerprint bounds could never match and
+            // reconciliation degenerated into a full ID transfer.
+            storage.insert(
+                timestamp = event.createdAt.epochSeconds,
+                idHex = event.id
+            )
+        }
+        storage.seal()
+
+        return Negentropy(storage)
+    }
+
+    private fun Char.isHex() = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
 
     /**
      * Turns a finished reconciliation into work: fetch what only the relay has, offer what only
