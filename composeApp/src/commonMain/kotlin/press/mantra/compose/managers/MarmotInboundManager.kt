@@ -413,6 +413,31 @@ object MarmotInboundManager {
         }
     }
 
+    /**
+     * Forget the commits being held for [nostrGroupId], so a replay decides its
+     * epochs again from the events it is about to feed back in.
+     *
+     * [handleCommitEvent] holds a commit whenever a second one turns up for an
+     * epoch, and only [CommitOrdering.EpochCommitTracker.clearEpoch] on a
+     * successful apply ever empties that. Nothing applies while more than one is
+     * held, so the set is a dead end: replaying those commits without clearing
+     * first just adds them again and leaves every one of them pending, and the
+     * list grows with each attempt.
+     *
+     * Safe to drop because the tracker is a scratch pad, not a record -- the
+     * commits themselves are on disk, and a replay hands them back oldest first,
+     * which is the order [CommitOrdering.comparator] picks a winner in.
+     */
+    suspend fun forgetPendingCommits(nostrGroupId: HexKey) {
+        commitTracker
+            .pendingGroupEpochs()
+            .filter { it.groupId == nostrGroupId }
+            .forEach { pending ->
+                logger.d("Forgetting pending commits for $nostrGroupId epoch ${pending.epoch}")
+                commitTracker.clearEpoch(pending.groupId, pending.epoch)
+            }
+    }
+
     private suspend fun applyCommit(
         database: MantraDatabase,
         mlsGroup: MlsGroup,

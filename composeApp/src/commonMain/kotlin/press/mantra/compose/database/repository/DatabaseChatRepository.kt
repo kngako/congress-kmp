@@ -10,9 +10,11 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.MarmotReindexReport
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -406,6 +408,22 @@ class DatabaseChatRepository(
 
         onCompletion.invoke()
     }
+
+    /**
+     * Only the public key is needed: reading a group event is done with the MLS
+     * group's own secrets, held in the room's stored state, and the identity is
+     * used for nothing but deciding whether this device is a member and whether a
+     * line is its own. So a read-only [KeyPair] is enough, and the nostr private
+     * key stays where it is.
+     */
+    override suspend fun reindexMarmotGroupEvents(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): MarmotReindexReport =
+        database.nostrDao().reindexMarmotGroupEvents(
+            chatRoomId = chatRoomId,
+            activeKeyPair = KeyPair(pubKey = userPublicKey.hexToByteArray()),
+        )
 
     companion object {
         const val TAG = "DatabaseChatRepository"

@@ -30,6 +30,26 @@ interface ChatMessageDao {
     @Query("SELECT COUNT(*) FROM ChatMessage WHERE chatRoomId = :chatRoomId AND senderPublicKey = :senderPublicKey")
     fun countChatMessagesBySenderPublicKey(chatRoomId: HexKey, senderPublicKey: HexKey): Int
 
+    /**
+     * The room's group events that already have something to show for them.
+     *
+     * One query so a replay can skip the events it has no business touching without
+     * a lookup per event -- `marmotGroupEventId` carries no index, so each of those
+     * is a scan of the whole table.
+     *
+     * [unresolvedTypes] is [press.mantra.compose.database.model.ChatMessage.UNRESOLVED_MARMOT_TYPES]:
+     * lines that stand in for a message still to come rather than reporting one.
+     */
+    @Query(
+        "SELECT marmotGroupEventId FROM ChatMessage " +
+            "WHERE chatRoomId = :chatRoomId AND marmotGroupEventId IS NOT NULL " +
+            "AND messageType NOT IN (:unresolvedTypes)"
+    )
+    suspend fun getResolvedMarmotGroupEventIds(
+        chatRoomId: String,
+        unresolvedTypes: Collection<String>
+    ): List<HexKey>
+
     @Upsert
     suspend fun upsert(chatMessage: press.mantra.compose.database.model.ChatMessage): Long
 }
