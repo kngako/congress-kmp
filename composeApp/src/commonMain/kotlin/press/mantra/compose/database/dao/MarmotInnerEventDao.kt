@@ -26,4 +26,13 @@ interface MarmotInnerEventDao {
      */
     @Query("DELETE FROM MarmotInnerEvent WHERE payloadEventId = :payloadEventId")
     suspend fun deleteByPayloadEventId(payloadEventId: String)
+
+    /**
+     * The submissions held back waiting for [eventId], oldest first.
+     *
+     * Oldest first because a backlog usually arrives in the order it was
+     * written, so applying it that way unblocks the most in one pass.
+     */
+    @Query("SELECT * FROM MarmotInnerEvent WHERE awaitingEventId = :eventId ORDER BY createdAt ASC")
+    suspend fun getSubmissionsAwaiting(eventId: String): List<MarmotInnerEvent>
 }

@@ -164,7 +164,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 5,
+    version = 6,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -183,7 +183,12 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // nip30303 event a SubmissionEvent rumor carries. Rumors queued before
         // this come back null, which reads as "not a submission" -- correct,
         // since none of them were.
-        AutoMigration(from = 4, to = 5)
+        AutoMigration(from = 4, to = 5),
+        // v6 adds the nullable MarmotInnerEvent.awaitingEventId, holding a
+        // submission that arrived before the event it references. Nothing
+        // queued before this was ever held, so null is the right answer for
+        // every existing row.
+        AutoMigration(from = 5, to = 6)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
