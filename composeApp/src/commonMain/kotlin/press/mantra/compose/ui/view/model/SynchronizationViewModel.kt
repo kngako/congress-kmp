@@ -24,6 +24,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
+import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import fr.acinq.phoenix.data.ActiveWallet
 import fr.acinq.phoenix.managers.nostrPrivateKey
@@ -43,6 +44,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.NonCancellable
@@ -84,6 +86,19 @@ class SynchronizationViewModel(
          * socket as well as the response flow, so a request can never sit in "processing".
          */
         private val PUBLISH_ATTEMPT_TIMEOUT = (RelayPool.PUBLISH_TIMEOUT * 2).milliseconds
+
+        /**
+         * Backstop for a peer whose ranges never converge. Each round splits the disagreeing
+         * ranges 16 ways, so a well-behaved exchange over even a very large set settles in a
+         * handful; this only bounds the pathological case.
+         */
+        private const val MAX_NEGENTROPY_ROUNDS = 32
+
+        /**
+         * Ids per fallback REQ. Relays cap the size of a filter's `ids` array (1000 is the
+         * common limit), and a first sync can reconcile far more than that.
+         */
+        private const val MAX_IDS_PER_REQ = 500
 
         private val mutex = Mutex()
 
@@ -355,16 +370,41 @@ class SynchronizationViewModel(
 
                         nostrRepository.negentropySynchronizeRequestProcessed(negentropySynchronizeRequest)
 
+                        // The ids we hold, for deciding which of the relay's "you have what I
+                        // don't" answers we can actually broadcast. A set, because reconcile() can
+                        // report thousands of them and this used to be a list scan per id — and
+                        // taken here rather than inside the coroutine below so that a long
+                        // exchange does not keep every loaded event (content and all) alive for
+                        // its whole life.
+                        val localEventIds = events.mapTo(HashSet(events.size)) { it.id }
+
                         launch(Dispatchers.IO) {
                           subscriptionSlots.withPermit {
                             val negCloseCmd = NegCloseCmd(
                                 subId = negentropySynchronizeRequest.uuid,
                             )
+                            // Reconciliation is incremental: each round resolves some ranges into
+                            // ids and splits the rest. Accumulate across rounds and act once, at
+                            // the end — acting per round would queue a REQ per round for ids that
+                            // later rounds are still discovering.
+                            val needIds = LinkedHashSet<String>()
+                            val sendIds = LinkedHashSet<String>()
+                            var rounds = 0
+                            var reconciliationOver = false
+
                             try {
                                 relaysSocketManager.negentropySync(
                                     negOpenCmd,
                                     negentropySynchronizeRequest.relayURL
-                                ).collect { nostrIncomingMessage ->
+                                ).transformWhile { message ->
+                                    // The collector below runs inside this emit, so by the time
+                                    // the predicate is read it has already recorded whether the
+                                    // exchange finished. Without this the flow would only end on
+                                    // EOSE/CLOSED/NEG-ERR, and a relay owes us none of those once
+                                    // reconciliation completes.
+                                    emit(message)
+                                    !reconciliationOver
+                                }.collect { nostrIncomingMessage ->
                                     when (nostrIncomingMessage) {
                                         is NostrIncomingMessage.EventMessage -> {
                                             launch(Dispatchers.IO) {
@@ -413,48 +453,38 @@ class SynchronizationViewModel(
                                             return@collect
                                         }
                                         is NostrIncomingMessage.NegentropyMessage -> {
-                                            logger.d("NegentropyMessage: ${nostrIncomingMessage.negentropyMessage}")
+                                            rounds++
+                                            logger.d("NegentropyMessage (round $rounds): ${nostrIncomingMessage.negentropyMessage}")
 
                                             val result = negentropy.reconcile(
                                                 nostrIncomingMessage.negentropyMessage.hexToByteArray()
                                             )
-                                            logger.d("NeedIds: ${result.needIds.map { it.toHexString() }}")
-                                            logger.d("SendIds: ${result.sendIds.map { it.toHexString() }}")
-                                            logger.d("EventsIds: ${events.map { it.id }}")
-                                            logger.d("Timestamp: ${events.map { it.createdAt.epochSeconds }}")
+                                            result.needIds.mapTo(needIds) { it.toHexString() }
+                                            result.sendIds.mapTo(sendIds) { it.toHexString() }
+                                            logger.d("Round $rounds: +${result.needIds.size} need, +${result.sendIds.size} send")
 
-                                            if (result.needIds.isNotEmpty()) {
-                                                // Schedule a sync from this relay...
-                                                nostrRepository.queueSynchronizeNostrEvent(
-                                                    listOf(
-                                                        SynchronizeNostrEventRequest(
-                                                            purpose = negentropySynchronizeRequest.purpose,
-                                                            synchronizationFilters = arrayOf(
-                                                                SynchronizationFilter(
-                                                                    ids = result.needIds.map { it.toHexString() }
-                                                                        .toTypedArray()
-                                                                )
-                                                            ),
-                                                            relayURL = negentropySynchronizeRequest.relayURL,
-                                                            level = negentropySynchronizeRequest.level,
-                                                        )
-                                                    )
-                                                )
+                                            val nextMessage = result.msg
+                                            // A null message is the library saying "nothing left
+                                            // to ask about" — that, not the arrival of the first
+                                            // NEG-MSG, is where an exchange is over. The round cap
+                                            // is a backstop against a peer that keeps splitting
+                                            // ranges forever; reconciliation halves the search
+                                            // space each round, so a healthy one is far shorter.
+                                            if (nextMessage == null || rounds >= MAX_NEGENTROPY_ROUNDS) {
+                                                if (nextMessage != null) {
+                                                    logger.w("Negentropy with ${negentropySynchronizeRequest.relayURL} did not settle in $MAX_NEGENTROPY_ROUNDS rounds; using what reconciled so far")
+                                                }
+                                                reconciliationOver = true
+                                                return@collect
                                             }
-                                            val eventIds = events.map { it.id }
-                                            val broadcastNostrEventRequests = result.sendIds.filter { it.toHexString() in eventIds }.map { sendId ->
-                                                BroadcastNostrEventRequest(
-                                                    nostrEventId = sendId.toHexString(),
-                                                    relayURL = negentropySynchronizeRequest.relayURL
-                                                )
-                                            }
-                                            logger.d("broadcastNostrEventRequests: $broadcastNostrEventRequests")
-                                            // Schedule broadcastNostrEventRequests
 
-                                            nostrRepository.rescheduleBroadcastNostrEventRequests(
-                                                broadcastNostrEventRequests
+                                            relaysSocketManager.sendNegentropyMessage(
+                                                NegMsgCmd(
+                                                    subId = negentropySynchronizeRequest.uuid,
+                                                    message = nextMessage.toHexString(),
+                                                ),
+                                                negentropySynchronizeRequest.relayURL
                                             )
-
                                             return@collect
                                         }
                                         is NostrIncomingMessage.ClosedMessage -> {
@@ -522,6 +552,20 @@ class SynchronizationViewModel(
                                     }
                                 }
                             }
+
+                            // Outside the try, and NonCancellable, so a session that timed out or
+                            // was cancelled mid-exchange still acts on what it did reconcile
+                            // instead of throwing the rounds it paid for away.
+                            withContext(NonCancellable) {
+                                runCatching {
+                                    applyReconciliation(
+                                        negentropySynchronizeRequest = negentropySynchronizeRequest,
+                                        needIds = needIds,
+                                        sendIds = sendIds,
+                                        localEventIds = localEventIds,
+                                    )
+                                }.onFailure { logger.e("Failed to schedule reconciliation follow-ups", it) }
+                            }
                           }
                         }
 
@@ -530,6 +574,56 @@ class SynchronizationViewModel(
                     logger.i("Lock released")
                 }
             }
+        }
+    }
+
+    /**
+     * Turns a finished reconciliation into work: fetch what only the relay has, offer what only
+     * we have.
+     */
+    private suspend fun applyReconciliation(
+        negentropySynchronizeRequest: press.mantra.compose.database.model.NegentropySynchronizeRequest,
+        needIds: Set<String>,
+        sendIds: Set<String>,
+        localEventIds: Set<String>,
+    ) {
+        logger.d("Reconciled with ${negentropySynchronizeRequest.relayURL}: ${needIds.size} to fetch, ${sendIds.size} to offer")
+
+        if (needIds.isNotEmpty()) {
+            // One REQ per chunk. A first sync can need thousands of ids, and relays cap the
+            // length of a filter's `ids` array — a single oversized REQ is answered with a
+            // CLOSED (or silently truncated), which loses every id past the cap.
+            nostrRepository.queueSynchronizeNostrEvent(
+                needIds.chunked(MAX_IDS_PER_REQ).map { chunk ->
+                    SynchronizeNostrEventRequest(
+                        purpose = negentropySynchronizeRequest.purpose,
+                        synchronizationFilters = arrayOf(
+                            SynchronizationFilter(
+                                ids = chunk.toTypedArray()
+                            )
+                        ),
+                        relayURL = negentropySynchronizeRequest.relayURL,
+                        level = negentropySynchronizeRequest.level,
+                    )
+                }
+            )
+        }
+
+        // Only offer events we actually hold. `sendIds` is what the relay is missing relative to
+        // our vector, so everything in it should be local — the guard is against a peer that
+        // echoes ids we never sent.
+        val broadcastNostrEventRequests = sendIds.filter { it in localEventIds }.map { sendId ->
+            BroadcastNostrEventRequest(
+                nostrEventId = sendId,
+                relayURL = negentropySynchronizeRequest.relayURL
+            )
+        }
+        logger.d("broadcastNostrEventRequests: ${broadcastNostrEventRequests.size}")
+
+        if (broadcastNostrEventRequests.isNotEmpty()) {
+            nostrRepository.rescheduleBroadcastNostrEventRequests(
+                broadcastNostrEventRequests
+            )
         }
     }
 

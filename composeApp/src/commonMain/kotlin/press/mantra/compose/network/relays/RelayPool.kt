@@ -12,6 +12,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
+import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -223,6 +224,18 @@ class RelayPool(
             }
             eventFlow
         }
+    }
+
+    /**
+     * Sends the next round of a negentropy exchange. The relay answers on the same
+     * subscription, so the caller keeps collecting the flow it already opened with
+     * [negentropySync] rather than opening a new one.
+     */
+    suspend fun sendNegentropyMessage(negMsgCmd: NegMsgCmd, relayUrl: String) {
+        val nostrSocketClient = socketClients.find { NormalizedRelayUrl(it.socketUrl).displayUrl() == NormalizedRelayUrl(relayUrl).displayUrl() }
+            ?: throw press.mantra.compose.exceptions.NetworkException("$relayUrl is not connected")
+
+        nostrSocketClient.sendMESSAGE(OptimizedJsonMapper.toJson(negMsgCmd))
     }
 
     suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {

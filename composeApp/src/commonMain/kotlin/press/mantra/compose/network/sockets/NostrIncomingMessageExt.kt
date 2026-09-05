@@ -11,17 +11,22 @@ import kotlinx.coroutines.flow.transformWhile
  * NOTICE is deliberately absent. It carries no subscription id, so it is
  * delivered to every collector on the socket — treating it as terminal would
  * let one relay notice tear down every unrelated subscription at once.
+ *
+ * NEG-MSG is absent too, and for a sharper reason. Negentropy is a multi-round
+ * protocol: the initiator opens with fingerprints over its whole set, and each
+ * NEG-MSG the relay sends back resolves some ranges into id lists while
+ * splitting others into finer fingerprints the client must answer with another
+ * NEG-MSG. Only the ranges that come back as id lists produce have/need ids at
+ * all, and a message carries 16 buckets — so one round says almost nothing about
+ * a set of any size. Treating the first NEG-MSG as terminal made every sync a
+ * single round and abandoned a reconciliation the relay was still in the middle
+ * of. A negentropy exchange instead ends when `reconcile()` reports no further
+ * message to send, which only the caller can see (see SynchronizationViewModel).
  */
 fun NostrIncomingMessage.isTerminalFor(id: String): Boolean =
     (this is NostrIncomingMessage.EoseMessage && subscriptionId == id) ||
         (this is NostrIncomingMessage.ClosedMessage && subscriptionId == id) ||
-        (this is NostrIncomingMessage.NegentropyError && subscriptionId == id) ||
-        // A NEG-MSG ends the exchange because this client reconciles in a single
-        // round: it diffs once, queues the ids it needs as a plain REQ, schedules
-        // what the relay is missing, and closes. Waiting for an EOSE that a
-        // negentropy exchange need not send would hold the subscription open
-        // forever — and, now that slots are capped, stall the queue behind it.
-        (this is NostrIncomingMessage.NegentropyMessage && subscriptionId == id)
+        (this is NostrIncomingMessage.NegentropyError && subscriptionId == id)
 
 /**
  * Completes the flow once the subscription is over, emitting the terminal

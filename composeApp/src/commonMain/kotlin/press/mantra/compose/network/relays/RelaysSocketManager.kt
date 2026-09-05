@@ -6,6 +6,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
+import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.CancellationException
@@ -153,6 +154,13 @@ class RelaysSocketManager(
     suspend fun negentropySync(negOpenCmd: NegOpenCmd, relayUrl: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
         return relayPool.negentropySync(
             negOpenCmd = negOpenCmd,
+            relayUrl = relayUrl
+        )
+    }
+
+    suspend fun sendNegentropyMessage(negMsgCmd: NegMsgCmd, relayUrl: String) {
+        return relayPool.sendNegentropyMessage(
+            negMsgCmd = negMsgCmd,
             relayUrl = relayUrl
         )
     }
