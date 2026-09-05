@@ -164,7 +164,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 4,
+    version = 5,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -173,11 +173,16 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // additions need no default and drop no data, so Room generates this one
         // too. Rituals already in flight come back with all three null, which reads
         // as "not approved yet" and simply asks the member for each step.
-        AutoMigration(from = 2, to = 3)
+        AutoMigration(from = 2, to = 3),
         // v4 changes no schema at all -- it rewrites `dkgApprovalNeeded` chat rows
         // into one type per ritual step. Data, not shape, so it is a manual
         // migration passed to the builder rather than an entry here. See
         // MIGRATION_3_4.
+        // v5 adds a nullable direct message recipient to MarmotInnerEvent and
+        // ChatMessage. Nullable additions need no default and drop no data, so Room
+        // generates this one. Rows written before it come back null, which reads as
+        // "not a direct message" -- the only answer that is true of all of them.
+        AutoMigration(from = 4, to = 5),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

@@ -77,6 +77,15 @@ data class ChatMessage(
     val content: String,
     val messageType: String = "message",
 
+    /**
+     * Who a direct message was for, or null for anything else.
+     *
+     * Carried on the row rather than read back off the wrap so the transcript can name
+     * the recipient without a join, on both the line the two of them can read and the
+     * line everybody else gets. See docs/marmot-direct-messages.md.
+     */
+    val directMessageRecipientPublicKey: HexKey? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),

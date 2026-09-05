@@ -70,6 +70,18 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
     val marmotGroupEventId: String? = null,
 
     /**
+     * Who this is a direct message to, or null for an ordinary group message.
+     *
+     * Set on the way out only. It is what tells the notary to gift wrap this row for one
+     * member instead of sending it to the whole group, and afterwards what tells the
+     * transcript the row was private. Inbound rows leave it null -- the recipient is on
+     * the wrap's `p` tag, which is where every member reads it from.
+     *
+     * See docs/marmot-direct-messages.md.
+     */
+    val directMessageRecipientPublicKey: HexKey? = null,
+
+    /**
      * Current time
      */
     override val createdAt: Instant = Clock.System.now(),
@@ -118,6 +130,7 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
         if (content != other.content) return false
         if (quotedEventId != other.quotedEventId) return false
         if (marmotGroupEventId != other.marmotGroupEventId) return false
+        if (directMessageRecipientPublicKey != other.directMessageRecipientPublicKey) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
         if (savedAt != other.savedAt) return false
@@ -137,6 +150,7 @@ data class MarmotInnerEvent( // TODO: Rename this to GiftWrapPayload...
         result = 31 * result + content.hashCode()
         result = 31 * result + (quotedEventId?.hashCode() ?: 0)
         result = 31 * result + (marmotGroupEventId?.hashCode() ?: 0)
+        result = 31 * result + (directMessageRecipientPublicKey?.hashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         result = 31 * result + savedAt.hashCode()
