@@ -8,10 +8,10 @@ import androidx.room3.Upsert
 @Dao
 interface PostDao {
     @Query("SELECT * FROM Post")
-    fun  getAllPosts(): List<press.mantra.compose.database.model.intermdiate.LocalPost>
+    suspend fun  getAllPosts(): List<press.mantra.compose.database.model.intermdiate.LocalPost>
 
     @Query("SELECT * FROM Post WHERE id = :id")
-    fun getPostById(id: String): press.mantra.compose.database.model.Post?
+    suspend fun getPostById(id: String): press.mantra.compose.database.model.Post?
 
     @Insert
     suspend fun insert(post: press.mantra.compose.database.model.Post)

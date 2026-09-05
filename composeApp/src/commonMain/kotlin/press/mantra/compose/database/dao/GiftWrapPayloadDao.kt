@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface GiftWrapPayloadDao {
     @Query("SELECT * FROM GiftWrapPayload")
-    fun  getAllGiftWrapUnsigned(): List<GiftWrapPayload>
+    suspend fun  getAllGiftWrapUnsigned(): List<GiftWrapPayload>
 
     @Query("SELECT * FROM GiftWrapPayload WHERE publicKey = :publicKey AND giftWrapSealId IS NULL")
     fun observeUnsealedGiftWrapPayloads(publicKey: String): Flow<GiftWrapPayload?>

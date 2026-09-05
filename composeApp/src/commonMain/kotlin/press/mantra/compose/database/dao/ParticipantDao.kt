@@ -9,10 +9,10 @@ import press.mantra.compose.database.model.Participant
 @Dao
 interface ParticipantDao {
     @Query("SELECT * FROM Participant WHERE participantPublicKey = :participantPublicKey")
-    fun findParticipantByPublicKey(participantPublicKey: String): List<Participant>
+    suspend fun findParticipantByPublicKey(participantPublicKey: String): List<Participant>
 
     @Query("SELECT * FROM Participant WHERE chatRoomId = :chatRoomId")
-    fun findParticipantsByChatRoomId(chatRoomId: String): List<Participant>
+    suspend fun findParticipantsByChatRoomId(chatRoomId: String): List<Participant>
 
     @Upsert
     suspend fun upsert(participants: List<Participant>)

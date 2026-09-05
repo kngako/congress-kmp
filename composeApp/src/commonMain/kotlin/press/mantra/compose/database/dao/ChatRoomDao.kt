@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRoomDao {
     @Transaction
     @Query("SELECT * FROM ChatRoom WHERE id = :id AND deletedAt IS NULL")
-    fun findChatRoomById(id: String): LocalChatRoom?
+    suspend fun findChatRoomById(id: String): LocalChatRoom?
 
     @Transaction
     @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey AND deletedAt IS NULL")
-    fun getChatRoomListByUserPublicKey(userPublicKey: String): List<LocalChatRoom>
+    suspend fun getChatRoomListByUserPublicKey(userPublicKey: String): List<LocalChatRoom>
 
     @Transaction
     @Query("SELECT * FROM ChatRoom WHERE userPublicKey = :userPublicKey AND deletedAt IS NULL")

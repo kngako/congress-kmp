@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ReactionDao {
     @Query("SELECT * FROM Reaction")
-    fun  getAllReactions(): List<press.mantra.compose.database.model.Reaction>
+    suspend fun  getAllReactions(): List<press.mantra.compose.database.model.Reaction>
 
     @Query("SELECT * FROM Reaction WHERE id = :id")
     fun getReactionById(id: String): Flow<press.mantra.compose.database.model.Reaction?>

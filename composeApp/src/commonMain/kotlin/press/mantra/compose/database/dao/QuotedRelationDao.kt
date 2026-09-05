@@ -8,10 +8,10 @@ import androidx.room3.Upsert
 @Dao
 interface QuotedRelationDao {
     @Query("SELECT * FROM QuotedRelation WHERE quotingNostrEventId = :quotingNostrEventId")
-    fun getRepostByQuotingNostrEventId(quotingNostrEventId: String): press.mantra.compose.database.model.QuotedRelation?
+    suspend fun getRepostByQuotingNostrEventId(quotingNostrEventId: String): press.mantra.compose.database.model.QuotedRelation?
 
     @Query("SELECT * FROM QuotedRelation WHERE quotedNostrEventId = :quotedNostrEventId")
-    fun getRepostByQuotedNostrEventId(quotedNostrEventId: String): press.mantra.compose.database.model.QuotedRelation?
+    suspend fun getRepostByQuotedNostrEventId(quotedNostrEventId: String): press.mantra.compose.database.model.QuotedRelation?
 
     @Insert
     suspend fun insert(quotedRelation: press.mantra.compose.database.model.QuotedRelation)

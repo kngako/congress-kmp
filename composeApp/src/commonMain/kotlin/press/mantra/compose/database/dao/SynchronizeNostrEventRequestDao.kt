@@ -18,8 +18,8 @@ interface SynchronizeNostrEventRequestDao {
     fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String, status: List<String>): Flow<Int>
 
     @Upsert
-    fun upsert(synchronizeNostrEventRequest: press.mantra.compose.database.model.SynchronizeNostrEventRequest)
+    suspend fun upsert(synchronizeNostrEventRequest: press.mantra.compose.database.model.SynchronizeNostrEventRequest)
 
     @Insert
-    fun insert(synchronizeNostrEventRequests: List<press.mantra.compose.database.model.SynchronizeNostrEventRequest>)
+    suspend fun insert(synchronizeNostrEventRequests: List<press.mantra.compose.database.model.SynchronizeNostrEventRequest>)
 }

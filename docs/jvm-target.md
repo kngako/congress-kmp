@@ -424,6 +424,37 @@ Those two go together: the KSP configuration does not exist until the target
 does, which is why Phase 0 deliberately left it alone. Then let the compiler
 drive.
 
+### Before any of that: Room will not generate a DAO for a non-android target
+
+**This is the real content of Phase 4, and it is not the actuals.** The first jvm
+compile fails with 58 copies of:
+
+```
+Only suspend functions are allowed in DAOs declared in source sets targeting
+non-Android platforms.
+```
+
+Room permits blocking query methods **only** on android. Every `@Dao` function that
+is neither `suspend` nor `Flow`-returning has to change, and there were 58 of them
+across 25 files in `database/dao/`. KSP reports them in alphabetical batches, so the
+count shrinks in stages and looks endless; scan for them directly instead — an
+abstract `fun` in a `@Dao` that has no `suspend` and no `Flow<...>` return.
+
+The saving grace is that it stops there. All 15 call sites outside the DAO layer
+were **already inside `suspend` functions** — the repositories were written that way
+throughout — so the change is `suspend` on 58 declarations, plus exactly one private
+helper (`DatabaseNostrRepository.matchNegentropicNostrEvents`), whose single caller
+was already suspend. Zero call-site edits.
+
+It is not free, though, and the cost lands on **android**. A blocking DAO method runs
+on its caller's thread; a `suspend` one is dispatched to the query coroutine context,
+which `getRoomDatabase` sets to `Dispatchers.IO`. That is the better behaviour — it is
+what stops a query running on the main thread — but it is a real change to a shipping
+platform, made for the benefit of a target that does not exist yet. Run the android
+unit tests, not just the compile.
+
+### Then the actuals
+
 Mantra declares 16 expects across 8 files. They split cleanly:
 
 **Six platform basics.** `getPlatform` ([Platform.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/Platform.kt)),
@@ -442,6 +473,19 @@ directory from Phase 1 — not `java.io.tmpdir`, which is what the old Aux
 implementation did and which silently loses the database on reboot on most
 systems.
 
+**The library's android- and ios-only classes are not all expects.** The 23 counted
+at the top of this document are `expect` declarations, and the compiler lists those
+for you. `BusinessManager` is not one — it exists as a plain object in `androidMain`
+and again in `iosMain`, with no common declaration, so nothing flags its absence until
+mantra's own actual tries to import it.
+
+The ios one turns out to contain no ios API whatever: no `platform.*`, no cinterop, no
+`NSObject`. It ports to `jvmMain` on a package rename alone and compiles unchanged. It
+is also the right one to start from — the android manager is built around an android
+`Application` it holds, while the ios one constructs its own `PlatformContext`, which
+is exactly what the jvm can do. `NavigationViewModel.ios.kt` is likewise portable on
+one changed import.
+
 **Nine lightning wrappers.** Four in
 [Phoenix.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/extensions/Phoenix.kt)
 (`platformStartupLogic`, `schedulePlatformLogic`, `getShowIntroFlow`,
@@ -454,10 +498,17 @@ android actuals live in `NavigationViewModel.android.kt`.
 These are thin — they mostly forward into the phoenix library. They are thin
 *because* Phases 1–3 did the work, which is why they are last.
 
-`schedulePlatformLogic` is the one to look at properly: on android it schedules
-background work through WorkManager. On desktop there is no equivalent and no
-process that outlives the window. Decide explicitly whether it becomes a no-op or
-an in-process coroutine, and write down which.
+`schedulePlatformLogic` is the one to look at properly, and the answer is that it
+should schedule **nothing** and say so. On android it starts two WorkManager jobs, one
+of which is `ChannelsWatcher` — it wakes periodically to notice a channel force-closed
+while the app was shut. A desktop application has no process once its window closes,
+so there is nothing for a scheduler to wake, and running the watcher in-process would
+be strictly worse than not running it: it would only ever fire while the app was
+already open and watching anyway.
+
+The exposure is real and belongs in the release notes, not just a comment: a desktop
+wallet left closed past a force-close deadline does not notice. Covering it needs
+something outside this process, which is a separate piece of work from this plan.
 
 **Verification:** `./gradlew :composeApp:compileKotlinJvm`. This is the first
 point in the plan where the JVM target has to actually resolve, so expect the

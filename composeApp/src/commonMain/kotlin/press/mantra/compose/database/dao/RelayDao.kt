@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RelayDao {
     @Query("SELECT * FROM Relay")
-    fun  getAllPosts(): List<press.mantra.compose.database.model.Relay>
+    suspend fun  getAllPosts(): List<press.mantra.compose.database.model.Relay>
 
     @Query("SELECT * FROM Relay WHERE publicKey = :publicKey")
     fun observePublicKeyRelays(publicKey: String): Flow<List<press.mantra.compose.database.model.Relay>>

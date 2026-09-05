@@ -647,7 +647,7 @@ class DatabaseNostrRepository(
             .distinctBy { it.id }
     }
 
-    private fun matchNegentropicNostrEvents(
+    private suspend fun matchNegentropicNostrEvents(
         synchronizationFilter: SynchronizationFilter,
         applyLimits: Boolean,
     ): List<NostrEvent> {

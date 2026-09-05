@@ -18,7 +18,7 @@ interface NegentropySynchronizeRequestDao {
     fun observeNegentropySynchronizeRequestByPurposeAndStatusCount(purpose: String, status: List<String>): Flow<Int>
 
     @Upsert
-    fun upsert(negentropySynchronizeRequest: NegentropySynchronizeRequest)
+    suspend fun upsert(negentropySynchronizeRequest: NegentropySynchronizeRequest)
 
     /**
      * Upsert rather than insert-or-ignore. `computeId` buckets by minute, so an identical
@@ -28,5 +28,5 @@ interface NegentropySynchronizeRequestDao {
      * hit the network, while still collapsing duplicates into a single row.
      */
     @Upsert
-    fun insert(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>)
+    suspend fun insert(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>)
 }

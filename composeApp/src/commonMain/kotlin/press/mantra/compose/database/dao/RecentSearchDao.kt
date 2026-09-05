@@ -12,10 +12,10 @@ interface RecentSearchDao {
     fun observeRecentSearchByQuery(query: String): Flow<press.mantra.compose.database.model.RecentSearch?>
 
     @Query("SELECT * FROM RecentSearch ORDER BY createdAt DESC LIMIT :limit ")
-    fun getAllRecentSearches(limit: Int = 21): List<press.mantra.compose.database.model.RecentSearch>
+    suspend fun getAllRecentSearches(limit: Int = 21): List<press.mantra.compose.database.model.RecentSearch>
 
     @Delete
-    fun deleteRecentSearch(recentSearch: press.mantra.compose.database.model.RecentSearch)
+    suspend fun deleteRecentSearch(recentSearch: press.mantra.compose.database.model.RecentSearch)
 
     @Upsert
     suspend fun upsert(recentSearch: press.mantra.compose.database.model.RecentSearch)

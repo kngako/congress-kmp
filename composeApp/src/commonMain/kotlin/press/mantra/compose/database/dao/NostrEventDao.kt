@@ -73,13 +73,13 @@ interface NostrEventDao {
      * constraints they had no parameter for.
      */
     @RawQuery
-    fun  getNostrEventsMatchingFilter(
+    suspend fun  getNostrEventsMatchingFilter(
         query: RoomRawQuery
     ): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getNostrEvents(
+    suspend fun  getNostrEvents(
         kinds: Array<Kind>,
         since: Instant,
         limit: Int
@@ -87,7 +87,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE content LIKE '%' || :search || '%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getFilteredNostrEvents(
+    suspend fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         search: String,
         since: Instant,
@@ -96,7 +96,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getFilteredNostrEvents(
+    suspend fun  getFilteredNostrEvents(
         kinds: Array<Kind>,
         ids: Array<HexKey>,
         since: Instant,
@@ -105,7 +105,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE id in (:ids) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getNostrEventsByIds(
+    suspend fun  getNostrEventsByIds(
         ids: Array<HexKey>,
         since: Instant,
         limit: Int
@@ -114,7 +114,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind = ${GroupEvent.KIND} AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getMLSGroupEvents(
+    suspend fun  getMLSGroupEvents(
         since: Instant,
         limit: Int
     ): List<NostrEvent>
@@ -135,7 +135,7 @@ interface NostrEventDao {
             "AND (expiresAt IS NULL OR expiresAt > :now) " +
             "ORDER BY createdAt DESC LIMIT :limit"
     )
-    fun  getMarmotGroupEvents(
+    suspend fun  getMarmotGroupEvents(
         chatRoomIds: Array<HexKey>,
         since: Instant,
         until: Instant,
@@ -145,7 +145,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getAuthoredNostrEvents(
+    suspend fun  getAuthoredNostrEvents(
         kinds: Array<Kind>,
         authors: Array<HexKey>,
         since: Instant,
@@ -154,7 +154,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :publicKey || '%' AND kind in (:kinds)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getPublicKeyMentionedNostrEvents(
+    suspend fun  getPublicKeyMentionedNostrEvents(
         kinds: Array<Kind>,
         publicKey: HexKey,
         since: Instant,
@@ -163,7 +163,7 @@ interface NostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE tags LIKE '%' || :eventId || '%reply%' AND kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
-    fun  getNostrEventReplies(
+    suspend fun  getNostrEventReplies(
         kinds: Array<Kind>,
         eventId: HexKey,
         since: Instant,
@@ -171,17 +171,17 @@ interface NostrEventDao {
     ): List<NostrEvent>
 
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) ORDER BY savedAt DESC")
-    fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
+    suspend fun  getAllNostrEvents(kinds: Array<Kind>): List<NostrEvent>
 
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
     fun observeNostrEventById(id: String): Flow<press.mantra.compose.database.model.intermdiate.LocalNostrEvent?>
 
     @Query("SELECT * FROM NostrEvent WHERE id = :id")
-    fun getNostrEventById(id: String): NostrEvent?
+    suspend fun getNostrEventById(id: String): NostrEvent?
 
     @Query("SELECT * FROM NostrEvent WHERE pubKey = :publicKey AND kind = :kind ORDER BY createdAt DESC")
-    fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): NostrEvent?
+    suspend fun getNostrEventByPublicKeyAndKind(publicKey: HexKey, kind: Kind): NostrEvent?
 
     @Upsert
     suspend fun upsert(nostrEvent: NostrEvent)

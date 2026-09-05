@@ -43,7 +43,7 @@ kotlin {
         }
     }
     
-//    jvm()
+    jvm()
     
     sourceSets {
         androidMain.dependencies {
@@ -125,6 +125,9 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+
+            // The jvm counterpart to sqldelight-android-driver / -native-driver above.
+            implementation(libs.sqldelight.sqlite.driver)
         }
         // Only exists when the ios targets above were declared; the default hierarchy template
         // creates this source set from them.
@@ -191,7 +194,7 @@ dependencies {
 //        add("kspIosX64", libs.androidx.room.compiler)
         add("kspIosArm64", libs.androidx.room3.compiler)
     }
-//    add("kspJvm", libs.androidx.room3.compiler)
+    add("kspJvm", libs.androidx.room3.compiler)
     // Add any other platform target you use in your project, for example kspDesktop
 }
 

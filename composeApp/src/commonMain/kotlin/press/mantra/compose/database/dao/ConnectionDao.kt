@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ConnectionDao {
     @Query("SELECT * FROM Connection LIMIT :limit")
-    fun  getAllConnections(limit: Int = 21): List<press.mantra.compose.database.model.Connection>
+    suspend fun  getAllConnections(limit: Int = 21): List<press.mantra.compose.database.model.Connection>
 
 
     @Query("SELECT * FROM Connection WHERE (sourcePublicKey = :alicePublicKey AND destinationPublicKey = :bobPublicKey) OR (sourcePublicKey = :bobPublicKey AND destinationPublicKey = :alicePublicKey)")

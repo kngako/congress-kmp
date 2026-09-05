@@ -12,10 +12,10 @@ import kotlin.time.Instant
 @Dao
 interface BroadcastNostrEventRequestDao {
     @Query("SELECT * FROM BroadcastNostrEventRequest")
-    fun  getAllBroadcastNostrEventRequests(): List<BroadcastNostrEventRequest>
+    suspend fun  getAllBroadcastNostrEventRequests(): List<BroadcastNostrEventRequest>
 
     @Query("SELECT * FROM BroadcastNostrEventRequest WHERE nostrEventId = :nostrEventId ORDER BY createdAt ASC")
-    fun  getFirstBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): BroadcastNostrEventRequest?
+    suspend fun  getFirstBroadcastNostrEventRequestByNostrEventId(nostrEventId: String): BroadcastNostrEventRequest?
 
     // See NegentropySynchronizeRequestDao: the old `createdAt > :createdAt` bound a
     // once-evaluated `Clock.System.now()` for the life of the Flow. Because Instants are

@@ -13,26 +13,26 @@ import kotlin.time.Instant
 @Dao
 interface ProfileDao {
     @Query("SELECT * FROM Profile WHERE createdAt > :createdAt LIMIT :limit")
-    fun  getAllProfiles(limit: Int = 21, createdAt: Instant = GENESIS_AT): List<Profile>
+    suspend fun  getAllProfiles(limit: Int = 21, createdAt: Instant = GENESIS_AT): List<Profile>
 
     @Query("SELECT * FROM Profile WHERE publicKey NOT IN (:excludedPublicKeys) AND createdAt > :createdAt LIMIT :limit")
-    fun  getAllProfilesExcludingOnesWithThesePublicKeys(
+    suspend fun  getAllProfilesExcludingOnesWithThesePublicKeys(
         excludedPublicKeys: Array<HexKey>,
         limit: Int = 21, createdAt: Instant = GENESIS_AT
     ): List<Profile>
 
 
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND content LIKE '%' || :searchTerm || '%' LIMIT :limit")
-    fun  filterProfiles(searchTerm: String, limit: Int = 21): List<press.mantra.compose.database.model.intermdiate.LocalProfile>
+    suspend fun  filterProfiles(searchTerm: String, limit: Int = 21): List<press.mantra.compose.database.model.intermdiate.LocalProfile>
 
     @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
-    fun getProfileByPublicKey(publicKey: String): Profile?
+    suspend fun getProfileByPublicKey(publicKey: String): Profile?
 
     @Query("SELECT * FROM Profile WHERE publicKey = :publicKey")
     fun observeProfileByPublicKey(publicKey: String): Flow<Profile?>
 
     @Query("SELECT * FROM Profile WHERE publicKey IN (:publicKeys)")
-    fun getProfileByPublicKeys(publicKeys: List<String>): List<Profile>
+    suspend fun getProfileByPublicKeys(publicKeys: List<String>): List<Profile>
 
     @Query("SELECT * FROM NostrEvent WHERE kind = 0 AND pubKey = :publicKey")
     fun observeProfileWithFollowersByPublicKey(publicKey: String): Flow<press.mantra.compose.database.model.intermdiate.LocalProfileWithFollowers?>

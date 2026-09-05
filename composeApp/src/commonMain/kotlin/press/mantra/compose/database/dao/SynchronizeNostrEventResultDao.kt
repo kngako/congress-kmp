@@ -6,5 +6,5 @@ import androidx.room3.Upsert
 @Dao
 interface SynchronizeNostrEventResultDao {
     @Upsert
-    fun upsert(synchronizeNostrEventResult: press.mantra.compose.database.model.SynchronizeNostrEventResult)
+    suspend fun upsert(synchronizeNostrEventResult: press.mantra.compose.database.model.SynchronizeNostrEventResult)
 }

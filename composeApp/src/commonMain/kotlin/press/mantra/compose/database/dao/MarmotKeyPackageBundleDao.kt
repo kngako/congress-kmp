@@ -16,10 +16,10 @@ interface MarmotKeyPackageBundleDao {
     fun observeAllMarmotKeyPackageBundles(publicKey: HexKey): Flow<List<MarmotKeyPackageBundle>>
 
     @Query("SELECT * FROM MarmotKeyPackageBundle WHERE publicKey = :publicKey ORDER BY createdAt DESC")
-    fun getAllMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle>
+    suspend fun getAllMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle>
 
     @Query("SELECT * FROM MarmotKeyPackageBundle WHERE id = :id ORDER BY createdAt DESC")
-    fun getMarmotKeyPackageBundleById(id: String): MarmotKeyPackageBundle?
+    suspend fun getMarmotKeyPackageBundleById(id: String): MarmotKeyPackageBundle?
 
     @Upsert
     suspend fun upsert(marmotKeyPackageBundle: MarmotKeyPackageBundle)

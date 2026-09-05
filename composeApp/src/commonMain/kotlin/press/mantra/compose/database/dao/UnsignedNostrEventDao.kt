@@ -12,10 +12,10 @@ import press.mantra.compose.database.model.UnsignedNostrEvent
 @Dao
 interface UnsignedNostrEventDao {
     @Query("SELECT * FROM UnsignedNostrEvent")
-    fun  getAUnsignedNostrEvents(): List<UnsignedNostrEvent>
+    suspend fun  getAUnsignedNostrEvents(): List<UnsignedNostrEvent>
 
     @Query("SELECT * FROM UnsignedNostrEvent") // TODO: where nostrEvent.unsignedNostrEventId is 0
-    fun  getAllUnprocessedUnsignedNostrEvents(): List<UnsignedNostrEvent>
+    suspend fun  getAllUnprocessedUnsignedNostrEvents(): List<UnsignedNostrEvent>
 
     @Query("SELECT * FROM UnsignedNostrEvent WHERE id = :id")
     fun getUnsignedNostrEventById(id: Long): Flow<UnsignedNostrEvent?>
@@ -32,7 +32,7 @@ interface UnsignedNostrEventDao {
 
     @Transaction
     @Query("SELECT * FROM UnsignedNostrEvent WHERE kind = 0")
-    fun getLocalAccounts(): List<LocalAccount>
+    suspend fun getLocalAccounts(): List<LocalAccount>
 
     @Query("SELECT * FROM UnsignedNostrEvent WHERE pubKey = :publicKey AND signedAt IS NULL ORDER BY kind ASC")
     fun observeUnsignedNostrEvents(publicKey: String): Flow<UnsignedNostrEvent?>

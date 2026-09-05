@@ -16,19 +16,19 @@ interface ChatMessageDao {
 
     @Transaction
     @Query("SELECT * FROM ChatMessage WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
-    fun getChatMessagesByChatRoomId(chatRoomId: String): List<press.mantra.compose.database.model.intermdiate.LocalChatMessage>
+    suspend fun getChatMessagesByChatRoomId(chatRoomId: String): List<press.mantra.compose.database.model.intermdiate.LocalChatMessage>
 
     @Query("SELECT * FROM ChatMessage WHERE giftWrapPayloadId = :giftWrapPayloadId ORDER BY createdAt DESC")
-    fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: HexKey): ChatMessage?
+    suspend fun getChatMessagesByGiftWrapPayloadId(giftWrapPayloadId: HexKey): ChatMessage?
 
     @Query("SELECT * FROM ChatMessage WHERE marmotInnerEventId = :marmotInnerEventId ORDER BY createdAt DESC")
-    fun getChatMessagesByMarmotInnerEventId(marmotInnerEventId: HexKey): ChatMessage?
+    suspend fun getChatMessagesByMarmotInnerEventId(marmotInnerEventId: HexKey): ChatMessage?
 
     @Query("SELECT * FROM ChatMessage WHERE marmotGroupEventId = :marmotGroupEventId ORDER BY createdAt DESC")
-    fun getChatMessagesByMarmotGroupEventId(marmotGroupEventId: HexKey): ChatMessage?
+    suspend fun getChatMessagesByMarmotGroupEventId(marmotGroupEventId: HexKey): ChatMessage?
 
     @Query("SELECT COUNT(*) FROM ChatMessage WHERE chatRoomId = :chatRoomId AND senderPublicKey = :senderPublicKey")
-    fun countChatMessagesBySenderPublicKey(chatRoomId: HexKey, senderPublicKey: HexKey): Int
+    suspend fun countChatMessagesBySenderPublicKey(chatRoomId: HexKey, senderPublicKey: HexKey): Int
 
     @Upsert
     suspend fun upsert(chatMessage: press.mantra.compose.database.model.ChatMessage): Long
