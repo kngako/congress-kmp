@@ -27,13 +27,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.view.state.ChatRoomListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
-import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -72,15 +72,7 @@ class ChatRoomListViewModel(
         logger.d("scheduleSynchronization")
         viewModelScope.launch(Dispatchers.IO) {
             // Sync Notifications... might want to also run this in the background
-            val chatRequestFilter = SynchronizationFilter(
-                kinds = arrayOf(
-                    GiftWrapEvent.KIND,
-                ),
-                tags = mapOf(
-                    Pair("p", listOf(publicKey))
-                ),
-                limit = 50
-            )
+            val chatRequestFilter = Nip17Filters.inbox(publicKey)
             nostrRepository.queueNegentropySynchronizeRequest(
                 Relays.DefaultDMRelayList.shuffled().map { normalizedRelayUrl ->
                     NegentropySynchronizeRequest(

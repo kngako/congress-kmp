@@ -66,6 +66,7 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -74,7 +75,6 @@ import press.mantra.compose.ui.view.state.ChatMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
-import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -123,22 +123,13 @@ class ChatMessageListViewModel(
                     val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
                     val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
-                        // Refresh our own inbox. A wrap names only its recipient, so
-                        // "the messages in this conversation" is not something a filter
-                        // can ask for, and the recipient's relays hold their mail, not
-                        // ours. p-tagging the peer here fetched other people's wraps,
-                        // which no key of ours can open.
+                        // Opening a conversation refreshes our own inbox: this used to
+                        // p-tag the peer and read their relays, which is where their mail
+                        // is kept, not ours. See Nip17Filters for why a per-conversation
+                        // filter is not a thing that can be written.
                         Pair(
                             Relays.DefaultDMRelayList,
-                            SynchronizationFilter(
-                                kinds = arrayOf(
-                                    GiftWrapEvent.KIND,
-                                ),
-                                tags = mapOf(
-                                    Pair("p", listOf(localChatRoom.chatRoom.userPublicKey))
-                                ),
-                                limit = 50
-                            )
+                            Nip17Filters.inbox(localChatRoom.chatRoom.userPublicKey),
                         )
 
                     } else {
