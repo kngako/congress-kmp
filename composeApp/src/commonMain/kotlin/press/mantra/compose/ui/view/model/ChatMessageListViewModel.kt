@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Upload
@@ -63,11 +65,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
+import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -75,10 +79,8 @@ import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.view.state.ChatMessageListUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
-import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
-import press.mantra.compose.database.model.Participant
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
+import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -181,18 +183,13 @@ class ChatMessageListViewModel(
                     val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
                     val relayAndSynchronizationFilter = if (chatMessageRelayListEvent != null) {
-                        // Sync messages from this relay...
+                        // Opening a conversation refreshes our own inbox: this used to
+                        // p-tag the peer and read their relays, which is where their mail
+                        // is kept, not ours. See Nip17Filters for why a per-conversation
+                        // filter is not a thing that can be written.
                         Pair(
-                            chatMessageRelayListEvent.relays(),
-                            SynchronizationFilter(
-                                kinds = arrayOf(
-                                    GiftWrapEvent.KIND,
-                                ),
-                                tags = mapOf(
-                                    Pair("p", listOf(recipients.participant.participantPublicKey))
-                                ),
-                                limit = 50
-                            )
+                            Relays.DefaultDMRelayList,
+                            Nip17Filters.inbox(localChatRoom.chatRoom.userPublicKey),
                         )
 
                     } else {
@@ -224,7 +221,7 @@ class ChatMessageListViewModel(
                             purpose = if (isReceiverChatMessageRelayListMissing.value) {
                                 "chat-message-relays"
                             } else {
-                                "sent-messages"
+                                "chat"
                             },
                             synchronizationFilter = relayAndSynchronizationFilter.second,
                             relayURL = normalizedRelayUrl.url,
@@ -275,7 +272,7 @@ class ChatMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages(onOpenSharedKey: () -> Unit) {
+    fun RenderMessages(onOpenSharedKey: () -> Unit, onOpenSigning: () -> Unit) {
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -330,8 +327,10 @@ class ChatMessageListViewModel(
                             val answeredRequests = chatRoomDetailMessageListUIState
                                 .chatMessageList
                                 .mapNotNull { request ->
-                                    val published = ChatMessage
-                                        .DKG_REQUEST_FULFILMENTS[request.chatMessage.messageType]
+                                    val published = (
+                                        ChatMessage.DKG_REQUEST_FULFILMENTS +
+                                            ChatMessage.FROST_REQUEST_FULFILMENTS
+                                        )[request.chatMessage.messageType]
                                         ?: return@mapNotNull null
 
                                     val done = chatRoomDetailMessageListUIState.chatMessageList.any {
@@ -417,6 +416,20 @@ class ChatMessageListViewModel(
                                         PrivateMessageNotice(
                                             sender = nameFor(localChatMessage.chatMessage.senderPublicKey),
                                             recipient = nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey)
+                                        )
+                                        return@items
+                                    }
+
+                                    // Signing lines are the same kind of thing and get
+                                    // the same treatment -- nobody said them either --
+                                    // but they lead somewhere else, because what a
+                                    // reader needs from one is the event being signed
+                                    // rather than the state of the key.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.FROST_TYPES) {
+                                        RitualNotice(
+                                            localChatMessage = localChatMessage,
+                                            isAnswered = localChatMessage.chatMessage.id in answeredRequests,
+                                            onClick = onOpenSigning
                                         )
                                         return@items
                                     }
@@ -709,6 +722,15 @@ private fun RitualNotice(
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1 -> Icons.Default.Upload
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_2 -> Icons.Default.FactCheck
 
+        ChatMessage.TYPE_FROST_STARTED -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_NONCE -> Icons.Default.Upload
+        ChatMessage.TYPE_FROST_SIGNER_SET -> Icons.Default.Groups
+        ChatMessage.TYPE_FROST_PARTIAL_SIGNATURE -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_SIGNATURE -> Icons.Default.WorkspacePremium
+        ChatMessage.TYPE_FROST_COMPLETE -> Icons.Default.CheckCircle
+        ChatMessage.TYPE_FROST_FAILED -> Icons.Default.ErrorOutline
+        ChatMessage.TYPE_FROST_APPROVAL_NEEDED -> Icons.Default.Draw
+
         else -> Icons.Default.PanTool
     }
 
@@ -717,10 +739,15 @@ private fun RitualNotice(
     // quiet; these are not.
     // An answered request is history, not a summons: it keeps its stage's icon so
     // the step is still recognisable, but drops the colour and the call to action.
-    val isRequest = chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES && !isAnswered
+    val isRequest = (
+        chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES ||
+            chatMessage.messageType in ChatMessage.FROST_REQUEST_TYPES
+        ) && !isAnswered
 
     val tint = when {
-        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||
+            chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ->
+            MaterialTheme.colorScheme.error
         isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -750,7 +777,9 @@ private fun RitualNotice(
                     // from the joined profile rather than written into the content,
                     // so it follows a rename and is not stuck on the "LOADING..."
                     // placeholder a member is given the moment they are first seen.
-                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES) {
+                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES ||
+                        chatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES
+                    ) {
                         withStyle(
                             SpanStyle(color = ProfileColor.fromPublicKey(chatMessage.senderPublicKey))
                         ) {

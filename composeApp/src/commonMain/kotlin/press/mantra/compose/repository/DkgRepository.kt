@@ -2,6 +2,7 @@ package press.mantra.compose.repository
 
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -42,6 +43,19 @@ interface DkgRepository {
         nostrPrivateKey: ByteArray
     )
 
+    /**
+     * Tells [chatRoomId] which ceremony's key it signs with, as its first message.
+     *
+     * Called once by whoever creates the room. Null if the ritual has produced
+     * no key yet, or if the room does not derive from the one it produced --
+     * both of which mean there is nothing true to announce.
+     */
+    suspend fun announceGroupKeyState(
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        session: DkgSession
+    ): GroupKeyState?
+
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
             override fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?> = flowOf(null)
@@ -65,6 +79,12 @@ interface DkgRepository {
                 step: DkgApprovalStep,
                 nostrPrivateKey: ByteArray
             ) = Unit
+
+            override suspend fun announceGroupKeyState(
+                chatRoomId: String,
+                userPublicKey: HexKey,
+                session: DkgSession
+            ): GroupKeyState? = null
         }
     }
 }

@@ -121,6 +121,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest: the DAO and model layers are suspending, so anything worth
+            // asserting about them needs a coroutine to assert it in.
+            implementation(libs.kotlinx.coroutinesTest)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -168,6 +171,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+    testOptions {
+        unitTests {
+            // Quartz logs through android.util.Log on the error paths -- parsing a
+            // malformed event, for one. Unmocked, those methods throw, so a test
+            // covering such a path fails on the log line rather than on what it
+            // came to check. Default values let the code under test carry on.
+            isReturnDefaultValues = true
+        }
     }
 }
 

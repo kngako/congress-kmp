@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schema
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Unsubscribe
 import androidx.compose.material.icons.filled.WaterfallChart
 import androidx.compose.material3.ButtonDefaults
@@ -60,6 +61,7 @@ import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -210,6 +212,72 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Text("Add Artifact to Library")
+                            }
+                        }
+
+                        item {
+                            HorizontalDivider()
+                        }
+
+                        item {
+                            // Dialects
+                            Text(
+                                text = "Dialects",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+
+                        if (chatRoomDetailUIState.dialects.isEmpty()) {
+                            item {
+                                Text("No dialects have been defined in this group.")
+                            }
+                        } else {
+                            items(
+                                items = chatRoomDetailUIState.dialects,
+                                key = { dialect -> dialect.id }
+                            ) { dialect ->
+                                Card {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.Translate,
+                                                contentDescription = "Dialect"
+                                            )
+                                        },
+                                        headlineContent = {
+                                            Text(text = dialect.name)
+                                        },
+                                        supportingContent = {
+                                            Text(text = "${dialect.language} \u00b7 ${dialect.country}")
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            TextButton(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        AddDialectRoute(
+                                            chatRoomId = chatRoomId,
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            ) {
+
+                                Icon(
+                                    Icons.Default.Translate,
+                                    contentDescription = "Add new dialect"
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.width(10.dp)
+                                )
+
+                                Text("Add Dialect")
                             }
                         }
 

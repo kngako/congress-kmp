@@ -1,0 +1,139 @@
+package press.mantra.compose.database.model
+
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
+import kotlin.time.Instant
+import press.mantra.compose.database.model.traits.LocalStoreEntity
+import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.database.model.types.FrostSigningStage
+
+/**
+ * One FROST signing session, as this device sees it.
+ *
+ * Like [DkgSession] this stores *inputs* rather than protocol state, so a
+ * session survives the app being killed halfway through: every step is
+ * recomputed from what is on the row. Unlike a DKG that choice is not merely
+ * convenient here, it is forced -- `fr.acinq.bitcoin.crypto.frost.SecretNonce`
+ * cannot be serialised and refuses to be used twice, by design.
+ *
+ * ### The nonce, and why one session means one message
+ *
+ * [nonceRandom] is secret, and regenerating this device's nonce from it is safe
+ * for exactly one reason: a session signs one message and can never be made to
+ * sign another. `SecretNonce.generate` mixes the message in, so the same
+ * randomness under a different message would be a different nonce -- but the
+ * same randomness under the same message with two *different* aggregated nonces
+ * would produce two partial signatures over one secret nonce, which is how a
+ * secret share is extracted.
+ *
+ * Two rules keep that impossible, and both are load-bearing:
+ *
+ *  - [eventId] is written when the session is created and a proposal that
+ *    disagrees with it is rejected rather than applied.
+ *  - [aggregatedNonce] and [signerIds] are written once. A second, different
+ *    signer set for the same session is ignored, not honoured.
+ */
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        )
+    ],
+    indices = [
+        Index("chatRoomId"),
+        Index("dkgSessionId"),
+    ],
+)
+data class FrostSigningSession(
+    /** Minted by the proposer, carried on every message as `frost_session`. */
+    @PrimaryKey
+    val id: String,
+
+    val chatRoomId: String,
+
+    /** The member who proposed the signature, who also aggregates for it. */
+    val coordinatorPublicKey: HexKey,
+
+    /** Whose device this row belongs to, for multi-account support. */
+    val userPublicKey: HexKey,
+
+    /** The ceremony whose key this signs with — a group may hold more than one. */
+    val dkgSessionId: String,
+
+    /** The `t` of the t-of-n: how many partial signatures make a signature. */
+    val threshold: Int,
+
+    /** The `n` the key was generated for. FROST needs it to place signer ids. */
+    val participantCount: Int,
+
+    /** This device's FROST id: its index in the ceremony's participant order. */
+    val signerId: Int,
+
+    val stage: FrostSigningStage = FrostSigningStage.COLLECTING_NONCES,
+
+    /**
+     * The unsigned event, as JSON. Kept whole so a member can be shown what
+     * they are being asked to sign rather than a hash of it.
+     */
+    val unsignedEventJson: String,
+
+    /**
+     * The event id, which is the 32 bytes actually signed.
+     *
+     * Recomputed from the event's own fields on arrival, never taken from the
+     * proposal. It pins the session to one message -- see the class note on why
+     * that is what makes reusing [nonceRandom] safe.
+     */
+    val eventId: HexKey,
+
+    /** Secret. 32 bytes of fresh randomness, the seed for this device's nonce. */
+    val nonceRandom: HexKey,
+
+    /** The coordinator's `AggregatedNonce` once it arrives, hex. Written once. */
+    val aggregatedNonce: HexKey? = null,
+
+    /** The chosen signers' FROST ids in aggregation order, comma separated. Written once. */
+    val signerIds: String? = null,
+
+    /** Result: the finished 64-byte BIP-340 signature over [eventId], hex. */
+    val signature: HexKey? = null,
+
+    val failureReason: String? = null,
+
+    /**
+     * When this device's owner agreed to sign, and with it to everything the
+     * session does on their behalf. Null until they do, and nothing of theirs
+     * goes out before it is set.
+     *
+     * One gate rather than the DKG's three. What a signer is consenting to is
+     * the event, and the event is fixed before they are asked: the second round
+     * puts no new question to them, so asking again would be asking the same
+     * question twice about a decision already made.
+     */
+    val signApprovedAt: Instant? = null,
+
+    /** Whether the chat line asking for that approval has been written. */
+    val approvalRequestedAt: Instant? = null,
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = createdAt,
+): TimestampedEntity, LocalStoreEntity {
+    fun isCoordinator(): Boolean = coordinatorPublicKey == userPublicKey
+
+    /** The chosen signers, or null while the coordinator has yet to choose. */
+    fun signerIdList(): List<Int>? = signerIds
+        ?.split(",")
+        ?.mapNotNull { it.trim().toIntOrNull() }
+        ?.takeIf { it.isNotEmpty() }
+
+    /** Whether this device was picked to sign. A t-of-n key does not need everyone. */
+    fun isSigner(): Boolean = signerIdList()?.contains(signerId) ?: false
+}

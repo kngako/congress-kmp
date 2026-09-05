@@ -1,0 +1,106 @@
+package press.mantra.compose.database.model
+
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlin.time.Clock
+import kotlin.time.Instant
+import press.mantra.compose.database.model.traits.LocalStoreEntity
+import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.managers.SharedKeyDerivation
+
+/**
+ * Which shared key a room signs with, as this device has been told.
+ *
+ * Written from a `GroupKeyStateEvent` -- the room's own announcement of the
+ * ceremony behind it -- and read when a signing request arrives, to pick the
+ * secret share out of the right [DkgSession]. A device that took part in more
+ * than one ceremony holds more than one share, and they are not
+ * interchangeable: a partial signature made with the wrong one cannot
+ * aggregate.
+ *
+ * ### Why this is a row and not a rederivation
+ *
+ * `FrostSigningManager.completedKey` found the key by walking every ceremony
+ * this device holds a share for and rederiving each one's room id until one
+ * matched. That works, and it stays as the fallback for rooms made before this
+ * table existed, but it can only find rooms derived at the *default* path --
+ * the one path the constant names. A room derived anywhere else was invisible
+ * to it. [derivationPath] is what fixes that, which is also the reason the path
+ * is stored rather than assumed.
+ *
+ * ### Nothing secret lives here
+ *
+ * [thresholdPublicKey] is the key signatures verify against, not the secret
+ * behind it, and [dkgSessionId] is a pointer. The share itself never leaves
+ * `DkgSession.secretShare` on the device that generated it.
+ *
+ * One row per room: a room is derived from one key, and a group that re-runs
+ * its ceremony derives a different room rather than re-keying this one.
+ */
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatRoom::class,
+            parentColumns = ["id"],
+            childColumns = ["chatRoomId"],
+            onDelete = ForeignKey.CASCADE,
+        )
+    ],
+    indices = [
+        Index("dkgSessionId"),
+    ],
+)
+data class GroupKeyState(
+    /** The Marmot room this is the key state for. Its id is the derived key. */
+    @PrimaryKey
+    val chatRoomId: String,
+
+    /**
+     * The ceremony that made the key, and so the row holding this device's
+     * share of it.
+     *
+     * Not a foreign key on purpose. A member can be in the room without
+     * holding a share -- they were added after the ceremony, or reinstalled --
+     * and the state is still worth keeping: it says what the room signs with,
+     * which is what tells them they cannot.
+     */
+    val dkgSessionId: String,
+
+    /** The group's ChillDKG threshold public key, 33-byte compressed hex. */
+    val thresholdPublicKey: HexKey,
+
+    /** The path [chatRoomId] was derived at, `m/9420/0/0` style. */
+    val derivationPath: String,
+
+    /** Who announced it. Kept for the transcript; the derivation is what vouches for it. */
+    val announcedBy: HexKey,
+
+    /** The announcement's own timestamp, so the newest state per room wins. */
+    val announcedAt: Instant,
+
+    override val createdAt: Instant = Clock.System.now(),
+    override val updatedAt: Instant = createdAt,
+    override val savedAt: Instant = createdAt,
+): TimestampedEntity, LocalStoreEntity {
+    /** [derivationPath] as indices, or null if it is not a walkable path. */
+    fun pathIndices(): List<Long>? = SharedKeyDerivation.parsePathString(derivationPath)
+
+    /**
+     * Whether this state actually describes the room it claims to.
+     *
+     * The room's id is the threshold key derived at the path, so this is the
+     * whole of the trust model: a state that does not rederive its own room was
+     * announced by somebody pointing the room at a key it was not made from.
+     * Checked before the row is written and cheap enough to check again.
+     */
+    fun verifies(): Boolean {
+        val path = pathIndices() ?: return false
+
+        return runCatching {
+            SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path) == chatRoomId
+        }.getOrDefault(false)
+    }
+}

@@ -44,7 +44,7 @@ class DatabaseMantraRepository(
         dialectId: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraTranslationArtifactVersion? {
         return database.mantraDao().addTranslationArtifactVersion(
             artifactId = artifactId,
             dialectId = dialectId,
@@ -99,7 +99,7 @@ class DatabaseMantraRepository(
         originalText: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraChapter? {
         return database.mantraDao().addChapter(
             artifactId = artifactId,
             name = name,
@@ -121,7 +121,7 @@ class DatabaseMantraRepository(
         country: String,
         language: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraDialect? {
         return database.mantraDao().addDialect(
             localChatRoom = localChatRoom,
             name = name,
@@ -140,7 +140,7 @@ class DatabaseMantraRepository(
         userPublicKey: HexKey,
         visibility: String,
         license: String,
-    ): MarmotInnerEvent? {
+    ): MantraArtifact? {
         return database.mantraDao().addArtifact(
             localChatRoom = localChatRoom,
             name = name,
@@ -158,7 +158,7 @@ class DatabaseMantraRepository(
         artifactId: HexKey,
         versionLabel: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraArtifactVersion? {
         return database.mantraDao().addArtifactVersion(
             localChatRoom = localChatRoom,
             artifactId = artifactId,
