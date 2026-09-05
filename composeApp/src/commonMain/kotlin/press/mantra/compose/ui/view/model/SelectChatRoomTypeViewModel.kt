@@ -348,38 +348,32 @@ class SelectChatRoomTypeViewModel(
             }.awaitAll()
         }
 
-        val notAdded = mutableListOf<HexKey>()
+        val withoutKeyPackage = keyPackages.filter { it.second == null }.map { it.first }
+        withoutKeyPackage.forEach { logger.w("No key package for $it; leaving them out of $chatRoomId") }
 
-        keyPackages.forEach { (publicKey, marmotKeyPackage) ->
-            if (marmotKeyPackage == null) {
-                logger.w("No key package for $publicKey; leaving them out of $chatRoomId")
-                notAdded.add(publicKey)
-                return@forEach
-            }
+        val addable = keyPackages.mapNotNull { (publicKey, keyPackage) ->
+            keyPackage?.let { publicKey to it }
+        }
+        if (addable.isEmpty()) return withoutKeyPackage
 
-            // Re-read the room before each invite: `inviteMember` advances the MLS epoch and
-            // persists the new state, so reusing the snapshot taken before the previous
-            // invite would build this commit on top of state the group has already left.
-            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
-            if (localChatRoom == null) {
-                logger.e("Chat room $chatRoomId disappeared mid-invite")
-                notAdded.add(publicKey)
-                return@forEach
-            }
-
-            runCatching {
-                chatRepository.inviteMember(
-                    localChatRoom = localChatRoom,
-                    peerPublicKey = publicKey,
-                    peerKeyPackage = marmotKeyPackage
-                )
-            }.onFailure { throwable ->
-                logger.e("Failed to invite $publicKey to $chatRoomId", throwable)
-                notAdded.add(publicKey)
-            }
+        // One commit for the whole membership rather than one per member. Inviting
+        // sequentially creates an epoch each, and each commit races the previous
+        // member's Welcome -- a race MarmotInboundManager resolves by dropping the
+        // commit outright, leaving that member an epoch behind while this reports
+        // success. See docs/marmot-membership.md.
+        val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
+        if (localChatRoom == null) {
+            logger.e("Chat room $chatRoomId disappeared before its members were added")
+            return memberPublicKeys
         }
 
-        return notAdded
+        val notAdded = runCatching {
+            chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
+        }.onFailure {
+            logger.e("Failed to add members to $chatRoomId", it)
+        }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
+
+        return withoutKeyPackage + notAdded
     }
 
     companion object {

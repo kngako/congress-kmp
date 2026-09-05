@@ -71,11 +71,12 @@ before Welcome 1 did — different transports, no ordering guarantee, one a gift
 wrap and the other a kind:445 — admin 1 dropped it and was stuck an epoch behind,
 while the coordinator saw two successful invites.
 
-Deriving the flag narrows this: Welcome 1 is now sent before commit 2 exists at
-all, so admin 1 is already at epoch 1 when it arrives.
+Deriving the flag narrowed this, but did not close it: for n ≥ 3 the window
+between Welcome 1 and commit 2 remained.
 
-**It does not close it.** For n ≥ 3 the window between Welcome 1 and commit 2
-remains, and losing it is still silent. See "Batching every add" below.
+**Batching closes it.** When the membership is known up front, every member goes
+into one commit, so no member ever has to process a commit for an epoch they were
+not yet in — the race has nothing left to lose. See below.
 
 ## The condition holds at any group size
 
@@ -94,32 +95,48 @@ advance.
 
 ## Batching every add into one commit
 
-This is the remaining work, and the only thing that closes the race rather than
-narrowing it.
+`MarmotOutboundDao.addMembersToChatRoom` stages every member with `proposeAdd` and
+issues a single `commit()`. `MlsGroup.addMember` is just those two in one call, and
+`pendingProposals` is a list, so nothing in MLS objected.
 
-`MlsGroup.addMember` is `proposeAdd` + `commit()` in one call, but those are
-separate functions and `pendingProposals` is a list. Staging every member with
-`proposeAdd` and issuing a single `commit()` gives:
+One commit produces **one** Welcome: `buildWelcome` emits an `EncryptedGroupSecrets`
+per added member, and each joiner finds its own entry by key package reference. The
+blob is shared; delivery is still per peer, because each Welcome event is tagged
+with that peer's key package.
 
-- one commit, which nobody has to have already joined to process
-- n Welcomes carrying identical state
-- no intermediate epoch for anyone to miss, so the race has nothing to lose
+Both callers that know their membership up front now use it —
+`SelectChatRoomTypeViewModel.inviteMembers` at room creation, and
+`DkgRitualViewModel.inviteAdmins` for the `#admins` room.
 
-This is the right shape whenever the whole membership is known up front, which is
-exactly the case for a room created from a completed key ceremony.
+### Why this needed no schema change
 
-The cost is bookkeeping. `MarmotCommitResult` assumes one peer per commit —
-`peerKeyPackageEventId` is singular — so batching means changing that model and
-the ack-triggered fan-out in `DatabaseNostrRepository` to deliver several Welcomes
-from one acknowledgement.
+Batching at creation time means the single commit happens while the group is still
+only its creator. That takes the immediate-Welcome branch: no commit is broadcast,
+and `MarmotCommitResult` is never written. The bookkeeping that assumes one peer per
+commit is simply not on the path.
+
+So `addMembersToChatRoom` batches **only** when `members().size == 1`, and falls
+back to inviting sequentially otherwise. Batching into a group that already has
+members would take the deferred branch, where `MarmotCommitResult.peerKeyPackageEventId`
+is singular and `DatabaseNostrRepository`'s ack-triggered delivery expects one
+Welcome. Making that work means holding a list of peers there and fanning out on
+acknowledgement — still outstanding, and only needed for adding several members to
+an established group, which nothing currently does.
+
+### Ordering within the batch
+
+The group state is persisted after `commit()` and before any Welcome is delivered,
+so a crash between the two leaves the group at the epoch the Welcomes describe
+rather than one behind it.
 
 ## Other things that bite
 
-**Invites are sequential and each advances the epoch.** The room must be re-read
-from the database between invites; a snapshot taken before the previous invite
-builds its commit on state the group has already left. Both `inviteMembers` and
-`inviteAdmins` do this, and both say so in a comment, because it is not obvious
-and the symptom is a conflicting commit rather than an error.
+**Sequential invites each advance the epoch.** Where they still happen — the
+fallback in `addMembersToChatRoom` for a group that already has members, and any
+direct `inviteMember` call — the room must be re-read from the database between
+them. A snapshot taken before the previous invite builds its commit on state the
+group has already left, and the symptom is a conflicting commit rather than an
+error.
 
 **A member with no published key package cannot be added.** A Marmot invite needs
 the invitee's `MarmotKeyPackage`. Both call sites look it up with a timeout and

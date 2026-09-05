@@ -67,6 +67,18 @@ interface ChatRepository {
         peerKeyPackage: MarmotKeyPackage,
     )
 
+    /**
+     * Adds every member in one MLS commit, returning those that could not be added.
+     *
+     * Prefer this to looping [inviteMember] whenever the membership is known up
+     * front: one commit means no intermediate epoch for a member to miss, which is
+     * a silent failure rather than a loud one. See docs/marmot-membership.md.
+     */
+    suspend fun addMembers(
+        localChatRoom: LocalChatRoom,
+        peers: List<Pair<HexKey, MarmotKeyPackage>>,
+    ): List<HexKey>
+
     suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
@@ -170,6 +182,12 @@ interface ChatRepository {
             ) {
                 TODO("Not yet implemented")
             }
+
+            override suspend fun addMembers(
+                localChatRoom: LocalChatRoom,
+                peers: List<Pair<HexKey, MarmotKeyPackage>>
+            ): List<HexKey> = peers.map { it.first }
+
 
             override suspend fun sendChatMessage(
                 text: String,

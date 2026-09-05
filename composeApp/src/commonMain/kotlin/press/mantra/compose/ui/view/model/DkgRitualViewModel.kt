@@ -359,6 +359,20 @@ class DkgRitualViewModel(
      * reported rather than treated as failure: a room with most of the group in it
      * is more useful than no room.
      */
+    /**
+     * Adds every admin to the freshly created room in one commit, returning those
+     * that could not be added.
+     *
+     * Batched rather than invited one at a time: the whole membership is known here,
+     * and inviting sequentially creates an epoch per member, each of whose commits
+     * races the previous member's Welcome. A member who loses that race is silently
+     * stuck an epoch behind. See docs/marmot-membership.md.
+     *
+     * A Marmot invite still needs the invitee's published key package, so a member
+     * who has never published one cannot be added and has to be invited later. That
+     * is reported rather than treated as failure: a room with most of the group in
+     * it is more useful than no room.
+     */
     private suspend fun inviteAdmins(groupId: String, peers: List<HexKey>): List<HexKey> {
         val keyPackages = coroutineScope {
             peers.map { publicKey ->
@@ -372,38 +386,27 @@ class DkgRitualViewModel(
             }.awaitAll()
         }
 
-        val notAdded = mutableListOf<HexKey>()
+        val withoutKeyPackage = keyPackages.filter { it.second == null }.map { it.first }
+        withoutKeyPackage.forEach { logger.w("No key package for $it; leaving them out of $groupId") }
 
-        keyPackages.forEach { (publicKey, keyPackage) ->
-            if (keyPackage == null) {
-                logger.w("No key package for $publicKey; leaving them out of $groupId")
-                notAdded.add(publicKey)
-                return@forEach
-            }
+        val addable = keyPackages.mapNotNull { (publicKey, keyPackage) ->
+            keyPackage?.let { publicKey to it }
+        }
+        if (addable.isEmpty()) return withoutKeyPackage
 
-            // Re-read between invites: each one advances the MLS epoch and persists
-            // new state, so a snapshot taken before the previous invite would build
-            // this commit on state the group has already left.
-            val localChatRoom = chatRepository.getChatRoomByIdentifier(groupId)
-            if (localChatRoom == null) {
-                logger.e("Admin group $groupId disappeared mid-invite")
-                notAdded.add(publicKey)
-                return@forEach
-            }
-
-            runCatching {
-                chatRepository.inviteMember(
-                    localChatRoom = localChatRoom,
-                    peerPublicKey = publicKey,
-                    peerKeyPackage = keyPackage
-                )
-            }.onFailure {
-                logger.e("Failed to invite $publicKey to admin group $groupId", it)
-                notAdded.add(publicKey)
-            }
+        val localChatRoom = chatRepository.getChatRoomByIdentifier(groupId)
+        if (localChatRoom == null) {
+            logger.e("Admin group $groupId disappeared before its members were added")
+            return peers
         }
 
-        return notAdded
+        val notAdded = runCatching {
+            chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
+        }.onFailure {
+            logger.e("Failed to add members to admin group $groupId", it)
+        }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
+
+        return withoutKeyPackage + notAdded
     }
 
     override fun onCleared() {

@@ -172,6 +172,148 @@ abstract class MarmotOutboundDao(
         )
     }
 
+    /**
+     * Adds every member in [peers] to a group in a single MLS commit.
+     *
+     * The shape to use whenever the whole membership is known up front -- creating a
+     * room, or opening the #admins room after a key ceremony. One commit, one
+     * Welcome carrying an EncryptedGroupSecrets per joiner, and crucially **no
+     * intermediate epoch for anybody to miss**.
+     *
+     * Inviting one at a time creates an epoch per member, and each of those commits
+     * races the previous member's Welcome. MarmotInboundManager refuses future-epoch
+     * messages outright -- no queue, no replay -- so a member who loses that race is
+     * silently stuck an epoch behind while the caller sees a successful invite.
+     * Batching removes the race rather than narrowing it, because no member ever has
+     * to process a commit for an epoch they were not yet in.
+     *
+     * Only batches when the group is still just its creator, which is exactly the
+     * case this exists for. Adding a batch to a group that already has members would
+     * take the deferred-welcome path, and MarmotCommitResult records one peer per
+     * commit -- so that case falls back to inviting sequentially, which is correct
+     * if not ideal. Batching there needs that model to hold a list first; see
+     * docs/marmot-membership.md.
+     *
+     * @return the members that could not be added, in the order given.
+     */
+    @Transaction
+    open suspend fun addMembersToChatRoom(
+        localChatRoom: LocalChatRoom,
+        peers: List<Pair<HexKey, MarmotKeyPackage>>
+    ): List<HexKey> {
+        if (peers.isEmpty()) return emptyList()
+
+        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+            ?: throw MarmotMissingChatGroupException(
+                "No MLS state for chat room ${localChatRoom.chatRoom.id}; cannot add members"
+            )
+
+        // A group that already has members cannot take this path -- see the kdoc.
+        if (mlsGroup.members().size != 1) {
+            val notAdded = mutableListOf<HexKey>()
+
+            peers.forEach { (peerPublicKey, peerKeyPackage) ->
+                // Re-read between invites: each advances the epoch and persists new
+                // state, so a snapshot from before the previous one would build this
+                // commit on state the group has already left.
+                val current = database.chatRoomDao().findChatRoomById(localChatRoom.chatRoom.id)
+                if (current == null) {
+                    notAdded.add(peerPublicKey)
+                    return@forEach
+                }
+
+                runCatching {
+                    inviteMemberToChatRoom(current, peerPublicKey, peerKeyPackage)
+                }.onFailure {
+                    logger.e("Failed to invite $peerPublicKey to ${localChatRoom.chatRoom.id}", it)
+                    notAdded.add(peerPublicKey)
+                }
+            }
+
+            return notAdded
+        }
+
+        val relays = Relays.DefaultDMRelayList.map { it.url }
+
+        // Participant rows must exist before any Welcome is sealed:
+        // sealGiftWrapPayload walks the room's participants to decide who to wrap
+        // for, so without these the Welcomes produce no gift wraps and sit unsealed.
+        database.participantDao().upsert(
+            peers.map { (peerPublicKey, _) ->
+                Participant(
+                    participantPublicKey = peerPublicKey,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    relayHint = relays.first()
+                )
+            }
+        )
+
+        peers.forEach { (peerPublicKey, peerKeyPackage) ->
+            val keyPackage = MlsKeyPackage.decodeTls(TlsReader(peerKeyPackage.tlsEncodedMarmotKeyPackage))
+
+            val credential = keyPackage.leafNode.credential
+            require(credential is Credential.Basic) { "KeyPackage must use BasicCredential" }
+            require(credential.identity.toHexKey() == peerPublicKey) {
+                "KeyPackage credential identity does not match memberPubKey"
+            }
+
+            mlsGroup.proposeAdd(peerKeyPackage.tlsEncodedMarmotKeyPackage)
+        }
+
+        val retainedBefore = mlsGroup.retainedSecrets()
+        val commitResult = mlsGroup.commit()
+
+        database.marmotRetainedEpochSecretDao().insert(
+            MarmotRetainedEpochSecret(
+                chatRoomId = localChatRoom.chatRoom.id,
+                epoch = retainedBefore.epoch,
+                senderDataSecret = retainedBefore.senderDataSecret,
+                encryptionSecret = retainedBefore.encryptionSecret,
+                leafCount = retainedBefore.leafCount,
+                exporterSecret = retainedBefore.exporterSecret,
+            )
+        )
+
+        // `commit` advanced the in-memory group. Persist before delivering, so a
+        // crash between the two leaves the group at the epoch the Welcomes describe
+        // rather than one behind it.
+        database.chatRoomDao().upsert(
+            localChatRoom.chatRoom.copy(
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+            )
+        )
+
+        val welcomeBytes = commitResult.welcomeBytes
+        if (welcomeBytes == null) {
+            logger.e("Batched commit for ${localChatRoom.chatRoom.id} produced no welcome")
+            return peers.map { it.first }
+        }
+
+        // No commit is broadcast: the group was only its creator, so there is nobody
+        // to inform. The same Welcome blob goes to every joiner -- each finds its own
+        // EncryptedGroupSecrets entry by key package reference -- but delivery is per
+        // peer, because each Welcome event is tagged with that peer's key package.
+        val notAdded = mutableListOf<HexKey>()
+
+        peers.forEach { (peerPublicKey, peerKeyPackage) ->
+            runCatching {
+                deliveryWelcome(
+                    nostrGroupId = localChatRoom.chatRoom.id,
+                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    welcomeBytes = welcomeBytes,
+                    peerKeyPackageEventId = peerKeyPackage.id,
+                    relays = relays,
+                    createdAt = Clock.System.now()
+                )
+            }.onFailure {
+                logger.e("Failed to deliver the welcome to $peerPublicKey", it)
+                notAdded.add(peerPublicKey)
+            }
+        }
+
+        return notAdded
+    }
+
     private suspend fun inviteMember(
         nostrGroupId: HexKey,
         mlsGroup: MlsGroup,

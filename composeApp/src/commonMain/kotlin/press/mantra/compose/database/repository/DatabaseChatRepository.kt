@@ -162,6 +162,14 @@ class DatabaseChatRepository(
             peerKeyPackage = peerKeyPackage
         )
     }
+    override suspend fun addMembers(
+        localChatRoom: LocalChatRoom,
+        peers: List<Pair<HexKey, MarmotKeyPackage>>
+    ): List<HexKey> = database.marmotOutboundDao().addMembersToChatRoom(
+        localChatRoom = localChatRoom,
+        peers = peers
+    )
+
     override suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
