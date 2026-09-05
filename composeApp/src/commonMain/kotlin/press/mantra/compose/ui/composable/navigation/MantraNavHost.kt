@@ -103,6 +103,7 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
@@ -112,6 +113,7 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRo
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
+import press.mantra.compose.ui.composable.AddDialectScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
@@ -803,6 +805,34 @@ fun MantraNavHost(
                         route = chatRoomDetailRoute
                     ) {
                         popUpTo(route) {
+                            inclusive = true
+                        }
+                    }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                }
+            )
+        }
+        composable<AddDialectRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AddDialectRoute>()
+
+            AddDialectScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
+                mantraRepository = databaseMantraRepository,
+                onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
+                    // Replace both this add screen and the stale chat room detail
+                    // beneath it so we land on a freshly-loaded detail screen.
+                    navController.navigate(
+                        route = chatRoomDetailRoute
+                    ) {
+                        popUpTo<ChatRoomDetailRoute> {
                             inclusive = true
                         }
                     }
