@@ -523,6 +523,15 @@ abstract class NostrDao(
                 giftWrapMessage
             )
 
+            if (!giftWrapMessage.isAddressedTo(activeKeyPair)) {
+                // Undecryptable by design rather than by failure, so keep the event and
+                // the wrap we just stored and stop here. Throwing would roll the whole
+                // transaction back and lose both.
+                logger.d("GiftWrap ${nostrEvent.id} is addressed to ${giftWrapMessage.receiverPublicKey}, nothing to index")
+
+                return@let
+            }
+
             giftWrapMessage.decryptGiftWrapSeal(
                 activeKeyPair
             ).let { giftWrapSeal ->
