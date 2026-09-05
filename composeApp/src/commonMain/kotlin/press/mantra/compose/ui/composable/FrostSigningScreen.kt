@@ -48,6 +48,7 @@ import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.FrostSigningStage
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
@@ -223,10 +224,10 @@ fun FrostSigningScreen(
                             }
                         }
 
-                    if (session.signApprovedAt == null &&
-                        session.stage != FrostSigningStage.COMPLETE &&
-                        session.stage != FrostSigningStage.FAILED
-                    ) {
+                    // Asked rather than re-derived: the manager owns when a session
+                    // is still waiting on its owner, and a second copy of that rule
+                    // here is a second copy to keep in step.
+                    if (FrostSigningManager.isAwaitingApproval(session)) {
                         HorizontalDivider()
 
                         Text(

@@ -283,30 +283,17 @@ class ChatMessageListViewModel(
                             )
                         } else {
 
-                            // A request line is answered when the step it asked for
-                            // has since been published by this device -- which is
-                            // exactly what approving it does. The transcript already
-                            // records that as an authored line, so the answer is here
-                            // in the list rather than in the session, and it stays
-                            // right for a room that has run more than one ceremony.
-                            val answeredRequests = chatRoomDetailMessageListUIState
+                            // Which request lines are still asking something of the
+                            // reader. Read off the transcript rather than the session
+                            // -- the rows are what a line rendered days later has --
+                            // and both rules live on ChatMessage, where they can be
+                            // stated once and tested.
+                            val messages = chatRoomDetailMessageListUIState
                                 .chatMessageList
-                                .mapNotNull { request ->
-                                    val published = (
-                                        ChatMessage.DKG_REQUEST_FULFILMENTS +
-                                            ChatMessage.FROST_REQUEST_FULFILMENTS
-                                        )[request.chatMessage.messageType]
-                                        ?: return@mapNotNull null
+                                .map { it.chatMessage }
 
-                                    val done = chatRoomDetailMessageListUIState.chatMessageList.any {
-                                        it.chatMessage.messageType == published &&
-                                            it.chatMessage.isUserMessage &&
-                                            it.chatMessage.createdAt >= request.chatMessage.createdAt
-                                    }
-
-                                    request.chatMessage.id.takeIf { done }
-                                }
-                                .toSet()
+                            val answeredRequests = ChatMessage.answeredRequests(messages)
+                            val settledRequests = ChatMessage.settledRequests(messages)
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth().padding(5.dp),
@@ -366,6 +353,7 @@ class ChatMessageListViewModel(
                                         RitualNotice(
                                             localChatMessage = localChatMessage,
                                             isAnswered = localChatMessage.chatMessage.id in answeredRequests,
+                                            isSettled = localChatMessage.chatMessage.id in settledRequests,
                                             onClick = onOpenSharedKey
                                         )
                                         return@items
@@ -394,6 +382,7 @@ class ChatMessageListViewModel(
                                         RitualNotice(
                                             localChatMessage = localChatMessage,
                                             isAnswered = localChatMessage.chatMessage.id in answeredRequests,
+                                            isSettled = localChatMessage.chatMessage.id in settledRequests,
                                             onClick = onOpenSigning
                                         )
                                         return@items
@@ -663,6 +652,7 @@ private fun PrivateMessageNotice(
 private fun RitualNotice(
     localChatMessage: LocalChatMessage,
     isAnswered: Boolean,
+    isSettled: Boolean,
     onClick: () -> Unit,
 ) {
     val chatMessage = localChatMessage.chatMessage
@@ -704,10 +694,13 @@ private fun RitualNotice(
     // quiet; these are not.
     // An answered request is history, not a summons: it keeps its stage's icon so
     // the step is still recognisable, but drops the colour and the call to action.
+    // So is a settled one -- declined, or signed by a quorum that did not need this
+    // member. Nothing was answered there, so it gets no tick, but offering to
+    // review it would be offering a decision that has already gone by.
     val isRequest = (
         chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES ||
             chatMessage.messageType in ChatMessage.FROST_REQUEST_TYPES
-        ) && !isAnswered
+        ) && !isAnswered && !isSettled
 
     val tint = when {
         chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||

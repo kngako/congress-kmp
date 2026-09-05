@@ -14,11 +14,13 @@ import fr.acinq.bitcoin.crypto.frost.Session
 import fr.acinq.bitcoin.crypto.frost.TweakCache
 import fr.acinq.secp256k1.Hex
 import kotlin.test.Test
+import kotlin.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 
@@ -216,6 +218,39 @@ class FrostSigningSessionTest {
         nonceRandom = "f".repeat(64),
         signerIds = signerIds
     )
+
+    @Test
+    fun `a session waits on its owner until they answer`() {
+        val open = session(signerId = 2, signerIds = null)
+
+        assertTrue(FrostSigningManager.isAwaitingApproval(open))
+        assertFalse(
+            FrostSigningManager.isAwaitingApproval(
+                open.copy(signApprovedAt = Instant.fromEpochSeconds(1))
+            )
+        )
+    }
+
+    @Test
+    fun `a session that has settled asks its owner nothing`() {
+        val open = session(signerId = 2, signerIds = null)
+
+        assertFalse(FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.COMPLETE)))
+        assertFalse(FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.FAILED)))
+    }
+
+    @Test
+    fun `a signature the group already made asks its owner nothing either`() {
+        // A t-of-n key does not need everybody, so a quorum can finish while one
+        // member's phone is still in a pocket. The session stays at its opening
+        // stage on their device until it next advances, and offering them the
+        // decision in that window offers two bad answers: a nonce nobody is
+        // waiting for, or a refusal that abandons a signature that exists.
+        val signedWithoutThem = session(signerId = 2, signerIds = "0,1")
+            .copy(signature = "a".repeat(128))
+
+        assertFalse(FrostSigningManager.isAwaitingApproval(signedWithoutThem))
+    }
 
     @Test
     fun `a member left out of the signer set is not a signer`() {
