@@ -17,4 +17,13 @@ interface MarmotInnerEventDao {
 
     @Query("DELETE FROM MarmotInnerEvent WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /**
+     * Drop the submissions carrying [payloadEventId].
+     *
+     * A submission's id is the envelope's, not the payload's, so a superseded
+     * nip30303 event cannot be un-queued by its own id.
+     */
+    @Query("DELETE FROM MarmotInnerEvent WHERE payloadEventId = :payloadEventId")
+    suspend fun deleteByPayloadEventId(payloadEventId: String)
 }

@@ -85,7 +85,7 @@ class AddArtifactViewModel(
             isActionPending.value = true
 
             viewModelScope.launch(Dispatchers.IO) {
-                val artifactInnerEvent = runCatching {
+                val artifact = runCatching {
                     mantraRepository.addArtifact(
                         localChatRoom = localChatRoom,
                         name = name,
@@ -100,13 +100,13 @@ class AddArtifactViewModel(
                     logger.e("Failed to add artifact", error)
                 }.getOrNull()
 
-                if (artifactInnerEvent != null) {
+                if (artifact != null) {
                     nameField.clearText()
                     urlField.clearText()
                     versionLabelField.clearText()
 
                     viewModelScope.launch(Dispatchers.Main) {
-                        onSuccess.invoke(artifactInnerEvent.id)
+                        onSuccess.invoke(artifact.id)
                     }
                 } else {
                     viewModelScope.launch(Dispatchers.Main) {

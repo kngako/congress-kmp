@@ -76,7 +76,7 @@ class AddDialectViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val dialectInnerEvent = runCatching {
+            val dialect = runCatching {
                 mantraRepository.addDialect(
                     localChatRoom = localChatRoom,
                     name = name,
@@ -88,13 +88,13 @@ class AddDialectViewModel(
                 logger.e("Failed to add dialect", error)
             }.getOrNull()
 
-            if (dialectInnerEvent != null) {
+            if (dialect != null) {
                 nameField.clearText()
                 countryField.clearText()
                 languageField.clearText()
 
                 viewModelScope.launch(Dispatchers.Main) {
-                    onSuccess.invoke(dialectInnerEvent.id)
+                    onSuccess.invoke(dialect.id)
                 }
             } else {
                 viewModelScope.launch(Dispatchers.Main) {
