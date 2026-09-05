@@ -166,6 +166,27 @@ class RelayPool(
 
     fun hasRelays() = relays.isNotEmpty()
 
+    /**
+     * Tears every socket down and immediately builds it again.
+     *
+     * For coming back from the background, where trusting the connection is the mistake: a
+     * socket that was open when the OS suspended the process reports itself connected on the
+     * way back while being functionally dead, and the relay has long since dropped the
+     * subscriptions it was carrying.
+     *
+     * Re-opening here rather than leaving it to the next send is deliberate — it is what makes
+     * this a RE-connection, so the retained subscriptions are replayed and any collector still
+     * attached from before the gap starts receiving again.
+     */
+    suspend fun reconnectAll() {
+        socketClients.forEach { client ->
+            updateRelayStatus(url = client.socketUrl, connected = false)
+            runCatching { client.close() }
+            runCatching { client.ensureSocketConnectionOrThrow() }
+                .onFailure { logger.w(throwable = it) { "Could not re-open ${client.socketUrl}" } }
+        }
+    }
+
     suspend fun tryConnectingToRelay(url: String) {
         runCatching {
             socketClients.find { it.socketUrl == url }?.ensureSocketConnectionOrThrow()

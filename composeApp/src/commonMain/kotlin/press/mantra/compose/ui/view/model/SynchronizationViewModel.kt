@@ -8,6 +8,7 @@ import press.mantra.compose.database.model.BroadcastNostrEventRequest
 import press.mantra.compose.database.model.SynchronizeNostrEventRequest
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.network.dto.toRelayDTO
+import press.mantra.compose.AppLifecycle
 import press.mantra.compose.managers.LiveSubscriptionManager
 import press.mantra.compose.network.relays.RelayPool
 import press.mantra.compose.network.relays.RelaysSocketManager
@@ -81,6 +82,7 @@ class SynchronizationViewModel(
         relaysSocketManager = relaysSocketManager,
         nostrRepository = nostrRepository,
         chatRepository = chatRepository,
+        isForeground = AppLifecycle.isForeground,
     )
 
     companion object {

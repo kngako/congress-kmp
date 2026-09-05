@@ -3,10 +3,14 @@ package press.mantra.compose.ui.composable.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import press.mantra.compose.AppLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -218,6 +222,22 @@ fun MantraNavHost(
     )
 
     // TODO: Produce a synchronization UI element...
+
+    // The one place in the app that knows whether it is on screen. Everything that holds a
+    // relay connection open reads AppLifecycle rather than a lifecycle owner, because those
+    // consumers are application-scoped coroutines that outlive any composition.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> AppLifecycle.enteredForeground()
+                Lifecycle.Event.ON_STOP -> AppLifecycle.enteredBackground()
+                else -> Unit
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(lifecycleOwner) {
         navigationViewModel.navigationUIState.collect { state ->

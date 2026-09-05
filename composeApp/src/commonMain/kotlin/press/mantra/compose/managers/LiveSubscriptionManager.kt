@@ -19,6 +19,8 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -26,7 +28,9 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.NostrEvent
+import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.network.relays.RelaysSocketManager
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
@@ -62,6 +66,7 @@ class LiveSubscriptionManager(
     private val relaysSocketManager: RelaysSocketManager,
     private val nostrRepository: NostrRepository,
     private val chatRepository: ChatRepository,
+    private val isForeground: StateFlow<Boolean>,
 ) {
     private val logger = Logger.withTag(TAG)
 
@@ -112,6 +117,17 @@ class LiveSubscriptionManager(
         private val INITIAL_REOPEN_DELAY = 5.seconds
 
         private val MAX_REOPEN_DELAY = 5.minutes
+
+        /**
+         * Matches what `ChatRoomListViewModel` queued, deliberately: the id a negentropy
+         * request is stored under is a hash of its filter, so an identical filter shape
+         * collapses into the same row rather than queueing the same reconciliation twice
+         * while both callers exist.
+         *
+         * The value itself barely matters — the negentropy pump drops `limit` outright, and it
+         * only survives into the plain-REQ fallback.
+         */
+        private const val CATCH_UP_LIMIT = 50
     }
 
     /**
@@ -129,9 +145,33 @@ class LiveSubscriptionManager(
      * active wallet, so a wallet switch tears every subscription down and the new wallet's
      * call builds its own.
      */
-    suspend fun observe(keyPair: KeyPair): Unit = coroutineScope {
+    suspend fun observe(keyPair: KeyPair) {
         val publicKey = keyPair.pubKey.toHexKey()
-        logger.i("Opening live subscriptions for $publicKey")
+
+        // collectLatest is the whole lifecycle mechanism: going to the background cancels the
+        // block below, and every subscription's `finally` sends its CLOSE on the way out.
+        isForeground.collectLatest { foreground ->
+            if (!foreground) {
+                logger.i("Backgrounded; live subscriptions closed")
+                return@collectLatest
+            }
+
+            runWhileForeground(publicKey = publicKey, keyPair = keyPair)
+        }
+    }
+
+    private suspend fun runWhileForeground(publicKey: HexKey, keyPair: KeyPair): Unit = coroutineScope {
+        logger.i("Foregrounded; opening live subscriptions for $publicKey")
+
+        // Before anything is asked for. A socket that was open when the OS suspended us
+        // reports itself connected on the way back while being functionally dead, and the
+        // relay dropped our subscriptions long ago.
+        runCatching { relaysSocketManager.reconnectAll() }
+            .onFailure { logger.w(throwable = it) { "Reconnect on foreground failed" } }
+
+        // Live subscriptions cover the window we are online for; this covers the gap we were
+        // not. Neither subsumes the other.
+        launch(Dispatchers.IO) { queueCatchUpSynchronization(publicKey) }
 
         Relays.DefaultDMRelayList.forEach { relay ->
             launch(Dispatchers.IO) {
@@ -146,6 +186,62 @@ class LiveSubscriptionManager(
 
         launch(Dispatchers.IO) { followGroupMembership(publicKey = publicKey, keyPair = keyPair) }
     }
+
+    /**
+     * Reconciles what we hold against what the relays hold, for the time we were away.
+     *
+     * A live subscription answers "what is new since I connected"; negentropy answers "what do
+     * you have that I don't". Coming back from the background is exactly the question only the
+     * second one can answer, and `limit` on the re-opened subscriptions is a window, not a
+     * guarantee.
+     */
+    private suspend fun queueCatchUpSynchronization(publicKey: HexKey) {
+        val groupIds = liveGroupIds(publicKey)
+
+        val giftWrapFilter = SynchronizationFilter(
+            kinds = arrayOf(GiftWrapEvent.KIND),
+            tags = mapOf("p" to listOf(publicKey)),
+            limit = CATCH_UP_LIMIT,
+        )
+
+        val requests = mutableListOf<NegentropySynchronizeRequest>()
+
+        Relays.DefaultDMRelayList.forEach { relay ->
+            requests += NegentropySynchronizeRequest(
+                id = NegentropySynchronizeRequest.computeId(
+                    relayURL = relay.url,
+                    synchronizationFilter = giftWrapFilter,
+                ),
+                purpose = "chat",
+                synchronizationFilter = giftWrapFilter,
+                relayURL = relay.url,
+                level = 0,
+            )
+
+            if (groupIds.isEmpty()) return@forEach
+
+            val groupSynchronizationFilter = SynchronizationFilter(
+                kinds = arrayOf(GroupEvent.KIND),
+                tags = mapOf("h" to groupIds),
+            )
+            requests += NegentropySynchronizeRequest(
+                id = NegentropySynchronizeRequest.computeId(
+                    relayURL = relay.url,
+                    synchronizationFilter = groupSynchronizationFilter,
+                ),
+                purpose = "mlsMessages",
+                synchronizationFilter = groupSynchronizationFilter,
+                relayURL = relay.url,
+                level = 0,
+            )
+        }
+
+        logger.i("Queueing ${requests.size} catch-up reconciliation(s) over ${groupIds.size} group(s)")
+        nostrRepository.queueNegentropySynchronizeRequest(requests)
+    }
+
+    private suspend fun liveGroupIds(publicKey: HexKey): List<HexKey> =
+        chatRepository.getChatRoomListByPublicKey(publicKey).toLiveGroupIds()
 
     /**
      * Every gift wrap addressed to us: direct messages, and the Marmot Welcome events that
@@ -195,18 +291,7 @@ class LiveSubscriptionManager(
         val subscriptions = mutableMapOf<String, Job>()
 
         chatRepository.observeChatRoomListByPublicKey(publicKey)
-            .map { rooms ->
-                rooms
-                    // An MLS group is a room with group state; a NIP-17 room has none and is
-                    // served by the gift wrap subscription instead. A room we have left or
-                    // deleted keeps its history locally but must stop pulling new messages.
-                    .filter { it.chatRoom.mlsGroupState != null }
-                    .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
-                    .map { it.chatRoom.id }
-                    .sorted()
-            }
-            // Sorted first so that the same membership in a different row order is the same
-            // value, and a re-emit that changes nothing costs nothing.
+            .map { rooms -> rooms.toLiveGroupIds() }
             .distinctUntilChanged()
             .debounce(GROUP_CHANGE_DEBOUNCE)
             .collect { groupIds ->
@@ -283,6 +368,21 @@ class LiveSubscriptionManager(
                 }
         }
     }
+
+    /**
+     * An MLS group is a room with group state; a NIP-17 room has none and is served by the
+     * gift wrap subscription instead. A room we have left or deleted keeps its history
+     * locally but must stop pulling new messages.
+     *
+     * Sorted so the same membership in a different row order is the same value, and a
+     * re-emit that changes nothing costs nothing downstream.
+     */
+    private fun List<press.mantra.compose.database.model.intermdiate.LocalChatRoom>.toLiveGroupIds() =
+        this
+            .filter { it.chatRoom.mlsGroupState != null }
+            .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
+            .map { it.chatRoom.id }
+            .sorted()
 
     private fun subscriptionKey(relayUrl: String, subId: String) = "$relayUrl|$subId"
 

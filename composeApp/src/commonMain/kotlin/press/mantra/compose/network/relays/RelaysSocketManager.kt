@@ -126,6 +126,9 @@ class RelaysSocketManager(
         )
     }
 
+    /** @see RelayPool.reconnectAll */
+    suspend fun reconnectAll() = relayPool.reconnectAll()
+
     fun tryConnectingToAllRelays() {
         relayPool.relays.forEach {
             scope.launch {
