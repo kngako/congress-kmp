@@ -141,14 +141,37 @@ sharing one submodule git dir. That is fine while both want the same commit —
 check with `git submodule status` in each — and worth being careful about when
 they do not.
 
+Then the fresh clones need `local.properties`, which is gitignored and therefore
+absent, at **five** levels — the mantra root and each of the four nested builds
+down to secp256k1-kmp. Without it configuration fails at
+`:lightning-kmp-app:lightning-kmp:bitcoin-kmp:secp256k1-kmp:jni:android` with
+"SDK location not found":
+
+```bash
+for d in . lightning-kmp-app \
+         lightning-kmp-app/experimental/lightning-kmp \
+         lightning-kmp-app/experimental/lightning-kmp/experimental/bitcoin-kmp \
+         lightning-kmp-app/experimental/lightning-kmp/experimental/bitcoin-kmp/experimental/secp256k1-kmp; do
+  echo "sdk.dir=$HOME/Android/Sdk" > "$d/local.properties"
+done
+```
+
 ---
 
 ## Phase 1 — phoenix: the mechanical actuals
 
 **~1–2 days. Blocked by nothing. Do this first.**
 
-Fourteen of the 23. None of them requires a decision — each is either a direct
-copy of the android implementation or a handful of lines of JVM file handling.
+**Start by turning on `jvm()` in the library** —
+`lightning-kmp-app/library/build.gradle.kts:18`, not mantra's, which still waits
+for Phase 4. Without it `library/src/jvmMain/` is an orphan source set that
+nothing compiles, and every actual in Phases 1–3 would be written blind. With it,
+`./gradlew :library:compileKotlinJvm` prints the remaining expects by name, and
+that list is a better worklist than any grep — it shrinks by exactly what you
+implement and cannot drift from the truth.
+
+Fifteen of the 23 are mechanical. None requires a decision — each is either a
+direct copy of the android implementation or a few lines of JVM file handling.
 
 **`DbHooks.jvm.kt` — six functions, and this one is free.** The android
 implementation is 15 lines and every function is an empty body; the hooks only do
@@ -176,13 +199,36 @@ The four paths (`getApplicationFilesDirectoryPath`,
 directory, not `java.io.tmpdir`. The old Aux code used tmpdir and left a `TODO`
 about it; do not inherit that.
 
-**The remaining singles:** `platformElectrumRegtestConf`, `AppVersion`,
-`phoenixLogWriters` (a console writer is fine), `computePreferencePath`, and the
-two Fibonacci template properties — which should be deleted along with the
-template file rather than reimplemented, assuming nothing references them.
+**The remaining singles:** `platformElectrumRegtestConf` (*not* a copy — android
+uses `10.0.2.2`, the emulator's alias for the host loopback, and a jvm process is
+already on the host), `AppVersion`, `phoenixLogWriters` (kermit's `CommonWriter`;
+android routes into slf4j because android tooling reads that, and the jvm has no
+equivalent convention), and `computePreferencePath`.
 
-**Verification:** still nothing compiles for JVM at this point, because Phases 2
-and 3 are outstanding. Work against the expect list, not the compiler.
+**Leave the Fibonacci template alone.** `fibiprops.jvm.kt` looks like stray
+scaffolding, but it is the jvm half of a pair: `generateFibi` is exercised by
+template tests in `commonTest`, `androidHostTest`, `iosTest`, `jvmTest` and
+`linuxX64Test`, and `JvmFibiTest` asserts a value that depends on exactly the two
+properties that file defines. It already satisfies two of the 25 expects, which
+is why 23 are missing rather than 25. Deleting the template is a reasonable
+cleanup of a lightning wallet library, but it is five test files plus four
+`fibiprops.*` actuals, and it is not this work.
+
+**Verification:** `./gradlew :library:compileKotlinJvm` from inside
+`lightning-kmp-app/`. It still fails at the end of this phase — that is expected,
+and the failure is the point. It should report **exactly eight** remaining
+expects, and they should be exactly the contents of Phases 2 and 3:
+
+```
+DbFactory.kt          createChannelsDbDriver, createPaymentsDbDriver, createAppDbDriver
+NetworkMonitor.kt     NetworkMonitor
+KeyStoreFunctions.kt  keyStoreDecryption, keyStoreEncryption
+TechnicalExtensions.kt gracefulSingleSeedDecryption, gracefulMultiSeedDecryption
+```
+
+Anything else in that list means something in this phase is wrong. Also re-run
+`./gradlew :composeApp:compileDebugKotlinAndroid` from the mantra root: adding a
+jvm target to the library must not disturb how the android target resolves it.
 
 ---
 
@@ -225,9 +271,16 @@ schema-creation path against a scratch `main()` if you want feedback sooner.
 
 **A decision, not a port. Unbounded until the decision is made.**
 
-Four of the 23: `keyStoreEncryption`, `keyStoreDecryption`, and the two inline
-wrappers `gracefulSingleSeedDecryption` and `gracefulMultiSeedDecryption` that
-translate keystore exceptions into a `DecryptSeedResult`.
+Four of the 23, but only **two** of them are actually a decision.
+
+`gracefulSingleSeedDecryption` and `gracefulMultiSeedDecryption` are not. They
+are pure exception mapping into a `DecryptSeedResult`, and the exception they
+branch on is `java.security.KeyStoreException` — which exists on the jvm, since
+`KeyStore` is a plain JCA type. Both are a near-copy of the android actuals and
+can be written before any of the below is settled. Do them with Phase 2 and leave
+two errors outstanding rather than four.
+
+The decision is `keyStoreEncryption` and `keyStoreDecryption`.
 
 The android implementation delegates to `KeystoreHelper.kt` — 116 lines against
 `AndroidKeyStore`, with `KeyGenParameterSpec`, and `setIsStrongBoxBacked(true)`
