@@ -1,5 +1,6 @@
 package press.mantra.compose.managers
 
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
@@ -14,10 +15,10 @@ import fr.acinq.bitcoin.crypto.frost.Session
 import fr.acinq.bitcoin.crypto.frost.TweakCache
 import fr.acinq.secp256k1.Hex
 import kotlin.test.Test
-import kotlin.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.types.FrostSigningStage
@@ -308,6 +309,178 @@ class FrostSigningSessionTest {
                     Hex.encode(ByteArray(33) { 3 })
                 ).joinToString(",")
             ).publicShareList()?.size
+        )
+    }
+}
+
+/**
+ * What a device needs on its row to finish a session it never took part in.
+ *
+ * `FrostSigningManager.advance` completes on an arrived signature ahead of the
+ * approval gate, and that hoist rests on one claim: closing a session needs
+ * nothing secret and nothing the member would have had to publish. Were it
+ * false -- were the aggregated nonce, the signer set or a share needed to check
+ * the result -- the gate would have to stay where it was, and a member the
+ * quorum did not need would be stuck being asked to sign something already
+ * signed.
+ *
+ * So the claim is spelled out here against a real 2-of-3 signature, from the
+ * row of the member who was left out of it.
+ */
+class FrostSigningCompletionTest {
+    private val keyMaterial: KeyMaterial = Frost.trustedDealerKeygen(
+        thresholdSecretKey = PrivateKey(
+            ByteVector32("2decade0000000000000000000000000000000000000000000000000000000b2")
+        ),
+        nParticipants = 3,
+        threshold = 2
+    )
+
+    private val tweakCache: TweakCache = TweakCache.create(keyMaterial.thresholdPublicKey)
+
+    /** The group's nostr identity, exactly as `unsignedEventOf` derives it. */
+    private val groupPubKey = tweakCache.tweakedPublicKey.value.toHex()
+
+    /** The event the group is asked to sign, built the way the manager builds it. */
+    private val unsignedEvent = Event(
+        id = EventHasher.hashId(
+            pubKey = groupPubKey,
+            createdAt = 1_700_000_000L,
+            kind = 1,
+            tags = arrayOf(),
+            content = "a dialect the group agreed on"
+        ),
+        pubKey = groupPubKey,
+        createdAt = 1_700_000_000L,
+        kind = 1,
+        tags = arrayOf(),
+        content = "a dialect the group agreed on",
+        sig = ""
+    )
+
+    /** A real signature from members 0 and 1. Member 2 is not in it and never was. */
+    private val signature: String = run {
+        val message = ByteVector(unsignedEvent.id.hexToByteArray())
+        val signerIds = listOf(0, 1)
+
+        val nonces = signerIds.map { signerId ->
+            SecretNonce.generate(
+                sessionRandom = ByteVector32("c".repeat(63) + "${signerId + 1}"),
+                secretShare = keyMaterial.secretShares[signerId],
+                publicShare = keyMaterial.publicShares[signerId],
+                tweakedThresholdPublicKey = tweakCache.tweakedPublicKey,
+                message = message,
+                extraInput = null
+            )
+        }
+
+        val session = Session.create(
+            aggregatedNonce = IndividualNonce.aggregate(nonces.map { it.second }).right!!,
+            signerIds = signerIds.map { it.toUInt() },
+            signerPublicShares = signerIds.map { keyMaterial.publicShares[it] },
+            nParticipants = 3,
+            threshold = 2,
+            tweakCache = tweakCache,
+            message = message
+        )
+
+        val partials = signerIds.mapIndexed { position, signerId ->
+            session.sign(nonces[position].first, keyMaterial.secretShares[signerId], signerId.toUInt()).right!!
+        }
+
+        session.aggregateSigs(partials).right!!.toHex()
+    }
+
+    /**
+     * Member 2's row, as it stands when the signature reaches them: they never
+     * approved, so nothing of theirs was ever published, and the coordinator
+     * never named them. Every column the completion path reads is here; the ones
+     * it must not need are deliberately left null.
+     */
+    private fun leftOutMemberSession(signature: String? = null) = FrostSigningSession(
+        id = "s".repeat(64),
+        chatRoomId = "room",
+        coordinatorPublicKey = "c".repeat(64),
+        userPublicKey = "u".repeat(64),
+        dkgSessionId = "k".repeat(64),
+        threshold = 2,
+        participantCount = 3,
+        signerId = 2,
+        unsignedEventJson = unsignedEvent.toJson(),
+        eventId = unsignedEvent.id,
+        nonceRandom = "f".repeat(64),
+        aggregatedNonce = null,
+        signerIds = null,
+        signature = signature,
+        signApprovedAt = null
+    )
+
+    @Test
+    fun `a member who never took part can still check what the group signed`() {
+        val session = leftOutMemberSession(signature)
+        val signed = FrostSigningManager.signedEvent(session)!!
+
+        assertTrue(
+            Nip01Crypto.verify(
+                signature = signed.sig.hexToByteArray(),
+                hash = session.eventId.hexToByteArray(),
+                pubKey = signed.pubKey.hexToByteArray()
+            ),
+            "completing must need only the row: the event, its id and the signature"
+        )
+    }
+
+    @Test
+    fun `the finished event is the one that was proposed, with a signature on it`() {
+        // Not rebuilt and not rehashed: the id a session is pinned to is the id
+        // the signature is over, so anything that changed here would produce an
+        // event whose signature verifies against nothing.
+        val signed = FrostSigningManager.signedEvent(leftOutMemberSession(signature))!!
+
+        assertEquals(unsignedEvent.id, signed.id)
+        assertEquals(unsignedEvent.pubKey, signed.pubKey)
+        assertEquals(unsignedEvent.createdAt, signed.createdAt)
+        assertEquals(unsignedEvent.kind, signed.kind)
+        assertEquals(unsignedEvent.content, signed.content)
+        assertEquals(signature, signed.sig)
+    }
+
+    @Test
+    fun `there is no finished event until the signature arrives`() {
+        assertEquals(null, FrostSigningManager.signedEvent(leftOutMemberSession()))
+    }
+
+    @Test
+    fun `the arrived signature is what stops the session asking`() {
+        // The pair that matters to the screen and the transcript: the same row,
+        // before and after the group finished without this member.
+        assertTrue(FrostSigningManager.isAwaitingApproval(leftOutMemberSession()))
+        assertFalse(FrostSigningManager.isAwaitingApproval(leftOutMemberSession(signature)))
+    }
+
+    @Test
+    fun `a signature over a different event is refused`() {
+        // What the check is for. A coordinator passing off something else must not
+        // get it applied and announced as the group's, and the row is all there is
+        // to catch it with.
+        val other = leftOutMemberSession(signature).copy(
+            eventId = EventHasher.hashId(
+                pubKey = groupPubKey,
+                createdAt = 1_700_000_000L,
+                kind = 1,
+                tags = arrayOf(),
+                content = "something else entirely"
+            )
+        )
+
+        val signed = FrostSigningManager.signedEvent(other)!!
+
+        assertFalse(
+            Nip01Crypto.verify(
+                signature = signed.sig.hexToByteArray(),
+                hash = other.eventId.hexToByteArray(),
+                pubKey = signed.pubKey.hexToByteArray()
+            )
         )
     }
 }
