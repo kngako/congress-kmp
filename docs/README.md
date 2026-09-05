@@ -9,7 +9,7 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-ceremony.md](./shared-key-ceremony.md) | ChillDKG over NIP-17: the rounds, the approval gates, the chat transcript, participant ordering |
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
-| [long-running-sync.md](./long-running-sync.md) | keeping the chat subscriptions open instead of pulling once per screen — what the request-queue pipeline assumes about short subscriptions, and how the group filter follows the room list |
+| [long-running-sync.md](./long-running-sync.md) | the chat subscriptions that stay open instead of pulling once per screen — why the request queue could not simply hold one, and how the group filter follows the room list |
 
 Start with the ceremony if you are new to this area; the next two both assume it.
 The sync note stands alone.
