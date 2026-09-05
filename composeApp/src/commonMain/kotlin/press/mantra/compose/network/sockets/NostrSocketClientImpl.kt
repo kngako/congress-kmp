@@ -32,10 +32,6 @@ import okio.buffer
 import okio.use
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.random.Random
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -58,17 +54,7 @@ internal class NostrSocketClientImpl(
 
         private val MAX_RECONNECT_DELAY = 60.seconds
 
-        /**
-         * Bounds the exponent so a socket that has been failing for hours cannot overflow
-         * the doubling into `Infinity`, which `Duration * Double` rejects outright.
-         */
-        private const val MAX_RECONNECT_EXPONENT = 16
-
-        /**
-         * Up to this fraction of the delay is added at random. Every relay in the pool
-         * drops at once when the network does, and without jitter they would all come
-         * back in lockstep for as long as the outage lasts.
-         */
+        /** Fraction of the delay added at random. See [reconnectDelay]. */
         private const val RECONNECT_JITTER = 0.25
 
         /**
@@ -276,7 +262,12 @@ internal class NostrSocketClientImpl(
         reconnectJob = scope.launch {
             while (isActive && autoReconnect && !closedByClient) {
                 val attempt = ++reconnectAttempts
-                val wait = reconnectDelay(attempt)
+                val wait = reconnectDelay(
+                    attempt = attempt,
+                    initialDelay = INITIAL_RECONNECT_DELAY,
+                    maxDelay = MAX_RECONNECT_DELAY,
+                    jitterFraction = RECONNECT_JITTER,
+                )
                 logger.i { "Reconnecting to $socketUrl in $wait (attempt $attempt)" }
                 delay(wait)
 
@@ -289,13 +280,6 @@ internal class NostrSocketClientImpl(
                 }
             }
         }
-    }
-
-    private fun reconnectDelay(attempt: Int): Duration {
-        val doublings = 2.0.pow(min(attempt - 1, MAX_RECONNECT_EXPONENT))
-        val backoff = minOf(INITIAL_RECONNECT_DELAY * doublings, MAX_RECONNECT_DELAY)
-
-        return backoff + backoff * RECONNECT_JITTER * Random.nextDouble()
     }
 
     override suspend fun close() {

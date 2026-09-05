@@ -10,9 +10,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
@@ -30,10 +28,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.NostrEvent
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
-import press.mantra.compose.network.relays.RelaysSocketManager
+import press.mantra.compose.network.relays.LiveSubscriptionTransport
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
+import press.mantra.compose.network.sockets.endsLiveSubscription
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -63,7 +63,7 @@ import kotlin.time.Duration.Companion.seconds
  * (commonly ~20 per connection), which they comfortably are.
  */
 class LiveSubscriptionManager(
-    private val relaysSocketManager: RelaysSocketManager,
+    private val relaysSocketManager: LiveSubscriptionTransport,
     private val nostrRepository: NostrRepository,
     private val chatRepository: ChatRepository,
     private val isForeground: StateFlow<Boolean>,
@@ -128,6 +128,69 @@ class LiveSubscriptionManager(
          * only survives into the plain-REQ fallback.
          */
         private const val CATCH_UP_LIMIT = 50
+
+        /**
+         * Every gift wrap addressed to us: direct messages, and the Marmot Welcome events
+         * that make us a member of a group.
+         *
+         * There is deliberately no `since`. NIP-59 randomizes a wrap's `created_at` into the
+         * past — our own outbound path stamps them with `TimeUtils.randomWithTwoDays()` — so
+         * a wrap published right now can carry a timestamp two days old, and a `since`
+         * anywhere near the present would silently drop it. "Some messages just never
+         * arrive" is the worst failure mode to debug, and re-receiving a wrap costs one
+         * no-op `storeNostrEvent`.
+         */
+        internal fun giftWrapFilter(publicKey: HexKey) = Filter(
+            kinds = listOf(GiftWrapEvent.KIND),
+            tags = mapOf("p" to listOf(publicKey)),
+            limit = INITIAL_HISTORY_LIMIT,
+        )
+
+        /**
+         * Marmot group messages for a chunk of the groups we belong to.
+         *
+         * Unlike gift wraps these carry honest timestamps (`MarmotOutboundDao` stamps them
+         * with `TimeUtils.now()`), so a `since` watermark would be safe here. It is still not
+         * used: `limit` already bounds the initial burst, and a watermark would have to be
+         * recomputed every time the chunk's membership changed.
+         */
+        internal fun groupFilter(groupIds: List<HexKey>) = Filter(
+            kinds = listOf(GroupEvent.KIND),
+            tags = mapOf("h" to groupIds),
+            limit = INITIAL_GROUP_HISTORY_LIMIT,
+        )
+
+        /**
+         * The groups a live subscription should be watching.
+         *
+         * An MLS group is a room with group state; a NIP-17 room has none and is served by
+         * the gift wrap subscription instead. A room we have left or deleted keeps its
+         * history locally but must stop pulling new messages.
+         *
+         * Sorted so the same membership in a different row order is the same value, and a
+         * re-emit that changes nothing costs nothing downstream.
+         */
+        internal fun groupIdsFrom(rooms: List<LocalChatRoom>): List<HexKey> =
+            rooms
+                .filter { it.chatRoom.mlsGroupState != null }
+                .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
+                .map { it.chatRoom.id }
+                .sorted()
+
+        internal fun groupChunks(groupIds: List<HexKey>): List<List<HexKey>> =
+            groupIds.chunked(MAX_GROUPS_PER_SUBSCRIPTION)
+
+        internal fun groupSubId(index: Int) = "$GROUP_SUB_ID_PREFIX$index"
+
+        internal fun subscriptionKey(relayUrl: String, subId: String) = "$relayUrl|$subId"
+
+        /**
+         * The chunk index a [subscriptionKey] refers to, or [Int.MAX_VALUE] for anything that
+         * does not parse — which reads as "past the end", so an unrecognised key is closed
+         * rather than kept open forever.
+         */
+        internal fun subscriptionIndex(key: String) =
+            key.substringAfterLast(GROUP_SUB_ID_PREFIX).toIntOrNull() ?: Int.MAX_VALUE
     }
 
     /**
@@ -160,6 +223,11 @@ class LiveSubscriptionManager(
         }
     }
 
+    /**
+     * Everything below inherits the caller's dispatcher rather than pinning Dispatchers.IO.
+     * `SynchronizationViewModel` already launches [observe] on IO, so nothing has moved — but
+     * a coroutine that picks its own dispatcher cannot be driven by a test scheduler.
+     */
     private suspend fun runWhileForeground(publicKey: HexKey, keyPair: KeyPair): Unit = coroutineScope {
         logger.i("Foregrounded; opening live subscriptions for $publicKey")
 
@@ -171,10 +239,10 @@ class LiveSubscriptionManager(
 
         // Live subscriptions cover the window we are online for; this covers the gap we were
         // not. Neither subsumes the other.
-        launch(Dispatchers.IO) { queueCatchUpSynchronization(publicKey) }
+        launch { queueCatchUpSynchronization(publicKey) }
 
         Relays.DefaultDMRelayList.forEach { relay ->
-            launch(Dispatchers.IO) {
+            launch {
                 runLiveSubscription(
                     subId = GIFT_WRAP_SUB_ID,
                     relayUrl = relay.url,
@@ -184,7 +252,7 @@ class LiveSubscriptionManager(
             }
         }
 
-        launch(Dispatchers.IO) { followGroupMembership(publicKey = publicKey, keyPair = keyPair) }
+        launch { followGroupMembership(publicKey = publicKey, keyPair = keyPair) }
     }
 
     /**
@@ -241,37 +309,7 @@ class LiveSubscriptionManager(
     }
 
     private suspend fun liveGroupIds(publicKey: HexKey): List<HexKey> =
-        chatRepository.getChatRoomListByPublicKey(publicKey).toLiveGroupIds()
-
-    /**
-     * Every gift wrap addressed to us: direct messages, and the Marmot Welcome events that
-     * make us a member of a group.
-     *
-     * There is deliberately no `since`. NIP-59 randomizes a wrap's `created_at` into the past
-     * — our own outbound path stamps them with `TimeUtils.randomWithTwoDays()` — so a wrap
-     * published right now can carry a timestamp two days old, and a `since` anywhere near the
-     * present would silently drop it. "Some messages just never arrive" is the worst failure
-     * mode to debug, and re-receiving a wrap costs one no-op `storeNostrEvent`.
-     */
-    private fun giftWrapFilter(publicKey: HexKey) = Filter(
-        kinds = listOf(GiftWrapEvent.KIND),
-        tags = mapOf("p" to listOf(publicKey)),
-        limit = INITIAL_HISTORY_LIMIT,
-    )
-
-    /**
-     * Marmot group messages for a chunk of the groups we belong to.
-     *
-     * Unlike gift wraps these carry honest timestamps (`MarmotOutboundDao` stamps them with
-     * `TimeUtils.now()`), so a `since` watermark would be safe here. It is still not used:
-     * `limit` already bounds the initial burst, and a watermark would have to be recomputed
-     * every time the chunk's membership changed.
-     */
-    private fun groupFilter(groupIds: List<HexKey>) = Filter(
-        kinds = listOf(GroupEvent.KIND),
-        tags = mapOf("h" to groupIds),
-        limit = INITIAL_GROUP_HISTORY_LIMIT,
-    )
+        groupIdsFrom(chatRepository.getChatRoomListByPublicKey(publicKey))
 
     /**
      * Keeps the group subscriptions matching the groups we are actually in.
@@ -291,7 +329,7 @@ class LiveSubscriptionManager(
         val subscriptions = mutableMapOf<String, Job>()
 
         chatRepository.observeChatRoomListByPublicKey(publicKey)
-            .map { rooms -> rooms.toLiveGroupIds() }
+            .map { rooms -> groupIdsFrom(rooms) }
             .distinctUntilChanged()
             .debounce(GROUP_CHANGE_DEBOUNCE)
             .collect { groupIds ->
@@ -318,7 +356,7 @@ class LiveSubscriptionManager(
         keyPair: KeyPair,
         scope: CoroutineScope,
     ) {
-        val chunks = groupIds.chunked(MAX_GROUPS_PER_SUBSCRIPTION)
+        val chunks = groupChunks(groupIds)
         groupIdChunks = chunks
 
         logger.i("Live group membership: ${groupIds.size} group(s) over ${chunks.size} subscription(s)")
@@ -327,7 +365,7 @@ class LiveSubscriptionManager(
             val relayUrl = relay.url
 
             chunks.forEachIndexed { index, chunk ->
-                val subId = "$GROUP_SUB_ID_PREFIX$index"
+                val subId = groupSubId(index)
                 val key = subscriptionKey(relayUrl = relayUrl, subId = subId)
 
                 if (subscriptions[key]?.isActive == true) {
@@ -336,7 +374,7 @@ class LiveSubscriptionManager(
                         relayUrl = relayUrl,
                     )
                 } else {
-                    subscriptions[key] = scope.launch(Dispatchers.IO) {
+                    subscriptions[key] = scope.launch {
                         runLiveSubscription(
                             subId = subId,
                             relayUrl = relayUrl,
@@ -368,26 +406,6 @@ class LiveSubscriptionManager(
                 }
         }
     }
-
-    /**
-     * An MLS group is a room with group state; a NIP-17 room has none and is served by the
-     * gift wrap subscription instead. A room we have left or deleted keeps its history
-     * locally but must stop pulling new messages.
-     *
-     * Sorted so the same membership in a different row order is the same value, and a
-     * re-emit that changes nothing costs nothing downstream.
-     */
-    private fun List<press.mantra.compose.database.model.intermdiate.LocalChatRoom>.toLiveGroupIds() =
-        this
-            .filter { it.chatRoom.mlsGroupState != null }
-            .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
-            .map { it.chatRoom.id }
-            .sorted()
-
-    private fun subscriptionKey(relayUrl: String, subId: String) = "$relayUrl|$subId"
-
-    private fun subscriptionIndex(key: String) =
-        key.substringAfterLast(GROUP_SUB_ID_PREFIX).toIntOrNull() ?: Int.MAX_VALUE
 
     /**
      * Keeps one subscription open on one relay, re-opening it if the relay ends it.
@@ -476,10 +494,7 @@ class LiveSubscriptionManager(
             relayUrl = relayUrl,
         ).transformWhile { message ->
             emit(message)
-            // CLOSED is the only message that ends a live subscription. EOSE emphatically
-            // does not: it is the boundary between the stored history and the live tail,
-            // and treating it as an end is exactly what makes a sync a poll.
-            message !is NostrIncomingMessage.ClosedMessage
+            !message.endsLiveSubscription()
         }.collect { message ->
             when (message) {
                 is NostrIncomingMessage.EventMessage -> {

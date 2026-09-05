@@ -121,6 +121,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest: the relay pool's bookkeeping is all suspend functions, and there is no
+            // runBlocking in a common source set.
+            implementation(libs.kotlinx.coroutinesTest)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)

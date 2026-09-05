@@ -14,7 +14,7 @@ import press.mantra.compose.network.relays.RelayPool
 import press.mantra.compose.network.relays.RelaysSocketManager
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
-import press.mantra.compose.network.sockets.NostrSocketClientFactory
+import press.mantra.compose.network.sockets.DefaultNostrSocketClientFactory
 import press.mantra.compose.repository.CachingImportRepository
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -68,7 +68,7 @@ class SynchronizationViewModel(
 
     val relaysSocketManager = RelaysSocketManager(
         activeWalletStateFlow = activeWalletStateFlow,
-        nostrSocketClientFactory = NostrSocketClientFactory,
+        nostrSocketClientFactory = DefaultNostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
     )

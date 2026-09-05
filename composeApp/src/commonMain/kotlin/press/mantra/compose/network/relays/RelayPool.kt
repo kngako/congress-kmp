@@ -42,14 +42,18 @@ import kotlin.time.Duration.Companion.milliseconds
 class RelayPool(
     private val nostrSocketClientFactory: press.mantra.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: press.mantra.compose.repository.CachingImportRepository,
+    /**
+     * Where this pool's own fire-and-forget work runs: status updates, the socket closes that
+     * a relay-list change triggers, and the subscription replay a reconnect triggers.
+     * Injectable so a test can drive that work deterministically rather than racing it.
+     */
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ) {
     val logger = Logger.withTag("RelayPool")
 
     companion object {
         const val PUBLISH_TIMEOUT = 30_000
     }
-
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     val relays: MutableSet<press.mantra.compose.network.dto.RelayDTO> = mutableSetOf()
 
