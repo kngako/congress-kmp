@@ -538,7 +538,21 @@ expect anyway:
   change; noted because it is not available on all KMP targets and is easy to
   trip over later.
 
-**Verification:** `./gradlew :composeApp:run`.
+`main` also has to **unlock the key store before anything else runs**, which is the
+consequence of Phase 3 that lands here. Android and ios have no screen like this
+because their OS keystores serve keys without asking; on the jvm the passphrase *is*
+the protection, so the window opens onto a gate rather than onto the app.
+
+**Verification:** `./gradlew :composeApp:run`, and then a jvm test that opens the
+database. The run proves the window paints; it does not prove Room works, because the
+gate stops before anything touches the database. `MantraDatabaseJvmTest` covers what
+the compiler cannot see — that Room's KSP output for this target is usable, that the
+**host** SQLite native loads (the android artifact ships only android-ABI `.so` files
+and would fail here), that the schema is created, and that the queries forced from
+blocking to `suspend` still read back what they wrote.
+
+Note that a gradle `run` killed with SIGTERM reports `BUILD FAILED` with exit value
+143. That is the signal, not the app.
 
 ---
 
@@ -552,6 +566,13 @@ expect anyway:
 | 3 | phoenix: key storage (4) | **decision** | — |
 | 4 | mantra actuals (16) | 1–2 | 1, 2, 3 |
 | 5 | desktop entry point + shakeout | 1–2 | 4 |
+
+Phases 0–5 are now implemented. What each phase actually turned out to require, as
+opposed to what was predicted here, is recorded in the git history on
+`claude/jvm-target-actuals` (the fork) and this branch. The two largest surprises were
+not in any phase's description: Room refuses to generate a DAO with blocking methods
+for a non-android target (Phase 4), and a passphrase-derived key store needs an unlock
+step the `expect` signature cannot express, which lands in Phase 5 rather than 3.
 
 **Roughly one focused week to a launchable desktop build**, assuming Phase 3
 takes the passphrase-derived KEK and the build is marked dev-only. Real desktop
