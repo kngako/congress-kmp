@@ -9,17 +9,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -248,7 +251,11 @@ fun DkgRitualScreen(
                             members = dkgRitualUIState.ritualMembers,
                             hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
                             round1Participants = dkgRitualUIState.round1Participants,
-                            round2Participants = dkgRitualUIState.round2Participants
+                            round2Participants = dkgRitualUIState.round2Participants,
+                            isActionPending = isActionPending,
+                            onCreateAdminGroup = {
+                                dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
+                            }
                         )
                     }
                 }
@@ -289,6 +296,8 @@ private fun RitualProgress(
     hostKeyParticipants: Set<HexKey>,
     round1Participants: Set<HexKey>,
     round2Participants: Set<HexKey>,
+    isActionPending: Boolean,
+    onCreateAdminGroup: () -> Unit,
 ) {
     val stage = session.stage
     val hostKeyCount = hostKeyParticipants.size
@@ -435,6 +444,26 @@ private fun RitualProgress(
                     text = "Your share of it is on this device only. Your wallet backup restores it — nobody else's share can.",
                     style = MaterialTheme.typography.labelMedium
                 )
+
+                // Offered to whoever ran the ceremony. Any member's device could
+                // derive the same room id and create it, but one of them has to go
+                // first, and the coordinator is the member the group already watched
+                // do the work.
+                if (session.isCoordinator()) {
+                    Button(
+                        onClick = { onCreateAdminGroup() },
+                        enabled = !isActionPending,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isActionPending) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        } else {
+                            Icon(Icons.Default.Groups, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Create the #admins group")
+                        }
+                    }
+                }
             }
         }
     }
