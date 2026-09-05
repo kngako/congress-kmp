@@ -65,6 +65,18 @@ interface NostrEventDao {
         query: RoomRawQuery
     ): Flow<List<press.mantra.compose.database.model.intermdiate.LocalNostrEvent>>
 
+    /**
+     * Events matching an arbitrary NIP-01 filter, built by
+     * [press.mantra.compose.database.query.NostrEventFilterQuery]. Raw because a nostr filter is
+     * a variable set of constraints over variable-length lists, which `@Query` cannot express
+     * without one method per shape — and the per-shape methods this replaced each dropped the
+     * constraints they had no parameter for.
+     */
+    @RawQuery
+    fun  getNostrEventsMatchingFilter(
+        query: RoomRawQuery
+    ): List<NostrEvent>
+
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     fun  getNostrEvents(

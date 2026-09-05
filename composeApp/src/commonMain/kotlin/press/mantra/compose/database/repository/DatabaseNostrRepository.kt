@@ -8,6 +8,8 @@ import press.mantra.compose.database.model.UnsignedNostrEvent
 import press.mantra.compose.database.model.intermdiate.LocalAccount
 import press.mantra.compose.database.model.intermdiate.LocalBroadcastNostrEventRequest
 import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.database.dao.NostrEventDao
+import press.mantra.compose.database.query.NostrEventFilterQuery
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.Relays
 import co.touchlab.kermit.Logger
@@ -59,6 +61,9 @@ class DatabaseNostrRepository(
 ): press.mantra.compose.repository.NostrRepository, press.mantra.compose.repository.RelayRepository {
     companion object {
         const val TAG = "DatabaseNostrRepository"
+
+        /** Falls back to the same window the per-shape queries this replaced hard-coded. */
+        private const val DEFAULT_NEGENTROPY_LIMIT = 50
 
         private val storeNostrEventMutex = Mutex()
     }
@@ -630,131 +635,82 @@ class DatabaseNostrRepository(
         applyLimits: Boolean
     ): List<NostrEvent> {
         logger.d("getNegentropicNostrFeedIds: ${synchronizationFilters.contentToString()}")
-        if (synchronizationFilters.size == 1) {
-            val synchronizationFilter = synchronizationFilters.first()
 
-            return when {
-                synchronizationFilter.kinds != null && synchronizationFilter.search != null -> {
-                    logger.d("getFilteredNostrEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getFilteredNostrEvents(
-                        kinds = synchronizationFilter.kinds,
-                        search = synchronizationFilter.search,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.kinds != null && synchronizationFilter.ids != null -> {
-                    logger.d("getFilteredNostrEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getFilteredNostrEvents(
-                        kinds = synchronizationFilter.kinds,
-                        ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.ids != null -> {
-                    logger.d("getNostrEventsByIds($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getNostrEventsByIds(
-                        ids = synchronizationFilter.ids,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.kinds != null && synchronizationFilter.authors != null -> {
-                    logger.d("getAuthoredNostrEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getAuthoredNostrEvents(
-                        kinds = synchronizationFilter.kinds,
-                        authors = synchronizationFilter.authors,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.kinds != null && synchronizationFilter.since != null &&  synchronizationFilter.tags?.contains("e") == true && synchronizationFilter.tags["e"]?.first()?.isNotEmpty() == true -> {
-                    logger.d("getNostrEventReplies($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getNostrEventReplies(
-                        kinds = synchronizationFilter.kinds,
-                        eventId = synchronizationFilter.tags["e"]?.first()!!,
-                        since = synchronizationFilter.since,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.kinds != null && synchronizationFilter.tags?.contains("p") == true && synchronizationFilter.tags["p"]?.first()?.isNotEmpty() == true -> {
-                    logger.d("getPublicKeyMentionedNostrEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getPublicKeyMentionedNostrEvents(
-                        kinds = synchronizationFilter.kinds,
-                        publicKey = synchronizationFilter.tags["p"]?.first()!!,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
-                synchronizationFilter.kinds?.isNotEmpty() == true && synchronizationFilter.tags?.contains("h") == true  -> {
-                    val chatRoomIds = synchronizationFilter.tags["h"]?.toTypedArray() ?: emptyArray()
-                    logger.d("ChatRoomIds: ${chatRoomIds.contentToString()}")
-                    logger.d("getMLSGroupEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getMarmotGroupEvents(
-                        chatRoomIds = chatRoomIds,
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        until = synchronizationFilter.until ?: Instant.DISTANT_FUTURE,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    ).map { marmotGroupEvent ->
-                        NostrEvent(
-                            id = marmotGroupEvent.id,
-                            content = marmotGroupEvent.encryptedContent,
-                            kind = GroupEvent.KIND,
-                            tags = emptyArray(),
-                            createdAt = marmotGroupEvent.createdAt,
-                            sig = "", // TODO: Use marmotGroupEvent.signature...
-                            pubKey = marmotGroupEvent.publicKey
-                        )
-                    }
-                }
-                else -> {
-                    logger.d("getNostrEvents($applyLimits): $synchronizationFilter")
-                    database.nostrEventDao().getNostrEvents(
-                        kinds = arrayOf(
-                            TextNoteEvent.KIND,
-                        ),
-                        since = synchronizationFilter.since ?: GENESIS_AT,
-                        limit = if (applyLimits) {
-                            synchronizationFilter.limit ?: 50
-                        } else {
-                            -1
-                        }
-                    )
-                }
+        // A negentropy session reconciles against the union of its filters. Returning nothing
+        // for anything other than a single filter (as this used to) is the worst possible
+        // answer: an empty local set tells the relay we have none of these events, so it
+        // hands back its entire set as ids to download.
+        return synchronizationFilters
+            .flatMap { synchronizationFilter ->
+                matchNegentropicNostrEvents(synchronizationFilter, applyLimits)
             }
+            .distinctBy { it.id }
+    }
+
+    private fun matchNegentropicNostrEvents(
+        synchronizationFilter: SynchronizationFilter,
+        applyLimits: Boolean,
+    ): List<NostrEvent> {
+        val limit = if (applyLimits) {
+            synchronizationFilter.limit ?: DEFAULT_NEGENTROPY_LIMIT
         } else {
-            logger.w("Multi synchronizationFilters not yet supported")
-            return emptyList()
+            NostrEventFilterQuery.NO_LIMIT
         }
+
+        val chatRoomIds = synchronizationFilter.marmotGroupChatRoomIds()
+        if (chatRoomIds != null) {
+            // Group messages live in their own table, which carries the NIP-40 expiry a relay
+            // uses to decide whether it still serves the event, and an indexed chatRoomId
+            // rather than a scan of the tags JSON.
+            logger.d("getMarmotGroupEvents($applyLimits): $synchronizationFilter")
+            return database.nostrEventDao().getMarmotGroupEvents(
+                chatRoomIds = chatRoomIds,
+                since = synchronizationFilter.since ?: GENESIS_AT,
+                until = synchronizationFilter.until ?: Instant.DISTANT_FUTURE,
+                limit = limit,
+            ).map { marmotGroupEvent ->
+                // Only the id and createdAt reach the negentropy vector; the rest is filled in
+                // so callers keep a NostrEvent-shaped result.
+                NostrEvent(
+                    id = marmotGroupEvent.id,
+                    content = marmotGroupEvent.encryptedContent,
+                    kind = GroupEvent.KIND,
+                    tags = arrayOf(arrayOf("h", marmotGroupEvent.chatRoomId)),
+                    createdAt = marmotGroupEvent.createdAt,
+                    sig = marmotGroupEvent.signature,
+                    pubKey = marmotGroupEvent.publicKey
+                )
+            }
+        }
+
+        logger.d("getNostrEventsMatchingFilter($applyLimits): $synchronizationFilter")
+        return database.nostrEventDao().getNostrEventsMatchingFilter(
+            NostrEventFilterQuery.build(
+                filter = synchronizationFilter,
+                limit = limit,
+            )
+        )
+    }
+
+    /**
+     * The chat room ids of a filter that asks for nothing but Marmot group messages, or null if
+     * the filter says anything the [NostrEventDao.getMarmotGroupEvents] lookup cannot express.
+     * Kept deliberately narrow: the branch it guards answers from a different table, so a filter
+     * it only partly understands would silently drop the rest of the constraints — which is
+     * exactly what the shape-guessing chain this replaced did.
+     */
+    private fun SynchronizationFilter.marmotGroupChatRoomIds(): Array<HexKey>? {
+        val tags = tags ?: return null
+        val rooms = tags["h"] ?: return null
+
+        val onlyGroupEvents = kinds != null && kinds.size == 1 && kinds.first() == GroupEvent.KIND
+        val nothingElseAsked = ids == null &&
+            authors == null &&
+            search == null &&
+            tagsAll.isNullOrEmpty() &&
+            tags.keys == setOf("h")
+
+        return if (onlyGroupEvents && nothingElseAsked) rooms.toTypedArray() else null
     }
 
     override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<press.mantra.compose.database.model.intermdiate.LocalNostrEvent?> {
