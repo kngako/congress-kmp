@@ -9,5 +9,8 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-ceremony.md](./shared-key-ceremony.md) | ChillDKG over NIP-17: the rounds, the approval gates, the chat transcript, participant ordering |
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
+| [mls-skipped-keys.md](./mls-skipped-keys.md) | why a group event that arrives a moment late is dropped for good, which flows trigger it, the quartz fix, and the partial mitigation in this app |
 
 Start with the ceremony if you are new to this area; the other two both assume it.
+Read the skipped-keys note before debugging any "the other device never got it"
+report — it is silent, and it looks like every other kind of delivery failure.
