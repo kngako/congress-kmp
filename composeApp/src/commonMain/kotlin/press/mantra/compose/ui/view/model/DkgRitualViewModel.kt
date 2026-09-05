@@ -269,6 +269,7 @@ class DkgRitualViewModel(
         val name = "${loaded.localChatRoom.chatRoom.subject ?: "Group"} (#admins)"
 
         isActionPending.value = true
+        dkgRitualUIState = loaded.copy(adminGroupBlockedOn = emptyList())
 
         viewModelScope.launch(Dispatchers.IO) {
             // Derived ids make this reachable twice -- a second tap, or another
@@ -287,6 +288,52 @@ class DkgRitualViewModel(
                     )
                 }
                 return@launch
+            }
+
+            // Every key package, before anything exists. Two reasons this is a
+            // precondition rather than a best effort:
+            //
+            // MarmotGroupData.adminPubkeys is baked into the epoch-0 GroupContext
+            // and names every member, so a room created without one of them lists an
+            // admin who is not in the MLS tree -- a group that disagrees with itself
+            // from its first epoch.
+            //
+            // And the id is derived, so there is exactly one room per group at this
+            // path. A half-created one occupies that address permanently; there is no
+            // second id to retry with. Better to create nothing and say who is
+            // missing.
+            val peers = members.filterNot { it == activeUserPublicKey }
+            val keyPackages = coroutineScope {
+                peers.map { publicKey ->
+                    async {
+                        publicKey to withTimeoutOrNull(KEY_PACKAGE_LOOKUP_TIMEOUT) {
+                            chatRepository.observeMarmotKeyPackageForPublicKey(publicKey)
+                                .filterNotNull()
+                                .first()
+                        }
+                    }
+                }.awaitAll()
+            }
+
+            val missing = keyPackages.filter { it.second == null }.map { it.first }
+            if (missing.isNotEmpty()) {
+                logger.w("Not creating admin group $groupId: no key package for $missing")
+
+                isActionPending.value = false
+                dkgRitualUIState = loaded.copy(
+                    adminGroupBlockedOn = missing.map { publicKey ->
+                        loaded.ritualMembers
+                            .firstOrNull { it.participant.participantPublicKey == publicKey }
+                            ?.profile
+                            ?.humanReadableNameOrPubkey()
+                            ?: publicKey.take(12)
+                    }
+                )
+                return@launch
+            }
+
+            val addable = keyPackages.mapNotNull { (publicKey, keyPackage) ->
+                keyPackage?.let { publicKey to it }
             }
 
             val relays = Relays.DefaultDMRelayList.map { it.url }
@@ -330,7 +377,11 @@ class DkgRitualViewModel(
                 return@launch
             }
 
-            val notAdded = inviteAdmins(groupId, members.filterNot { it == activeUserPublicKey })
+            val notAdded = runCatching {
+                chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
+            }.onFailure {
+                logger.e("Failed to add members to admin group $groupId", it)
+            }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
 
             isActionPending.value = false
 
@@ -359,55 +410,6 @@ class DkgRitualViewModel(
      * reported rather than treated as failure: a room with most of the group in it
      * is more useful than no room.
      */
-    /**
-     * Adds every admin to the freshly created room in one commit, returning those
-     * that could not be added.
-     *
-     * Batched rather than invited one at a time: the whole membership is known here,
-     * and inviting sequentially creates an epoch per member, each of whose commits
-     * races the previous member's Welcome. A member who loses that race is silently
-     * stuck an epoch behind. See docs/marmot-membership.md.
-     *
-     * A Marmot invite still needs the invitee's published key package, so a member
-     * who has never published one cannot be added and has to be invited later. That
-     * is reported rather than treated as failure: a room with most of the group in
-     * it is more useful than no room.
-     */
-    private suspend fun inviteAdmins(groupId: String, peers: List<HexKey>): List<HexKey> {
-        val keyPackages = coroutineScope {
-            peers.map { publicKey ->
-                async {
-                    publicKey to withTimeoutOrNull(KEY_PACKAGE_LOOKUP_TIMEOUT) {
-                        chatRepository.observeMarmotKeyPackageForPublicKey(publicKey)
-                            .filterNotNull()
-                            .first()
-                    }
-                }
-            }.awaitAll()
-        }
-
-        val withoutKeyPackage = keyPackages.filter { it.second == null }.map { it.first }
-        withoutKeyPackage.forEach { logger.w("No key package for $it; leaving them out of $groupId") }
-
-        val addable = keyPackages.mapNotNull { (publicKey, keyPackage) ->
-            keyPackage?.let { publicKey to it }
-        }
-        if (addable.isEmpty()) return withoutKeyPackage
-
-        val localChatRoom = chatRepository.getChatRoomByIdentifier(groupId)
-        if (localChatRoom == null) {
-            logger.e("Admin group $groupId disappeared before its members were added")
-            return peers
-        }
-
-        val notAdded = runCatching {
-            chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
-        }.onFailure {
-            logger.e("Failed to add members to admin group $groupId", it)
-        }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
-
-        return withoutKeyPackage + notAdded
-    }
 
     override fun onCleared() {
         messageObserver?.cancel()

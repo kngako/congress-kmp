@@ -253,6 +253,7 @@ fun DkgRitualScreen(
                             round1Participants = dkgRitualUIState.round1Participants,
                             round2Participants = dkgRitualUIState.round2Participants,
                             isActionPending = isActionPending,
+                            adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
                             onCreateAdminGroup = {
                                 dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
                             }
@@ -297,6 +298,7 @@ private fun RitualProgress(
     round1Participants: Set<HexKey>,
     round2Participants: Set<HexKey>,
     isActionPending: Boolean,
+    adminGroupBlockedOn: List<String>,
     onCreateAdminGroup: () -> Unit,
 ) {
     val stage = session.stage
@@ -450,6 +452,18 @@ private fun RitualProgress(
                 // first, and the coordinator is the member the group already watched
                 // do the work.
                 if (session.isCoordinator()) {
+                    // Nothing is created until every member's key package is in
+                    // hand, so this is the whole reason there is no room yet.
+                    if (adminGroupBlockedOn.isNotEmpty()) {
+                        Text(
+                            text = "Waiting on ${adminGroupBlockedOn.joinToString(", ")} to " +
+                                "open the app, so their device can publish the key it needs " +
+                                "to be added.",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
                     Button(
                         onClick = { onCreateAdminGroup() },
                         enabled = !isActionPending,

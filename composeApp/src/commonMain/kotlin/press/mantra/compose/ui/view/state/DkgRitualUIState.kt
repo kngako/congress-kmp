@@ -33,6 +33,15 @@ sealed interface DkgRitualUIState {
          * derive is this, which needs the stored messages as well as the row.
          */
         val pendingApproval: DkgApprovalStep? = null,
+        /**
+         * Members whose key package the coordinator could not find, and so who stop
+         * the #admins room being created at all.
+         *
+         * Names rather than keys, because the answer to this is to go and ask that
+         * person to open the app. Empty when nothing is blocked, which is also the
+         * state a retry starts from.
+         */
+        val adminGroupBlockedOn: List<String> = emptyList(),
     ): DkgRitualUIState {
         val hostKeyCount: Int get() = hostKeyParticipants.size
         val round1Count: Int get() = round1Participants.size
