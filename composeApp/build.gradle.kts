@@ -121,6 +121,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest: the DAO and model layers are suspending, so anything worth
+            // asserting about them needs a coroutine to assert it in.
+            implementation(libs.kotlinx.coroutinesTest)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
