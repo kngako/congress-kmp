@@ -241,12 +241,42 @@ real implementations, but they are bounded — the shape is known and the failur
 modes are ordinary.
 
 **`DbFactory.jvm.kt` — `createChannelsDbDriver`, `createPaymentsDbDriver`,
-`createAppDbDriver`.** Use SQLDelight's `sqlite-driver` (the JDBC driver
-specialised for SQLite). The one real difference from android: the android driver
-creates and migrates the schema for you via `AndroidSqliteDriver`'s callback, and
-the JDBC driver does not. You call `Schema.create(driver)` and the migration path
-explicitly, and you have to track the applied version yourself. Budget for that,
-not for the driver construction.
+`createAppDbDriver`.** Use SQLDelight's `sqlite-driver`. Structurally, follow the
+**ios** actual rather than the android one: an explicit directory plus a file
+name, because the jvm has no `Context` to hand a bare name to.
+
+Schema handling does *not* need hand-rolling, contrary to what this plan first
+said. SQLDelight 2.x ships a factory function that shadows the constructor:
+
+```kotlin
+JdbcSqliteDriver(url, properties, schema, migrateEmptySchema = false, vararg callbacks)
+```
+
+It creates the schema on an empty file, migrates an existing one, and maintains
+`PRAGMA user_version` itself. The same-named *constructor* — `JdbcSqliteDriver(url,
+properties)` — does none of that, and reaching for it by accident is the easy
+mistake here. `AfterVersion10`/`AfterVersion11` go in as the trailing callbacks,
+exactly as ios passes them to `schema.migrate`.
+
+**Foreign keys are the part worth budgeting for.** They are off by default in
+SQLite, and the pragma is *per connection* — `JdbcSqliteDriver` opens one per
+thread, so issuing it once against the driver is not enough. Pass it as a
+connection property instead:
+
+```kotlin
+Properties().apply { setProperty("foreign_keys", "true") }
+```
+
+xerial reads pragma-named properties back through `SQLiteConfig(Properties)` and
+applies them as each connection opens, so this needs no compile-time dependency on
+`org.xerial:sqlite-jdbc` — which is just as well, since `sqlite-driver` brings it
+in at *runtime* scope only. Android gets the same effect from
+`setForeignKeyConstraintsEnabled` in its driver callback and ios from
+`DatabaseConfiguration.Extended(foreignKeyConstraints = true)`. All three platforms
+state it separately; none inherits it from the schema.
+
+One incidental discrepancy to be aware of: the app database is named
+`appdb.sqlite` on android and `app.sqlite` on ios.
 
 `createPaymentsDbDriver` also takes an `onError: (String) -> Unit` — make sure
 corruption and migration failures actually reach it rather than throwing past it,
@@ -262,8 +292,34 @@ Start with polling on a slow interval. It is worse than the android behaviour an
 that is acceptable — the alternative is pretending the network never changes,
 which produces confusing UI on a laptop that gets closed and reopened.
 
-**Verification:** none of this is exercisable until Phase 4. Write the SQLDelight
-schema-creation path against a scratch `main()` if you want feedback sooner.
+**Verification: this is the first phase that can actually be run, and it should
+be.** Everything before it is checked by the compiler alone. Two properties of the
+drivers are not, and both fail silently in production if wrong — an uncreated
+schema looks like a missing table at first query, and foreign keys being off means
+cascading deletes quietly do not happen. `library/src/jvmTest/` already exists;
+`DbFactoryJvmTest` covers schema creation for all three databases, the foreign-key
+pragma on each, and that reopening an existing file migrates-or-noops rather than
+re-creating.
+
+Running any jvm test needs the module to compile, which means the two
+`KeyStoreFunctions` actuals must exist before Phase 3 has decided anything. Give
+them bodies that **throw**, with a message naming this document. A loud failure is
+the right placeholder: the alternative is something that appears to work while
+storing a seed weakly, which is the one outcome worth ruling out.
+
+**And `commonTest` has an expect of its own**, which is easy to miss because the
+23 counted at the top of this document are `commonMain`'s. Declaring `jvm()` also
+creates `jvmTest`, which inherits `commonTest`, so `connect` in
+`ElectrumServersTest.kt` needs a jvm actual before any jvm test compiles. Copy the
+`androidHostTest` one — despite the name it contains no android API, only ktor,
+`javax.net.ssl` and lightning-kmp's `JvmTcpSocket`.
+
+Do **not** satisfy it with an empty body the way ios does. The class is `@Ignore`d
+on every platform, so an empty actual compiles and looks harmless, but it turns
+`connect_to_mainnet_servers` into an assertion that passes without connecting to
+anything the moment somebody removes the `@Ignore`. The tidier long-term fix is a
+shared source set that `androidHostTest` and `jvmTest` both depend on, which is a
+change to how the module is wired rather than to what it does.
 
 ---
 
