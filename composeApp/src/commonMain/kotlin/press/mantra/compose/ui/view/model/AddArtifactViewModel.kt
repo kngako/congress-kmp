@@ -62,10 +62,7 @@ class AddArtifactViewModel(
         nameField: TextFieldState,
         urlField: TextFieldState,
         versionLabelField: TextFieldState,
-        existingDialectId: HexKey?,
-        dialectNameField: TextFieldState,
-        dialectCountryField: TextFieldState,
-        dialectLanguageField: TextFieldState,
+        dialectId: HexKey?,
         visibility: String = MantraRepository.DEFAULT_VISIBILITY,
         license: String = MantraRepository.DEFAULT_LICENSE,
         onSuccess: (artifactId: String) -> Unit,
@@ -75,16 +72,10 @@ class AddArtifactViewModel(
             val name = nameField.text.toString()
             val url = urlField.text.toString()
             val versionLabel = versionLabelField.text.toString()
-            val dialectName = dialectNameField.text.toString()
-            val dialectCountry = dialectCountryField.text.toString()
-            val dialectLanguage = dialectLanguageField.text.toString()
 
-            // When no existing dialect is selected, the new-dialect fields are required.
-            val creatingNewDialect = existingDialectId.isNullOrBlank()
-            val newDialectIncomplete = dialectName.isBlank() || dialectCountry.isBlank() || dialectLanguage.isBlank()
-            if (name.isBlank() || url.isBlank() || versionLabel.isBlank() ||
-                (creatingNewDialect && newDialectIncomplete)
-            ) {
+            // addArtifact requires an existing source dialect; they are defined
+            // from the group detail screen, not here.
+            if (name.isBlank() || url.isBlank() || versionLabel.isBlank() || dialectId.isNullOrBlank()) {
                 onFailure.invoke()
                 return
             }
@@ -95,20 +86,6 @@ class AddArtifactViewModel(
 
             viewModelScope.launch(Dispatchers.IO) {
                 val artifactInnerEvent = runCatching {
-                    // Reuse the selected dialect, or create a new source dialect and
-                    // reference it by id. addArtifact requires a valid dialectId.
-                    val dialectId = if (creatingNewDialect) {
-                        mantraRepository.addDialect(
-                            localChatRoom = localChatRoom,
-                            name = dialectName,
-                            country = dialectCountry,
-                            language = dialectLanguage,
-                            userPublicKey = activeUserPublicKey,
-                        )?.id ?: return@runCatching null
-                    } else {
-                        existingDialectId
-                    }
-
                     mantraRepository.addArtifact(
                         localChatRoom = localChatRoom,
                         name = name,
@@ -127,9 +104,6 @@ class AddArtifactViewModel(
                     nameField.clearText()
                     urlField.clearText()
                     versionLabelField.clearText()
-                    dialectNameField.clearText()
-                    dialectCountryField.clearText()
-                    dialectLanguageField.clearText()
 
                     viewModelScope.launch(Dispatchers.Main) {
                         onSuccess.invoke(artifactInnerEvent.id)
