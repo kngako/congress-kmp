@@ -362,9 +362,54 @@ desktop build clearly as unsuitable for real funds, and treat OS-keychain
 integration as its own piece of work with its own review. That unblocks Phases 4
 and 5 without pretending the security question is answered.
 
+### Three things that only surface once you build it
+
+**The expect signature has nowhere to put a passphrase.** `keyStoreEncryption(keyName,
+plainText)` takes no context and no secret, because on android the OS holds the key
+and no secret is needed. A passphrase-derived KEK is therefore *not* a drop-in: it
+needs an out-of-band unlock, so the jvm actual grows a `JvmKeyStore.unlock(passphrase,
+storeDir)` that the application calls before any seed is touched — the same way the
+android actual grows a `KeystoreHelper` beside it. **This lands in Phase 5**, which
+must unlock before the wallet starts, so budget for a passphrase prompt in the
+desktop entry point rather than discovering it there.
+
+**The iv must be exactly 16 bytes**, which rules out a conventional GCM nonce.
+`EncryptedSeed.V2.serialize` in commonMain throws on anything else and `deserialize`
+reads exactly 16. GCM permits it, and for randomly generated nonces 128 bits is
+actually the better choice — the whole risk with a random nonce is a repeat under one
+key, and 128 bits makes that vanishingly unlikely where 96 merely makes it unlikely.
+A constraint inherited from android's CBC format happens to help.
+
+**The jdk has no memory-hard KDF.** `SecretKeyFactory` offers PBKDF2 and nothing else,
+so Argon2id means a new dependency (`org.bouncycastle:bcprov-jdk18on`). Worth it: if
+the build is dev-only *because* it has no hardware backing, weakening the KDF as well
+to save a dependency gets the trade backwards.
+
+Two smaller notes. Wrap a per-key-name data key under the KEK rather than encrypting
+the seed with the KEK directly — a passphrase change then rewraps a 32-byte key
+instead of re-encrypting and re-serialising the seed. And throw
+`java.security.KeyStoreException` when locked: that is what android raises when it
+cannot serve a key, and the `graceful*` wrappers already map it to
+`DecryptSeedResult.Failure.KeyStoreFailure`, so a caller that forgets to unlock gets a
+handled failure rather than a crash.
+
 **This phase is the only one in the plan with no honest day estimate**, because
 the estimate is a function of which row of that table gets chosen and how much
 review it attracts.
+
+**Verification:** `JvmKeyStoreTest`. The properties worth pinning are the ones that
+fail quietly — a 16-byte iv (or `EncryptedSeed` refuses to serialise), tamper
+detection (the reason for GCM over android's unauthenticated CBC), key separation
+between the two names, a per-install salt, and that neither seed nor passphrase
+lands in the store file. Add the damaged-store refusal too: a store with key
+material but no salt must not be given a fresh one, since that turns a file a
+backup could rescue into one whose data keys are gone.
+
+Two limits to write down rather than fix. The first `unlock` on a new store accepts
+any passphrase, because there is nothing yet to check it against — a wrong one only
+surfaces when a data key fails to unwrap. And zeroing the derived key is best
+effort; the jvm may have copied it during a gc, and nothing in process can reach
+those copies.
 
 ---
 
