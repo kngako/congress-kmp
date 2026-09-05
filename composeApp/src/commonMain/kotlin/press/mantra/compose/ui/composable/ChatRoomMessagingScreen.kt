@@ -4,15 +4,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.BottomAppBarDefaults
@@ -43,6 +47,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -141,6 +146,16 @@ fun ChatRoomMessagingScreen(
                                             chatRoomId = chatRoomId
                                         )
                                     )
+                                },
+                                onOpenSigning = {
+                                    // No session id: a chat row carries none, and the
+                                    // screen resolves the room's live one.
+                                    onNavigateToRoute.invoke(
+                                        FrostSigningRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId
+                                        )
+                                    )
                                 }
                             )
                         }
@@ -157,6 +172,49 @@ fun ChatRoomMessagingScreen(
                             .background(BottomAppBarDefaults.containerColor)
                             .navigationBarsPadding()
                     ) {
+                        // An armed composer has to be impossible to miss. The whole risk
+                        // of this feature is somebody sending to the room what they meant
+                        // for one person, or the reverse, and by the time either is on the
+                        // wire it cannot be taken back. Hence three signals at once: the
+                        // chip, the placeholder, and the tinted field.
+                        val directMessageRecipient = chatMessageListViewModel.directMessageRecipient
+
+                        if (directMessageRecipient != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+
+                                Text(
+                                    modifier = Modifier.weight(1f),
+                                    text = "Private to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}",
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+
+                                // The one way back to the room, and it has to be one tap.
+                                IconButton(
+                                    onClick = { chatMessageListViewModel.cancelDirectMessage() }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Send to the whole group instead",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+
                         Box(
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -166,11 +224,25 @@ fun ChatRoomMessagingScreen(
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = Color.Transparent,
                                     unfocusedBorderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent
+                                    disabledBorderColor = Color.Transparent,
+                                    focusedContainerColor = if (directMessageRecipient != null) {
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    } else {
+                                        Color.Transparent
+                                    },
+                                    unfocusedContainerColor = if (directMessageRecipient != null) {
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    } else {
+                                        Color.Transparent
+                                    }
                                 ),
                                 placeholder = {
                                     Text(
-                                        text = "Say what now?"
+                                        text = if (directMessageRecipient != null) {
+                                            "Private message to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}"
+                                        } else {
+                                            "Say what now?"
+                                        }
                                     )
                                 },
                                 trailingIcon = {

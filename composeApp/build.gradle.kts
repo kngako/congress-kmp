@@ -121,8 +121,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            // runTest: the relay pool's bookkeeping is all suspend functions, and there is no
-            // runBlocking in a common source set.
+            // runTest: the DAO, model and relay layers are all suspending, and there is no
+            // runBlocking in a common source set — so anything worth asserting about them
+            // needs a coroutine, and a scheduler, to assert it in.
             implementation(libs.kotlinx.coroutinesTest)
         }
         jvmMain.dependencies {
@@ -171,6 +172,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+    testOptions {
+        unitTests {
+            // Quartz logs through android.util.Log on the error paths -- parsing a
+            // malformed event, for one. Unmocked, those methods throw, so a test
+            // covering such a path fails on the log line rather than on what it
+            // came to check. Default values let the code under test carry on.
+            isReturnDefaultValues = true
+        }
     }
 }
 

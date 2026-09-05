@@ -34,6 +34,7 @@ import press.mantra.compose.network.relays.LiveSubscriptionTransport
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
 import press.mantra.compose.network.sockets.endsLiveSubscription
+import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
@@ -118,33 +119,17 @@ class LiveSubscriptionManager(
 
         private val MAX_REOPEN_DELAY = 5.minutes
 
-        /**
-         * Matches what `ChatRoomListViewModel` queued, deliberately: the id a negentropy
-         * request is stored under is a hash of its filter, so an identical filter shape
-         * collapses into the same row rather than queueing the same reconciliation twice
-         * while both callers exist.
-         *
-         * The value itself barely matters — the negentropy pump drops `limit` outright, and it
-         * only survives into the plain-REQ fallback.
-         */
-        private const val CATCH_UP_LIMIT = 50
-
-        /**
+/**
          * Every gift wrap addressed to us: direct messages, and the Marmot Welcome events
          * that make us a member of a group.
          *
-         * There is deliberately no `since`. NIP-59 randomizes a wrap's `created_at` into the
-         * past — our own outbound path stamps them with `TimeUtils.randomWithTwoDays()` — so
-         * a wrap published right now can carry a timestamp two days old, and a `since`
-         * anywhere near the present would silently drop it. "Some messages just never
-         * arrive" is the worst failure mode to debug, and re-receiving a wrap costs one
-         * no-op `storeNostrEvent`.
+         * Deferred to [Nip17Filters] rather than written here, because this shape has been
+         * got wrong in several call sites before and the reasons it is what it is belong in
+         * one place — chiefly the absence of a `since`, which looks like an oversight and is
+         * the difference between receiving mail and silently not.
          */
-        internal fun giftWrapFilter(publicKey: HexKey) = Filter(
-            kinds = listOf(GiftWrapEvent.KIND),
-            tags = mapOf("p" to listOf(publicKey)),
-            limit = INITIAL_HISTORY_LIMIT,
-        )
+        internal fun giftWrapFilter(publicKey: HexKey) =
+            Nip17Filters.liveInbox(publicKey, limit = INITIAL_HISTORY_LIMIT)
 
         /**
          * Marmot group messages for a chunk of the groups we belong to.
@@ -266,11 +251,7 @@ class LiveSubscriptionManager(
     private suspend fun queueCatchUpSynchronization(publicKey: HexKey) {
         val groupIds = liveGroupIds(publicKey)
 
-        val giftWrapFilter = SynchronizationFilter(
-            kinds = arrayOf(GiftWrapEvent.KIND),
-            tags = mapOf("p" to listOf(publicKey)),
-            limit = CATCH_UP_LIMIT,
-        )
+        val giftWrapFilter = Nip17Filters.inbox(publicKey)
 
         val requests = mutableListOf<NegentropySynchronizeRequest>()
 

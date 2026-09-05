@@ -9,7 +9,6 @@ import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
-import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
 interface MantraRepository {
@@ -65,7 +64,7 @@ interface MantraRepository {
         dialectId: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent?
+    ): MantraTranslationArtifactVersion?
 
     /**
      * Add a chapter (markdown [originalText]) to the artifact's latest version.
@@ -79,7 +78,7 @@ interface MantraRepository {
         originalText: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent?
+    ): MantraChapter?
 
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
 
@@ -91,7 +90,7 @@ interface MantraRepository {
         country: String,
         language: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent?
+    ): MantraDialect?
 
     suspend fun addArtifact(
         localChatRoom: LocalChatRoom,
@@ -102,14 +101,14 @@ interface MantraRepository {
         userPublicKey: HexKey,
         visibility: String = DEFAULT_VISIBILITY,
         license: String = DEFAULT_LICENSE,
-    ): MarmotInnerEvent?
+    ): MantraArtifact?
 
     suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
         artifactId: HexKey,
         versionLabel: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent?
+    ): MantraArtifactVersion?
 
     companion object {
         const val DEFAULT_VISIBILITY = "private"
@@ -155,7 +154,7 @@ interface MantraRepository {
                 dialectId: String,
                 chatRoomId: String,
                 userPublicKey: HexKey,
-            ): MarmotInnerEvent? = null
+            ): MantraTranslationArtifactVersion? = null
 
             override suspend fun addChapter(
                 artifactId: String,
@@ -163,7 +162,7 @@ interface MantraRepository {
                 originalText: String,
                 chatRoomId: String,
                 userPublicKey: HexKey,
-            ): MarmotInnerEvent? = null
+            ): MantraChapter? = null
 
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 
@@ -175,7 +174,7 @@ interface MantraRepository {
                 country: String,
                 language: String,
                 userPublicKey: HexKey,
-            ): MarmotInnerEvent? = null
+            ): MantraDialect? = null
 
             override suspend fun addArtifact(
                 localChatRoom: LocalChatRoom,
@@ -186,14 +185,14 @@ interface MantraRepository {
                 userPublicKey: HexKey,
                 visibility: String,
                 license: String,
-            ): MarmotInnerEvent? = null
+            ): MantraArtifact? = null
 
             override suspend fun addArtifactVersion(
                 localChatRoom: LocalChatRoom,
                 artifactId: HexKey,
                 versionLabel: String,
                 userPublicKey: HexKey,
-            ): MarmotInnerEvent? = null
+            ): MantraArtifactVersion? = null
         }
     }
 }

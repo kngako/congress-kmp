@@ -3,7 +3,10 @@ package press.mantra.compose.database.dao
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MantraArtifact
@@ -21,6 +24,7 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -28,12 +32,89 @@ import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_LICENSE
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_VISIBILITY
 import press.mantra.compose.text.Markdown
+import kotlin.time.Instant
 
 @Dao
 abstract class MantraDao(
     private val database: MantraDatabase,
 ) {
     val logger = Logger.withTag("NostrDao")
+
+    /**
+     * The unsigned nip30303 event [template] describes, authored by [publicKey].
+     *
+     * Its id is computed the same way the matching Mantra* entity computes
+     * its own, so the row on disk and the payload on the wire are the same
+     * event rather than two copies of one.
+     */
+    private fun rumorOf(
+        template: EventTemplate<out Event>,
+        publicKey: HexKey,
+    ): Event = Event(
+        id = EventHasher.hashId(
+            pubKey = publicKey,
+            createdAt = template.createdAt,
+            kind = template.kind,
+            tags = template.tags,
+            content = template.content,
+        ),
+        pubKey = publicKey,
+        createdAt = template.createdAt,
+        kind = template.kind,
+        tags = template.tags,
+        content = template.content,
+        // A rumor. What signs for this reaching the group is the kind:445 the
+        // outbound pipeline wraps it in, not the payload itself.
+        sig = "",
+    )
+
+    /**
+     * Queue [payload] for the group inside a [SubmissionEvent] that
+     * [submitterPublicKey] authors.
+     *
+     * nip30303 events are never sent on their own. Wrapping them means the
+     * payload keeps whoever wrote it as its author while the group still knows
+     * which member put it there -- see [SubmissionEvent] for why the two are
+     * worth telling apart.
+     *
+     * The submission is stored as an unprocessed rumor (null marmotGroupEventId),
+     * which is what the outbound pipeline picks up and encrypts into a kind:445
+     * group event for the chat room.
+     */
+    private suspend fun submitToGroup(
+        chatRoomId: String,
+        submitterPublicKey: HexKey,
+        payload: Event,
+        text: String,
+    ): MarmotInnerEvent {
+        val submissionTemplate = SubmissionEvent.build(payload = payload)
+
+        val submissionInnerEvent = MarmotInnerEvent(
+            id = EventHasher.hashId(
+                pubKey = submitterPublicKey,
+                createdAt = submissionTemplate.createdAt,
+                kind = submissionTemplate.kind,
+                tags = submissionTemplate.tags,
+                content = submissionTemplate.content,
+            ),
+            publicKey = submitterPublicKey,
+            kind = SubmissionEvent.KIND,
+            createdAt = Instant.fromEpochSeconds(submissionTemplate.createdAt),
+            tags = submissionTemplate.tags,
+            content = submissionTemplate.content,
+            payloadEventId = payload.id,
+            chatRoomId = chatRoomId,
+        )
+
+        sendMarmotInnerEvent(
+            chatRoomId = chatRoomId,
+            userPublicKey = submitterPublicKey,
+            text = text,
+            marmotInnerEvent = submissionInnerEvent,
+        )
+
+        return submissionInnerEvent
+    }
 
     @Transaction
     open suspend fun addDialect(
@@ -42,7 +123,7 @@ abstract class MantraDao(
         country: String,
         language: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraDialect? {
         logger.d("addDialect: $name")
 
         val dialectEventTemplate = DialectEvent.build(
@@ -57,26 +138,17 @@ abstract class MantraDao(
             userPublicKey = userPublicKey,
         ) ?: return null
 
-        val dialectInnerEvent = MarmotInnerEvent(
-            id = mantraDialect.id,
-            publicKey = mantraDialect.publicKey,
-            kind = DialectEvent.KIND,
-            createdAt = mantraDialect.createdAt,
-            tags = dialectEventTemplate.tags,
-            content = dialectEventTemplate.content,
-            chatRoomId = mantraDialect.chatRoomId,
-        )
-
         return try {
             database.mantraDialectDao().upsert(mantraDialect)
-            database.marmotInnerEventDao().upsert(dialectInnerEvent)
 
-            sendMarmotInnerEvent(
-                localChatRoom = localChatRoom,
+            submitToGroup(
+                chatRoomId = mantraDialect.chatRoomId,
+                submitterPublicKey = userPublicKey,
+                payload = rumorOf(dialectEventTemplate, userPublicKey),
                 text = "Added $name as a dialect",
-                marmotInnerEvent = dialectInnerEvent
             )
-            dialectInnerEvent
+
+            mantraDialect
         } catch (error: Throwable) {
             logger.e("Failed to add dialect \"$name\" to chat room ${localChatRoom.chatRoom.id}", error)
             null
@@ -94,7 +166,7 @@ abstract class MantraDao(
         userPublicKey: HexKey,
         visibility: String = DEFAULT_VISIBILITY,
         license: String = DEFAULT_LICENSE,
-    ): MarmotInnerEvent? {
+    ): MantraArtifact? {
         // TODO: Verify the active user is an admin of the chat room before allowing this.
         val artifactEventTemplate = ArtifactEvent.build(
             name = name,
@@ -110,32 +182,19 @@ abstract class MantraDao(
             userPublicKey = userPublicKey,
         ) ?: return null
 
-        // Persist the artifact together with an unprocessed marmot inner event
-        // (a rumor). Inner events with a null marmotGroupEventId are later
-        // picked up by the outbound pipeline and encrypted into a kind:445
-        // group event for the chat room.
+        // Persist the artifact locally and submit it to the group.
         //
         // This covers the "private" visibility case. Permissioned artifacts
         // (published as a PublicMessage) and public artifacts (published as a
         // plain nostr event) are not implemented yet.
-        val artifactInnerEvent = MarmotInnerEvent(
-            id = mantraArtifact.id,
-            publicKey = mantraArtifact.publicKey,
-            kind = ArtifactEvent.KIND,
-            createdAt = mantraArtifact.createdAt,
-            tags = artifactEventTemplate.tags,
-            content = artifactEventTemplate.content,
-            chatRoomId = mantraArtifact.chatRoomId,
-        )
-
         return try {
             database.mantraArtifactDao().upsert(mantraArtifact)
-            database.marmotInnerEventDao().upsert(artifactInnerEvent)
 
-            sendMarmotInnerEvent(
-                localChatRoom = localChatRoom,
+            submitToGroup(
+                chatRoomId = mantraArtifact.chatRoomId,
+                submitterPublicKey = userPublicKey,
+                payload = rumorOf(artifactEventTemplate, userPublicKey),
                 text = "Added $name to artifacts",
-                marmotInnerEvent = artifactInnerEvent
             )
 
             // Every artifact starts with an initial version.
@@ -146,7 +205,7 @@ abstract class MantraDao(
                 userPublicKey = userPublicKey,
             )
 
-            artifactInnerEvent
+            mantraArtifact
         } catch (error: Throwable) {
             logger.e("Failed to add artifact \"$name\" to chat room ${localChatRoom.chatRoom.id}", error)
             null
@@ -159,7 +218,7 @@ abstract class MantraDao(
         artifactId: HexKey,
         versionLabel: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraArtifactVersion? {
         return addArtifactVersionInternal(
             localChatRoom = localChatRoom,
             artifactId = artifactId,
@@ -173,7 +232,7 @@ abstract class MantraDao(
         artifactId: HexKey,
         versionLabel: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraArtifactVersion? {
         // The version label is carried in the event content (see
         // MantraArtifactVersion.fromArtifactVersionEvent).
         val artifactVersionEventTemplate = ArtifactVersionEvent.build(
@@ -188,25 +247,16 @@ abstract class MantraDao(
             userPublicKey = userPublicKey,
         ) ?: return null
 
-        val versionInnerEvent = MarmotInnerEvent(
-            id = mantraArtifactVersion.id,
-            publicKey = mantraArtifactVersion.publicKey,
-            kind = ArtifactVersionEvent.KIND,
-            createdAt = mantraArtifactVersion.createdAt,
-            tags = artifactVersionEventTemplate.tags,
-            content = artifactVersionEventTemplate.content,
-            chatRoomId = mantraArtifactVersion.chatRoomId,
-        )
-
         database.mantraArtifactVersionDao().upsert(mantraArtifactVersion)
-        database.marmotInnerEventDao().upsert(versionInnerEvent)
 
-        sendMarmotInnerEvent(
-            localChatRoom = localChatRoom,
+        submitToGroup(
+            chatRoomId = mantraArtifactVersion.chatRoomId,
+            submitterPublicKey = userPublicKey,
+            payload = rumorOf(artifactVersionEventTemplate, userPublicKey),
             text = "Add the ${artifactVersionEventTemplate.content} version",
-            marmotInnerEvent = versionInnerEvent
         )
-        return versionInnerEvent
+
+        return mantraArtifactVersion
     }
 
     @Transaction
@@ -216,7 +266,7 @@ abstract class MantraDao(
         originalText: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraChapter? {
 
         // Chapters attach to an artifact version; use the latest one.
         val version = database.mantraArtifactVersionDao()
@@ -244,24 +294,12 @@ abstract class MantraDao(
 
         return try {
             database.mantraChapterDao().upsert(chapter)
-            val chapterInnerEvent = MarmotInnerEvent(
-                id = chapter.id,
-                publicKey = chapter.publicKey,
-                kind = ChapterEvent.KIND,
-                createdAt = chapter.createdAt,
-                tags = chapterEventTemplate.tags,
-                content = chapterEventTemplate.content,
-                chatRoomId = chapter.chatRoomId,
-            )
-            database.marmotInnerEventDao().upsert(
-                chapterInnerEvent
-            )
 
-            sendMarmotInnerEvent(
+            submitToGroup(
                 chatRoomId = chatRoomId,
-                userPublicKey = userPublicKey,
+                submitterPublicKey = userPublicKey,
+                payload = rumorOf(chapterEventTemplate, userPublicKey),
                 text = "Added chapter to artifact", // TODO: Get artifact to use in text...
-                marmotInnerEvent = chapterInnerEvent
             )
 
             // Split the markdown into paragraph chunks.
@@ -279,30 +317,17 @@ abstract class MantraDao(
                     userPublicKey = userPublicKey,
                 )?.let { chunk ->
                     database.mantraChunkDao().upsert(chunk)
-                    val chunkInnerEvent = MarmotInnerEvent(
-                        id = chunk.id,
-                        publicKey = chunk.publicKey,
-                        kind = ChunkEvent.KIND,
-                        createdAt = chunk.createdAt,
-                        tags = chunkEventTemplate.tags,
-                        content = chunkEventTemplate.content,
-                        chatRoomId = chunk.chatRoomId,
-                    )
 
-                    database.marmotInnerEventDao().upsert(
-                        chunkInnerEvent
-                    )
-
-                    sendMarmotInnerEvent(
+                    submitToGroup(
                         chatRoomId = chatRoomId,
-                        userPublicKey = userPublicKey,
+                        submitterPublicKey = userPublicKey,
+                        payload = rumorOf(chunkEventTemplate, userPublicKey),
                         text = "${chapter.name} added chunk $chunkIndex", // TODO: Use a portion of the actual chunked text...
-                        marmotInnerEvent = chunkInnerEvent
                     )
                 }
             }
 
-            chapterInnerEvent
+            chapter
         } catch (error: Throwable) {
             logger.e("Failed to add chapter \"$name\" to artifact $artifactId", error)
             null
@@ -315,7 +340,7 @@ abstract class MantraDao(
         dialectId: String,
         chatRoomId: String,
         userPublicKey: HexKey,
-    ): MarmotInnerEvent? {
+    ): MantraTranslationArtifactVersion? {
         val artifact = database.mantraArtifactDao().getArtifactById(artifactId) ?: return null
         val version = database.mantraArtifactVersionDao()
             .getArtifactVersionsByArtifactId(artifactId)
@@ -339,21 +364,12 @@ abstract class MantraDao(
 
         return try {
             database.mantraTranslationArtifactVersionDao().upsert(translationVersion)
-            val translationArtifactVersionInnerEvent = MarmotInnerEvent(
-                id = translationVersion.id,
-                publicKey = translationVersion.publicKey,
-                kind = TranslationArtifactVersionEvent.KIND,
-                createdAt = translationVersion.createdAt,
-                tags = translationVersionTemplate.tags,
-                content = translationVersionTemplate.content,
-                chatRoomId = translationVersion.chatRoomId,
-            )
 
-            sendMarmotInnerEvent(
+            submitToGroup(
                 chatRoomId = chatRoomId,
-                userPublicKey = userPublicKey,
+                submitterPublicKey = userPublicKey,
+                payload = rumorOf(translationVersionTemplate, userPublicKey),
                 text = "Added ${dialect.name} translation",
-                marmotInnerEvent = translationArtifactVersionInnerEvent
             )
 
             // Mirror the source structure: a translation chapter per chapter and
@@ -372,21 +388,12 @@ abstract class MantraDao(
                 ) ?: return@forEach
 
                 database.mantraTranslationChapterDao().upsert(translationChapter)
-                val translationChapterInnerEvent =  MarmotInnerEvent(
-                    id = translationChapter.id,
-                    publicKey = translationChapter.publicKey,
-                    kind = TranslationChapterEvent.KIND,
-                    createdAt = translationChapter.createdAt,
-                    tags = translationChapterTemplate.tags,
-                    content = translationChapterTemplate.content,
-                    chatRoomId = translationChapter.chatRoomId,
-                )
 
-                sendMarmotInnerEvent(
+                submitToGroup(
                     chatRoomId = chatRoomId,
-                    userPublicKey = userPublicKey,
+                    submitterPublicKey = userPublicKey,
+                    payload = rumorOf(translationChapterTemplate, userPublicKey),
                     text = "Prepared ${dialect.name} translation of the chapter ${chapter.name}",
-                    marmotInnerEvent = translationChapterInnerEvent
                 )
 
                 // TODO: Figure out if we seriously need the scaffolding
@@ -427,7 +434,7 @@ abstract class MantraDao(
 //                }
             }
 
-            translationArtifactVersionInnerEvent
+            translationVersion
         } catch (error: Throwable) {
             logger.e("Failed to add translation for artifact $artifactId", error)
             null
@@ -460,30 +467,25 @@ abstract class MantraDao(
         return try {
             // Replace any existing translation chunk for this source chunk. Its id
             // is derived from the (now changed) content, so it becomes a new row —
-            // drop the old one (and its rumor) to keep one per source chunk.
+            // drop the old one (and the submission carrying it) to keep one per
+            // source chunk. The submission is found by what it carries, since its
+            // own id is the envelope's rather than the chunk's.
             database.mantraTranslationChunkDao()
                 .getTranslationChunksByTranslationChapterId(translationChapterId)
                 .filter { it.chunkId == chunkId && it.id != translationChunk.id }
                 .forEach { stale ->
                     database.mantraTranslationChunkDao().deleteById(stale.id)
                     database.marmotInnerEventDao().deleteById(stale.id)
+                    database.marmotInnerEventDao().deleteByPayloadEventId(stale.id)
                 }
 
             database.mantraTranslationChunkDao().upsert(translationChunk)
-            val translationChunkInnerEvent = MarmotInnerEvent(
-                id = translationChunk.id,
-                publicKey = translationChunk.publicKey,
-                kind = TranslationChunkEvent.KIND,
-                createdAt = translationChunk.createdAt,
-                tags = translationChunkTemplate.tags,
-                content = translationChunkTemplate.content,
-                chatRoomId = translationChunk.chatRoomId,
-            )
-            sendMarmotInnerEvent(
+
+            submitToGroup(
                 chatRoomId = chatRoomId,
-                userPublicKey = userPublicKey,
+                submitterPublicKey = userPublicKey,
+                payload = rumorOf(translationChunkTemplate, userPublicKey),
                 text = "Translated chunk ${translationChunk.index}", // TODO: Use a portion of the translation and name the language
-                marmotInnerEvent = translationChunkInnerEvent
             )
 
             translationChunk
@@ -491,19 +493,6 @@ abstract class MantraDao(
             logger.e("Failed to save translation for chunk $chunkId", error)
             null
         }
-    }
-
-    private suspend fun sendMarmotInnerEvent(
-        localChatRoom: LocalChatRoom,
-        text: String,
-        marmotInnerEvent: MarmotInnerEvent
-    ) {
-        sendMarmotInnerEvent(
-            chatRoomId = localChatRoom.chatRoom.id,
-            userPublicKey = localChatRoom.chatRoom.userPublicKey,
-            text = text,
-            marmotInnerEvent = marmotInnerEvent
-        )
     }
 
     private suspend fun sendMarmotInnerEvent(

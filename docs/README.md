@@ -9,9 +9,12 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-ceremony.md](./shared-key-ceremony.md) | ChillDKG over NIP-17: the rounds, the approval gates, the chat transcript, participant ordering |
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
+| [marmot-direct-messages.md](./marmot-direct-messages.md) | a one-to-one message inside a group as a stock NIP-59 gift wrap — what its MIP-03 carve-out costs, why the sender cannot read their own, and the one query that would broadcast it |
+| [mls-skipped-keys.md](./mls-skipped-keys.md) | why a group event that arrives a moment late is dropped for good, which flows trigger it, the quartz fix, and the partial mitigation in this app |
 | [long-running-sync.md](./long-running-sync.md) | the chat subscriptions that stay open instead of pulling once per screen — why the request queue could not simply hold one, and how the group filter follows the room list |
 | [dead-code.md](./dead-code.md) | code in the sync and relay stack that nothing calls, why each piece is still there, and which of it is a bug rather than a leftover |
 
-Start with the ceremony if you are new to this area; the next two both assume it.
-The last two stand alone, and the dead-code inventory reads as a follow-up to the
-sync note.
+Start with the ceremony if you are new to this area; the Marmot notes all assume it.
+Read the skipped-keys note before debugging any "the other device never got it"
+report — it is silent, and it looks like every other kind of delivery failure. The
+sync note stands alone, and the dead-code inventory reads as a follow-up to it.

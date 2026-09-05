@@ -7,13 +7,11 @@ import androidx.room3.PrimaryKey
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
-import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerInternal
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
-import com.vitorpamplona.quartz.nip44Encryption.Nip44
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -83,6 +81,18 @@ data class GiftWrapMessage(
     @Ignore
     private val logger = Logger.withTag("GiftWrapMessage")
 
+    /**
+     * Whether this gift wrap is addressed to [keyPair], i.e. whether we hold the
+     * private key that can unwrap it.
+     *
+     * NIP-59 encrypts the wrap to its recipient using an ephemeral key that
+     * [GiftWrapEvent.create] throws away, so a wrap addressed to anyone else can
+     * never be decrypted by us, not even one we sent ourselves.
+     */
+    fun isAddressedTo(
+        keyPair: KeyPair
+    ): Boolean = receiverPublicKey.equals(keyPair.pubKey.toHexKey(), ignoreCase = true)
+
     suspend fun decryptGiftWrapSeal(
         keyPair: KeyPair
     ): GiftWrapSeal? {
@@ -105,19 +115,12 @@ data class GiftWrapMessage(
             giftWrapEvent.recipientPubKey()?.let { recipientPublicKey ->
                 logger.d("Recipient PublicKey: $recipientPublicKey")
 
-                if (keyPair.pubKey.toHexKey() != recipientPublicKey) {
-                    logger.e("We are unwrapping a message we may have sent from ${keyPair.pubKey.toHexKey()}")
-
-                    keyPair.privKey?.let { privateKey ->
-                        val sealJSON = Nip44.decrypt(
-                            giftWrapEvent.content,
-                            privateKey = privateKey,
-                            pubKey = giftWrapEvent.pubKey.hexToByteArray()
-                        )
-                        logger.d("SealJSON: $sealJSON")
-
-                        null
-                    }
+                if (!recipientPublicKey.equals(keyPair.pubKey.toHexKey(), ignoreCase = true)) {
+                    // Not ours to open, and no key we hold ever will be: the wrap is
+                    // encrypted to the recipient with a one-off key that
+                    // GiftWrapEvent.create() discards, so not even the sender can
+                    // unwrap their own gift wrap.
+                    logger.d("GiftWrap $id is addressed to $recipientPublicKey, not to us")
                 } else {
                     val nostrSigner = NostrSignerInternal(
                         keyPair = KeyPair(privKey = keyPair.privKey)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Upload
@@ -31,9 +34,12 @@ import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyOff
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -59,17 +65,20 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
+import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.view.state.ChatMessageListUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -87,6 +96,60 @@ class ChatMessageListViewModel(
         private set
 
     val isReceiverChatMessageRelayListMissing: MutableState<Boolean> = mutableStateOf(false)
+
+    /**
+     * The member the next message goes to privately, or null to send it to the room.
+     *
+     * Held here rather than on the composer because it survives recomposition and is read
+     * by both the input and the send call. It is cleared on send: a private message is a
+     * deliberate act each time, and leaving the composer armed after one is how somebody
+     * sends the room's next message to one person, or one person's to the room.
+     */
+    var directMessageRecipient: Participant? by mutableStateOf(null)
+        private set
+
+    /** The message whose actions are open, or null. One at a time. */
+    var openMessageActionsFor: Long? by mutableStateOf(null)
+        private set
+
+    fun startDirectMessage(participant: Participant) {
+        logger.d("Arming a direct message to ${participant.participantPublicKey}")
+        directMessageRecipient = participant
+        openMessageActionsFor = null
+    }
+
+    fun cancelDirectMessage() {
+        directMessageRecipient = null
+    }
+
+    fun openMessageActions(chatMessageId: Long?) {
+        openMessageActionsFor = chatMessageId
+    }
+
+    /** The member behind a pubkey, if they are in this room. */
+    fun participantFor(publicKey: HexKey?): Participant? =
+        publicKey?.let { key ->
+            localChatRoom.localParticipants
+                .map { it.participant }
+                .firstOrNull { it.participantPublicKey == key }
+        }
+
+    /**
+     * What to call somebody, for a line that has to name them.
+     *
+     * Falls back to the key itself rather than to "unknown": a direct message names a
+     * real member of this room, and a line that cannot say which one is worse than an
+     * ugly one.
+     */
+    fun nameFor(publicKey: HexKey?): String {
+        if (publicKey == null) return "someone"
+
+        return localChatRoom.localParticipants
+            .firstOrNull { it.participant.participantPublicKey == publicKey }
+            ?.profile
+            ?.humanReadableNameOrPubkey()
+            ?: publicKey.shortened()
+    }
 
     fun initiate() {
         logger.d("init")
@@ -129,7 +192,11 @@ class ChatMessageListViewModel(
 
                     val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
-                    // We already know where to reach them; nothing to find out.
+                    // Opening a conversation used to refresh our own inbox here, with
+                    // Nip17Filters.inbox on our own DM relays. That is now redundant rather
+                    // than wrong: LiveSubscriptionManager holds exactly that filter open for
+                    // the whole account and reconciles it on every foreground, so there is
+                    // nothing left for opening a chat to ask for.
                     if (chatMessageRelayListEvent != null) return@forEach
 
                     isReceiverChatMessageRelayListMissing.value = true
@@ -150,6 +217,8 @@ class ChatMessageListViewModel(
                                 relayURL = normalizedRelayUrl.url,
                                 synchronizationFilter = chatMessageRelayListFilter
                             ),
+                            // Only one case reaches here now, so the purpose is no longer a
+                            // question.
                             purpose = "chat-message-relays",
                             synchronizationFilter = chatMessageRelayListFilter,
                             relayURL = normalizedRelayUrl.url,
@@ -168,7 +237,7 @@ class ChatMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages(onOpenSharedKey: () -> Unit) {
+    fun RenderMessages(onOpenSharedKey: () -> Unit, onOpenSigning: () -> Unit) {
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -223,8 +292,10 @@ class ChatMessageListViewModel(
                             val answeredRequests = chatRoomDetailMessageListUIState
                                 .chatMessageList
                                 .mapNotNull { request ->
-                                    val published = ChatMessage
-                                        .DKG_REQUEST_FULFILMENTS[request.chatMessage.messageType]
+                                    val published = (
+                                        ChatMessage.DKG_REQUEST_FULFILMENTS +
+                                            ChatMessage.FROST_REQUEST_FULFILMENTS
+                                        )[request.chatMessage.messageType]
                                         ?: return@mapNotNull null
 
                                     val done = chatRoomDetailMessageListUIState.chatMessageList.any {
@@ -300,6 +371,34 @@ class ChatMessageListViewModel(
                                         return@items
                                     }
 
+                                    // A private message this device cannot open. Everything
+                                    // about it is known except the one thing that matters,
+                                    // so it is a notice rather than an empty bubble --
+                                    // which would read as the sender having said nothing.
+                                    if (localChatMessage.chatMessage.messageType == ChatMessage.TYPE_DIRECT_MESSAGE &&
+                                        localChatMessage.chatMessage.content.isBlank()
+                                    ) {
+                                        PrivateMessageNotice(
+                                            sender = nameFor(localChatMessage.chatMessage.senderPublicKey),
+                                            recipient = nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey)
+                                        )
+                                        return@items
+                                    }
+
+                                    // Signing lines are the same kind of thing and get
+                                    // the same treatment -- nobody said them either --
+                                    // but they lead somewhere else, because what a
+                                    // reader needs from one is the event being signed
+                                    // rather than the state of the key.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.FROST_TYPES) {
+                                        RitualNotice(
+                                            localChatMessage = localChatMessage,
+                                            isAnswered = localChatMessage.chatMessage.id in answeredRequests,
+                                            onClick = onOpenSigning
+                                        )
+                                        return@items
+                                    }
+
                                     BoxWithConstraints(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
@@ -313,12 +412,22 @@ class ChatMessageListViewModel(
                                                 Arrangement.Start
                                             }
                                         ) {
+                                            // Only somebody else's message, and only in a
+                                            // group -- a NIP-17 room has no audience for a
+                                            // message to be private from.
+                                            val canReplyPrivately =
+                                                localChatRoom.chatRoom.mlsGroupState != null &&
+                                                    !localChatMessage.chatMessage.isUserMessage &&
+                                                    participantFor(localChatMessage.chatMessage.senderPublicKey) != null
+
                                             Card(
                                                 modifier = Modifier.widthIn(
                                                     max = screenWidth * 0.8f
                                                 ).wrapContentWidth(),
                                                 onClick = {
-
+                                                    if (canReplyPrivately) {
+                                                        openMessageActions(localChatMessage.chatMessage.id)
+                                                    }
                                                 },
                                             ) {
                                                 Column(
@@ -338,6 +447,34 @@ class ChatMessageListViewModel(
                                                             color = ProfileColor.fromPublicKey(localChatMessage.chatMessage.senderPublicKey),
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
+                                                    }
+
+                                                    // A readable direct message must never
+                                                    // pass for a public one. The label says
+                                                    // who the other party is, since that is
+                                                    // the thing a reader would otherwise
+                                                    // assume was the whole room.
+                                                    if (localChatMessage.chatMessage.messageType == ChatMessage.TYPE_DIRECT_MESSAGE) {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(
+                                                                Icons.Default.Lock,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(12.dp),
+                                                                tint = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Text(
+                                                                text = if (localChatMessage.chatMessage.isUserMessage) {
+                                                                    "Private to ${nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey)}"
+                                                                } else {
+                                                                    "Private to you"
+                                                                },
+                                                                color = MaterialTheme.colorScheme.primary,
+                                                                style = MaterialTheme.typography.labelSmall
+                                                            )
+                                                        }
                                                     }
 
                                                     SelectionContainer {
@@ -388,6 +525,24 @@ class ChatMessageListViewModel(
                                                     }
                                                 }
                                             }
+
+                                            DropdownMenu(
+                                                expanded = openMessageActionsFor == localChatMessage.chatMessage.id,
+                                                onDismissRequest = { openMessageActions(null) }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text("Reply privately to ${nameFor(localChatMessage.chatMessage.senderPublicKey)}")
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Lock, contentDescription = null)
+                                                    },
+                                                    onClick = {
+                                                        participantFor(localChatMessage.chatMessage.senderPublicKey)
+                                                            ?.let { startDirectMessage(it) }
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -421,12 +576,17 @@ class ChatMessageListViewModel(
     fun sendMessage(textFieldState: TextFieldState) {
         if (textFieldState.text.isNotBlank()) {
             val text = textFieldState.text.toString()
+            // Read and cleared together with the text, before the send suspends, so a
+            // second message cannot inherit the first one's audience.
+            val recipient = directMessageRecipient
             textFieldState.clearText()
+            directMessageRecipient = null
 
             viewModelScope.launch(Dispatchers.IO) {
                 chatRepository.sendChatMessage(
                     text = text,
-                    localChatRoom = localChatRoom
+                    localChatRoom = localChatRoom,
+                    directMessageRecipientPublicKey = recipient?.participantPublicKey
                 )
             }
         }
@@ -450,6 +610,43 @@ class ChatMessageListViewModel(
                 )
             }
         }
+    }
+}
+
+/**
+ * A private message this device cannot read, as a system line.
+ *
+ * Deliberately not a bubble. The group is meant to know that a private message was sent
+ * and to whom -- that is the honest half of the feature -- but an empty bubble attributed
+ * to the sender would read as them having said nothing, and a bubble with placeholder text
+ * would read as them having said the placeholder.
+ *
+ * Not tappable: there is nothing behind it to open. See docs/marmot-direct-messages.md.
+ */
+@Composable
+private fun PrivateMessageNotice(
+    sender: String,
+    recipient: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Lock,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "$sender sent a private message to $recipient",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall
+        )
     }
 }
 
@@ -490,6 +687,15 @@ private fun RitualNotice(
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1 -> Icons.Default.Upload
         ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_2 -> Icons.Default.FactCheck
 
+        ChatMessage.TYPE_FROST_STARTED -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_NONCE -> Icons.Default.Upload
+        ChatMessage.TYPE_FROST_SIGNER_SET -> Icons.Default.Groups
+        ChatMessage.TYPE_FROST_PARTIAL_SIGNATURE -> Icons.Default.Draw
+        ChatMessage.TYPE_FROST_SIGNATURE -> Icons.Default.WorkspacePremium
+        ChatMessage.TYPE_FROST_COMPLETE -> Icons.Default.CheckCircle
+        ChatMessage.TYPE_FROST_FAILED -> Icons.Default.ErrorOutline
+        ChatMessage.TYPE_FROST_APPROVAL_NEEDED -> Icons.Default.Draw
+
         else -> Icons.Default.PanTool
     }
 
@@ -498,10 +704,15 @@ private fun RitualNotice(
     // quiet; these are not.
     // An answered request is history, not a summons: it keeps its stage's icon so
     // the step is still recognisable, but drops the colour and the call to action.
-    val isRequest = chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES && !isAnswered
+    val isRequest = (
+        chatMessage.messageType in ChatMessage.DKG_REQUEST_TYPES ||
+            chatMessage.messageType in ChatMessage.FROST_REQUEST_TYPES
+        ) && !isAnswered
 
     val tint = when {
-        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED -> MaterialTheme.colorScheme.error
+        chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||
+            chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ->
+            MaterialTheme.colorScheme.error
         isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -531,7 +742,9 @@ private fun RitualNotice(
                     // from the joined profile rather than written into the content,
                     // so it follows a rename and is not stuck on the "LOADING..."
                     // placeholder a member is given the moment they are first seen.
-                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES) {
+                    if (chatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES ||
+                        chatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES
+                    ) {
                         withStyle(
                             SpanStyle(color = ProfileColor.fromPublicKey(chatMessage.senderPublicKey))
                         ) {

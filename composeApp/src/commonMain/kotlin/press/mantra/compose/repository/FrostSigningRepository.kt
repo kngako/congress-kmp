@@ -1,0 +1,94 @@
+package press.mantra.compose.repository
+
+import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+
+/**
+ * Reads, opens and answers FROST signing sessions.
+ *
+ * Advancing one is the inbound path's job, with one exception: a session waiting
+ * on this device's owner does not advance until [approve] is called, because it
+ * will not sign on their behalf until they say so.
+ */
+interface FrostSigningRepository {
+    fun observeSessionById(sessionId: String): Flow<FrostSigningSession?>
+
+    /** Every session the room has run, newest first. Unlike a ceremony, signing recurs. */
+    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>>
+
+    fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>>
+
+    suspend fun getSessionById(sessionId: String): FrostSigningSession?
+
+    /**
+     * The session a room is currently running, or its most recent one if none is.
+     *
+     * For callers that mean "the signing going on here" without holding an id --
+     * a transcript line, mostly. Prefers a live session because that is the one
+     * anybody tapping through wants to act on; a finished one is only what is
+     * left to show when there is nothing live.
+     */
+    suspend fun liveSessionForChatRoom(chatRoomId: String): FrostSigningSession?
+
+    /** Whether this room holds a key it can sign with, so the UI offers nothing that would fail. */
+    suspend fun canSign(chatRoomId: String): Boolean
+
+    /**
+     * Opens a session asking the group to sign an event with these fields. The
+     * author is the group's key, not the proposer's, and is filled in here.
+     */
+    suspend fun proposeSigning(
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        kind: Kind,
+        tags: Array<Array<String>>,
+        content: String
+    ): FrostSigningSession?
+
+    /** Agrees to sign, letting the session publish this device's part and run on. */
+    suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String)
+
+    /** Refuses, and says so, since a t-of-n group can proceed without this member. */
+    suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String)
+
+    /** The finished event, or null while the session is still running. */
+    fun signedEvent(session: FrostSigningSession): Event?
+
+    companion object {
+        val NO_OP_FROST_SIGNING_REPOSITORY: FrostSigningRepository = object : FrostSigningRepository {
+            override fun observeSessionById(sessionId: String): Flow<FrostSigningSession?> = flowOf(null)
+
+            override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>> =
+                flowOf(emptyList())
+
+            override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =
+                flowOf(emptyList())
+
+            override suspend fun getSessionById(sessionId: String): FrostSigningSession? = null
+
+            override suspend fun liveSessionForChatRoom(chatRoomId: String): FrostSigningSession? = null
+
+            override suspend fun canSign(chatRoomId: String): Boolean = false
+
+            override suspend fun proposeSigning(
+                localChatRoom: LocalChatRoom,
+                userPublicKey: HexKey,
+                kind: Kind,
+                tags: Array<Array<String>>,
+                content: String
+            ): FrostSigningSession? = null
+
+            override suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String) = Unit
+
+            override suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String) = Unit
+
+            override fun signedEvent(session: FrostSigningSession): Event? = null
+        }
+    }
+}

@@ -20,6 +20,7 @@ import androidx.navigation.toRoute
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.database.repository.DatabaseChatRepository
 import press.mantra.compose.database.repository.DatabaseDkgRepository
+import press.mantra.compose.database.repository.DatabaseFrostSigningRepository
 import press.mantra.compose.database.repository.DatabaseMarmotRepository
 import press.mantra.compose.database.repository.DatabaseNostrRepository
 import press.mantra.compose.database.repository.DatabaseSearchRepository
@@ -107,6 +108,8 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
@@ -116,6 +119,8 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRo
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
+import press.mantra.compose.ui.composable.AddDialectScreen
+import press.mantra.compose.ui.composable.FrostSigningScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
@@ -161,6 +166,13 @@ fun MantraNavHost(
 
     val databaseDkgRepository = remember {
         DatabaseDkgRepository(
+            database = auxDatabaseManager.auxDatabase,
+            applicationIOScope
+        )
+    }
+
+    val databaseFrostSigningRepository = remember {
+        DatabaseFrostSigningRepository(
             database = auxDatabaseManager.auxDatabase,
             applicationIOScope
         )
@@ -831,6 +843,46 @@ fun MantraNavHost(
                     navController.navigate(
                         route = actionRoute
                     )
+                }
+            )
+        }
+        composable<AddDialectRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<AddDialectRoute>()
+
+            AddDialectScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                relayHint = route.relayHint,
+                nostrRepository = databaseNostrRepository,
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                    // Replace this add screen so back returns to the group rather
+                    // than to a form whose proposal has already gone out.
+                    navController.navigate(route = signingRoute) {
+                        popUpTo<AddDialectRoute> {
+                            inclusive = true
+                        }
+                    }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
+                }
+            )
+        }
+        composable<FrostSigningRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<FrostSigningRoute>()
+
+            FrostSigningScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                sessionId = route.sessionId,
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

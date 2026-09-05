@@ -8,6 +8,7 @@ import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.traits.UserViewableEntity
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.marmot.mls.messages.CommitResult
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -72,6 +73,40 @@ data class MarmotCommitResult( // TODO: Rename this to GiftWrapPayload...
     companion object {
         const val TAG = "MarmotCommitResult"
 
+        /**
+         * The persisted record of a commit, built from the [CommitResult] that produced it.
+         *
+         * The five payload fields are carried over from quartz verbatim -- same names, same
+         * order, same `ByteArray` type on both sides of the copy -- so a value taken from the
+         * wrong field of the right object typechecks and reaches the database unnoticed.
+         * `framedCommitBytes = commitResult.preCommitExporterSecret` survived exactly that way,
+         * storing the group's pre-commit exporter secret in the column documented to hold a
+         * broadcastable MLS envelope.
+         *
+         * Mapping here rather than at the call site means it is written once, in declaration
+         * order, and pinned by MarmotCommitResultMappingTest.
+         */
+        fun from(
+            commitEventId: HexKey,
+            commitResult: CommitResult,
+            chatRoomId: HexKey,
+            userPublicKey: HexKey,
+            peerKeyPackageEventId: HexKey,
+            isOneMemberInitialGroupCreation: Boolean,
+            createdAt: Instant,
+        ): MarmotCommitResult = MarmotCommitResult(
+            id = commitEventId,
+            userPublicKey = userPublicKey,
+            peerKeyPackageEventId = peerKeyPackageEventId,
+            chatRoomId = chatRoomId,
+            isOneMemberInitialGroupCreation = isOneMemberInitialGroupCreation,
+            commitBytes = commitResult.commitBytes,
+            welcomeBytes = commitResult.welcomeBytes,
+            groupInfoBytes = commitResult.groupInfoBytes,
+            framedCommitBytes = commitResult.framedCommitBytes,
+            preCommitExporterSecret = commitResult.preCommitExporterSecret,
+            createdAt = createdAt,
+        )
     }
 
     override fun equals(other: Any?): Boolean {
