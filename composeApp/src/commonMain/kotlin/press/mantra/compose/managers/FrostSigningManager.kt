@@ -596,6 +596,16 @@ object FrostSigningManager {
             }
 
             update(database, session) { it.copy(stage = FrostSigningStage.COMPLETE) }
+
+            // A signature exists to be used. Every device has the event and the
+            // signature by now, so each applies the result itself rather than
+            // waiting to be sent something it can already build -- the same
+            // reasoning the transcript lines are written on. Nothing goes on the
+            // wire: a signed event authored by the threshold key cannot travel as
+            // an inner event anyway, because the outbound pipeline re-authors
+            // rumors as their sender and would strip the group's signature off.
+            applySignedEvent(database, session, signedEvent)
+
             announce(
                 database = database,
                 session = session,
@@ -619,6 +629,39 @@ object FrostSigningManager {
                 kind = FrostSigningEvents.FAILURE,
                 content = e.message ?: "Signing failed"
             )
+        }
+    }
+
+    /**
+     * Turns the signed event into whatever it is: a dialect, an artifact, a
+     * chapter.
+     *
+     * Reuses the inbound path's dispatch rather than repeating it, with no group
+     * event and no inner event behind the row -- there is neither, and both
+     * columns are nullable for exactly this kind of locally-derived record.
+     *
+     * A failure here is not the session's: the signature is made and valid, and
+     * saying otherwise would tell the group to abandon a ceremony that
+     * succeeded. It is logged and the session still completes.
+     */
+    private suspend fun applySignedEvent(
+        database: MantraDatabase,
+        session: FrostSigningSession,
+        signedEvent: Event
+    ) {
+        try {
+            ChatMessage.applyInnerEvent(
+                database = database,
+                groupId = session.chatRoomId,
+                event = signedEvent,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null,
+                senderPublicKey = session.coordinatorPublicKey,
+                isUserMessage = session.isCoordinator(),
+                createdAt = Clock.System.now()
+            )?.let { database.chatMessageDao().upsert(it) }
+        } catch (e: Throwable) {
+            logger.e("Signed ${signedEvent.id} but could not apply it locally", e)
         }
     }
 

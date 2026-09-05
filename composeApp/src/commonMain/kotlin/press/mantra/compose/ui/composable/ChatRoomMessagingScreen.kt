@@ -43,6 +43,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -137,6 +138,16 @@ fun ChatRoomMessagingScreen(
                                 onOpenSharedKey = {
                                     onNavigateToRoute.invoke(
                                         DkgRitualRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId
+                                        )
+                                    )
+                                },
+                                onOpenSigning = {
+                                    // No session id: a chat row carries none, and the
+                                    // screen resolves the room's live one.
+                                    onNavigateToRoute.invoke(
+                                        FrostSigningRoute(
                                             activeUserPublicKey = activeUserPublicKey,
                                             chatRoomId = chatRoomId
                                         )

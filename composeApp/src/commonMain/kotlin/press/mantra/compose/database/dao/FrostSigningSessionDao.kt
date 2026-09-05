@@ -27,6 +27,9 @@ interface FrostSigningSessionDao {
     @Query("SELECT * FROM FrostSigningSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): FrostSigningSession?
 
+    @Query("SELECT * FROM FrostSigningSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
+    suspend fun getSessionsForChatRoom(chatRoomId: String): List<FrostSigningSession>
+
     @Upsert
     suspend fun upsert(frostSigningSession: FrostSigningSession)
 

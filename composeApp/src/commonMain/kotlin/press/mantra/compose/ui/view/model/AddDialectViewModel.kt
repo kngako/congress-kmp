@@ -18,8 +18,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
-import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
+import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.ui.view.state.AddDialectUIState
 
 class AddDialectViewModel(
@@ -29,7 +30,7 @@ class AddDialectViewModel(
     initialAddDialectUIState: AddDialectUIState,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
-    val mantraRepository: MantraRepository,
+    val frostSigningRepository: FrostSigningRepository,
 ): ViewModel() {
 
     var addDialectUIState: AddDialectUIState by mutableStateOf(initialAddDialectUIState)
@@ -38,6 +39,14 @@ class AddDialectViewModel(
     private val logger = Logger.withTag(TAG)
 
     val isActionPending: MutableState<Boolean> = mutableStateOf(false)
+
+    /**
+     * Whether this group holds a key it can sign with.
+     *
+     * Read before the form is offered: a group without one cannot make a dialect
+     * this way at all, and a button that always fails is worse than no button.
+     */
+    suspend fun canSign(): Boolean = frostSigningRepository.canSign(chatRoomId)
 
     fun initiateAddDialect() {
         logger.d("compressed (most likely chat room): $chatRoomId")
@@ -49,17 +58,30 @@ class AddDialectViewModel(
             } else {
                 AddDialectUIState.Loaded(
                     localChatRoom = localChatRoom,
+                    canSign = frostSigningRepository.canSign(chatRoomId),
                 )
             }
         }
     }
 
+    /**
+     * Asks the group to sign a new dialect into existence.
+     *
+     * The dialect is not created here and does not exist yet. What goes out is a
+     * proposal to sign it, and the dialect appears -- on every member's device at
+     * once, authored by the group's shared key rather than by whoever typed it --
+     * when enough members have signed.
+     *
+     * That is the difference from submitting one. A submission says "I am putting
+     * this in front of the group" and the group's only recourse afterwards is
+     * social. A signature is the group saying it, and it takes a quorum to say.
+     */
     fun addDialect(
         localChatRoom: LocalChatRoom,
         nameField: TextFieldState,
         countryField: TextFieldState,
         languageField: TextFieldState,
-        onSuccess: (dialectId: String) -> Unit,
+        onSuccess: (sessionId: String) -> Unit,
         onFailure: () -> Unit
     ) {
         val name = nameField.text.toString()
@@ -76,25 +98,31 @@ class AddDialectViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val dialect = runCatching {
-                mantraRepository.addDialect(
+            val dialectEventTemplate = DialectEvent.build(
+                name = name,
+                country = country,
+                language = language,
+            )
+
+            val session = runCatching {
+                frostSigningRepository.proposeSigning(
                     localChatRoom = localChatRoom,
-                    name = name,
-                    country = country,
-                    language = language,
                     userPublicKey = activeUserPublicKey,
+                    kind = dialectEventTemplate.kind,
+                    tags = dialectEventTemplate.tags,
+                    content = dialectEventTemplate.content,
                 )
             }.onFailure { error ->
-                logger.e("Failed to add dialect", error)
+                logger.e("Failed to propose a dialect for signing", error)
             }.getOrNull()
 
-            if (dialect != null) {
+            if (session != null) {
                 nameField.clearText()
                 countryField.clearText()
                 languageField.clearText()
 
                 viewModelScope.launch(Dispatchers.Main) {
-                    onSuccess.invoke(dialect.id)
+                    onSuccess.invoke(session.id)
                 }
             } else {
                 viewModelScope.launch(Dispatchers.Main) {
@@ -116,7 +144,7 @@ class AddDialectViewModel(
             initialAddDialectUIState: AddDialectUIState = AddDialectUIState.Loading,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
-            mantraRepository: MantraRepository
+            frostSigningRepository: FrostSigningRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AddDialectViewModel(
@@ -126,7 +154,7 @@ class AddDialectViewModel(
                     initialAddDialectUIState = initialAddDialectUIState,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
-                    mantraRepository = mantraRepository
+                    frostSigningRepository = frostSigningRepository
                 )
             }
         }

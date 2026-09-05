@@ -16,9 +16,11 @@ import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,11 +29,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,9 +45,9 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
-import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
-import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -59,7 +64,7 @@ fun AddDialectScreen(
     initialAddDialectUIState: AddDialectUIState = AddDialectUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
-    mantraRepository: MantraRepository,
+    frostSigningRepository: FrostSigningRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
@@ -71,7 +76,7 @@ fun AddDialectScreen(
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
             activeUserPublicKey = activeUserPublicKey,
-            mantraRepository = mantraRepository
+            frostSigningRepository = frostSigningRepository
         )
     )
 
@@ -94,6 +99,10 @@ fun AddDialectScreen(
             val countryFieldState = rememberTextFieldState()
             val languageFieldState = rememberTextFieldState()
 
+            // M3 gives a FAB no `enabled`, so borrow the disabled colours every
+            // other button in the app uses rather than inventing a shade here.
+            val buttonColors = ButtonDefaults.buttonColors()
+
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -110,20 +119,41 @@ fun AddDialectScreen(
                         actions = {},
                         floatingActionButton = {
                             ExtendedFloatingActionButton(
+                                modifier = if (addDialectUIState.canSign) {
+                                    Modifier
+                                } else {
+                                    // Looking unavailable is not being unavailable.
+                                    Modifier.semantics { disabled() }
+                                },
+                                containerColor = if (addDialectUIState.canSign) {
+                                    FloatingActionButtonDefaults.containerColor
+                                } else {
+                                    buttonColors.disabledContainerColor
+                                },
+                                contentColor = if (addDialectUIState.canSign) {
+                                    contentColorFor(FloatingActionButtonDefaults.containerColor)
+                                } else {
+                                    buttonColors.disabledContentColor
+                                },
                                 onClick = {
+                                    if (!addDialectUIState.canSign) return@ExtendedFloatingActionButton
+
                                     addDialectViewModel.addDialect(
                                         localChatRoom = addDialectUIState.localChatRoom,
                                         nameField = nameFieldState,
                                         countryField = countryFieldState,
                                         languageField = languageFieldState,
-                                        onSuccess = {
-                                            // Back to the group, reloaded so the new
-                                            // dialect shows up in the list.
+                                        onSuccess = { sessionId ->
+                                            // Onto the session rather than back to
+                                            // the group. Nothing has been created
+                                            // yet -- the dialect appears when enough
+                                            // members sign -- so landing on the list
+                                            // it is not in would read as a failure.
                                             onNavigateToRouteAndPopUpInclusive.invoke(
-                                                ChatRoomDetailRoute(
+                                                FrostSigningRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
                                                     chatRoomId = chatRoomId,
-                                                    relayHint = relayHint
+                                                    sessionId = sessionId
                                                 )
                                             )
                                         },
@@ -137,9 +167,9 @@ fun AddDialectScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Add,
-                                    contentDescription = "Add dialect"
+                                    contentDescription = "Propose dialect"
                                 )
-                                Text("Add Dialect")
+                                Text("Propose Dialect")
                             }
                         }
                     )
@@ -154,6 +184,15 @@ fun AddDialectScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Add a dialect the group can translate into")
+
+                        if (!addDialectUIState.canSign) {
+                            Text(
+                                text = "This group has no shared key, so it cannot sign a " +
+                                    "dialect into existence. Run a shared key ceremony first.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
 
                         OutlinedTextField(
                             modifier = Modifier.fillMaxWidth()
@@ -300,7 +339,7 @@ private fun AddDialectScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {}
             )
