@@ -65,6 +65,20 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * The path comes from the room, never from a proposal -- [signingPath] -- because
  * it decides which key the group signs as.
  *
+ * ### It signs a batch
+ *
+ * A session carries one or more events as [FrostSigningItem] rows, and runs one
+ * FROST instance per event in lockstep: one signer set, one aggregate per item,
+ * one partial signature per item per signer, one approval. Four group events
+ * whatever the size, instead of four per event.
+ *
+ * That is all the batching there is, and all there can be. A Schnorr partial
+ * signature is `s = k + e·x` with `e = H(R‖P‖m)`, so two messages under one
+ * nonce give two equations in one unknown and the secret share falls out; a
+ * batch shares only what is outside that equation. Every item has its own seed,
+ * its own aggregate and its own `Session`, and [joinPayload] is the only place
+ * they travel together.
+ *
  * Three things are genuinely different from a ceremony, and each of them is why
  * this is a separate manager rather than another branch of that one.
  *
@@ -80,8 +94,8 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  *
  * `SecretNonce` cannot be serialised and refuses to be used twice. Storing the
  * randomness it is derived from and regenerating on demand is the only way a
- * signing session can survive the app closing -- and it is safe only because a
- * session signs one message and cannot be made to sign another. See
+ * signing session can survive the app closing -- and it is safe only because an
+ * item signs one message and cannot be made to sign another. See
  * [FrostSigningSession] for the two rules that hold that in place; both are
  * enforced here, in [acceptProposal] and in [record].
  *
@@ -89,8 +103,10 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  *
  * A DKG asks three times because each step publishes something different and
  * commits the member to something different. Here every step serves one
- * decision -- sign this event or do not -- and the event is fixed before the
- * member is asked. A second prompt would be the same question again.
+ * decision -- sign these events or do not -- and they are fixed before the
+ * member is asked. A second prompt would be the same question again. That holds
+ * for a batch only as long as the member can see every event in it before
+ * answering, which is the screen's side of the bargain.
  */
 object FrostSigningManager {
     private const val TAG = "FrostSigningManager"
@@ -414,7 +430,10 @@ object FrostSigningManager {
                 // holds all of them.
                 if (current(database, session).signerIds != null) return true
 
-                if (applyAggregate(database, session, signerIds, listOf(innerEvent.content))) {
+                val aggregated = splitForSession(database, session, innerEvent.content)
+                    ?: return true
+
+                if (applyAggregate(database, session, signerIds, aggregated)) {
                     announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
@@ -427,7 +446,10 @@ object FrostSigningManager {
                 // could neither finish nor safely retry.
                 if (isSigned(database, session)) return true
 
-                if (applySignatures(database, session, listOf(innerEvent.content))) {
+                val signatures = splitForSession(database, session, innerEvent.content)
+                    ?: return true
+
+                if (applySignatures(database, session, signatures)) {
                     announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
@@ -515,42 +537,63 @@ object FrostSigningManager {
             // The events this session signs, in the order the proposal fixed. Every
             // join below is positional against it.
             val items = database.frostSigningSessionDao().getItems(sessionId)
-            val item = items.firstOrNull() ?: return
-            val message = ByteVector(item.eventId.hexToByteArray())
+            if (items.isEmpty()) return
 
-            // Regenerated rather than stored -- SecretNonce refuses both. Safe
-            // because an item's message can never change; see the notes on
-            // FrostSigningSession.
-            val (secretNonce, publicNonce) = SecretNonce.generate(
-                sessionRandom = ByteVector32(item.nonceRandom),
-                secretShare = secretShare,
-                publicShare = publicShares?.getOrNull(session.signerId),
-                tweakedThresholdPublicKey = tweakCache.tweakedPublicKey,
-                message = message,
-                extraInput = null
-            )
+            val messages = items.map { ByteVector(it.eventId.hexToByteArray()) }
 
-            if (ownMessage(database, session, FrostSigningEvents.NONCE) == null) {
+            val ownNonces = ownMessage(database, session, FrostSigningEvents.NONCE)
+            val ownPartials = ownMessage(database, session, FrostSigningEvents.PARTIAL_SIGNATURE)
+
+            // One nonce per item, regenerated rather than stored -- SecretNonce
+            // refuses both. Safe because an item's message can never change; see
+            // the notes on FrostSigningSession.
+            //
+            // On demand rather than up front, and that is the point of the `lazy`:
+            // `advance` runs on every arriving message, so at a batch of k this is
+            // k native key generations each time, usually to find there is nothing
+            // left to publish. A guard computed here instead would have to predict
+            // whether this device turns out to be a signer, which it cannot -- the
+            // coordinator settles the signer set further down this same pass.
+            val nonces by lazy {
+                items.mapIndexed { index, item ->
+                    SecretNonce.generate(
+                        sessionRandom = ByteVector32(item.nonceRandom),
+                        secretShare = secretShare,
+                        publicShare = publicShares?.getOrNull(session.signerId),
+                        tweakedThresholdPublicKey = tweakCache.tweakedPublicKey,
+                        message = messages[index],
+                        extraInput = null
+                    )
+                }
+            }
+
+            if (ownNonces == null) {
                 publishOwn(
                     database,
                     localChatRoom,
                     session,
                     FrostSigningEvents.NONCE,
-                    publicNonce.data.toHex()
+                    joinPayload(nonces.map { (_, publicNonce) -> publicNonce.data.toHex() })
                 )
             }
 
             if (session.isCoordinator() && session.signerIds == null) {
-                val offered = orderedNonces(database, session) ?: return
+                val offered = orderedNonces(database, session, items.size) ?: return
                 val chosen = offered.take(session.threshold)
-
-                val aggregated = IndividualNonce.aggregate(chosen.map { it.second })
-                    .orThrow("aggregating nonces")
-
                 val chosenIds = chosen.map { (id, _) -> id }
-                if (!applyAggregate(database, session, chosenIds, listOf(aggregated.toByteArray().toHex()))) {
-                    return
+
+                // One aggregate per item, each built from that item's nonce from
+                // each chosen signer. Reusing one across two items would be reusing
+                // R across two messages, which is the whole thing this design is
+                // arranged to make impossible.
+                val aggregated = items.indices.map { index ->
+                    IndividualNonce.aggregate(chosen.map { (_, offeredNonces) -> offeredNonces[index] })
+                        .orThrow("aggregating nonces")
+                        .toByteArray()
+                        .toHex()
                 }
+
+                if (!applyAggregate(database, session, chosenIds, aggregated)) return
                 session = current(database, session)
 
                 broadcast(
@@ -558,7 +601,7 @@ object FrostSigningManager {
                     localChatRoom = localChatRoom,
                     session = session,
                     kind = FrostSigningEvents.SIGNER_SET,
-                    content = aggregated.toByteArray().toHex(),
+                    content = joinPayload(aggregated),
                     signerIds = chosenIds
                 )
                 announceStep(
@@ -570,48 +613,70 @@ object FrostSigningManager {
             }
 
             val signerIds = session.signerIdList() ?: return
-            val aggregatedNonce = database.frostSigningSessionDao()
-                .getItem(sessionId, item.itemIndex)?.aggregatedNonce ?: return
+            // Re-read, because the aggregate above is written to the item rows.
+            val aggregated = database.frostSigningSessionDao().getItems(sessionId)
             session = moveTo(database, session, FrostSigningStage.COLLECTING_PARTIAL_SIGNATURES)
-
-            val signingSession = Session.create(
-                aggregatedNonce = AggregatedNonce(aggregatedNonce.hexToByteArray()),
-                signerIds = signerIds.map { it.toUInt() },
-                signerPublicShares = publicShares?.let { shares ->
-                    signerIds.mapNotNull { shares.getOrNull(it) }.takeIf { it.size == signerIds.size }
-                },
-                nParticipants = session.participantCount,
-                threshold = session.threshold,
-                tweakCache = tweakCache,
-                message = message
-            )
 
             // A member outside the chosen set has nothing to contribute and is not
             // holding anybody up. They stay in the session to receive the finished
-            // signature like everybody else.
-            if (session.isSigner() && ownMessage(database, session, FrostSigningEvents.PARTIAL_SIGNATURE) == null) {
-                val partialSignature = signingSession
-                    .sign(secretNonce, secretShare, session.signerId.toUInt())
-                    .orThrow("signing")
+            // signatures like everybody else -- and leaving here rather than
+            // building k FROST sessions to do nothing with is the same saving the
+            // nonce short-circuit above makes.
+            val signing = session.isSigner() && ownPartials == null
+            val aggregating = session.isCoordinator() && !isSigned(database, session)
+            if (!signing && !aggregating) {
+                complete(database, session)
+                return
+            }
+
+            // One FROST session per item. `Session.create` binds the message and
+            // the aggregate together, so only the signer set, the shares and the
+            // tweak cache are shared across a batch.
+            val signingSessions = aggregated.mapIndexed { index, item ->
+                Session.create(
+                    aggregatedNonce = AggregatedNonce(
+                        (item.aggregatedNonce ?: return).hexToByteArray()
+                    ),
+                    signerIds = signerIds.map { it.toUInt() },
+                    signerPublicShares = publicShares?.let { shares ->
+                        signerIds.mapNotNull { shares.getOrNull(it) }.takeIf { it.size == signerIds.size }
+                    },
+                    nParticipants = session.participantCount,
+                    threshold = session.threshold,
+                    tweakCache = tweakCache,
+                    message = messages[index]
+                )
+            }
+
+            if (signing) {
+                val partialSignatures = signingSessions.mapIndexed { index, signingSession ->
+                    signingSession
+                        .sign(nonces[index].first, secretShare, session.signerId.toUInt())
+                        .orThrow("signing")
+                        .toHex()
+                }
 
                 publishOwn(
                     database,
                     localChatRoom,
                     session,
                     FrostSigningEvents.PARTIAL_SIGNATURE,
-                    partialSignature.toHex()
+                    joinPayload(partialSignatures)
                 )
             }
 
-            if (session.isCoordinator() && !isSigned(database, session)) {
-                val partials = orderedPartialSignatures(database, session, signerIds) ?: return
+            if (aggregating) {
+                val partials = orderedPartialSignatures(database, session, signerIds, aggregated.size)
+                    ?: return
 
-                val signature = signingSession
-                    .aggregateSigs(partials.map { ByteVector32(it) })
-                    .orThrow("aggregating partial signatures")
-                    .toHex()
+                val signatures = signingSessions.mapIndexed { index, signingSession ->
+                    signingSession
+                        .aggregateSigs(partials.map { ByteVector32(it[index]) })
+                        .orThrow("aggregating partial signatures")
+                        .toHex()
+                }
 
-                if (!applySignatures(database, session, listOf(signature))) return
+                if (!applySignatures(database, session, signatures)) return
                 session = current(database, session)
 
                 broadcast(
@@ -619,7 +684,7 @@ object FrostSigningManager {
                     localChatRoom = localChatRoom,
                     session = session,
                     kind = FrostSigningEvents.SIGNATURE,
-                    content = signature
+                    content = joinPayload(signatures)
                 )
                 announceStep(database, session, FrostSigningEvents.SIGNATURE, session.userPublicKey)
             }
@@ -872,17 +937,25 @@ object FrostSigningManager {
      */
     private suspend fun orderedNonces(
         database: MantraDatabase,
-        session: FrostSigningSession
-    ): List<Pair<Int, IndividualNonce>>? {
+        session: FrostSigningSession,
+        items: Int
+    ): List<Pair<Int, List<IndividualNonce>>>? {
         val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return null
         val idByMember = signerIds(database, key)
 
         val offered = database.frostSigningSessionDao()
             .getMessagesByKind(session.id, FrostSigningEvents.NONCE)
             .mapNotNull { message ->
-                idByMember[message.signerPublicKey]?.let { id ->
-                    id to IndividualNonce(message.payload.hexToByteArray())
+                val id = idByMember[message.signerPublicKey] ?: return@mapNotNull null
+                val values = splitPayload(message.payload, items) ?: run {
+                    logger.w(
+                        "Session ${session.id}: ${message.signerPublicKey.take(8)} offered a " +
+                            "nonce payload that is not $items value(s); leaving them out"
+                    )
+                    return@mapNotNull null
                 }
+
+                id to values.map { IndividualNonce(it.hexToByteArray()) }
             }
             .sortedBy { (id, _) -> id }
 
@@ -902,8 +975,9 @@ object FrostSigningManager {
     private suspend fun orderedPartialSignatures(
         database: MantraDatabase,
         session: FrostSigningSession,
-        signerIds: List<Int>
-    ): List<ByteArray>? {
+        signerIds: List<Int>,
+        items: Int
+    ): List<List<ByteArray>>? {
         val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return null
         val memberById = signerIds(database, key).entries.associate { (member, id) -> id to member }
 
@@ -912,7 +986,9 @@ object FrostSigningManager {
             .associate { it.signerPublicKey to it.payload }
 
         val partials = signerIds.mapNotNull { id ->
-            memberById[id]?.let { payloadByMember[it] }
+            val payload = memberById[id]?.let { payloadByMember[it] } ?: return@mapNotNull null
+
+            splitPayload(payload, items)?.map { it.hexToByteArray() }
         }
 
         if (partials.size < signerIds.size) {
@@ -920,7 +996,50 @@ object FrostSigningManager {
             return null
         }
 
-        return partials.map { it.hexToByteArray() }
+        return partials
+    }
+
+    /**
+     * A signer's whole contribution to a batch, as one payload.
+     *
+     * Comma separated, the encoding [FrostSigningSession.signerIds] already uses,
+     * and at a batch of one it is the bare value — which is what keeps a
+     * single-event session on exactly the wire it has always been on.
+     *
+     * One row per signer per kind rather than one per item, deliberately.
+     * [FrostSignerMessage]'s key is what makes a redelivered message replace its
+     * predecessor instead of adding a row, and splitting by item would multiply
+     * the ways a partial delivery can look like a complete one.
+     */
+    private fun joinPayload(values: List<HexKey>): String = values.joinToString(",")
+
+    /**
+     * The other half, and strict: a payload not carrying exactly [expected]
+     * values is refused rather than truncated or padded.
+     *
+     * Checked here rather than in [record] on purpose. Payloads are stored
+     * without being parsed, which is what lets a nonce arrive before the proposal
+     * that would give it a length to be checked against. This runs where the
+     * session — and so the length — is known.
+     */
+    private fun splitPayload(payload: String, expected: Int): List<HexKey>? =
+        payload.split(",").map { it.trim() }.takeIf { it.size == expected }
+
+    /** [splitPayload] against the number of events this session signs. */
+    private suspend fun splitForSession(
+        database: MantraDatabase,
+        session: FrostSigningSession,
+        payload: String
+    ): List<HexKey>? {
+        val expected = database.frostSigningSessionDao().countItems(session.id)
+
+        return splitPayload(payload, expected) ?: run {
+            logger.w(
+                "Session ${session.id}: payload carries ${payload.split(",").size} value(s) " +
+                    "for $expected item(s); ignoring"
+            )
+            null
+        }
     }
 
     /**

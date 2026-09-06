@@ -179,11 +179,25 @@ k=64 it is 64 nonce generations, 64 `Session.create`s and 64 signs on every
 message the group sends — several hundred native calls to discover there is
 nothing to do.
 
-Fix it in this phase, while it is still cheap to verify: short-circuit the
-regenerate-and-sign block when this device has already published both its nonce
-and its partial-signature messages, and skip `Session.create` for a device that
-is not in the signer set and is not the coordinator. Both are pure
-optimisations at k=1, which is the point of doing them before k>1 exists.
+Fix it in this phase, while it is still cheap to verify: generate nonces on
+demand, and leave before building any `Session` when this device is neither
+signing nor aggregating. Both are pure optimisations at k=1, which is the point
+of doing them before k>1 exists.
+
+**Generate them lazily, not behind a guard.** The obvious version — compute the
+nonces only when `ownNonce == null || (isSigner() && ownPartial == null)` — is
+wrong, and wrong in a way that passes a reading and fails every test. The
+coordinator settles the signer set *further down the same pass*, so `isSigner()`
+read at the top of `advance()` is false on the pass where the coordinator is
+about to become a signer, and the nonces it then needs were never generated. A
+`by lazy` has no such prediction to make: it generates at first use, at most
+once per pass, and never on a pass with nothing to publish.
+
+### The payload codec, early
+
+`joinPayload`/`splitPayload` land here rather than in Phase 3, because at k=1
+they are the identity — a one-element comma join is the bare value — so they
+change no byte on the wire and leave Phase 3 to the proposal encoding alone.
 
 **Test:** existing tests are the test. If
 [FrostSigningRoundTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/managers/FrostSigningRoundTest.kt)
@@ -198,6 +212,9 @@ pass without edits beyond the schema move, the vectorisation is faithful.
 **Two days. This is the phase with the compatibility trap in it.**
 
 ### Payload encoding
+
+*(Landed in Phase 2 — see above. Restated here because the rest of this phase
+depends on it.)*
 
 `FrostSignerMessage` keeps its `(sessionId, signerPublicKey, kind)` primary key
 and **one row carries all `k` values**, comma-joined — the same encoding
