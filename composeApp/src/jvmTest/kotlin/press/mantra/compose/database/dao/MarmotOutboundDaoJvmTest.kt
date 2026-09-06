@@ -11,11 +11,17 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.extensions.toHex
+import press.mantra.compose.nostr.Relays
+import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import press.mantra.compose.exceptions.MarmotMissingChatGroupException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -29,10 +35,10 @@ import kotlin.test.assertTrue
  * compile, still look like it worked, and leave a room whose members believe someone was
  * invited.
  *
- * These cover the paths that need no MLS material. Everything past the guard -- the commit, the
- * Welcome, the epoch advance and its persistence -- needs a real peer key package to exercise,
- * which means an MLS fixture this test file deliberately does not build. Those paths are worth
- * covering and are not covered here.
+ * Past the guard, the tests build a real MLS group and a real peer key package with
+ * [marmotKeyPackageFor], so the commit, the epoch advance and its persistence are exercised
+ * rather than described. Nothing there needs a relay: a key package is three local key
+ * generations and two signatures.
  */
 class MarmotOutboundDaoJvmTest {
 
@@ -76,14 +82,52 @@ class MarmotOutboundDaoJvmTest {
     }
 
     /**
-     * Never decoded: the guard throws before any of these tests reach the MLS layer, so the
-     * bytes only have to exist. A test that got past the guard would need a real key package.
+     * Never decoded: the guard throws before the tests using it reach the MLS layer, so the
+     * bytes only have to exist. The tests past the guard use [marmotKeyPackageFor] instead.
      */
     private fun keyPackage() = MarmotKeyPackage(
         id = "d".repeat(64),
         publicKey = peer,
         tlsEncodedMarmotKeyPackage = ByteArray(0),
     )
+
+    /**
+     * A room holding real MLS state, as a room this device created would.
+     *
+     * The peer gets a Profile row because Participant.participantPublicKey is a foreign key
+     * onto it, and a successful invite writes a Participant. The guard tests above never reach
+     * that write, which is why only they can get away without one.
+     */
+    private suspend fun seedMlsRoom(): LocalChatRoom {
+        val stateless = seedStatelessRoom()
+        val peerEventId = "e".repeat(64)
+        db.nostrEventDao().upsert(
+            NostrEvent(
+                id = peerEventId,
+                pubKey = peer,
+                kind = 0,
+                tags = emptyArray(),
+                content = "{}",
+                sig = "0".repeat(128),
+            )
+        )
+        db.profileDao().upsert(Profile(publicKey = peer, userName = "peer", nostrEventId = peerEventId))
+        val mlsGroup = MlsGroup.create(
+            identity = user.hexToByteArray(),
+            initialExtensions = listOf(
+                MarmotGroupData.bootstrap(
+                    nostrGroupId = roomId,
+                    creatorPubKey = user,
+                    outboxRelays = Relays.DefaultDMRelayList.map { it.url },
+                ).toExtension()
+            ),
+        )
+        val chatRoom = stateless.chatRoom.copy(
+            mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+        )
+        db.chatRoomDao().upsert(chatRoom)
+        return LocalChatRoom(chatRoom = chatRoom)
+    }
 
     @Test
     fun `inviting into a room with no mls state is refused rather than ignored`() = runBlocking<Unit> {
@@ -150,5 +194,75 @@ class MarmotOutboundDaoJvmTest {
         )
 
         assertEquals(emptyList(), failed)
+    }
+
+    /**
+     * Past the guard. The invitee is persisted before the Welcome is sealed, because
+     * sealGiftWrapPayload walks the room's participants to decide who to wrap for -- without
+     * the row the Welcome produced no gift wraps at all and sat unsealed forever.
+     */
+    @Test
+    fun `inviting a member into a real group persists the invitee`() = runBlocking {
+        val localChatRoom = seedMlsRoom()
+
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = localChatRoom,
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+
+        assertTrue(
+            db.participantDao().findParticipantsByChatRoomId(roomId)
+                .any { it.participantPublicKey == peer },
+            "the invitee was not persisted",
+        )
+    }
+
+    /**
+     * The epoch advance has to reach the database. `addMember` moves the in-memory group to
+     * the next epoch; without saving it back the creator keeps encrypting under the old one --
+     * which the new member cannot decrypt -- and the next invite re-derives from stale state
+     * and produces a conflicting commit.
+     */
+    @Test
+    fun `inviting a member persists the advanced group state`() = runBlocking {
+        val localChatRoom = seedMlsRoom()
+        val stateBefore = localChatRoom.chatRoom.mlsGroupState
+
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = localChatRoom,
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+
+        val stateAfter = assertNotNull(db.chatRoomDao().findChatRoomById(roomId)).chatRoom.mlsGroupState
+        assertNotNull(stateAfter)
+        assertTrue(stateAfter != stateBefore, "the advanced epoch was never written back")
+        val group = assertNotNull(
+            db.chatRoomDao().findChatRoomById(roomId)!!.chatRoom.toMlsGroup(),
+            "the persisted state no longer restores",
+        )
+        assertEquals(2, group.members().size.toInt(), "the invitee is not in the restored group")
+    }
+
+    /**
+     * The epoch the group is leaving is retained on the way past, so messages already sent
+     * under it stay readable. Asserted here rather than only in the retention-window tests,
+     * because this is the call that actually writes one.
+     */
+    @Test
+    fun `inviting a member retains the epoch being left behind`() = runBlocking {
+        val localChatRoom = seedMlsRoom()
+
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = localChatRoom,
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+
+        val retained = db.marmotRetainedEpochSecretDao()
+            .getMarmotRetainedEpochSecretForChatRoomId(roomId)
+        assertEquals(1, retained.size, "the pre-commit epoch was not retained")
+        assertEquals(0L, retained.single().epoch, "a freshly created group is at epoch 0")
     }
 }
