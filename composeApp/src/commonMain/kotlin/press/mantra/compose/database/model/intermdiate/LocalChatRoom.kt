@@ -42,12 +42,16 @@ data class LocalChatRoom(
         if (chatRoom.subject != null) {
             Text(
                 text = chatRoom.subject,
-                color = ProfileColor.fromPublicKey(chatRoom.id)
+                color = ProfileColor.fromPublicKey(chatRoom.id),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         } else {
             if (localParticipants.size == 1) {
                 Text(
-                    text = "Note to Self (${localParticipants.first().profile?.humanReadableNameOrPubkey()})"
+                    text = "Note to Self (${localParticipants.first().profile?.humanReadableNameOrPubkey()})",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             } else {
                 // Remove the active user publicKey from participants...
@@ -66,6 +70,8 @@ data class LocalChatRoom(
                             append(participantName)
                         }
                     },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
