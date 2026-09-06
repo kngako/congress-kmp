@@ -985,13 +985,42 @@ data class ChatMessage(
                         ),
                         chatRoomId = groupId,
                     )?.let { mantraTranslationChunk ->
-                        database.mantraTranslationChunkDao().upsert(
-                            mantraTranslationChunk.copy(
-                                marmotGroupEventId = marmotGroupEventId,
+                        // One translation per source chunk. Retranslating changes
+                        // the text and so the event's id, which makes it a new
+                        // event rather than an edit of the old one -- so the one
+                        // it supersedes is dropped here, or a passage would have
+                        // two answers to what it says and the reader would be
+                        // shown whichever the query happened to reach first.
+                        //
+                        // Newest wins by the timestamp the group signed at, not by
+                        // when it arrived, with the id breaking a tie. Two devices
+                        // catching up read the same events in whatever order the
+                        // relay hands them over, and they have to end up holding
+                        // the same translation either way.
+                        val existing = database.mantraTranslationChunkDao()
+                            .getTranslationChunksByChunkId(
+                                translationChapterId = mantraTranslationChunk.translationChapterId,
+                                chunkId = mantraTranslationChunk.chunkId,
                             )
-                        )
+                            .filterNot { it.id == mantraTranslationChunk.id }
 
+                        val isNewest = existing.none {
+                            it.createdAt > mantraTranslationChunk.createdAt ||
+                                (it.createdAt == mantraTranslationChunk.createdAt &&
+                                    it.id > mantraTranslationChunk.id)
+                        }
 
+                        if (isNewest) {
+                            existing.forEach {
+                                database.mantraTranslationChunkDao().deleteById(it.id)
+                            }
+
+                            database.mantraTranslationChunkDao().upsert(
+                                mantraTranslationChunk.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                )
+                            )
+                        }
                     }
                     null
                 }

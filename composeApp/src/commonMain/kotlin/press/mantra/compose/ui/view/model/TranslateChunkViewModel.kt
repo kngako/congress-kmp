@@ -15,6 +15,11 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.MantraChunk
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
+import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.view.state.TranslateChunkUIState
 
@@ -26,6 +31,8 @@ class TranslateChunkViewModel(
     val relayHint: String?,
     initialTranslateChunkUIState: TranslateChunkUIState,
     val mantraRepository: MantraRepository,
+    val chatRepository: ChatRepository,
+    val frostSigningRepository: FrostSigningRepository,
 ): ViewModel() {
 
     var translateChunkUIState: TranslateChunkUIState by mutableStateOf(initialTranslateChunkUIState)
@@ -38,51 +45,93 @@ class TranslateChunkViewModel(
     fun initiateTranslateChunk() {
         viewModelScope.launch(Dispatchers.IO) {
             val originalChunk = mantraRepository.getChunk(chunkId)
-            translateChunkUIState = if (originalChunk == null) {
-                TranslateChunkUIState.Error("Couldn't find the chunk")
-            } else {
-                val existing = mantraRepository.getTranslationChunks(translationChapterId)
-                    .firstOrNull { it.chunkId == chunkId }
-                TranslateChunkUIState.Loaded(
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
+
+            translateChunkUIState = when {
+                originalChunk == null -> TranslateChunkUIState.Error("Couldn't find the chunk")
+                localChatRoom == null -> TranslateChunkUIState.Error("Couldn't find the chat room")
+                else -> TranslateChunkUIState.Loaded(
+                    localChatRoom = localChatRoom,
                     originalChunk = originalChunk,
-                    existingTranslationText = existing?.text.orEmpty(),
+                    // What the group has already signed for this chunk, so a
+                    // retranslation starts from it rather than from nothing.
+                    existingTranslationText = mantraRepository
+                        .getTranslationChunks(translationChapterId)
+                        .firstOrNull { it.chunkId == chunkId }
+                        ?.text
+                        .orEmpty(),
+                    canSign = frostSigningRepository.canSign(chatRoomId),
                 )
             }
         }
     }
 
-    fun saveTranslation(
+    /**
+     * Asks the group to sign this chunk's translation.
+     *
+     * The translation is not saved here and does not exist yet. What goes out is
+     * a proposal to sign it, and the translated chunk appears -- on every
+     * member's device at once, authored by this room's own key rather than by
+     * whoever typed it -- when enough members have signed. That author is the
+     * room's id: signing runs at the path the room was derived at, so a
+     * translated chunk says which group rendered it simply by being signed.
+     *
+     * That is the difference from submitting one. A submission says "I am
+     * putting this in front of the group" and the group's only recourse
+     * afterwards is social. A signature is the group saying it, and it takes a
+     * quorum to say. What a chunk means in another tongue is a claim the group
+     * is making about somebody else's words, so the second is the honest one.
+     *
+     * A retranslation goes the same way: the event carries a different text and
+     * so a different id, and it replaces the one the group signed before rather
+     * than editing it -- there is nothing here to edit, since the old text is
+     * already signed.
+     */
+    fun proposeTranslation(
+        localChatRoom: LocalChatRoom,
+        originalChunk: MantraChunk,
         translationField: TextFieldState,
-        onSuccess: () -> Unit,
+        onSuccess: (sessionId: String) -> Unit,
         onFailure: () -> Unit
     ) {
         val text = translationField.text.toString()
         if (text.isBlank()) {
-            viewModelScope.launch(Dispatchers.Main) {
-                onFailure.invoke()
-            }
+            onFailure.invoke()
             return
         }
 
+        // Guard against double submits from repeated FAB taps.
         if (isActionPending.value) return
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val saved = runCatching {
-                mantraRepository.saveTranslationChunk(
-                    translationChapterId = translationChapterId,
-                    chunkId = chunkId,
-                    text = text,
-                    chatRoomId = chatRoomId,
+            val translationChunkEventTemplate = TranslationChunkEvent.build(
+                translationChapterId = translationChapterId,
+                chunkId = originalChunk.id,
+                // The translation sits where the chunk it translates sits. Read
+                // off the source rather than counted here: a chapter is
+                // translated a chunk at a time and in no particular order, so
+                // counting what is translated so far would number them by who
+                // got there first.
+                index = originalChunk.index,
+                text = text,
+            )
+
+            val session = runCatching {
+                frostSigningRepository.proposeSigning(
+                    localChatRoom = localChatRoom,
                     userPublicKey = activeUserPublicKey,
+                    kind = translationChunkEventTemplate.kind,
+                    tags = translationChunkEventTemplate.tags,
+                    content = translationChunkEventTemplate.content,
                 )
             }.onFailure { error ->
-                logger.e("Failed to save translation", error)
+                logger.e("Failed to propose a translation for signing", error)
             }.getOrNull()
 
-            if (saved != null) {
+            if (session != null) {
                 viewModelScope.launch(Dispatchers.Main) {
-                    onSuccess.invoke()
+                    onSuccess.invoke(session.id)
                 }
             } else {
                 viewModelScope.launch(Dispatchers.Main) {
@@ -105,6 +154,8 @@ class TranslateChunkViewModel(
             relayHint: String?,
             initialTranslateChunkUIState: TranslateChunkUIState = TranslateChunkUIState.Loading,
             mantraRepository: MantraRepository,
+            chatRepository: ChatRepository,
+            frostSigningRepository: FrostSigningRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 TranslateChunkViewModel(
@@ -115,6 +166,8 @@ class TranslateChunkViewModel(
                     relayHint = relayHint,
                     initialTranslateChunkUIState = initialTranslateChunkUIState,
                     mantraRepository = mantraRepository,
+                    chatRepository = chatRepository,
+                    frostSigningRepository = frostSigningRepository,
                 )
             }
         }
