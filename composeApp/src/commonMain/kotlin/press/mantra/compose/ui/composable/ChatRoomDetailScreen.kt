@@ -367,33 +367,38 @@ fun ChatRoomDetailScreen(
                                     Text("Shared Key")
                                 }
                             }
+                        }
 
-                            // Next to the key, because that is what they sign with.
-                            // The transcript carries a proposal past as it happens;
-                            // this is where a member goes to find one that has
-                            // scrolled away, or to see what the group has signed.
-                            item {
-                                TextButton(
-                                    onClick = {
-                                        onNavigateToRoute.invoke(
-                                            ProposalListRoute(
-                                                activeUserPublicKey = activeUserPublicKey,
-                                                chatRoomId = chatRoomId
-                                            )
+                        // Every room, not only the one that holds the key. A
+                        // ceremony needs a NIP-17 group, but a signing message is
+                        // a marmot inner event -- see `FrostSigningManager.broadcast`
+                        // -- so the room a group actually proposes in is the MLS
+                        // one, which is the last place this should be missing from.
+                        //
+                        // The transcript carries a proposal past as it happens;
+                        // this is where a member goes to find one that has scrolled
+                        // away, or to see what the group has signed.
+                        item {
+                            TextButton(
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        ProposalListRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId
                                         )
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Draw,
-                                        contentDescription = "Proposals"
                                     )
-
-                                    Spacer(
-                                        modifier = Modifier.width(10.dp)
-                                    )
-
-                                    Text("Proposals")
                                 }
+                            ) {
+                                Icon(
+                                    Icons.Default.Draw,
+                                    contentDescription = "Proposals"
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.width(10.dp)
+                                )
+
+                                Text("Proposals")
                             }
                         }
 

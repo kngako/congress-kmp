@@ -73,9 +73,11 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.view.state.ChatMessageListUIState
@@ -91,7 +93,8 @@ class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
     val localChatRoom: LocalChatRoom,
     val nostrRepository: NostrRepository,
-    val chatRepository: ChatRepository
+    val chatRepository: ChatRepository,
+    val frostSigningRepository: FrostSigningRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
     var chatMessageListUIState: ChatMessageListUIState by mutableStateOf(initialChatMessageListUIState)
@@ -113,6 +116,33 @@ class ChatMessageListViewModel(
     /** The message whose actions are open, or null. One at a time. */
     var openMessageActionsFor: Long? by mutableStateOf(null)
         private set
+
+    /**
+     * The sessions still waiting on this member to agree to sign, by id.
+     *
+     * Held rather than asked for, because it is read at the moment of a tap --
+     * see [hidesOtherDecisions] -- and that is not a moment that can wait on a
+     * query.
+     */
+    var proposalsAwaitingYou: Set<String> by mutableStateOf(emptySet())
+        private set
+
+    /**
+     * Whether opening [sessionId] by itself would hide other decisions the room
+     * is waiting on this member for.
+     *
+     * A signing line names one proposal, and opening it is right while that is
+     * the only thing being asked of them. It stops being right the moment there
+     * are two: the second is not in the transcript beside the first -- it may be
+     * pages up, or have arrived while they were reading -- so answering the one
+     * they tapped and leaving would look exactly like being done.
+     *
+     * Only for a proposal that is itself waiting on them. A line about something
+     * the group has already signed is history, and a reader who taps one is
+     * asking to see that, not to be handed the queue.
+     */
+    fun hidesOtherDecisions(sessionId: String): Boolean =
+        sessionId in proposalsAwaitingYou && proposalsAwaitingYou.size > 1
 
     fun startDirectMessage(participant: Participant) {
         logger.d("Arming a direct message to ${participant.participantPublicKey}")
@@ -157,7 +187,29 @@ class ChatMessageListViewModel(
         logger.d("init")
         scheduleSynchronization()
         observeChatRoomFeed()
+        observeProposalsAwaitingYou()
         askForGroupHistory()
+    }
+
+    /**
+     * Watches which of the room's proposals are waiting on this member.
+     *
+     * Observed rather than read once: a proposal arrives while the room is
+     * open as often as before it is opened, and one answered on another device
+     * stops being owed without anything happening here. Asked of the manager,
+     * the way the proposal list asks, so the two cannot disagree about which
+     * proposals still have a decision in them.
+     */
+    private fun observeProposalsAwaitingYou() {
+        viewModelScope.launch(Dispatchers.IO) {
+            frostSigningRepository
+                .observeSessionsForChatRoom(localChatRoom.chatRoom.id)
+                .collect { sessions ->
+                    proposalsAwaitingYou = sessions.filter {
+                        FrostSigningManager.isAwaitingApproval(it.session, it.items)
+                    }.map { it.session.id }.toSet()
+                }
+        }
     }
 
     /**
@@ -643,14 +695,16 @@ class ChatMessageListViewModel(
             initialChatMessageListUIState: ChatMessageListUIState = ChatMessageListUIState.Loading,
             localChatRoom: LocalChatRoom,
             nostrRepository: NostrRepository,
-            chatRepository: ChatRepository
+            chatRepository: ChatRepository,
+            frostSigningRepository: FrostSigningRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatMessageListViewModel(
                     initialChatMessageListUIState = initialChatMessageListUIState,
                     localChatRoom = localChatRoom,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
+                    frostSigningRepository = frostSigningRepository
                 )
             }
         }
