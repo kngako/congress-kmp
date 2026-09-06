@@ -372,21 +372,14 @@ fun MantraNavHost(
 
             SovereignWalletStartupScreen(
                 sovereignWalletViewModel = sovereignWalletViewModel,
+                // No seed on this device, so there is no wallet to start: the user has to make or
+                // restore one, and that lives behind the landing screen. This used to park them on
+                // a loading screen with nothing left to load.
                 onNavigateToWalletLandingPage = {
                     navController.navigate(
-                        route = LoadingRoute(
-                            text = "Loading... Torch"
-                        )
-                    )
-                },
-                onNavigateToWalletIntroPage = {
-                    navController.navigate(
-                        route = LoadingRoute(
-                            text = "Introducing... Torch"
-                        )
-                    )
-                    applicationIOScope.launch {
-                        navigationViewModel.loadNostrProfile(route)
+                        route = LandingRoute
+                    ) {
+                        popUpTo(0)
                     }
                 },
                 onSuccessfulStartup = {

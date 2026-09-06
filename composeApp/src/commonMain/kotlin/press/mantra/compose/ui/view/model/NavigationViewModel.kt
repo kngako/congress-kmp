@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import press.mantra.compose.extensions.nostrPublicKey
@@ -76,19 +77,21 @@ class NavigationViewModel(
                     NavigationUIState.StartupPhoenix
                 }
             }
+        } else if (startupRoute != null) {
+            // This branch was commented out when `observeProfile` was renamed to
+            // `observeLocalAccount`, which turned the whole call into a no-op for anyone who
+            // already had an account: the caller had navigated to a loading screen first and then
+            // nothing ever moved the user off it. Every path out of here must leave the navigation
+            // state pointing somewhere.
+            processLocalAccount(
+                nostrRepository.observeLocalAccount(
+                    publicKey = activeUserPublicKey
+                ).firstOrNull()
+            )
         } else {
-//            if (startupRoute != null) {
-//                val localAccount = nostrRepository.observeProfile(
-//                    publicKey = activeUserPublicKey
-//                ).firstOrNull()
-//
-//                processLocalAccount(localAccount)
-//
-//            } else {
-//                _navigationUIState.getAndUpdate {
-//                    NavigationUIState.StartupPhoenix
-//                }
-//            }
+            _navigationUIState.getAndUpdate {
+                NavigationUIState.StartupPhoenix
+            }
         }
     }
 
