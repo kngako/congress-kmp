@@ -11,7 +11,11 @@ plugins {
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinPluginSerialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.sqldelight)
+    // No sqldelight plugin here on purpose. The fr.acinq.phoenix.db.sqldelight databases this
+    // module used to generate are the same three lightning-kmp-app's :library generates from an
+    // identical copy of the .sq sources, and nothing under press.mantra touches them. Generating
+    // them on both sides put every generated class in the apk twice, which debug tolerates and
+    // mergeDexRelease rejects as duplicate types. The library's copies are the ones that count.
 }
 
 kotlin {
@@ -204,23 +208,6 @@ dependencies {
 
 room3 {
     schemaDirectory("$projectDir/schemas")
-}
-
-sqldelight {
-    databases {
-        create("ChannelsDatabase") {
-            packageName.set("fr.acinq.phoenix.db.sqldelight")
-            srcDirs.from("src/commonMain/sqldelight/channelsdb")
-        }
-        create("PaymentsDatabase") {
-            packageName.set("fr.acinq.phoenix.db.sqldelight")
-            srcDirs.from("src/commonMain/sqldelight/paymentsdb")
-        }
-        create("AppDatabase") {
-            packageName.set("fr.acinq.phoenix.db.sqldelight")
-            srcDirs.from("src/commonMain/sqldelight/appdb")
-        }
-    }
 }
 
 compose.desktop {
