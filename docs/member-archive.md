@@ -232,12 +232,22 @@ Tags, one value each, per the house convention:
 
 ```kotlin
 const val MAX_PAGE_BYTES = 64 * 1024
-const val MAX_PAGE_EVENTS = 256
+const val MAX_PAGE_EVENTS = 128
 ```
 
 A byte cap rather than a count alone, because the events vary by two orders of
 magnitude -- a chunk is a paragraph, an artifact is a URL. The count cap bounds
 the receiver's *work* where the byte cap bounds the *transport*.
+
+**The count was 256 when this was written, and 256 can never fire.** An event
+carries 64 characters of id, 64 of pubkey and 128 of signature before it says
+anything, so the floor is about 370 bytes and 64 KB cannot hold much past 170 of
+them -- the byte cap always binds first and the count cap is a check that never
+runs. The two have to be sized against each other or one of them is decoration.
+At 128 both bind something: the count stops a page of many small payloads, the
+bytes stop a page of few large ones. The test that says so asserts a page at
+exactly the cap still decodes, which is the assertion that fails when somebody
+raises one number without the other.
 
 Both are checked independently on the way in, for the reason the batch cap is:
 an archive is the second place in this protocol where a remote party decides how
