@@ -408,6 +408,24 @@ part of 12 events". This is worth checking rather than assuming, because a new
 type would need adding to five sets and would silently render as a chat bubble
 if missed from `FROST_TYPES`.
 
+**What this missed, and how it was fixed.** The claim above holds for `k` events
+in one session and breaks for two sessions at once, which
+[the first caller](#the-first-caller-a-chapter-and-its-chunks) went on to need: a
+chapter and the translation scaffolding beside it are two proposals, open
+together, writing the same line types into the same stretch of transcript.
+`answeredRequests` and `settledRequests` matched a request against any later line
+of the fulfilling type, so answering one of the two dropped the "Review" on both
+— the second proposal became unreachable from the transcript the moment the first
+was decided.
+
+Nothing on a row could tell them apart, so `ChatMessage.frostSigningSessionId`
+was added (schema v11, nullable, `AutoMigration(10, 11)`), stamped by
+`FrostSigningManager.announce` on every line it writes. Both rules read it when
+both rows have one and fall back to the clock when either does not — which is
+what a line older than the column has to be read by, and is right for those
+rooms: nothing that predates batch proposals ran two sessions at once. A ceremony
+line still uses the clock always, since a room runs one ritual at a time.
+
 ---
 
 ## Phase 6 — the test that actually proves it

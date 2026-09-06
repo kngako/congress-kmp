@@ -94,6 +94,23 @@ data class ChatMessage(
      */
     val directMessageRecipientPublicKey: HexKey? = null,
 
+    /**
+     * The signing session a [FROST_TYPES] line belongs to, or null for anything else.
+     *
+     * The transcript used to work this out from the type and the clock: a request
+     * was over once a line of the right type appeared after it. That reads a room
+     * signing one thing at a time correctly and a room signing two things at once
+     * wrongly -- a chapter and the translation that depends on it are proposed as
+     * two sessions, and either one finishing dropped the summons on both. There is
+     * nothing in a row's type or time that can tell them apart, so the session has
+     * to be on the row.
+     *
+     * Null on every line written before this column existed, which the rules below
+     * fall back to their old behaviour for. Correct for those rooms too: nothing
+     * that predates the batch proposals ran two sessions at once.
+     */
+    val frostSigningSessionId: String? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
@@ -374,12 +391,31 @@ data class ChatMessage(
                 val done = messages.any {
                     it.messageType == published &&
                         it.isUserMessage &&
-                        it.createdAt >= request.createdAt
+                        it.isAbout(request)
                 }
 
                 request.id.takeIf { done }
             }
             .toSet()
+
+        /**
+         * Whether this line is part of the same piece of business as [request].
+         *
+         * A signing line says which session it belongs to, and that answer is
+         * exact: two sessions running at once are two separate decisions, and
+         * one of them ending says nothing about the other.
+         *
+         * Everything else falls back to the clock, which is what the transcript
+         * always used. It is right for a ceremony -- a room runs one at a time --
+         * and it is what a line written before [frostSigningSessionId] existed
+         * has to be read by.
+         */
+        private fun ChatMessage.isAbout(request: ChatMessage): Boolean =
+            if (frostSigningSessionId != null && request.frostSigningSessionId != null) {
+                frostSigningSessionId == request.frostSigningSessionId
+            } else {
+                createdAt >= request.createdAt
+            }
 
         /**
          * The signing requests that are no longer open, by row id.
@@ -394,7 +430,7 @@ data class ChatMessage(
             .filter { request ->
                 request.messageType in FROST_REQUEST_TYPES &&
                     messages.any {
-                        it.messageType in FROST_SETTLEMENTS && it.createdAt >= request.createdAt
+                        it.messageType in FROST_SETTLEMENTS && it.isAbout(request)
                     }
             }
             .map { it.id }

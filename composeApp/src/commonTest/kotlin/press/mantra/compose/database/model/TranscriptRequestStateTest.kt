@@ -10,8 +10,12 @@ import kotlin.time.Instant
  * The transcript renders a request with a tint and a "Review" affordance, and
  * that is a promise: tapping it leads to a decision still there to be made.
  * Keeping the promise means knowing when the decision has gone, and the rows are
- * all there is to know it from -- a line rendered days later has no session to
- * ask, and the room may have signed several things since.
+ * all there is to know it from -- a line rendered days later has no session
+ * loaded, and the room may have signed several things since.
+ *
+ * A signing line says which session it belongs to, so those are read exactly. A
+ * ceremony line, and any line written before that column existed, is read by the
+ * clock, which is right for the one ritual a room runs at a time.
  *
  * Two ways for a request to be over, and they are not the same. Answering it
  * leaves a line of the reader's own and earns the tick. A session ending
@@ -25,11 +29,12 @@ class TranscriptRequestStateTest {
 
     private var lastId = 0L
 
-    /** One transcript row, with only the four fields either rule reads. */
+    /** One transcript row, with only the five fields either rule reads. */
     private fun line(
         type: String,
         at: Long,
-        sender: String = user
+        sender: String = user,
+        session: String? = null
     ) = ChatMessage(
         id = ++lastId,
         senderPublicKey = sender,
@@ -40,6 +45,7 @@ class TranscriptRequestStateTest {
         chatRoomId = "room",
         content = "",
         messageType = type,
+        frostSigningSessionId = session,
         createdAt = Instant.fromEpochSeconds(at)
     )
 
@@ -102,6 +108,54 @@ class TranscriptRequestStateTest {
         val transcript = listOf(line(ChatMessage.TYPE_FROST_COMPLETE, at = 9, sender = other), request)
 
         assertEquals(emptySet(), ChatMessage.settledRequests(transcript))
+    }
+
+    @Test
+    fun `a nonce answers its own session's request and not the other's`() {
+        // The case this column exists for. A chapter and the translation that
+        // depends on it are proposed as two sessions at once, so the transcript
+        // holds two open requests, and answering one leaves the other asking.
+        val chapter = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10, session = "chapter")
+        val translation = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 11, session = "translation")
+
+        val transcript = listOf(
+            chapter,
+            translation,
+            line(ChatMessage.TYPE_FROST_NONCE, at = 12, session = "chapter")
+        )
+
+        assertEquals(setOf(chapter.id), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.settledRequests(transcript))
+    }
+
+    @Test
+    fun `one session finishing settles nothing in the other`() {
+        // Same two proposals, ended the other way: a quorum signs the chapter
+        // without this member. Their translation request is untouched by it --
+        // the group is still waiting on them for that one.
+        val chapter = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10, session = "chapter")
+        val translation = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 11, session = "translation")
+
+        val transcript = listOf(
+            chapter,
+            translation,
+            line(ChatMessage.TYPE_FROST_COMPLETE, at = 12, sender = other, session = "chapter")
+        )
+
+        assertEquals(setOf(chapter.id), ChatMessage.settledRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+    }
+
+    @Test
+    fun `a line that names no session is still read by the clock`() {
+        // Rows written before the column existed carry null, and there is nothing
+        // else to read them by. Rooms that old could only sign one thing at a
+        // time, so the clock is not a guess there -- it is the whole truth.
+        val request = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10, session = "chapter")
+
+        val transcript = listOf(request, line(ChatMessage.TYPE_FROST_NONCE, at = 11))
+
+        assertEquals(setOf(request.id), ChatMessage.answeredRequests(transcript))
     }
 
     @Test

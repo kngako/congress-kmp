@@ -15,6 +15,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
+import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
@@ -334,6 +335,41 @@ class TranslationBatchProposalJvmTest {
         }
         assertEquals(translationIds, scaffolded.map { it.translationArtifactVersionId() })
         assertTrue(scaffolded.all { it.chapterId() == chapter.id })
+    }
+
+    @Test
+    fun `each session's transcript lines name it, and never the other`() = runBlocking {
+        openDevice()
+
+        val chapterSession = proposeChapter(paragraphs = 2)
+        val chapter = itemEvents(chapterSession.id).first()
+        val scaffoldSession = proposeScaffolding(
+            chapter,
+            index = 0,
+            translationIds = listOf("1".repeat(64))
+        )
+
+        val lines = db.chatMessageDao().getChatMessagesByChatRoomId(roomId)
+            .map { it.chatMessage }
+            .filter { it.messageType in ChatMessage.FROST_TYPES }
+
+        // Both sessions announce themselves and both publish this device's nonce,
+        // so the transcript holds one session's lines interleaved with the other's
+        // -- and every line says which of the two it belongs to.
+        val bySession = lines.groupBy { it.frostSigningSessionId }
+
+        assertEquals(setOf(chapterSession.id, scaffoldSession.id), bySession.keys)
+        assertTrue(bySession.values.all { it.isNotEmpty() })
+
+        // Which is what the transcript's rules are read through. Nothing else on
+        // these rows can tell them apart: the two sessions are running at the same
+        // time and write the same types, so before the sessions were on the rows a
+        // line of one was read as evidence about the other -- and the reader's
+        // second proposal lost its "Review" the moment the first was answered.
+        assertTrue(
+            ChatMessage.answeredRequests(lines).isEmpty(),
+            "a proposer is never asked to approve their own proposal"
+        )
     }
 
     @Test

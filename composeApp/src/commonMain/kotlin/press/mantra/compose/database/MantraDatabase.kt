@@ -174,7 +174,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 10,
+    version = 11,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -216,12 +216,19 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // before it read back null, meaning the untweaked threshold key -- which
         // is what they were signing as, so one caught mid-flight finishes the way
         // it began rather than switching keys between two of its own rounds.
-        AutoMigration(from = 8, to = 9)
+        AutoMigration(from = 8, to = 9),
         // v10 moves FrostSigningSession's five per-event columns onto the new
         // FrostSigningItem table, so one session can sign a batch. It copies
         // before it drops, which no AutoMigration can express -- see
         // MIGRATION_9_10, and the note there on why an in-flight session losing
         // its nonce seed would be worse than losing the session.
+        //
+        // v11 adds the nullable ChatMessage.frostSigningSessionId, which says
+        // which signing session a transcript line is about. Lines written before
+        // it read back null and are read by the clock, the way they always were:
+        // a room that could only propose one thing at a time cannot have written
+        // two sessions' lines into the same stretch of transcript.
+        AutoMigration(from = 10, to = 11)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

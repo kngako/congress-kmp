@@ -1628,6 +1628,11 @@ object FrostSigningManager {
      * Written once by construction rather than de-duplication: every caller checks
      * before it writes, because [ChatMessage] has no key to make a second insert a
      * no-op.
+     *
+     * Every line names its session. A room signs repeatedly and can have two
+     * sessions open at once, so which one a line is about is the difference
+     * between a request that is still asking and one that has been answered --
+     * see [ChatMessage.frostSigningSessionId].
      */
     private suspend fun announce(
         database: MantraDatabase,
@@ -1645,7 +1650,8 @@ object FrostSigningManager {
                 marmotInnerEventId = null,
                 chatRoomId = session.chatRoomId,
                 content = content,
-                messageType = messageType
+                messageType = messageType,
+                frostSigningSessionId = session.id
             )
         )
     }
