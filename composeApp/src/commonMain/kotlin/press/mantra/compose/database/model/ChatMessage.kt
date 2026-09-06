@@ -2,6 +2,7 @@ package press.mantra.compose.database.model
 
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.experimental.nip82SoftwareApps.application.name
 import press.mantra.compose.database.MantraDatabase
@@ -69,6 +70,11 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
     ],
+    // The chat list reads the newest line of every room the user is in, once per
+    // room, and re-reads all of them each time a message lands anywhere. Without
+    // this that is a scan of every message this device holds, per room, per
+    // arrival -- work that grows with the whole history rather than with the room.
+    indices = [Index("chatRoomId")],
 )
 data class ChatMessage(
     @PrimaryKey(autoGenerate = true)

@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 14,
+    version = 15,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -255,6 +255,12 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // meanings would have met. Room can rename a column and cannot rewrite the
         // rows in the same breath, so this is a manual migration passed to the
         // builder rather than an entry here. See MIGRATION_13_14.
+        //
+        // v15 adds an index on ChatMessage.chatRoomId. No column changes and no
+        // rows move -- the chat list now looks up each room's newest line, and
+        // without the index that lookup reads every message on the device. Room
+        // creates an index on its own.
+        AutoMigration(from = 14, to = 15),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
