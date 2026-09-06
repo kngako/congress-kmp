@@ -8,6 +8,7 @@ import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * An event a group is being asked to sign, said in words.
@@ -93,6 +94,23 @@ object ProposedEvent {
                 // off, so there is nothing in it to read -- only where in the work
                 // it sits. Counted from one, the way the chapter list reads.
                 chapter.index()?.let { "Chapter ${it + 1}" } ?: "Position unknown"
+            }
+        )
+
+        TranslationChunkEvent.KIND -> Summary(
+            label = "Translated passage",
+            detail = TranslationChunkEvent(
+                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+            ).let { chunk ->
+                // The translation itself is the whole of what is being decided --
+                // a member signing this is agreeing that these words say what the
+                // original said -- so it is the detail rather than a count of it.
+                // Where in the chapter it sits comes first, since that is what
+                // says which passage to read it against.
+                listOfNotNull(
+                    chunk.index()?.let { "Passage ${it + 1}" },
+                    event.content
+                ).joinToString(" · ")
             }
         )
 

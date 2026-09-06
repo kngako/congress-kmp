@@ -991,14 +991,21 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
-                onNavigateToRoute = { actionRoute ->
-                    // Replace this editor and the stale chapter table beneath it so
-                    // we land on a freshly-loaded table reflecting the saved translation.
-                    navController.navigate(route = actionRoute) {
-                        popUpTo<TranslationChapterRoute> {
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                    // Replace this editor so back returns to the chapter table
+                    // rather than to a form whose proposal has already gone out.
+                    // The table itself is left alone: nothing is translated until
+                    // the group signs, so there is nothing new for it to show.
+                    navController.navigate(route = signingRoute) {
+                        popUpTo<TranslateChunkRoute> {
                             inclusive = true
                         }
                     }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(route = actionRoute)
                 },
                 onNavigateBack = {
                     navController.popBackStack()
