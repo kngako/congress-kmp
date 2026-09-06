@@ -125,33 +125,37 @@ object GroupKeyStateEvent {
             .takeIf { it.length == 66 && it.all { char -> char.isDigit() || char in 'a'..'f' || char in 'A'..'F' } }
 
     /**
-     * Whether the room derived from [thresholdPublicKey] at [path] actually
-     * signed [event].
+     * Whether the room with id [chatRoomId] signed [event].
      *
-     * Three things, and all three are needed. The author has to be the key that
-     * derivation reaches, or a real signature by some other group -- or by the
-     * same group in another of its rooms -- would pass. The id has to be the
-     * hash of the fields it is sitting next to, or the signature covers a
-     * message that is not this event and the fields could then say anything. And
-     * the signature has to verify.
+     * Three things, and all three are needed. The author has to be the room, or
+     * a real signature by some other group -- or by the same group in another of
+     * its rooms -- would pass. The id has to be the hash of the fields it is
+     * sitting next to, or the signature covers a message that is not this event
+     * and the fields could then say anything. And the signature has to verify.
      *
-     * Note what is being checked against what: the key in the *content*, walked
-     * to the path in the *tags*, is what has to have signed. Since that walk is
-     * also the room's id, the author of a state that passes is the room it
-     * belongs to -- so a state signed by one group about another group's key
-     * fails here, which is the point. Only a room may say what it signs with.
+     * ### Why a room id is enough
+     *
+     * A room's id *is* the group's threshold key derived at the room's path --
+     * see `shared-key-derivation.md`, and `GroupKeyState.verifies` and
+     * `FrostSigningManager.signingPath`, both of which hold that invariant from
+     * their own ends. So the key a signature has to verify against is not looked
+     * up; it is the id of the room the event was found in.
+     *
+     * That is what makes a group's signature checkable by a member holding
+     * nothing else. No `GroupKeyState` row, no threshold key, no derivation path,
+     * no ceremony -- which is exactly the position a member added after the
+     * ceremony is in, and the reason `docs/member-archive.md` can hand them
+     * history without asking them to trust whoever sent it.
      *
      * Everything is caught, because every input is off the wire: a pubkey that
      * is not a point, a signature that is not 64 bytes, hex that is not hex.
      * All of them mean the same thing here, which is no.
      */
-    fun isSignedByGroup(
+    fun isSignedByRoom(
         event: Event,
-        thresholdPublicKey: HexKey,
-        path: List<Long>
+        chatRoomId: HexKey
     ): Boolean = runCatching {
-        val author = SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path)
-        if (!event.pubKey.equals(author, ignoreCase = true)) return false
+        if (!event.pubKey.equals(chatRoomId, ignoreCase = true)) return false
 
         val hashes = EventHasher.hashIdCheck(
             id = event.id,
@@ -168,5 +172,28 @@ object GroupKeyStateEvent {
             hash = event.id.hexToByteArray(),
             pubKey = event.pubKey.hexToByteArray()
         )
+    }.getOrDefault(false)
+
+    /**
+     * Whether the room derived from [thresholdPublicKey] at [path] actually
+     * signed [event].
+     *
+     * Note what is being checked against what: the key in the *content*, walked
+     * to the path in the *tags*, is what has to have signed. Since that walk is
+     * also the room's id, the author of a state that passes is the room it
+     * belongs to -- so a state signed by one group about another group's key
+     * fails here, which is the point. Only a room may say what it signs with.
+     *
+     * The walk is the only thing this adds to [isSignedByRoom], and it is inside
+     * the catch for the same reason everything else is: [thresholdPublicKey]
+     * comes off the wire, and a key that is not a point is a no rather than a
+     * throw.
+     */
+    fun isSignedByGroup(
+        event: Event,
+        thresholdPublicKey: HexKey,
+        path: List<Long>
+    ): Boolean = runCatching {
+        isSignedByRoom(event, SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path))
     }.getOrDefault(false)
 }

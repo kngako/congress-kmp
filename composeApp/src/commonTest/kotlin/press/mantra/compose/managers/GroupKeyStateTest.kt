@@ -23,6 +23,9 @@ import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
 
 /**
  * What a room's key state is allowed to convince a member of.
@@ -510,5 +513,201 @@ class GroupKeyStateTest {
         )
 
         assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signed))
+    }
+
+    // ---- The verifier on its own -----------------------------------------
+    //
+    // `isSignedByGroup` is the caller that knows a threshold key and a path.
+    // `isSignedByRoom` is the same three checks with the walk already done, and
+    // it is what a member holding neither has to work from -- see
+    // docs/member-archive.md. What these pin down is that a room id alone is
+    // enough, and that it is enough for any kind rather than only a key state.
+
+    /** An event of [kind] authored and signed by [author]'s room at [path]. */
+    private fun signedByRoom(
+        kind: Int = DialectEvent.KIND,
+        content: String = "isiZulu",
+        tags: Array<Array<String>> = arrayOf(arrayOf("name", "isiZulu")),
+        createdAt: Long = 1_700_000_500,
+        author: KeyMaterial = keyMaterial
+    ): Event {
+        val groupPubKey = identityOf(author).hex
+        val id = EventHasher.hashId(
+            pubKey = groupPubKey,
+            createdAt = createdAt,
+            kind = kind,
+            tags = tags,
+            content = content
+        )
+
+        return Event(
+            id = id,
+            pubKey = groupPubKey,
+            createdAt = createdAt,
+            kind = kind,
+            tags = tags,
+            content = content,
+            sig = groupSignature(author, id)
+        )
+    }
+
+    @Test
+    fun `a room's id is the only key its signature verifies against`() {
+        val signed = signedByRoom()
+
+        assertTrue(GroupKeyStateEvent.isSignedByRoom(signed, chatRoomId))
+
+        // The same group and a real quorum, but another of its rooms. A group
+        // signature is evidence about one room only, which is what stops work
+        // signed in one room being applied in another.
+        assertFalse(
+            GroupKeyStateEvent.isSignedByRoom(
+                signed,
+                SharedKeyDerivation.marmotGroupId(thresholdPublicKey, listOf(9420L, 0L, 1L))
+            )
+        )
+
+        // And another group entirely.
+        assertFalse(
+            GroupKeyStateEvent.isSignedByRoom(signed, SharedKeyDerivation.marmotGroupId(otherKey, path))
+        )
+    }
+
+    @Test
+    fun `the verifier does not care what kind it is looking at`() {
+        // The point of splitting it out: an archive carries documents rather than
+        // key states, and none of the three checks knows the difference.
+        //
+        // Note the last one. A GroupKeyStateEvent signed by the room passes here
+        // exactly as a dialect does, which is why the archive needs an allowlist
+        // of kinds on top of this and cannot treat "the group signed it" as
+        // permission to apply it.
+        listOf(
+            DialectEvent.KIND,
+            ArtifactEvent.KIND,
+            ChapterEvent.KIND,
+            GroupKeyStateEvent.KIND
+        ).forEach { kind ->
+            assertTrue(
+                GroupKeyStateEvent.isSignedByRoom(signedByRoom(kind = kind), chatRoomId),
+                "kind $kind"
+            )
+        }
+    }
+
+    @Test
+    fun `a rumor nobody signed is not a group signature`() {
+        // Every nip30303 event on the wire today is a rumor: the signature is
+        // empty and the author is the member who sent it, because what vouches
+        // for it is the MLS frame. Neither half survives this check, which is
+        // what makes "the group signed it" mean something narrower than "it
+        // arrived from the group".
+        val member = PrivateKey(
+            ByteVector32("4c0ffee0000000000000000000000000000000000000000000000000000000d4")
+        )
+        val memberPubKey = XonlyPublicKey(member.publicKey()).value.toHex()
+        val tags = arrayOf(arrayOf("name", "isiZulu"))
+
+        val rumor = Event(
+            id = EventHasher.hashId(
+                pubKey = memberPubKey,
+                createdAt = 1_700_000_500,
+                kind = DialectEvent.KIND,
+                tags = tags,
+                content = "isiZulu"
+            ),
+            pubKey = memberPubKey,
+            createdAt = 1_700_000_500,
+            kind = DialectEvent.KIND,
+            tags = tags,
+            content = "isiZulu",
+            sig = ""
+        )
+
+        assertFalse(GroupKeyStateEvent.isSignedByRoom(rumor, chatRoomId))
+    }
+
+    @Test
+    fun `claiming the room as author proves nothing without the signature`() {
+        // The forgery an archive would otherwise carry: write the room's id into
+        // pubKey -- every member knows it, it is in the h tag of every kind:445
+        // the group has ever sent -- and put anything at all in sig. The author
+        // check and the id check both pass. The signature is the whole feature.
+        val tags = arrayOf(arrayOf("name", "isiZulu"))
+        val forged = Event(
+            id = EventHasher.hashId(
+                pubKey = chatRoomId,
+                createdAt = 1_700_000_500,
+                kind = DialectEvent.KIND,
+                tags = tags,
+                content = "isiZulu"
+            ),
+            pubKey = chatRoomId,
+            createdAt = 1_700_000_500,
+            kind = DialectEvent.KIND,
+            tags = tags,
+            content = "isiZulu",
+            sig = "9".repeat(128)
+        )
+
+        assertFalse(GroupKeyStateEvent.isSignedByRoom(forged, chatRoomId))
+    }
+
+    @Test
+    fun `an event edited after signing fails on the id, not on the signature`() {
+        val signed = signedByRoom()
+
+        val tampered = Event(
+            id = signed.id,
+            pubKey = signed.pubKey,
+            createdAt = signed.createdAt,
+            kind = signed.kind,
+            tags = arrayOf(arrayOf("name", "seSotho")),
+            content = signed.content,
+            sig = signed.sig
+        )
+
+        assertFalse(GroupKeyStateEvent.isSignedByRoom(tampered, chatRoomId))
+        // The signature over the original id is still perfectly good, which is
+        // why the id check is not redundant with it: without it, the fields could
+        // say anything and the signature would still verify against the id they
+        // no longer hash to.
+        assertTrue(GroupKeyStateEvent.isSignedByRoom(signed, chatRoomId))
+    }
+
+    @Test
+    fun `malformed input is a no rather than a throw`() {
+        // Everything here arrives off the wire inside somebody else's archive, so
+        // the failure mode has to be a verdict. A throw would take down the whole
+        // inbound transaction the page is being applied in.
+        val signed = signedByRoom()
+
+        assertFalse(GroupKeyStateEvent.isSignedByRoom(signed, ""))
+        assertFalse(GroupKeyStateEvent.isSignedByRoom(signed, "not hex"))
+        assertFalse(
+            GroupKeyStateEvent.isSignedByRoom(
+                Event(
+                    id = signed.id,
+                    pubKey = signed.pubKey,
+                    createdAt = signed.createdAt,
+                    kind = signed.kind,
+                    tags = signed.tags,
+                    content = signed.content,
+                    sig = "beef"
+                ),
+                chatRoomId
+            )
+        )
+    }
+
+    @Test
+    fun `a threshold key that is not a point is a no rather than a throw`() {
+        // The derivation walk moved when isSignedByRoom was split off, and it kept
+        // a catch of its own. Without one, a malformed key in a state's content
+        // stops being a refused state and becomes an exception in the middle of
+        // the inbound path.
+        assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), "z".repeat(66), path))
+        assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), "", path))
+        assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), thresholdPublicKey, emptyList()))
     }
 }
