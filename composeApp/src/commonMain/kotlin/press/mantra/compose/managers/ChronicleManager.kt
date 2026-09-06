@@ -15,19 +15,19 @@ import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.extensions.toHex
 import kotlin.time.Clock
 import kotlin.time.Instant
-import press.mantra.compose.nostr.archive.ArchiveEvent
-import press.mantra.compose.nostr.archive.ArchiveRequestEvent
+import press.mantra.compose.nostr.chronicle.ChronicleEvent
+import press.mantra.compose.nostr.chronicle.ChronicleRequestEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 
 /**
  * Building the group's signed record into pages a member who lacks it can apply.
  *
- * See docs/member-archive.md. The short of it: a member added after the work was
+ * See docs/member-chronicle.md. The short of it: a member added after the work was
  * done has none of it and never will, because a group-signed event is applied
  * locally by each device that took part and never goes on the wire. This is how
  * it gets to them.
  *
- * ### The events are the archive, and the rows are the fallback
+ * ### The events are the chronicle, and the rows are the fallback
  *
  * `GroupSignedEvent` holds what the group signed, as it signed it, so
  * [signedEventsOf] reads it first: no rebuild, no round-trip risk, and nothing
@@ -39,7 +39,7 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  * A room whose work predates that table has no events on file, so the rebuild
  * stays as the fallback for exactly what the table is missing, keyed by id.
  * Every payload it produces stands or falls on being byte-identical to what was
- * signed; `ArchiveRoundTripTest` is what says it is, per kind, against a real
+ * signed; `ChronicleRoundTripTest` is what says it is, per kind, against a real
  * quorum, and it found two faults in the artifact's rebuild the first time it
  * ran -- both of which would have shipped payloads that every receiver drops as
  * forgeries without a word. The fallback can go once no install still holds
@@ -48,22 +48,22 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  * **The allowlist does real work on the way out now.** The rebuild could only
  * ever produce document kinds; the table holds everything the group has ever
  * signed, `GroupKeyStateEvent` included -- and every room signs one of those as
- * its first act. So [signedEventsOf] filters on [ArchiveEvent.isArchivable]
+ * its first act. So [signedEventsOf] filters on [ChronicleEvent.isChroniclable]
  * before anything else, which is the same rule [applyPage] applies on the way
- * in. Without it `ArchiveEvent.build` would refuse the page, and a room's whole
- * archive would fail on the one event every room has.
+ * in. Without it `ChronicleEvent.build` would refuse the page, and a room's whole
+ * chronicle would fail on the one event every room has.
  *
  * ### Nothing unverifiable leaves
  *
  * Every rebuilt event is checked with [GroupKeyStateEvent.isSignedByRoom] before
  * it is packed, against the same room id the recipient will check it with. That
  * is not politeness towards the receiver, who checks anyway. It is what keeps an
- * archive honest about its own size: a row that came from a member's rumor
- * cannot be archived, and dropping it here rather than letting the recipient
+ * chronicle honest about its own size: a row that came from a member's rumor
+ * cannot be chronicled, and dropping it here rather than letting the recipient
  * drop it means the page count says what will actually arrive.
  */
-object ArchiveManager {
-    private const val TAG = "ArchiveManager"
+object ChronicleManager {
+    private const val TAG = "ChronicleManager"
 
     private val logger = Logger.withTag(TAG)
 
@@ -81,9 +81,9 @@ object ArchiveManager {
         database: MantraDatabase,
         chatRoomId: String,
         recipient: HexKey,
-        archiveId: String = RandomInstance.bytes(32).toHex(),
+        chronicleId: String = RandomInstance.bytes(32).toHex(),
         createdAt: Long = TimeUtils.now(),
-    ): List<EventTemplate<ArchiveEvent>> {
+    ): List<EventTemplate<ChronicleEvent>> {
         val held = signedEventsOf(database, chatRoomId)
 
         // One rule over both sources: nothing leaves that the recipient could
@@ -97,25 +97,25 @@ object ArchiveManager {
         if (verified.size != held.size) {
             logger.d(
                 "Leaving ${held.size - verified.size} of ${held.size} event(s) out of " +
-                    "$chatRoomId's archive: nothing verifiably signed by the room"
+                    "$chatRoomId's chronicle: nothing verifiably signed by the room"
             )
         }
 
-        val pages = paginate(ArchiveEvent.inApplyOrder(verified))
+        val pages = paginate(ChronicleEvent.inApplyOrder(verified))
         if (pages.isEmpty()) {
-            logger.i("Nothing signed to archive for room $chatRoomId")
+            logger.i("Nothing signed to chronicle for room $chatRoomId")
             return emptyList()
         }
 
         logger.i(
-            "Archiving ${verified.size} event(s) for $chatRoomId as $archiveId, " +
+            "Chronicling ${verified.size} event(s) for $chatRoomId as $chronicleId, " +
                 "${pages.size} page(s) for ${recipient.take(8)}"
         )
 
         return pages.mapIndexed { index, payloads ->
-            ArchiveEvent.build(
+            ChronicleEvent.build(
                 payloads = payloads,
-                archiveId = archiveId,
+                chronicleId = chronicleId,
                 index = index,
                 count = pages.size,
                 recipient = recipient,
@@ -154,7 +154,7 @@ object ArchiveManager {
         userPublicKey: HexKey,
     ): Boolean {
         val chatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom ?: return false
-        if (chatRoom.archiveRequestedAt != null) return false
+        if (chatRoom.chronicleRequestedAt != null) return false
 
         val holdsWork = database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId).isNotEmpty() ||
             database.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).isNotEmpty()
@@ -165,18 +165,18 @@ object ArchiveManager {
             database = database,
             chatRoomId = chatRoomId,
             userPublicKey = userPublicKey,
-            kind = ArchiveRequestEvent.KIND,
-            tags = ArchiveRequestEvent.build().tags,
+            kind = ChronicleRequestEvent.KIND,
+            tags = ChronicleRequestEvent.build().tags,
             content = "",
         )
 
-        database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = Clock.System.now()))
+        database.chatRoomDao().upsert(chatRoom.copy(chronicleRequestedAt = Clock.System.now()))
 
         announce(
             database = database,
             chatRoomId = chatRoomId,
             userPublicKey = userPublicKey,
-            messageType = ChatMessage.TYPE_ARCHIVE_REQUESTED,
+            messageType = ChatMessage.TYPE_CHRONICLE_REQUESTED,
             content = "Asked this group for its signed work",
         )
 
@@ -188,7 +188,7 @@ object ArchiveManager {
     /**
      * Send [recipient] everything this device can prove about [chatRoomId].
      *
-     * Both ways an archive goes out are this one call: answering a request, and
+     * Both ways a chronicle goes out are this one call: answering a request, and
      * the push behind a Welcome. Named for what it does rather than for either
      * occasion, because the two differ only in who decided.
      *
@@ -199,7 +199,7 @@ object ArchiveManager {
      * a correctness gap to close first.
      *
      * A device with nothing signed sends nothing. Silence is the honest reply
-     * from a member who is themselves still catching up, and an empty archive
+     * from a member who is themselves still catching up, and an empty chronicle
      * would look like an answer.
      */
     suspend fun sendTo(
@@ -236,11 +236,11 @@ object ArchiveManager {
             database = database,
             chatRoomId = chatRoomId,
             userPublicKey = userPublicKey,
-            messageType = ChatMessage.TYPE_ARCHIVE_SENT,
+            messageType = ChatMessage.TYPE_CHRONICLE_SENT,
             content = "Sent this group's signed work to $name",
         )
 
-        logger.i("Sending ${recipient.take(8)} ${pages.size} archive page(s) for $chatRoomId")
+        logger.i("Sending ${recipient.take(8)} ${pages.size} chronicle page(s) for $chatRoomId")
 
         return pages.size
     }
@@ -249,12 +249,12 @@ object ArchiveManager {
      * One line in the room's transcript.
      *
      * Written by the device it happened on, for itself. None of these travels --
-     * an archive is not an event in the group's life, it is one member being
+     * a chronicle is not an event in the group's life, it is one member being
      * caught up -- so a member watching from the side sees nothing, correctly.
      *
      * Content is a whole sentence rather than a predicate, so these stay out of
      * the AUTHORED sets and nothing prefixes a name to them. See
-     * [ChatMessage.ARCHIVE_TYPES].
+     * [ChatMessage.CHRONICLE_TYPES].
      */
     private suspend fun announce(
         database: MantraDatabase,
@@ -287,10 +287,10 @@ object ArchiveManager {
      *
      * **No `ChatMessage`.** Broadcast does not depend on one -- it is
      * unconditional in `encryptAndSendMarmotInnerEvent`, which is what let the
-     * signing sessions travel with no transcript line -- and an archive that
+     * signing sessions travel with no transcript line -- and a chronicle that
      * filed one per page would put a row of envelopes in the room's history. One
-     * line per archive is right, and it is not writable from here, because the
-     * pages of an archive are indistinguishable from each other at this point.
+     * line per chronicle is right, and it is not writable from here, because the
+     * pages of a chronicle are indistinguishable from each other at this point.
      */
     private suspend fun queue(
         database: MantraDatabase,
@@ -343,7 +343,7 @@ object ArchiveManager {
     }
 
     /**
-     * Take delivery of an archive page for [userPublicKey].
+     * Take delivery of a chronicle page for [userPublicKey].
      *
      * The page is already on disk by the time this runs -- the inbound path
      * stores every inner event it decrypts before dispatching on kind -- so this
@@ -354,7 +354,7 @@ object ArchiveManager {
      * **A device that is not the named recipient does nothing.** The page is an
      * ordinary group message and it can read it; it has no reason to. It already
      * holds the work, and re-applying would rewrite every one of its rows to
-     * point at an archive page rather than at the event that introduced it. That
+     * point at a chronicle page rather than at the event that introduced it. That
      * is also what keeps the sweep bounded: only the member being caught up ever
      * builds the list.
      */
@@ -364,7 +364,7 @@ object ArchiveManager {
         userPublicKey: HexKey,
         page: Event,
     ): Outcome {
-        val recipient = ArchiveEvent(
+        val recipient = ChronicleEvent(
             id = page.id,
             pubKey = page.pubKey,
             createdAt = page.createdAt,
@@ -374,7 +374,7 @@ object ArchiveManager {
         ).recipient()
 
         if (!recipient.equals(userPublicKey, ignoreCase = true)) {
-            logger.d("Archive page ${page.id.take(8)} is for ${recipient?.take(8)}; not applying")
+            logger.d("Chronicle page ${page.id.take(8)} is for ${recipient?.take(8)}; not applying")
             return Outcome()
         }
 
@@ -382,7 +382,7 @@ object ArchiveManager {
     }
 
     /**
-     * Apply every archive page this room holds for [userPublicKey], repeatedly,
+     * Apply every chronicle page this room holds for [userPublicKey], repeatedly,
      * until a pass stops making progress.
      *
      * Pages arrive over relays in no order, so page 3 can land before page 2 and
@@ -398,8 +398,8 @@ object ArchiveManager {
      * write here is an upsert keyed on the event id, so "applied something" is
      * true on every pass forever and would not terminate. A pass that fails fewer
      * payloads than the last one learned something; a pass that does not is as
-     * far as this archive gets, and the rest is a hole to be filled by another
-     * page or another archive.
+     * far as this chronicle gets, and the rest is a hole to be filled by another
+     * page or another chronicle.
      *
      * **The answer is the last pass, not the sum of them.** Accumulating would
      * count a payload once per pass it survived and report failures the next pass
@@ -413,7 +413,7 @@ object ArchiveManager {
         userPublicKey: HexKey,
     ): Outcome {
         val pages = database.marmotInnerEventDao()
-            .getByChatRoomAndKinds(chatRoomId, listOf(ArchiveEvent.KIND))
+            .getByChatRoomAndKinds(chatRoomId, listOf(ChronicleEvent.KIND))
             .filter { addressedTo(it, userPublicKey) }
 
         if (pages.isEmpty()) return Outcome()
@@ -439,22 +439,22 @@ object ArchiveManager {
         }
 
         logger.i(
-            "Swept ${pages.size} archive page(s) for $chatRoomId: " +
+            "Swept ${pages.size} chronicle page(s) for $chatRoomId: " +
                 "${pass.applied} applied, ${pass.skipped} skipped, ${pass.failed} left"
         )
 
         // An answer arrived, so the room may ask again if it turns out to be a
-        // partial one. Cleared on anything applied rather than on the archive
+        // partial one. Cleared on anything applied rather than on the chronicle
         // reporting itself complete: a page count is the sender's claim about the
         // transfer, not about the group's record, and a member who left work out
         // would otherwise have the last word.
         if (pass.applied > 0) {
             database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.let { chatRoom ->
-                if (chatRoom.archiveRequestedAt != null) {
-                    database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = null))
+                if (chatRoom.chronicleRequestedAt != null) {
+                    database.chatRoomDao().upsert(chatRoom.copy(chronicleRequestedAt = null))
 
                     // One line per answered request, which is as close to one per
-                    // archive as this can get: the pages of an archive are not
+                    // chronicle as this can get: the pages of a chronicle are not
                     // distinguishable from each other here, and clearing the stamp
                     // is exactly the moment a catch-up stops being pending.
                     //
@@ -466,7 +466,7 @@ object ArchiveManager {
                         database = database,
                         chatRoomId = chatRoomId,
                         userPublicKey = userPublicKey,
-                        messageType = ChatMessage.TYPE_ARCHIVE_RECEIVED,
+                        messageType = ChatMessage.TYPE_CHRONICLE_RECEIVED,
                         content = "Caught up on ${pass.applied} item(s) of this group's signed work",
                     )
                 }
@@ -477,7 +477,7 @@ object ArchiveManager {
     }
 
     private fun addressedTo(stored: MarmotInnerEvent, userPublicKey: HexKey): Boolean =
-        ArchiveEvent(
+        ChronicleEvent(
             id = stored.id,
             pubKey = stored.publicKey,
             createdAt = stored.createdAt.epochSeconds,
@@ -494,42 +494,42 @@ object ArchiveManager {
      * for a forged direct message, and for the same reason: this runs inside the
      * inbound transaction, and one bad event must not take the room down with it.
      * Refusing the whole page would also let a single forgery deny an entire
-     * archive.
+     * chronicle.
      *
      * The page's own framing is still all-or-nothing; see
-     * [ArchiveEvent.decodePage] for why those two are not in tension.
+     * [ChronicleEvent.decodePage] for why those two are not in tension.
      */
     private suspend fun applyPage(
         database: MantraDatabase,
         chatRoomId: String,
         stored: MarmotInnerEvent,
     ): Outcome {
-        val payloads = ArchiveEvent.decodePage(stored.content)
+        val payloads = ChronicleEvent.decodePage(stored.content)
         if (payloads == null) {
-            logger.w("Archive page ${stored.id.take(8)} does not read as a page; dropping it")
+            logger.w("Chronicle page ${stored.id.take(8)} does not read as a page; dropping it")
             return Outcome()
         }
 
         // Read once for the page rather than per payload: every event in an
-        // archive was signed by the room it is arriving in, so they all share
+        // chronicle was signed by the room it is arriving in, so they all share
         // its path. Null when the recipient has no key state yet -- which is
-        // the normal case for the member an archive exists for, and why
+        // the normal case for the member a chronicle exists for, and why
         // `GroupSignedEvent.derivationPath` is nullable and `record` fills it
         // in later rather than overwriting it with null.
         val derivationPath = GroupKeyStateManager.keyStateFor(database, chatRoomId)?.derivationPath
 
         var outcome = Outcome()
 
-        ArchiveEvent.inApplyOrder(payloads).forEach { payload ->
+        ChronicleEvent.inApplyOrder(payloads).forEach { payload ->
             // The allowlist first, and it is not a formality. Verification admits
             // an event to the apply path on the strength of the group's
             // signature, which makes every kind the group has ever signed
             // replayable by any member at any time -- a GroupKeyStateEvent from
             // an earlier epoch passes the signature check perfectly.
-            if (!ArchiveEvent.isArchivable(payload.kind)) {
+            if (!ChronicleEvent.isChroniclable(payload.kind)) {
                 logger.w(
-                    "Archive page ${stored.id.take(8)} carries kind ${payload.kind}, " +
-                        "which an archive may not deliver; dropping ${payload.id.take(8)}"
+                    "Chronicle page ${stored.id.take(8)} carries kind ${payload.kind}, " +
+                        "which a chronicle may not deliver; dropping ${payload.id.take(8)}"
                 )
                 outcome += Outcome(skipped = 1)
                 return@forEach
@@ -537,7 +537,7 @@ object ArchiveManager {
 
             if (!GroupKeyStateEvent.isSignedByRoom(payload, chatRoomId)) {
                 logger.w(
-                    "Archive page ${stored.id.take(8)} carries ${payload.id.take(8)}, " +
+                    "Chronicle page ${stored.id.take(8)} carries ${payload.id.take(8)}, " +
                         "which room $chatRoomId did not sign; dropping it"
                 )
                 outcome += Outcome(skipped = 1)
@@ -550,7 +550,7 @@ object ArchiveManager {
                 // is one the room signed, which is the same standard
                 // `FrostSigningManager` records its own batches on. Without this
                 // a member who was handed their history would hold the rows and
-                // none of the events, and could never build an archive of their
+                // none of the events, and could never build a chronicle of their
                 // own to hand on.
                 database.groupSignedEventDao().record(
                     GroupSignedEvent.fromEvent(
@@ -564,7 +564,7 @@ object ArchiveManager {
                 // filed. ChatMessage has an autoGenerate primary key, so there is
                 // no id to dedupe on and every applied payload would mint a new
                 // row -- giving the recipient a synthetic transcript dated now,
-                // and another one on every pass of the sweep. The archive
+                // and another one on every pass of the sweep. The chronicle
                 // restores the work; the conversation is forward secret and stays
                 // gone.
                 ChatMessage.applyInnerEvent(
@@ -584,7 +584,7 @@ object ArchiveManager {
                 // in a page which has not arrived yet. Retryable, which is what
                 // the sweep is for, so it is counted rather than logged loudly.
                 logger.d(
-                    "Could not apply ${payload.id.take(8)} from archive page " +
+                    "Could not apply ${payload.id.take(8)} from chronicle page " +
                         "${stored.id.take(8)} yet: ${error.message}"
                 )
                 Outcome(failed = 1)
@@ -595,7 +595,7 @@ object ArchiveManager {
     }
 
     /**
-     * Every archivable event this device holds for the room: the ones the group
+     * Every chroniclable event this device holds for the room: the ones the group
      * signed here or sent here, plus anything only the rows still remember.
      *
      * The record comes first because it is the event rather than a reconstruction
@@ -610,7 +610,7 @@ object ArchiveManager {
      * verify, so the filter in [assemble] drops it either way rather than
      * shipping a payload every receiver reads as a forgery.
      *
-     * Order does not matter at this point; [ArchiveEvent.inApplyOrder] settles it
+     * Order does not matter at this point; [ChronicleEvent.inApplyOrder] settles it
      * afterwards. It is stable within a rank, so a room holding some of its work
      * both ways can order two chapters differently from a member holding one way
      * only. That costs nothing: pages are idempotent and applied payload by
@@ -627,7 +627,7 @@ object ArchiveManager {
             // see the class comment. A key state on file is the room's own, and
             // sending it would be handing every member a validly signed
             // statement about what the room signs with, replayable forever.
-            .filter { ArchiveEvent.isArchivable(it.kind) }
+            .filter { ChronicleEvent.isChroniclable(it.kind) }
             .map { it.toEvent() }
 
         val onFile = recorded.mapTo(mutableSetOf()) { it.id }
@@ -635,7 +635,7 @@ object ArchiveManager {
 
         if (rebuilt.isNotEmpty()) {
             logger.d(
-                "Archiving $chatRoomId: ${recorded.size} event(s) as the group signed them, " +
+                "Chronicling $chatRoomId: ${recorded.size} event(s) as the group signed them, " +
                     "${rebuilt.size} rebuilt from rows that predate the record"
             )
         }
@@ -652,7 +652,7 @@ object ArchiveManager {
      * artifact row -- see `MantraArtifact.toArtifactEvent` -- and the version it
      * went into is one step away here.
      *
-     * Still walked on every archive, and by now it contributes nothing in most
+     * Still walked on every chronicle, and by now it contributes nothing in most
      * rooms: everything signed or applied since `GroupSignedEvent` existed is on
      * file as an event, and [signedEventsOf] discards whatever this rebuilds of
      * it. The walk is a handful of indexed queries against a room's own rows,
@@ -680,7 +680,7 @@ object ArchiveManager {
             // gives it the artifact's own timestamp. The label is still not on the
             // artifact row -- `fromArtifactEvent` drops it -- so this is where it
             // comes back from. An artifact with no such version is one this device
-            // cannot rebuild, which is a gap in the archive rather than a reason to
+            // cannot rebuild, which is a gap in the chronicle rather than a reason to
             // abandon it.
             val versionLabel = versions
                 .firstOrNull { it.createdAt == artifact.createdAt }
@@ -719,7 +719,7 @@ object ArchiveManager {
                                 // is here to be found: retranslating a passage
                                 // changes the text and so the event id, and the
                                 // arm that applies one drops what it replaces. So
-                                // an archive carries a group's current answer to
+                                // a chronicle carries a group's current answer to
                                 // each passage rather than its drafts, which is
                                 // the same thing every other member holds.
                                 database.mantraTranslationChunkDao()
@@ -735,12 +735,12 @@ object ArchiveManager {
      * [events] cut into pages that fit, keeping the order they arrive in.
      *
      * Greedy: fill a page until the next event would cross either cap. Both are
-     * checked because they bind different archives -- a room of one-line dialects
+     * checked because they bind different chronicles -- a room of one-line dialects
      * hits the count first and a room of chapters hits the bytes.
      *
      * An event too large to share a page with anything is given one of its own.
      * One too large for even that is dropped with a log rather than failing the
-     * archive: a chapter nobody can archive is a hole, and a member who gets
+     * chronicle: a chapter nobody can chronicle is a hole, and a member who gets
      * nothing at all is a bigger one.
      */
     private fun paginate(events: List<Event>): List<List<Event>> {
@@ -753,16 +753,16 @@ object ArchiveManager {
             // Plus the comma this event needs if it is not first on its page.
             val size = event.toJson().encodeToByteArray().size + 1
 
-            if (2 + size > ArchiveEvent.MAX_PAGE_BYTES) {
+            if (2 + size > ChronicleEvent.MAX_PAGE_BYTES) {
                 logger.w(
                     "Event ${event.id} is $size bytes and will not fit a " +
-                        "${ArchiveEvent.MAX_PAGE_BYTES}-byte page; leaving it out of the archive"
+                        "${ChronicleEvent.MAX_PAGE_BYTES}-byte page; leaving it out of the chronicle"
                 )
                 return@forEach
             }
 
             val full = page.isNotEmpty() &&
-                (bytes + size > ArchiveEvent.MAX_PAGE_BYTES || page.size >= ArchiveEvent.MAX_PAGE_EVENTS)
+                (bytes + size > ChronicleEvent.MAX_PAGE_BYTES || page.size >= ChronicleEvent.MAX_PAGE_EVENTS)
 
             if (full) {
                 pages.add(page)

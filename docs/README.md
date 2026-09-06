@@ -10,7 +10,7 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [frost-batch-signing.md](./frost-batch-signing.md) | signing several events in one ceremony — why one nonce can never cover two messages, and the phased schema, wire and UI work that follows from it |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
-| [member-archive.md](./member-archive.md) | handing a member added after the work was done the group's signed record — why the events are not on the wire at all, and why the room's id is enough to verify them |
+| [member-chronicle.md](./member-chronicle.md) | handing a member added after the work was done the group's signed record — why the events are not on the wire at all, and why the room's id is enough to verify them |
 | [marmot-direct-messages.md](./marmot-direct-messages.md) | a one-to-one message inside a group as a stock NIP-59 gift wrap — what its MIP-03 carve-out costs, why the sender cannot read their own, and the one query that would broadcast it |
 | [mls-skipped-keys.md](./mls-skipped-keys.md) | why a group event that arrives a moment late is dropped for good, which flows trigger it, the quartz fix, and the partial mitigation in this app |
 | [long-running-sync.md](./long-running-sync.md) | the chat subscriptions that stay open instead of pulling once per screen — why the request queue could not simply hold one, and how the group filter follows the room list |
@@ -23,7 +23,7 @@ report — it is silent, and it looks like every other kind of delivery failure.
 sync note stands alone, and the dead-code inventory reads as a follow-up to it. The
 batch-signing note is a phased plan that has been built: read it after the
 derivation note, whose one rule is the same one it is built around. The member
-archive note is a phased plan that has not been built, and reads as the
+chronicle note is a phased plan that has not been built, and reads as the
 membership note's unanswered half: what a member who joins late can be given,
 and the one thing they cannot. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.

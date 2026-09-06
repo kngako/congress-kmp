@@ -1,4 +1,4 @@
-package press.mantra.compose.nostr.archive
+package press.mantra.compose.nostr.chronicle
 
 import androidx.compose.runtime.Immutable
 import com.vitorpamplona.quartz.nip01Core.core.Event
@@ -11,9 +11,9 @@ import com.vitorpamplona.quartz.nip31Alts.alt
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.serialization.json.jsonArray
 import press.mantra.compose.network.serialization.CommonJson
-import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
-import press.mantra.compose.nostr.archive.tags.ArchivePageTag
-import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
+import press.mantra.compose.nostr.chronicle.tags.ChronicleIdTag
+import press.mantra.compose.nostr.chronicle.tags.ChroniclePageTag
+import press.mantra.compose.nostr.chronicle.tags.ChronicleRecipientTag
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -38,26 +38,26 @@ import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
  *
  * Each payload travels whole, keeping its own id, author and signature, so the
  * receiver checks it rather than believing it -- see [isSignedByRoom] on
- * `GroupKeyStateEvent`. The sender of an archive is therefore not trusted, which
+ * `GroupKeyStateEvent`. The sender of a chronicle is therefore not trusted, which
  * is what lets any member answer.
  *
- * See docs/member-archive.md for the whole design, including the two things this
+ * See docs/member-chronicle.md for the whole design, including the two things this
  * deliberately does not do: it never carries the chat, and it cannot make its
  * recipient able to *sign* anything.
  *
  * ### Why not a [press.mantra.compose.nostr.nip30303.SubmissionEvent] each
  *
  * The envelope fits and the meaning does not. A submission is an *act* -- this
- * member is putting this event in front of this group -- and an archive asserts
+ * member is putting this event in front of this group -- and a chronicle asserts
  * nothing; it re-delivers what the group already agreed. On one kind a
  * four-hundred-event backfill is indistinguishable from four hundred new
  * submissions and every device has to guess which it is looking at. It would
  * also be one inner event and one kind:445 per payload, where a page is one, and
  * the submission arm of `ChatMessage.applyInnerEvent` files a chat line per
- * payload, which an archive must not.
+ * payload, which a chronicle must not.
  */
 @Immutable
-class ArchiveEvent(
+class ChronicleEvent(
     id: HexKey,
     pubKey: HexKey,
     createdAt: Long,
@@ -71,19 +71,19 @@ class ArchiveEvent(
      * readable page.
      *
      * Nothing here is verified yet. Parsing says the framing is intact;
-     * `ArchiveManager` is what asks whether the group signed each one, and it
+     * `ChronicleManager` is what asks whether the group signed each one, and it
      * asks per payload rather than per page.
      */
     fun payloads(): List<Event>? = decodePage(content)
 
-    /** Which archive this page belongs to, or null if it names none. */
-    fun archiveId(): String? = tags.firstNotNullOfOrNull(ArchiveIdTag::parse)?.archiveId
+    /** Which chronicle this page belongs to, or null if it names none. */
+    fun chronicleId(): String? = tags.firstNotNullOfOrNull(ChronicleIdTag::parse)?.chronicleId
 
-    /** Where this page sits in that archive, or null if it does not say. */
-    fun page(): ArchivePageTag? = tags.firstNotNullOfOrNull(ArchivePageTag::parse)
+    /** Where this page sits in that chronicle, or null if it does not say. */
+    fun page(): ChroniclePageTag? = tags.firstNotNullOfOrNull(ChroniclePageTag::parse)
 
-    /** Who should act on this page. A hint -- see [ArchiveRecipientTag]. */
-    fun recipient(): HexKey? = tags.firstNotNullOfOrNull(ArchiveRecipientTag::parse)?.pubKey
+    /** Who should act on this page. A hint -- see [ChronicleRecipientTag]. */
+    fun recipient(): HexKey? = tags.firstNotNullOfOrNull(ChronicleRecipientTag::parse)?.pubKey
 
     companion object {
         /**
@@ -97,13 +97,13 @@ class ArchiveEvent(
          * instead, which is "an accident of routing rather than a decision, and
          * the next family added should not rely on it." This is that next family.
          *
-         * It is also the right neighbourhood on the merits. An archive is not a
+         * It is also the right neighbourhood on the merits. A chronicle is not a
          * document kind; it is a statement about the record, which is what a key
          * state is too.
          */
         const val KIND: Kind = 30327
 
-        const val ALT_DESCRIPTION = "Group archive"
+        const val ALT_DESCRIPTION = "Group chronicle"
 
         /**
          * The most JSON one page may carry.
@@ -139,18 +139,18 @@ class ArchiveEvent(
          *
          * Larger than `FrostSigningManager.MAX_BATCH_SIZE`, deliberately: a batch
          * item costs nonce generation, a FROST session and a native sign, where
-         * an archive payload costs a signature verify and an upsert.
+         * a chronicle payload costs a signature verify and an upsert.
          */
         const val MAX_PAGE_EVENTS = 128
 
         /**
-         * The kinds an archive may carry, in the order they have to be applied.
+         * The kinds a chronicle may carry, in the order they have to be applied.
          *
          * One list doing both jobs, because a separate allowlist is one more
          * thing that can disagree with the order it is applied in.
          *
          * **The order is Room's, not nostr's.** Every one of these has a foreign
-         * key on the one before it, so an archive applied out of order is a
+         * key on the one before it, so a chronicle applied out of order is a
          * constraint violation rather than a wrong answer. Kind order is not
          * dependency order and never was -- a translation chapter (30308) hangs
          * off a translation artifact version (30306) which hangs off an artifact
@@ -160,13 +160,13 @@ class ArchiveEvent(
          * path on the strength of the group's signature, which makes every kind
          * the group has ever signed replayable by any member at any time. A
          * `GroupKeyStateEvent` is group-signed and passes verification perfectly,
-         * so an archive carrying an old one is a validly signed statement about
+         * so a chronicle carrying an old one is a validly signed statement about
          * what the room signs with, replayed by whoever kept a copy. Nothing but
          * this list stops it.
          *
          * ### What is missing from it, and why
          *
-         * **Only kinds the group actually signs can be here**, because an archive
+         * **Only kinds the group actually signs can be here**, because a chronicle
          * that cannot be verified is one that has to be believed. Six of the
          * thirteen nip30303 kinds reach a signing session; the rest travel as
          * rumors -- empty signature, member author, vouched for by the MLS frame
@@ -177,7 +177,7 @@ class ArchiveEvent(
          *  - `TranslationEvent` (30311). Nothing builds one; the inbound arm
          *    exists and no producer does.
          *  - The contributor lists (30305, 30307, 30310). `applyInnerEvent` has
-         *    no arm that writes a row for any of them, so archiving them would
+         *    no arm that writes a row for any of them, so chronicling them would
          *    cost bytes and restore nothing.
          *
          * Two kinds were on that list and are not any more, because the app
@@ -186,7 +186,7 @@ class ArchiveEvent(
          * of the batch that carries it. `TranslationChunkEvent` (30309) -- the
          * translated text itself -- used to be submitted as its author's rumor,
          * and is now proposed to the group like everything else. Both are
-         * therefore checkable, and an archive that left them out would hand a new
+         * therefore checkable, and a chronicle that left them out would hand a new
          * member the whole structure and none of the prose.
          */
         private val APPLY_ORDER: List<Kind> = listOf(
@@ -200,23 +200,23 @@ class ArchiveEvent(
             TranslationChunkEvent.KIND,
         )
 
-        /** Every kind an archive may carry. */
-        val ARCHIVABLE_KINDS: Set<Kind> = APPLY_ORDER.toSet()
+        /** Every kind a chronicle may carry. */
+        val CHRONICLABLE_KINDS: Set<Kind> = APPLY_ORDER.toSet()
 
         /**
-         * Where [kind] sits in dependency order, or null if an archive may not
+         * Where [kind] sits in dependency order, or null if a chronicle may not
          * carry it at all.
          */
         fun applyRank(kind: Kind): Int? = APPLY_ORDER.indexOf(kind).takeIf { it >= 0 }
 
-        fun isArchivable(kind: Kind): Boolean = kind in ARCHIVABLE_KINDS
+        fun isChroniclable(kind: Kind): Boolean = kind in CHRONICLABLE_KINDS
 
         /**
          * [payloads] in dependency order, so a page applies front to back.
          *
          * Stable within a rank: two chapters of one version have no order between
          * them and keeping the caller's is one less thing that varies between two
-         * members assembling the same archive.
+         * members assembling the same chronicle.
          */
         fun inApplyOrder(payloads: List<Event>): List<Event> =
             payloads.sortedBy { applyRank(it.kind) ?: Int.MAX_VALUE }
@@ -239,14 +239,14 @@ class ArchiveEvent(
          * payloads one at a time.** They are different questions. A page that
          * will not parse has lost its framing, so nothing in it can be trusted to
          * be what the sender wrote -- and a page silently shortened by one
-         * element would leave a receiver believing it holds a complete archive
+         * element would leave a receiver believing it holds a complete chronicle
          * when the page count says so and the contents do not. A payload whose
          * signature does not verify is a well-framed page containing one bad
          * event, and costing its honest neighbours would let one forged payload
-         * deny an entire archive.
+         * deny an entire chronicle.
          *
          * Both caps are checked here rather than at the call site, because this
-         * is the boundary a remote party's page crosses. An archive is the second
+         * is the boundary a remote party's page crosses. A chronicle is the second
          * place in this protocol where somebody else decides how much work this
          * device does; the first grew a cap on the way in for the same reason.
          */
@@ -263,7 +263,7 @@ class ArchiveEvent(
         }
 
         /**
-         * A page of [payloads], page [index] of [count] in archive [archiveId],
+         * A page of [payloads], page [index] of [count] in chronicle [chronicleId],
          * for [recipient].
          *
          * The caller sorts and pages; this only writes what it is handed. Both
@@ -272,31 +272,31 @@ class ArchiveEvent(
          */
         fun build(
             payloads: List<Event>,
-            archiveId: String,
+            chronicleId: String,
             index: Int,
             count: Int,
             recipient: HexKey,
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArchiveEvent>.() -> Unit = {},
-        ): EventTemplate<ArchiveEvent> {
-            require(payloads.isNotEmpty()) { "An archive page carries at least one event" }
+            initializer: TagArrayBuilder<ChronicleEvent>.() -> Unit = {},
+        ): EventTemplate<ChronicleEvent> {
+            require(payloads.isNotEmpty()) { "A chronicle page carries at least one event" }
             require(payloads.size <= MAX_PAGE_EVENTS) {
-                "An archive page carries at most $MAX_PAGE_EVENTS events, not ${payloads.size}"
+                "A chronicle page carries at most $MAX_PAGE_EVENTS events, not ${payloads.size}"
             }
             payloads.forEach {
-                require(isArchivable(it.kind)) { "An archive may not carry kind ${it.kind}" }
+                require(isChroniclable(it.kind)) { "A chronicle may not carry kind ${it.kind}" }
             }
 
             val content = encodePage(payloads)
             require(content.encodeToByteArray().size <= MAX_PAGE_BYTES) {
-                "An archive page carries at most $MAX_PAGE_BYTES bytes"
+                "A chronicle page carries at most $MAX_PAGE_BYTES bytes"
             }
 
-            return eventTemplate<ArchiveEvent>(KIND, content, createdAt) {
+            return eventTemplate<ChronicleEvent>(KIND, content, createdAt) {
                 alt(ALT_DESCRIPTION)
-                addUnique(ArchiveIdTag.assemble(archiveId))
-                addUnique(ArchivePageTag.assemble(index, count))
-                addUnique(ArchiveRecipientTag.assemble(recipient))
+                addUnique(ChronicleIdTag.assemble(chronicleId))
+                addUnique(ChroniclePageTag.assemble(index, count))
+                addUnique(ChronicleRecipientTag.assemble(recipient))
                 initializer()
             }
         }

@@ -165,7 +165,7 @@ class ChatMessageListViewModel(
      *
      * Opening the room is the trigger because it is the first moment this device
      * is demonstrably in the group's current epoch -- see
-     * docs/member-archive.md. A member added after the work was done has no way
+     * docs/member-chronicle.md. A member added after the work was done has no way
      * to see any of it otherwise: MLS gives them no history, and a group-signed
      * event never travels, so every device derives it or does without.
      *
@@ -414,7 +414,7 @@ class ChatMessageListViewModel(
                                     // Passed as answered and settled because those
                                     // are about requests and this asks nothing --
                                     // which is what keeps it in the quiet tint.
-                                    if (localChatMessage.chatMessage.messageType in ChatMessage.ARCHIVE_TYPES) {
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.CHRONICLE_TYPES) {
                                         RitualNotice(
                                             localChatMessage = localChatMessage,
                                             isAnswered = true,
@@ -741,9 +741,9 @@ private fun RitualNotice(
         ChatMessage.TYPE_FROST_FAILED -> Icons.Default.ErrorOutline
         ChatMessage.TYPE_FROST_APPROVAL_NEEDED -> Icons.Default.Draw
 
-        ChatMessage.TYPE_ARCHIVE_REQUESTED -> Icons.Default.History
-        ChatMessage.TYPE_ARCHIVE_SENT -> Icons.Default.Upload
-        ChatMessage.TYPE_ARCHIVE_RECEIVED -> Icons.Default.Download
+        ChatMessage.TYPE_CHRONICLE_REQUESTED -> Icons.Default.History
+        ChatMessage.TYPE_CHRONICLE_SENT -> Icons.Default.Upload
+        ChatMessage.TYPE_CHRONICLE_RECEIVED -> Icons.Default.Download
 
         else -> Icons.Default.PanTool
     }

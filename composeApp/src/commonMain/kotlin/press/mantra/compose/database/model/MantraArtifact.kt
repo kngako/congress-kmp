@@ -83,8 +83,8 @@ data class MantraArtifact(
      * from the same event.
      *
      * Tag order matches [ArtifactEvent.build] exactly -- alt first -- for the
-     * same reason, and `ArchiveRoundTripTest` is what says so. Both of those were
-     * wrong here until an archive needed to rebuild an artifact and nothing had
+     * same reason, and `ChronicleRoundTripTest` is what says so. Both of those were
+     * wrong here until a chronicle needed to rebuild an artifact and nothing had
      * ever called this.
      */
     fun toArtifactEvent(versionLabel: String): ArtifactEvent {

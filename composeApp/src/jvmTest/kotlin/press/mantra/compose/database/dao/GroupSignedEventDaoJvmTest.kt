@@ -40,7 +40,7 @@ import press.mantra.compose.nostr.nip30303.DialectEvent
  *
  * A fake signature would pass every column assertion here and prove nothing, so
  * the events are signed by an actual t-of-n key derived at the room's own path
- * -- the same construction `ArchiveApplyJvmTest` uses. That is what makes
+ * -- the same construction `ChronicleApplyJvmTest` uses. That is what makes
  * [GroupSignedEvent.verifies] worth asserting: it is answered from the row
  * alone, and it is the only assertion that would notice a column quietly
  * failing to round-trip.
@@ -237,7 +237,7 @@ class GroupSignedEventDaoJvmTest {
     }
 
     @Test
-    fun `an archive arrival does not empty what the session knew`() = runBlocking {
+    fun `a chronicle arrival does not empty what the session knew`() = runBlocking {
         seedRoom()
         db.groupSignedEventDao().record(rowFor())
 

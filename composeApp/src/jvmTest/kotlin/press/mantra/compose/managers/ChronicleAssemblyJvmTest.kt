@@ -29,7 +29,7 @@ import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.toHex
-import press.mantra.compose.nostr.archive.ArchiveEvent
+import press.mantra.compose.nostr.chronicle.ChronicleEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
@@ -42,15 +42,15 @@ import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
- * Assembling a room's archive out of the rows a device actually holds.
+ * Assembling a room's chronicle out of the rows a device actually holds.
  *
  * The seed is the real inbound path -- `ChatMessage.applyInnerEvent`, the same
- * call a finished signing session makes -- so what is archived here is what a
+ * call a finished signing session makes -- so what is chronicled here is what a
  * member's database really contains rather than rows built to suit the test.
  * That matters because the whole risk in this direction is a rebuild that
  * differs from what was signed, and rows assembled by hand would hide it.
  */
-class ArchiveAssemblyJvmTest {
+class ChronicleAssemblyJvmTest {
     private val db: MantraDatabase = getRoomDatabase(Room.inMemoryDatabaseBuilder<MantraDatabase>())
 
     @AfterTest
@@ -229,7 +229,7 @@ class ArchiveAssemblyJvmTest {
         )
 
         // The second item of the artifact's own batch, built the way the batch
-        // builds it. It used to be derived on arrival, which is why the archive
+        // builds it. It used to be derived on arrival, which is why the chronicle
         // once could not carry it: a derived row has no signature to check.
         val version = apply(ArtifactVersionEvent.initialVersionOf(artifact).single())
 
@@ -299,30 +299,30 @@ class ArchiveAssemblyJvmTest {
         )
     }
 
-    private suspend fun archivedPayloads(): List<Event> =
-        ArchiveManager.assemble(db, chatRoomId, newMember)
-            .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+    private suspend fun chronicledPayloads(): List<Event> =
+        ChronicleManager.assemble(db, chatRoomId, newMember)
+            .flatMap { assertNotNull(ChronicleEvent.decodePage(it.content)) }
 
     @Test
-    fun `every payload in an archive is one the room signed`() = runBlocking {
+    fun `every payload in a chronicle is one the room signed`() = runBlocking {
         seedSignedWork()
 
-        val payloads = archivedPayloads()
+        val payloads = chronicledPayloads()
 
-        assertTrue(payloads.isNotEmpty(), "a room with signed work archives something")
+        assertTrue(payloads.isNotEmpty(), "a room with signed work chronicles something")
         payloads.forEach {
             assertTrue(
                 GroupKeyStateEvent.isSignedByRoom(it, chatRoomId),
-                "kind ${it.kind} (${it.id.take(8)}) was archived without a signature the room can be checked for"
+                "kind ${it.kind} (${it.id.take(8)}) was chronicled without a signature the room can be checked for"
             )
         }
     }
 
     @Test
-    fun `an archive holds every kind the group signed, and each of them once`() = runBlocking {
+    fun `a chronicle holds every kind the group signed, and each of them once`() = runBlocking {
         seedSignedWork()
 
-        val byKind = archivedPayloads().groupBy { it.kind }
+        val byKind = chronicledPayloads().groupBy { it.kind }
 
         assertEquals(1, byKind[DialectEvent.KIND]?.size)
         assertEquals(1, byKind[ArtifactEvent.KIND]?.size)
@@ -333,16 +333,16 @@ class ArchiveAssemblyJvmTest {
         assertEquals(1, byKind[TranslationChapterEvent.KIND]?.size)
         assertEquals(1, byKind[TranslationChunkEvent.KIND]?.size)
 
-        assertEquals(ArchiveEvent.ARCHIVABLE_KINDS, byKind.keys)
+        assertEquals(ChronicleEvent.CHRONICLABLE_KINDS, byKind.keys)
     }
 
     @Test
-    fun `an archive is in dependency order across its whole length`() = runBlocking {
+    fun `a chronicle is in dependency order across its whole length`() = runBlocking {
         seedSignedWork()
 
-        val ranks = archivedPayloads().map { assertNotNull(ArchiveEvent.applyRank(it.kind)) }
+        val ranks = chronicledPayloads().map { assertNotNull(ChronicleEvent.applyRank(it.kind)) }
 
-        assertEquals(ranks.sorted(), ranks, "an archive out of order is a foreign key violation")
+        assertEquals(ranks.sorted(), ranks, "a chronicle out of order is a foreign key violation")
     }
 
     @Test
@@ -372,27 +372,27 @@ class ArchiveAssemblyJvmTest {
         )
         assertEquals(
             1,
-            archivedPayloads().count { it.kind == DialectEvent.KIND },
-            "the unsigned dialect should not have been archived"
+            chronicledPayloads().count { it.kind == DialectEvent.KIND },
+            "the unsigned dialect should not have been chronicled"
         )
     }
 
     @Test
-    fun `a room with nothing signed archives nothing, and says so rather than failing`() = runBlocking {
+    fun `a room with nothing signed chronicles nothing, and says so rather than failing`() = runBlocking {
         seedRoom()
 
-        assertEquals(emptyList(), ArchiveManager.assemble(db, chatRoomId, newMember))
+        assertEquals(emptyList(), ChronicleManager.assemble(db, chatRoomId, newMember))
     }
 
     @Test
-    fun `an archive of one page still says it is one of one`() = runBlocking<Unit> {
+    fun `a chronicle of one page still says it is one of one`() = runBlocking<Unit> {
         seedSignedWork()
 
-        val pages = ArchiveManager.assemble(db, chatRoomId, newMember)
+        val pages = ChronicleManager.assemble(db, chatRoomId, newMember)
 
         assertEquals(1, pages.size, "this much work fits one page")
 
-        val page = ArchiveEvent(
+        val page = ChronicleEvent(
             id = "d".repeat(64),
             pubKey = chatRoomId,
             createdAt = pages.single().createdAt,
@@ -404,7 +404,7 @@ class ArchiveAssemblyJvmTest {
         assertEquals(0, page.page()?.index)
         assertEquals(1, page.page()?.count)
         assertEquals(newMember, page.recipient())
-        assertNotNull(page.archiveId())
+        assertNotNull(page.chronicleId())
     }
 
     // ---- Reading from the record rather than rebuilding -------------------
@@ -418,16 +418,16 @@ class ArchiveAssemblyJvmTest {
      * row could have failed to keep.
      */
     @Test
-    fun `an archive carries the group's events as the group signed them`() = runBlocking {
+    fun `a chronicle carries the group's events as the group signed them`() = runBlocking {
         seedSignedWork()
         recordEverythingApplied()
 
-        val payloads = archivedPayloads().associateBy { it.id }
+        val payloads = chronicledPayloads().associateBy { it.id }
 
         assertEquals(
             applied.map { it.id }.toSet(),
             payloads.keys,
-            "everything the group signed here should be in the archive"
+            "everything the group signed here should be in the chronicle"
         )
         applied.forEach { event ->
             assertEquals(
@@ -439,10 +439,10 @@ class ArchiveAssemblyJvmTest {
     }
 
     /**
-     * Both sources, one archive, and nothing counted twice.
+     * Both sources, one chronicle, and nothing counted twice.
      *
      * The state a device upgrading mid-life is in: older work only the rows
-     * remember, newer work on file as events. Neither half is the archive on its
+     * remember, newer work on file as events. Neither half is the chronicle on its
      * own, and an event held both ways is still one event.
      */
     @Test
@@ -453,7 +453,7 @@ class ArchiveAssemblyJvmTest {
         // a room that was upgraded partway through its life looks like.
         record(*applied.take(applied.size / 2).toTypedArray())
 
-        val payloads = archivedPayloads()
+        val payloads = chronicledPayloads()
 
         assertEquals(
             applied.map { it.id }.toSet(),
@@ -474,11 +474,11 @@ class ArchiveAssemblyJvmTest {
      * one as its first act -- so it is on file in every room that has ever
      * signed anything. The rebuild could not reach one because no `Mantra*` row
      * holds it; the record holds every kind. Without the filter on the way out
-     * `ArchiveEvent.build` refuses the page and the room's whole archive fails
+     * `ChronicleEvent.build` refuses the page and the room's whole chronicle fails
      * on the one event every room has.
      */
     @Test
-    fun `a key state the room really signed is never archived`() = runBlocking {
+    fun `a key state the room really signed is never chronicled`() = runBlocking {
         seedSignedWork()
         recordEverythingApplied()
 
@@ -499,20 +499,20 @@ class ArchiveAssemblyJvmTest {
             "the point of this test is that verification passes"
         )
 
-        val payloads = archivedPayloads()
+        val payloads = chronicledPayloads()
 
-        assertTrue(payloads.isNotEmpty(), "the rest of the room's work still archives")
+        assertTrue(payloads.isNotEmpty(), "the rest of the room's work still chronicles")
         assertEquals(
-            ArchiveEvent.ARCHIVABLE_KINDS,
+            ChronicleEvent.CHRONICLABLE_KINDS,
             payloads.map { it.kind }.toSet(),
-            "an archive carries the document kinds and nothing else"
+            "a chronicle carries the document kinds and nothing else"
         )
         assertTrue(payloads.none { it.id == keyState.id })
     }
 
     /** The same rule, for a kind that is merely not on the list rather than dangerous. */
     @Test
-    fun `a signed kind the archive has no arm for is left behind`() = runBlocking {
+    fun `a signed kind the chronicle has no arm for is left behind`() = runBlocking {
         seedSignedWork()
         recordEverythingApplied()
 
@@ -528,8 +528,8 @@ class ArchiveAssemblyJvmTest {
         )
 
         assertEquals(
-            ArchiveEvent.ARCHIVABLE_KINDS,
-            archivedPayloads().map { it.kind }.toSet()
+            ChronicleEvent.CHRONICLABLE_KINDS,
+            chronicledPayloads().map { it.kind }.toSet()
         )
     }
 
@@ -544,7 +544,7 @@ class ArchiveAssemblyJvmTest {
      * find: the label never left.
      */
     @Test
-    fun `an artifact the rebuild has to leave out still archives from the record`() = runBlocking {
+    fun `an artifact the rebuild has to leave out still chronicles from the record`() = runBlocking {
         seedRoom()
 
         val dialect = apply(
@@ -575,37 +575,37 @@ class ArchiveAssemblyJvmTest {
         // Rows only: the rebuild reaches the dialect and gives up on the artifact.
         assertEquals(
             listOf(dialect.id),
-            archivedPayloads().map { it.id },
+            chronicledPayloads().map { it.id },
         )
 
         record(dialect, artifact)
 
         assertEquals(
             setOf(dialect.id, artifact.id),
-            archivedPayloads().map { it.id }.toSet(),
+            chronicledPayloads().map { it.id }.toSet(),
             "the record holds the whole event, version label and all"
         )
     }
 
     @Test
-    fun `two archives of the same rows do not share an id`() = runBlocking {
+    fun `two chronicles of the same rows do not share an id`() = runBlocking {
         seedSignedWork()
 
-        fun idOf(template: EventTemplate<ArchiveEvent>) = ArchiveEvent(
+        fun idOf(template: EventTemplate<ChronicleEvent>) = ChronicleEvent(
             id = "d".repeat(64),
             pubKey = chatRoomId,
             createdAt = template.createdAt,
             tags = template.tags,
             content = template.content,
             sig = ""
-        ).archiveId()
+        ).chronicleId()
 
         // Two members answering one request is the ordinary case, and their page
         // counts differ whenever their databases do. Sharing an id would let one
-        // archive's pages be counted towards the other's total.
+        // chronicle's pages be counted towards the other's total.
         assertTrue(
-            idOf(ArchiveManager.assemble(db, chatRoomId, newMember).single()) !=
-                idOf(ArchiveManager.assemble(db, chatRoomId, newMember).single())
+            idOf(ChronicleManager.assemble(db, chatRoomId, newMember).single()) !=
+                idOf(ChronicleManager.assemble(db, chatRoomId, newMember).single())
         )
     }
 }

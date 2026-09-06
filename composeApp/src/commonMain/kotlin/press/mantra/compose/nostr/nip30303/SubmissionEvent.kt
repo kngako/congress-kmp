@@ -25,7 +25,7 @@ import press.mantra.compose.nostr.nip30303.tags.PayloadKindTag
  * That buys two things:
  *
  *  - A group can take in work written by somebody who is not in it. A
- *    translation lifted from a public archive, a chapter transcribed by an
+ *    translation lifted from a public chronicle, a chapter transcribed by an
  *    outside contributor, an artifact somebody published years ago -- an admin
  *    submits it and the group applies it, with the original author still named
  *    on the row.

@@ -32,11 +32,11 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.toHex
-import press.mantra.compose.nostr.archive.ArchiveEvent
-import press.mantra.compose.nostr.archive.ArchiveRequestEvent
-import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
-import press.mantra.compose.nostr.archive.tags.ArchivePageTag
-import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
+import press.mantra.compose.nostr.chronicle.ChronicleEvent
+import press.mantra.compose.nostr.chronicle.ChronicleRequestEvent
+import press.mantra.compose.nostr.chronicle.tags.ChronicleIdTag
+import press.mantra.compose.nostr.chronicle.tags.ChroniclePageTag
+import press.mantra.compose.nostr.chronicle.tags.ChronicleRecipientTag
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
@@ -58,12 +58,12 @@ import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
  * member who sent them.
  *
  * The negative cases matter more than the positive one. Verification is what
- * makes an archive safe to accept from anybody, so what has to be proved is that
+ * makes a chronicle safe to accept from anybody, so what has to be proved is that
  * it refuses -- a forged payload beside honest ones, and a genuine key state
  * replayed out of its epoch, which passes every signature check there is and is
  * stopped by nothing but the allowlist.
  */
-class ArchiveApplyJvmTest {
+class ChronicleApplyJvmTest {
     /** The member who did the work. */
     private val sender: MantraDatabase = getRoomDatabase(Room.inMemoryDatabaseBuilder<MantraDatabase>())
 
@@ -232,7 +232,7 @@ class ArchiveApplyJvmTest {
         ).also { apply(sender, it) }
 
         // The second item of the artifact's own signing batch, not a row derived
-        // on arrival -- which is what makes it archivable at all.
+        // on arrival -- which is what makes it chroniclable at all.
         val version = signed(ArtifactVersionEvent.initialVersionOf(artifact).single())
             .also { apply(sender, it) }
 
@@ -293,7 +293,7 @@ class ArchiveApplyJvmTest {
         ).also { apply(sender, it) }
 
         // The translated text. Group-signed now, so it can travel and be checked
-        // -- until it was, an archive handed a new member the whole structure and
+        // -- until it was, a chronicle handed a new member the whole structure and
         // none of the prose.
         apply(
             sender,
@@ -310,15 +310,15 @@ class ArchiveApplyJvmTest {
     }
 
     /**
-     * An archive page as it reaches a device: stored as an inner event first,
+     * A chronicle page as it reaches a device: stored as an inner event first,
      * exactly as the inbound path stores every payload it decrypts before
      * dispatching on kind, then handed to the manager.
      */
     private suspend fun deliver(
-        template: EventTemplate<ArchiveEvent>,
+        template: EventTemplate<ChronicleEvent>,
         to: String = newMember,
         from: String = oldMember,
-    ): ArchiveManager.Outcome {
+    ): ChronicleManager.Outcome {
         val page = Event(
             id = EventHasher.hashId(
                 pubKey = from,
@@ -331,7 +331,7 @@ class ArchiveApplyJvmTest {
             createdAt = template.createdAt,
             kind = template.kind,
             tags = template.tags,
-            // An archive page is a member's own rumor. What carries the group's
+            // A chronicle page is a member's own rumor. What carries the group's
             // word is each payload's signature, not the envelope's.
             content = template.content,
             sig = ""
@@ -349,10 +349,10 @@ class ArchiveApplyJvmTest {
             )
         )
 
-        return ArchiveManager.receive(receiver, chatRoomId, to, page)
+        return ChronicleManager.receive(receiver, chatRoomId, to, page)
     }
 
-    private suspend fun senderArchive() = ArchiveManager.assemble(sender, chatRoomId, newMember)
+    private suspend fun senderChronicle() = ChronicleManager.assemble(sender, chatRoomId, newMember)
 
     private suspend fun rowCounts(db: MantraDatabase): Map<String, Int> {
         val dialects = db.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
@@ -386,12 +386,12 @@ class ArchiveApplyJvmTest {
     }
 
     /**
-     * Every archived row as (id, author, signature), sorted.
+     * Every chronicled row as (id, author, signature), sorted.
      *
      * Counting is not the claim. Two databases can hold the same number of
      * artifacts and disagree about every one of them, and a rebuild that lost the
      * group's signature -- or re-authored a row as whoever sent it -- would pass a
-     * count and fail the only thing the archive is for.
+     * count and fail the only thing the chronicle is for.
      */
     private suspend fun rowFingerprints(db: MantraDatabase): List<Triple<String, String, String>> {
         val artifacts = db.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
@@ -438,12 +438,12 @@ class ArchiveApplyJvmTest {
             "the new member starts with nothing, which is the whole problem"
         )
 
-        senderArchive().forEach { deliver(it) }
+        senderChronicle().forEach { deliver(it) }
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
 
         // Not merely the same shape: the same rows, each with the group's own
-        // signature on it. An archive that produced look-alike rows authored by
+        // signature on it. A chronicle that produced look-alike rows authored by
         // the member who sent them would pass a count and fail the only thing
         // this is for.
         val fingerprints = rowFingerprints(receiver)
@@ -452,7 +452,7 @@ class ArchiveApplyJvmTest {
         // And every one of them is the room's own work, with no exception left.
         // The artifact version used to be one -- derived on arrival, so authored
         // by the group and carrying no signature to show for it -- and is signed
-        // in the artifact's own batch now, which is what let it into the archive.
+        // in the artifact's own batch now, which is what let it into the chronicle.
         fingerprints.forEach { (id, author, signature) ->
             assertEquals(chatRoomId, author, "row $id is not authored by the room")
             assertTrue(signature.isNotBlank(), "row $id came across without a signature")
@@ -463,23 +463,23 @@ class ArchiveApplyJvmTest {
      * The member who was handed history can hand it on.
      *
      * Rows are a reading of what the group signed; the events are the thing
-     * itself, and until they are kept the recipient of an archive is a dead end
+     * itself, and until they are kept the recipient of a chronicle is a dead end
      * -- holding the work, unable to prove any of it, and unable to build a page
      * for the next member to arrive. The path is the room's, read from the key
      * state when the recipient has one.
      */
     @Test
-    fun `the archive leaves the receiver holding the events, not only the rows`() = runBlocking {
+    fun `the chronicle leaves the receiver holding the events, not only the rows`() = runBlocking {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        senderArchive().forEach { deliver(it) }
+        senderChronicle().forEach { deliver(it) }
 
         val signed = receiver.groupSignedEventDao().getByChatRoomId(chatRoomId)
 
         assertEquals(
-            senderArchive()
-                .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+            senderChronicle()
+                .flatMap { assertNotNull(ChronicleEvent.decodePage(it.content)) }
                 .map { it.id }
                 .toSet(),
             signed.map { it.id }.toSet(),
@@ -502,18 +502,18 @@ class ArchiveApplyJvmTest {
     }
 
     @Test
-    fun `an archive files no chat lines`() = runBlocking {
+    fun `a chronicle files no chat lines`() = runBlocking {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        senderArchive().forEach { deliver(it) }
+        senderChronicle().forEach { deliver(it) }
 
         assertEquals(
             emptyList(),
             receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
-                .filterNot { it in ChatMessage.ARCHIVE_TYPES },
-            "the archive restores the work; the conversation is forward secret and stays gone"
+                .filterNot { it in ChatMessage.CHRONICLE_TYPES },
+            "the chronicle restores the work; the conversation is forward secret and stays gone"
         )
     }
 
@@ -526,15 +526,15 @@ class ArchiveApplyJvmTest {
         // before the chapter it names, chunks before their chapter, the artifact
         // last. Relays give no ordering guarantee, so this is the ordinary case
         // rather than the adversarial one.
-        val payloads = senderArchive()
-            .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
-        val archiveId = "e".repeat(64)
+        val payloads = senderChronicle()
+            .flatMap { assertNotNull(ChronicleEvent.decodePage(it.content)) }
+        val chronicleId = "e".repeat(64)
 
         val outcomes = payloads.reversed().mapIndexed { index, payload ->
             deliver(
-                ArchiveEvent.build(
+                ChronicleEvent.build(
                     payloads = listOf(payload),
-                    archiveId = archiveId,
+                    chronicleId = chronicleId,
                     index = index,
                     count = payloads.size,
                     recipient = newMember,
@@ -553,7 +553,7 @@ class ArchiveApplyJvmTest {
         assertEquals(
             0,
             outcomes.last().failed,
-            "the last page completes the archive, so the pass it triggers should leave nothing"
+            "the last page completes the chronicle, so the pass it triggers should leave nothing"
         )
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
@@ -607,9 +607,9 @@ class ArchiveApplyJvmTest {
         )
 
         val outcome = deliver(
-            ArchiveEvent.build(
+            ChronicleEvent.build(
                 payloads = forgeries + honest,
-                archiveId = "f".repeat(64),
+                chronicleId = "f".repeat(64),
                 index = 0,
                 count = 1,
                 recipient = newMember,
@@ -625,7 +625,7 @@ class ArchiveApplyJvmTest {
         assertEquals(honest.id, dialects.single().id)
 
         // And nothing forged was kept as an event either. The record is what a
-        // later archive is built from, so a forgery filed here would be one this
+        // later chronicle is built from, so a forgery filed here would be one this
         // member goes on to hand to everybody else.
         assertEquals(
             listOf(honest.id),
@@ -634,7 +634,7 @@ class ArchiveApplyJvmTest {
     }
 
     @Test
-    fun `a key state the room really signed cannot be replayed through an archive`() = runBlocking {
+    fun `a key state the room really signed cannot be replayed through a chronicle`() = runBlocking {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
@@ -657,18 +657,18 @@ class ArchiveApplyJvmTest {
             "the point of this test is that verification passes"
         )
 
-        // Built by hand: ArchiveEvent.build refuses this kind, which is the
+        // Built by hand: ChronicleEvent.build refuses this kind, which is the
         // outbound half of the same rule. Only a hand-rolled page gets this far.
-        val page = EventTemplate<ArchiveEvent>(
+        val page = EventTemplate<ChronicleEvent>(
             createdAt = 1_700_000_100L,
-            kind = ArchiveEvent.KIND,
+            kind = ChronicleEvent.KIND,
             tags = arrayOf(
-                arrayOf("alt", ArchiveEvent.ALT_DESCRIPTION),
-                ArchiveIdTag.assemble("a".repeat(64)),
-                ArchivePageTag.assemble(0, 1),
-                ArchiveRecipientTag.assemble(newMember),
+                arrayOf("alt", ChronicleEvent.ALT_DESCRIPTION),
+                ChronicleIdTag.assemble("a".repeat(64)),
+                ChroniclePageTag.assemble(0, 1),
+                ChronicleRecipientTag.assemble(newMember),
             ),
-            content = ArchiveEvent.encodePage(listOf(keyState)),
+            content = ChronicleEvent.encodePage(listOf(keyState)),
         )
 
         val outcome = deliver(page)
@@ -679,11 +679,11 @@ class ArchiveApplyJvmTest {
     }
 
     @Test
-    fun `a member the archive is not addressed to applies none of it`() = runBlocking {
+    fun `a member the chronicle is not addressed to applies none of it`() = runBlocking {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        val outcome = senderArchive().map { deliver(it, to = "7".repeat(64)) }
+        val outcome = senderChronicle().map { deliver(it, to = "7".repeat(64)) }
 
         assertEquals(0, outcome.sumOf { it.applied })
         assertEquals(
@@ -698,22 +698,22 @@ class ArchiveApplyJvmTest {
     }
 
     @Test
-    fun `applying the same archive twice changes nothing the second time`() = runBlocking {
+    fun `applying the same chronicle twice changes nothing the second time`() = runBlocking {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        val archive = senderArchive()
-        archive.forEach { deliver(it) }
+        val chronicle = senderChronicle()
+        chronicle.forEach { deliver(it) }
         val afterFirst = rowCounts(receiver)
 
-        archive.forEach { deliver(it) }
+        chronicle.forEach { deliver(it) }
 
         assertEquals(afterFirst, rowCounts(receiver))
         assertEquals(
             emptyList(),
             receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
-                .filterNot { it in ChatMessage.ARCHIVE_TYPES },
+                .filterNot { it in ChatMessage.CHRONICLE_TYPES },
         )
     }
 
@@ -727,17 +727,17 @@ class ArchiveApplyJvmTest {
     fun `a device holding none of the room's work asks for it`() = runBlocking {
         seedRoom(receiver, newMember)
 
-        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+        assertTrue(ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember))
 
         // Queued with no chat line, the way a signing message travels. Broadcast
         // does not depend on one, and a row of envelopes in the transcript is not
-        // what an archive should leave behind.
-        assertEquals(1, queued(receiver, ArchiveRequestEvent.KIND).size)
+        // what a chronicle should leave behind.
+        assertEquals(1, queued(receiver, ChronicleRequestEvent.KIND).size)
 
         // One line saying so, and nothing else. Asking is a thing this device did
         // and the room would otherwise sit empty with no explanation.
         assertEquals(
-            listOf(ChatMessage.TYPE_ARCHIVE_REQUESTED),
+            listOf(ChatMessage.TYPE_CHRONICLE_REQUESTED),
             receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
         )
@@ -747,18 +747,18 @@ class ArchiveApplyJvmTest {
     fun `a device does not ask twice while an answer is in flight`() = runBlocking {
         seedRoom(receiver, newMember)
 
-        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
-        assertFalse(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+        assertTrue(ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember))
+        assertFalse(ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember))
 
-        assertEquals(1, queued(receiver, ArchiveRequestEvent.KIND).size)
+        assertEquals(1, queued(receiver, ChronicleRequestEvent.KIND).size)
     }
 
     @Test
     fun `a device holding the work does not ask for it`() = runBlocking {
         seedSenderWork()
 
-        assertFalse(ArchiveManager.requestIfEmpty(sender, chatRoomId, oldMember))
-        assertEquals(0, queued(sender, ArchiveRequestEvent.KIND).size)
+        assertFalse(ChronicleManager.requestIfEmpty(sender, chatRoomId, oldMember))
+        assertEquals(0, queued(sender, ChronicleRequestEvent.KIND).size)
     }
 
     @Test
@@ -766,30 +766,30 @@ class ArchiveApplyJvmTest {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember)
-        assertNotNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+        ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember)
+        assertNotNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
 
-        senderArchive().forEach { deliver(it) }
+        senderChronicle().forEach { deliver(it) }
 
         // Cleared on anything applied rather than on the sender claiming the
-        // archive was complete. A page count is the sender's word about the
+        // chronicle was complete. A page count is the sender's word about the
         // transfer, not about the group's record, so a member who left work out
         // must not get the last word on whether to ask again.
-        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
     }
 
     @Test
-    fun `answering a request queues the archive for whoever asked`() = runBlocking {
+    fun `answering a request queues the chronicle for whoever asked`() = runBlocking {
         seedSenderWork()
 
-        val pages = ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
+        val pages = ChronicleManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
 
         assertEquals(1, pages)
 
-        val queuedPage = queued(sender, ArchiveEvent.KIND).single()
+        val queuedPage = queued(sender, ChronicleEvent.KIND).single()
         assertEquals(oldMember, queuedPage.publicKey, "the page is the answering member's own rumor")
 
-        val page = ArchiveEvent(
+        val page = ChronicleEvent(
             id = queuedPage.id,
             pubKey = queuedPage.publicKey,
             createdAt = queuedPage.createdAt.epochSeconds,
@@ -798,30 +798,30 @@ class ArchiveApplyJvmTest {
             sig = "",
         )
         assertEquals(newMember, page.recipient())
-        assertEquals(ArchiveEvent.ARCHIVABLE_KINDS, page.payloads()?.map { it.kind }?.toSet())
+        assertEquals(ChronicleEvent.CHRONICLABLE_KINDS, page.payloads()?.map { it.kind }?.toSet())
 
-        // One line about the archive, and no line per page.
+        // One line about the chronicle, and no line per page.
         assertEquals(
-            listOf(ChatMessage.TYPE_ARCHIVE_SENT),
+            listOf(ChatMessage.TYPE_CHRONICLE_SENT),
             sender.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
         )
     }
 
     @Test
-    fun `a member with nothing signed answers nothing rather than an empty archive`() = runBlocking {
+    fun `a member with nothing signed answers nothing rather than an empty chronicle`() = runBlocking {
         seedRoom(receiver, newMember)
 
-        assertEquals(0, ArchiveManager.sendTo(receiver, chatRoomId, newMember, recipient = oldMember))
-        assertEquals(0, queued(receiver, ArchiveEvent.KIND).size)
+        assertEquals(0, ChronicleManager.sendTo(receiver, chatRoomId, newMember, recipient = oldMember))
+        assertEquals(0, queued(receiver, ChronicleEvent.KIND).size)
     }
 
     @Test
     fun `a member does not answer their own request`() = runBlocking {
         seedSenderWork()
 
-        assertEquals(0, ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = oldMember))
-        assertEquals(0, queued(sender, ArchiveEvent.KIND).size)
+        assertEquals(0, ChronicleManager.sendTo(sender, chatRoomId, oldMember, recipient = oldMember))
+        assertEquals(0, queued(sender, ChronicleEvent.KIND).size)
     }
 
     @Test
@@ -830,13 +830,13 @@ class ArchiveApplyJvmTest {
         seedRoom(receiver, newMember)
 
         // The joiner asks.
-        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+        assertTrue(ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember))
 
         // A member holding the work answers it, addressed to whoever asked.
-        ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
+        ChronicleManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
 
         // The pages reach the joiner, who applies them.
-        queued(sender, ArchiveEvent.KIND).forEach { queuedPage ->
+        queued(sender, ChronicleEvent.KIND).forEach { queuedPage ->
             deliver(
                 EventTemplate(
                     createdAt = queuedPage.createdAt.epochSeconds,
@@ -848,7 +848,7 @@ class ArchiveApplyJvmTest {
         }
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
-        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
     }
 
     // ---- The push behind a Welcome ---------------------------------------
@@ -898,11 +898,11 @@ class ArchiveApplyJvmTest {
             createdAt = Clock.System.now(),
         )
 
-        val page = queued(sender, ArchiveEvent.KIND).single()
+        val page = queued(sender, ChronicleEvent.KIND).single()
 
         assertEquals(
             newMember,
-            ArchiveEvent(
+            ChronicleEvent(
                 id = page.id,
                 pubKey = page.publicKey,
                 createdAt = page.createdAt.epochSeconds,
@@ -926,9 +926,9 @@ class ArchiveApplyJvmTest {
             createdAt = Clock.System.now(),
         )
 
-        assertEquals(0, queued(sender, ArchiveEvent.KIND).size)
+        assertEquals(0, queued(sender, ChronicleEvent.KIND).size)
         // The Welcome itself still went out. A push that has nothing to say is
-        // not a failed invite, and nothing about the archive may report one:
+        // not a failed invite, and nothing about the chronicle may report one:
         // the invitee asks for themselves on their first open regardless.
         assertEquals(
             1,
@@ -943,18 +943,18 @@ class ArchiveApplyJvmTest {
         seedSenderWork()
         seedRoom(receiver, newMember)
 
-        ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember)
+        ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember)
 
         // Delivered a page at a time and out of order, so the sweep runs several
         // times over several pages. The transcript is not a log of that.
-        val payloads = senderArchive()
-            .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+        val payloads = senderChronicle()
+            .flatMap { assertNotNull(ChronicleEvent.decodePage(it.content)) }
 
         payloads.reversed().forEachIndexed { index, payload ->
             deliver(
-                ArchiveEvent.build(
+                ChronicleEvent.build(
                     payloads = listOf(payload),
-                    archiveId = "e".repeat(64),
+                    chronicleId = "e".repeat(64),
                     index = index,
                     count = payloads.size,
                     recipient = newMember,
@@ -964,7 +964,7 @@ class ArchiveApplyJvmTest {
         }
 
         assertEquals(
-            listOf(ChatMessage.TYPE_ARCHIVE_REQUESTED, ChatMessage.TYPE_ARCHIVE_RECEIVED),
+            listOf(ChatMessage.TYPE_CHRONICLE_REQUESTED, ChatMessage.TYPE_CHRONICLE_RECEIVED),
             receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
         )
@@ -977,7 +977,7 @@ class ArchiveApplyJvmTest {
 
         // The invite-time push lands before the member has opened the room, so
         // "caught up on work you have not seen yet" is a line about nothing.
-        senderArchive().forEach { deliver(it) }
+        senderChronicle().forEach { deliver(it) }
 
         assertEquals(
             emptyList(),

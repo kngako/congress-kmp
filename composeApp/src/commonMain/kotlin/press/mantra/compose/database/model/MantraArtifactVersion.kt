@@ -74,7 +74,7 @@ data class MantraArtifactVersion(
             // Tag order matches ArtifactVersionEvent.initialVersionOf, which puts
             // the alt first because `build` does, or the event id does not
             // round-trip. It was the other way round here for as long as nothing
-            // called this -- see ArchiveRoundTripTest, which is what calls it now.
+            // called this -- see ChronicleRoundTripTest, which is what calls it now.
             tags = TagArrayBuilder<ArtifactVersionEvent>()
                 .addUnique(
                     AltTag.assemble(ArtifactVersionEvent.ALT_DESCRIPTION)

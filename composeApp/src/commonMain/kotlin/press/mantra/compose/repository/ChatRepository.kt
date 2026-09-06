@@ -27,7 +27,7 @@ interface ChatRepository {
      *
      * True when a request went out. Safe to call on every open: it is a no-op
      * for a room that already holds work and for one still waiting on an answer.
-     * See docs/member-archive.md for why the joiner asks rather than the inviter
+     * See docs/member-chronicle.md for why the joiner asks rather than the inviter
      * pushing.
      */
     suspend fun requestGroupHistoryIfMissing(chatRoomId: String, userPublicKey: HexKey): Boolean
