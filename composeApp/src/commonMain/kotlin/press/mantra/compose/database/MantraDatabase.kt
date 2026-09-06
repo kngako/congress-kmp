@@ -174,7 +174,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 11,
+    version = 12,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -228,7 +228,14 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // it read back null and are read by the clock, the way they always were:
         // a room that could only propose one thing at a time cannot have written
         // two sessions' lines into the same stretch of transcript.
-        AutoMigration(from = 10, to = 11)
+        AutoMigration(from = 10, to = 11),
+        // v12 adds the nullable ChatRoom.archiveRequestedAt, which stops a device
+        // with no signed work in a room asking the group for its history on every
+        // launch while an answer is in flight. Rooms written before it read back
+        // null, meaning "never asked" -- true of all of them, and harmless: the
+        // request only goes out for a room that holds no signed work, and a room
+        // that holds some will not ask.
+        AutoMigration(from = 11, to = 12)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

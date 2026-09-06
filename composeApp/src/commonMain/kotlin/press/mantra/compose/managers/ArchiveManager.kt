@@ -3,6 +3,8 @@ package press.mantra.compose.managers
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.TagArray
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
@@ -10,7 +12,10 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.extensions.toHex
+import kotlin.time.Clock
+import kotlin.time.Instant
 import press.mantra.compose.nostr.archive.ArchiveEvent
+import press.mantra.compose.nostr.archive.ArchiveRequestEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 
 /**
@@ -98,6 +103,146 @@ object ArchiveManager {
                 createdAt = createdAt,
             )
         }
+    }
+
+    // ---- Asking, and answering -------------------------------------------
+
+    /**
+     * Ask the group for its signed history, if this device holds none of it.
+     *
+     * Called on entering a room. The condition is deliberately crude -- no
+     * dialects and no artifacts -- because the three cases it has to catch look
+     * identical from inside the database and should not be told apart:
+     *
+     *  - a member added after the work was done, whose invite may be recent;
+     *  - a reinstall, whose invite is long past;
+     *  - a second device, which was never invited at all.
+     *
+     * Returns whether a request went out.
+     *
+     * ### Why a device asks rather than being sent one
+     *
+     * A push from the inviter is an application message in the epoch the add
+     * created, and one that overtakes the Welcome is dropped and not deferred --
+     * silently, while the inviter sees a success. See docs/marmot-membership.md.
+     * Sending a request cannot lose that race, because being able to send it is
+     * the proof the race was won: a device that can put an application message
+     * into the room has processed its Welcome.
+     */
+    suspend fun requestIfEmpty(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): Boolean {
+        val chatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom ?: return false
+        if (chatRoom.archiveRequestedAt != null) return false
+
+        val holdsWork = database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId).isNotEmpty() ||
+            database.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).isNotEmpty()
+
+        if (holdsWork) return false
+
+        queue(
+            database = database,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+            kind = ArchiveRequestEvent.KIND,
+            tags = ArchiveRequestEvent.build().tags,
+            content = "",
+        )
+
+        database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = Clock.System.now()))
+
+        logger.i("Asked $chatRoomId for its signed history")
+
+        return true
+    }
+
+    /**
+     * Answer [requester]'s request with everything this device can prove.
+     *
+     * Any member may answer and none is elected to. A duplicate answer costs
+     * bandwidth and nothing else -- pages are idempotent and every member who is
+     * not the recipient ignores them -- so this is waste rather than damage, and
+     * the stand-down that would avoid it is an optimisation to add on top rather
+     * than a correctness gap to close first.
+     *
+     * A device with nothing signed answers nothing. Silence is the honest reply
+     * from a member who is themselves still catching up, and an empty archive
+     * would look like an answer.
+     */
+    suspend fun answer(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        requester: HexKey,
+    ): Int {
+        if (requester.equals(userPublicKey, ignoreCase = true)) return 0
+
+        val pages = assemble(database, chatRoomId, requester)
+        if (pages.isEmpty()) {
+            logger.i("Cannot answer ${requester.take(8)}'s request for $chatRoomId: nothing signed here")
+            return 0
+        }
+
+        pages.forEach { page ->
+            queue(
+                database = database,
+                chatRoomId = chatRoomId,
+                userPublicKey = userPublicKey,
+                kind = page.kind,
+                tags = page.tags,
+                content = page.content,
+                createdAt = Instant.fromEpochSeconds(page.createdAt),
+            )
+        }
+
+        logger.i("Answering ${requester.take(8)} with ${pages.size} archive page(s) for $chatRoomId")
+
+        return pages.size
+    }
+
+    /**
+     * Put one event on the room's outbound queue.
+     *
+     * The same shape `FrostSigningManager.broadcast` uses: a `MarmotInnerEvent`
+     * with no group event yet, which the notary picks up and encrypts into a
+     * kind:445 for the room. The id is the rumor id the outbound pipeline
+     * recomputes from these fields when it assembles the event to encrypt.
+     *
+     * **No `ChatMessage`.** Broadcast does not depend on one -- it is
+     * unconditional in `encryptAndSendMarmotInnerEvent`, which is what let the
+     * signing sessions travel with no transcript line -- and an archive that
+     * filed one per page would put a row of envelopes in the room's history. One
+     * line per archive is right, and it is not writable from here, because the
+     * pages of an archive are indistinguishable from each other at this point.
+     */
+    private suspend fun queue(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        kind: Int,
+        tags: TagArray,
+        content: String,
+        createdAt: Instant = Clock.System.now(),
+    ) {
+        database.marmotInnerEventDao().upsert(
+            MarmotInnerEvent(
+                id = EventHasher.hashId(
+                    pubKey = userPublicKey,
+                    createdAt = createdAt.epochSeconds,
+                    tags = tags,
+                    content = content,
+                    kind = kind
+                ),
+                publicKey = userPublicKey,
+                kind = kind,
+                createdAt = createdAt,
+                tags = tags,
+                content = content,
+                chatRoomId = chatRoomId,
+            )
+        )
     }
 
     // ---- Receiving ------------------------------------------------------
@@ -222,6 +367,19 @@ object ArchiveManager {
             "Swept ${pages.size} archive page(s) for $chatRoomId: " +
                 "${pass.applied} applied, ${pass.skipped} skipped, ${pass.failed} left"
         )
+
+        // An answer arrived, so the room may ask again if it turns out to be a
+        // partial one. Cleared on anything applied rather than on the archive
+        // reporting itself complete: a page count is the sender's claim about the
+        // transfer, not about the group's record, and a member who left work out
+        // would otherwise have the last word.
+        if (pass.applied > 0) {
+            database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.let { chatRoom ->
+                if (chatRoom.archiveRequestedAt != null) {
+                    database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = null))
+                }
+            }
+        }
 
         return pass
     }

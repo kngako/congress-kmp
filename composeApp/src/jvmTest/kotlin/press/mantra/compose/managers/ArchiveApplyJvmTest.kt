@@ -16,6 +16,7 @@ import fr.acinq.bitcoin.crypto.frost.Session
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -30,6 +31,7 @@ import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.archive.ArchiveEvent
+import press.mantra.compose.nostr.archive.ArchiveRequestEvent
 import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
 import press.mantra.compose.nostr.archive.tags.ArchivePageTag
 import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
@@ -589,5 +591,128 @@ class ArchiveApplyJvmTest {
 
         assertEquals(afterFirst, rowCounts(receiver))
         assertEquals(0, receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+    }
+
+    // ---- Asking for one --------------------------------------------------
+
+    private suspend fun queued(db: MantraDatabase, kind: Int) = db.marmotInnerEventDao()
+        .getByChatRoomAndKinds(chatRoomId, listOf(kind))
+        .filter { it.marmotGroupEventId == null }
+
+    @Test
+    fun `a device holding none of the room's work asks for it`() = runBlocking {
+        seedRoom(receiver, newMember)
+
+        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+
+        // Queued with no chat line, the way a signing message travels. Broadcast
+        // does not depend on one, and a row of envelopes in the transcript is not
+        // what an archive should leave behind.
+        assertEquals(1, queued(receiver, ArchiveRequestEvent.KIND).size)
+        assertEquals(0, receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+    }
+
+    @Test
+    fun `a device does not ask twice while an answer is in flight`() = runBlocking {
+        seedRoom(receiver, newMember)
+
+        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+        assertFalse(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+
+        assertEquals(1, queued(receiver, ArchiveRequestEvent.KIND).size)
+    }
+
+    @Test
+    fun `a device holding the work does not ask for it`() = runBlocking {
+        seedSenderWork()
+
+        assertFalse(ArchiveManager.requestIfEmpty(sender, chatRoomId, oldMember))
+        assertEquals(0, queued(sender, ArchiveRequestEvent.KIND).size)
+    }
+
+    @Test
+    fun `an answered request lets the room ask again`() = runBlocking {
+        seedSenderWork()
+        seedRoom(receiver, newMember)
+
+        ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember)
+        assertNotNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+
+        senderArchive().forEach { deliver(it) }
+
+        // Cleared on anything applied rather than on the sender claiming the
+        // archive was complete. A page count is the sender's word about the
+        // transfer, not about the group's record, so a member who left work out
+        // must not get the last word on whether to ask again.
+        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+    }
+
+    @Test
+    fun `answering a request queues the archive for whoever asked`() = runBlocking {
+        seedSenderWork()
+
+        val pages = ArchiveManager.answer(sender, chatRoomId, oldMember, requester = newMember)
+
+        assertEquals(1, pages)
+
+        val queuedPage = queued(sender, ArchiveEvent.KIND).single()
+        assertEquals(oldMember, queuedPage.publicKey, "the page is the answering member's own rumor")
+
+        val page = ArchiveEvent(
+            id = queuedPage.id,
+            pubKey = queuedPage.publicKey,
+            createdAt = queuedPage.createdAt.epochSeconds,
+            tags = queuedPage.tags,
+            content = queuedPage.content,
+            sig = "",
+        )
+        assertEquals(newMember, page.recipient())
+        assertEquals(ArchiveEvent.ARCHIVABLE_KINDS, page.payloads()?.map { it.kind }?.toSet())
+
+        // And no chat line for it, for the same reason the request has none.
+        assertEquals(0, sender.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+    }
+
+    @Test
+    fun `a member with nothing signed answers nothing rather than an empty archive`() = runBlocking {
+        seedRoom(receiver, newMember)
+
+        assertEquals(0, ArchiveManager.answer(receiver, chatRoomId, newMember, requester = oldMember))
+        assertEquals(0, queued(receiver, ArchiveEvent.KIND).size)
+    }
+
+    @Test
+    fun `a member does not answer their own request`() = runBlocking {
+        seedSenderWork()
+
+        assertEquals(0, ArchiveManager.answer(sender, chatRoomId, oldMember, requester = oldMember))
+        assertEquals(0, queued(sender, ArchiveEvent.KIND).size)
+    }
+
+    @Test
+    fun `asking and answering completes the round trip`() = runBlocking {
+        seedSenderWork()
+        seedRoom(receiver, newMember)
+
+        // The joiner asks.
+        assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
+
+        // A member holding the work answers it, addressed to whoever asked.
+        ArchiveManager.answer(sender, chatRoomId, oldMember, requester = newMember)
+
+        // The pages reach the joiner, who applies them.
+        queued(sender, ArchiveEvent.KIND).forEach { queuedPage ->
+            deliver(
+                EventTemplate(
+                    createdAt = queuedPage.createdAt.epochSeconds,
+                    kind = queuedPage.kind,
+                    tags = queuedPage.tags,
+                    content = queuedPage.content,
+                )
+            )
+        }
+
+        assertEquals(rowCounts(sender), rowCounts(receiver))
+        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
     }
 }

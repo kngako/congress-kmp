@@ -2,6 +2,7 @@ package press.mantra.compose.database.repository
 
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.managers.ArchiveManager
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -50,6 +51,15 @@ class DatabaseChatRepository(
     override suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom? {
         return database.chatRoomDao().findChatRoomById(id)
     }
+
+    override suspend fun requestGroupHistoryIfMissing(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): Boolean = ArchiveManager.requestIfEmpty(
+        database = database,
+        chatRoomId = chatRoomId,
+        userPublicKey = userPublicKey,
+    )
 
     override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
         return database.participantDao().findParticipantByPublicKey(publicKey)

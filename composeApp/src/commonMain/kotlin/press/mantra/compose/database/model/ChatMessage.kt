@@ -27,6 +27,7 @@ import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.archive.ArchiveEvent
+import press.mantra.compose.nostr.archive.ArchiveRequestEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
@@ -634,6 +635,26 @@ data class ChatMessage(
                         // the pages of an archive are not distinguishable from
                         // each other here. That is Phase 7's, and until then a
                         // silent catch-up beats a transcript full of envelopes.
+                        return null
+                    }
+
+                    // Somebody in the room holds none of its signed work and is
+                    // asking. Any member may answer and none is elected to: a
+                    // duplicate answer costs bandwidth and nothing else, since
+                    // pages are idempotent and everyone but the recipient ignores
+                    // them. A member with nothing signed answers nothing, which
+                    // is the honest reply from one still catching up themselves.
+                    if (event.kind == ArchiveRequestEvent.KIND) {
+                        ArchiveManager.answer(
+                            database = database,
+                            chatRoomId = groupEventResult.groupId,
+                            userPublicKey = activeKeyPair.pubKey.toHex(),
+                            // The MLS frame is the authenticated source. For these
+                            // kinds MIP-03 already forces the two to agree, so the
+                            // fallback is for a result that carries no leaf index.
+                            requester = senderIdentity ?: event.pubKey,
+                        )
+
                         return null
                     }
 

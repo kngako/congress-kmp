@@ -22,6 +22,16 @@ interface ChatRepository {
 
     suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom?
 
+    /**
+     * Ask the group for its signed history if this device holds none of it.
+     *
+     * True when a request went out. Safe to call on every open: it is a no-op
+     * for a room that already holds work and for one still waiting on an answer.
+     * See docs/member-archive.md for why the joiner asks rather than the inviter
+     * pushing.
+     */
+    suspend fun requestGroupHistoryIfMissing(chatRoomId: String, userPublicKey: HexKey): Boolean
+
     suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
 
     suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage>
@@ -132,6 +142,11 @@ interface ChatRepository {
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
+            override suspend fun requestGroupHistoryIfMissing(
+                chatRoomId: String,
+                userPublicKey: HexKey
+            ): Boolean = false
+
             override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
                 return flow {  }
             }

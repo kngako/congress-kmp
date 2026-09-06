@@ -155,6 +155,31 @@ class ChatMessageListViewModel(
         logger.d("init")
         scheduleSynchronization()
         observeChatRoomFeed()
+        askForGroupHistory()
+    }
+
+    /**
+     * Ask the group for its signed record, if this device holds none of it.
+     *
+     * Opening the room is the trigger because it is the first moment this device
+     * is demonstrably in the group's current epoch -- see
+     * docs/member-archive.md. A member added after the work was done has no way
+     * to see any of it otherwise: MLS gives them no history, and a group-signed
+     * event never travels, so every device derives it or does without.
+     *
+     * Cheap to call every time. It stops at a room that already holds work and
+     * at one still waiting on an answer, and a failure is not worth telling
+     * anybody about: nothing acknowledges a request, so the next open asks again.
+     */
+    private fun askForGroupHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                chatRepository.requestGroupHistoryIfMissing(
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                )
+            }.onFailure { logger.w(throwable = it) { "Could not ask for this group's history" } }
+        }
     }
 
     fun observeChatRoomFeed() {
