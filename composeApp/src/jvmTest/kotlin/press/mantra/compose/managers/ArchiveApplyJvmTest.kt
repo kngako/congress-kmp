@@ -368,6 +368,42 @@ class ArchiveApplyJvmTest {
         )
     }
 
+    /**
+     * Every archived row as (id, author, signature), sorted.
+     *
+     * Counting is not the claim. Two databases can hold the same number of
+     * artifacts and disagree about every one of them, and a rebuild that lost the
+     * group's signature -- or re-authored a row as whoever sent it -- would pass a
+     * count and fail the only thing the archive is for.
+     */
+    private suspend fun rowFingerprints(db: MantraDatabase): List<Triple<String, String, String>> {
+        val artifacts = db.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
+        val versions = artifacts.flatMap {
+            db.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(it.id)
+        }
+        val chapters = versions.flatMap { db.mantraChapterDao().getChaptersByArtifactVersionId(it.id) }
+        val translationVersions = versions.flatMap {
+            db.mantraTranslationArtifactVersionDao().getTranslationsByArtifactVersionId(it.id)
+        }
+
+        return buildList {
+            db.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
+                .forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            artifacts.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            versions.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            chapters.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            chapters.flatMap { db.mantraChunkDao().getChunksByChapterId(it.id) }
+                .forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            translationVersions.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            translationVersions
+                .flatMap {
+                    db.mantraTranslationChapterDao()
+                        .getTranslationChaptersByTranslationArtifactVersionId(it.id)
+                }
+                .forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+        }.sortedBy { it.first }
+    }
+
     @Test
     fun `a member who was never there ends up holding what the group signed`() = runBlocking {
         seedSenderWork()
@@ -386,14 +422,26 @@ class ArchiveApplyJvmTest {
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
 
-        // Not merely the same shape: the same rows, with the group's signature on
-        // them. An archive that produced look-alike rows authored by the sender
-        // would pass a count and fail the only thing that matters.
-        val theirs = receiver.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).single()
-        val ours = sender.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).single()
-        assertEquals(ours.id, theirs.id)
-        assertEquals(ours.signature, theirs.signature)
-        assertEquals(chatRoomId, theirs.publicKey)
+        // Not merely the same shape: the same rows, each with the group's own
+        // signature on it. An archive that produced look-alike rows authored by
+        // the member who sent them would pass a count and fail the only thing
+        // this is for.
+        val fingerprints = rowFingerprints(receiver)
+        assertEquals(rowFingerprints(sender), fingerprints)
+
+        // And every one of them is the room's own work rather than anybody's.
+        // The artifact version is the exception and has to be: nobody signs it,
+        // it is derived from the signed artifact on arrival, which is exactly why
+        // it is not archived and why a chapter's foreign key survives anyway.
+        val versionIds = receiver.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
+            .flatMap { receiver.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(it.id) }
+            .map { it.id }
+            .toSet()
+
+        fingerprints.filterNot { it.first in versionIds }.forEach { (id, author, signature) ->
+            assertEquals(chatRoomId, author, "row $id is not authored by the room")
+            assertTrue(signature.isNotBlank(), "row $id came across without a signature")
+        }
     }
 
     @Test

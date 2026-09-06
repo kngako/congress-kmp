@@ -9,6 +9,24 @@ Read [shared-key-derivation.md](./shared-key-derivation.md) first. The property
 this whole design rests on -- that a room's id *is* the key it signs with -- is
 stated there, and everything cheap about what follows is downstream of it.
 
+**Built**, phases 1-9, one commit each, with two exceptions named in Phase 7. The
+phases are kept as written because they are the reasoning, and the code reads
+better against the argument it came from than against a summary of itself. Where
+the implementation chose differently the section says so, and it did so five
+times worth reading:
+
+| what the plan said | what it turned out to be |
+|---|---|
+| nine archivable kinds | six. Only six ever reach a signing session, and one of the three that do not is the translated text -- see [Phase 3](#what-is-actually-archivable-which-is-less-than-it-looks) |
+| `MAX_PAGE_EVENTS = 256` | 128. At 256 the byte cap always binds first and the count cap can never fire |
+| "assemble, order, pack and queue" | assemble only; queueing moved to Phase 5, next to the thing that decides when |
+| "re-read the room between the invite and the assembly" | unnecessary; that rule is about the MLS snapshot a commit is built on |
+| an old build "files it as unsupported" and nothing breaks | true, and it renders as a raw-JSON chat bubble per page -- see [Phase 9](#phase-9--rollout) |
+
+The gate in Phase 3 is the one to keep if any of this is ever rewritten: it found
+a rebuild that would have shipped payloads every receiver drops as forgeries,
+silently, one kind at a time.
+
 ## The constraint
 
 Two independent facts, and both have to be understood before the design makes
@@ -572,51 +590,94 @@ a member the first time they open a room they were added to late.
 
 **A day and a half, and do not skip it.**
 
-The unit tests are named in their phases. Three that only exist between devices,
-all extending
-[SignedGroupKeyStateTest](../composeApp/src/jvmTest/kotlin/press/mantra/compose/managers/SignedGroupKeyStateTest.kt)'s
-harness -- two databases and the wire held by hand, with a third database added
-for the joiner:
+**They ran in the phases where the code they test first existed**, the way the
+batch-signing note's did, so this section is the index rather than the work.
+Every claim below is asserted somewhere; what is here is which claim and where.
 
-**The whole thing, end to end.** A and B run a real signing session over a
-chapter and its chunks. C, a database with no share, no `DkgSession`, no
-`FrostSigningSession` and no `GroupKeyState`, receives the archive and ends
-holding rows identical to A's for every archived kind -- compared field by field,
-signature included, not merely counted.
+**The whole thing, end to end** --
+[ArchiveApplyJvmTest](../composeApp/src/jvmTest/kotlin/press/mantra/compose/managers/ArchiveApplyJvmTest.kt),
+over two real databases with the pages carried by hand. The sender's room is
+seeded through `ChatMessage.applyInnerEvent` itself, so what is archived is what
+a member's device really holds rather than rows built to suit the test. The
+receiver holds no share, no `DkgSession`, no `FrostSigningSession` and no
+`GroupKeyState`, and ends with the sender's rows.
 
-**The negative one that matters.** A hostile member sends C an archive of
-hand-built events: one with C's room id as `pubKey` and a random signature, one
-validly signed by *another* room's key, one edited after signing, and one honest.
-C ends with exactly one row. This is the test the feature's security is, and the
-only way to be a dishonest member in this harness is to build the inner event by
-hand rather than let a device queue it.
+Compared as `(id, author, signature)` per row rather than by count, and then
+asserted that every archived row is authored by the room and carries a signature.
+Counting is not the claim: two databases can hold the same number of artifacts
+and disagree about all of them, and a rebuild that lost the group's signature --
+or re-authored a row as whoever sent it -- would pass a count and fail the only
+thing this is for. The artifact version is the one exception and has to be:
+nobody signs it, it is derived from the signed artifact on arrival, which is why
+it is not archived and why a chapter's foreign key survives anyway.
 
-**The replay that must not work.** An archive carrying a genuine, still-valid
-`GroupKeyStateEvent` from an earlier epoch changes nothing about C's key state.
-It passes every signature check there is; the allowlist is the only thing that
-stops it, which is why it needs a test of its own rather than a line in the one
-above.
+**The negative one that matters** -- four ways to be a dishonest member in one
+page beside one honest dialect: the room's id as author with a made-up signature,
+a real quorum of another group, an event edited after signing, and a member's own
+rumor, which is what everything on the wire looks like today. The receiver ends
+with exactly the honest one. The only way to be dishonest in this harness is to
+build the inner event by hand rather than let a device queue it, which is what
+this does.
 
-And in `commonTest`, with no database: the `toXEvent` round-trip per archived
-kind, asserting the reassembled event's id and that its stored signature still
-verifies against it. That is the assumption Phase 3 rests on.
+**The replay that must not work** -- a genuine, still-verifying
+`GroupKeyStateEvent` in a hand-rolled page. It passes every signature check there
+is; the allowlist is the only thing that stops it, and the page has to be
+hand-rolled because `ArchiveEvent.build` refuses the kind, which is the outbound
+half of the same rule.
+
+**The `toXEvent` round trip per archived kind** --
+[ArchiveRoundTripTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/nostr/archive/ArchiveRoundTripTest.kt),
+against real FROST with no database. This is the one that earned its place: it
+found that `MantraArtifact.toArtifactEvent` had the alt tag in the wrong position
+*and* omitted the version metadata entirely, either of which produces payloads
+every receiver silently drops as forgeries. It also holds the negative -- a
+rebuild with the wrong version label fails as a forgery rather than as a mistake
+-- and a guard that the case list and `ARCHIVABLE_KINDS` move together.
+
+**And three that were not in the first draft**, each written because a test
+passed for the wrong reason or a bound could not fire:
+
+- *A page at exactly `MAX_PAGE_EVENTS` still decodes.* Without it the
+  page-over-the-cap test passes while the count cap is unreachable behind the
+  byte cap, which is how it was first written.
+- *Pages delivered backwards really did fail first.* Otherwise "out of order
+  converges" would pass on an archive that was never out of order, and the sweep
+  -- the only reason it converges -- would be untested.
+- *The page that completes an archive leaves nothing behind.* This is what caught
+  the sweep returning the sum of its passes rather than the settled one, which
+  made `failed > 0` stop meaning "still missing".
 
 ---
 
 ## Phase 9 -- rollout
 
-**No code.**
+**No code, and one constraint that is sharper than the first draft said.**
 
-Both kinds are new, so an old build receives an unknown inner event kind and
-files it as unsupported, exactly as it does today for anything it does not know.
-Nothing breaks in a mixed group; a joiner on an old build simply gets no archive,
-and one on a new build in a group of old builds gets no answer to its request.
-Neither is worse than today, which is no archive for anybody.
+The receiving half is safe to ship on its own, and phases 1-4 are exactly that:
+nothing sends an archive until Phase 5 asks for one. That is the half to have in
+the field first.
 
-The order is deliberate: Phases 1-4 are shippable together and do nothing on
-their own, because nothing sends an archive until Phase 5 asks for one. That
-makes the first release a pure receiving capability, which is the safe half to
-have in the field first.
+**Sending into a group with an old build is not free.** The first draft said an
+old build "files it as unsupported, exactly as it does today for anything it does
+not know", which is true and reads better than it lives. The unsupported row's
+content is `event.toJson()`, and it renders as an ordinary chat bubble -- so
+every member on an old build sees each archive page as a raw-JSON bubble of up to
+`MAX_PAGE_BYTES`, in a transcript, once per page.
+
+Nothing breaks and nothing is lost. But a group mid-upgrade gets a genuinely
+unpleasant transcript, and that is worth knowing before the first archive goes
+out rather than after. The rule:
+
+> Confirm every member is on a build that understands kind 30327 before any
+> member starts sending. There is no negotiation for this and adding one is not
+> worth it -- the cost of getting it wrong is ugly rather than dangerous, and it
+> stops as soon as they upgrade.
+
+The mitigation, if that ever proves unacceptable, is the one the appendix rejects
+for other reasons: carrying pages as Marmot direct messages, where an old build
+sees a gift wrap it cannot open and renders *"sent a private message"* with no
+content. It buys graceful degradation and costs everything listed under
+[Carrying the archive as a Marmot direct message](#appendix--what-was-considered-and-rejected).
 
 ---
 
