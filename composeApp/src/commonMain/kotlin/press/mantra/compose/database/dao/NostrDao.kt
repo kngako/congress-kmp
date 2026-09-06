@@ -737,16 +737,23 @@ abstract class NostrDao(
                                     participants.forEach { participant ->
                                         val giftWrapParticipantProfile = database.profileDao().getProfileByPublicKey(participant.participantPublicKey)
 
-                                        if (giftWrapParticipantProfile == null) {
-                                            // Save a placeholder
-                                            database.profileDao().insertPlaceholderProfile(
-                                                Profile(
-                                                    displayName = "LOADING...",
-                                                    publicKey = participant.participantPublicKey,
-                                                    createdAt = GENESIS_AT,
-                                                    nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                                        // A placeholder row is not a profile -- it is the
+                                        // "LOADING..." name waiting on a kind:0 -- so a member we
+                                        // already have one for (seen in another room, say) needs
+                                        // asking about just as much as one we have never seen.
+                                        // Only a resolved profile takes this member off the list.
+                                        if (giftWrapParticipantProfile == null || giftWrapParticipantProfile.createdAt == GENESIS_AT) {
+                                            if (giftWrapParticipantProfile == null) {
+                                                // Save a placeholder
+                                                database.profileDao().insertPlaceholderProfile(
+                                                    Profile(
+                                                        displayName = "LOADING...",
+                                                        publicKey = participant.participantPublicKey,
+                                                        createdAt = GENESIS_AT,
+                                                        nostrEventId = nostrEvent.id,  // Will get overwriting by sync,
+                                                    )
                                                 )
-                                            )
+                                            }
 
                                             val recommendRelayUrl = giftWrapMessage.receiverRelayHit
 

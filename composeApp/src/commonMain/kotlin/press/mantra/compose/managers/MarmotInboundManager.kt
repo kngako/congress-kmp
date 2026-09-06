@@ -160,6 +160,13 @@ object MarmotInboundManager {
             logger.d("New Participant: ${newParticipant.participantPublicKey}")
             val profile = database.profileDao().getProfileByPublicKey(newParticipant.participantPublicKey)
 
+            // A placeholder row is not a profile: it is the "LOADING..." name and a
+            // GENESIS_AT stamp, standing in until a kind:0 arrives. So a member we
+            // already hold one for still needs asking about -- one removed and added
+            // again, or one whose last ask came back empty, would otherwise keep the
+            // placeholder for the life of the room. Only a resolved profile is done.
+            if (profile != null && profile.createdAt > GENESIS_AT) return@forEach
+
             if (profile == null) {
                 // Create placeholder profile...
                 val nostrEvent = database.nostrEventDao().getNostrEvents(
@@ -168,45 +175,43 @@ object MarmotInboundManager {
                     limit = 1
                 )
 
-                val placeholderProfile = Profile(
-                    displayName = "LOADING...",
-                    publicKey = newParticipant.participantPublicKey,
-                    createdAt = GENESIS_AT,
-                    nostrEventId = nostrEvent.first().id,  // Will hopefully get overwriting by sync,
-                )
-
                 database.profileDao().insertPlaceholderProfile(
-                    placeholderProfile
-                )
-
-                // Schedule sync for profile...
-                val synchronizationFilter = SynchronizationFilter(
-                    authors = arrayOf(
-                        placeholderProfile.publicKey
-                    ),
-                    kinds = arrayOf(
-                        MetadataEvent.KIND,
-                        ChatMessageRelayListEvent.KIND,
-                        KeyPackageEvent.KIND,
-                        KeyPackageRelayListEvent.KIND,
+                    Profile(
+                        displayName = "LOADING...",
+                        publicKey = newParticipant.participantPublicKey,
+                        createdAt = GENESIS_AT,
+                        nostrEventId = nostrEvent.first().id,  // Will hopefully get overwriting by sync,
                     )
                 )
-
-                database.negentropySynchronizeRequestDao().insert(
-                    Relays.DefaultDMRelayList.map { relayUrl ->
-                        NegentropySynchronizeRequest(
-                            id = NegentropySynchronizeRequest.computeId(
-                                relayURL = relayUrl.url,
-                                synchronizationFilter
-                            ),
-                            purpose = "synchronization",
-                            synchronizationFilter = synchronizationFilter,
-                            relayURL = relayUrl.url,
-                            level = 0
-                        )
-                    }
-                )
             }
+
+            // Schedule sync for profile...
+            val synchronizationFilter = SynchronizationFilter(
+                authors = arrayOf(
+                    newParticipant.participantPublicKey
+                ),
+                kinds = arrayOf(
+                    MetadataEvent.KIND,
+                    ChatMessageRelayListEvent.KIND,
+                    KeyPackageEvent.KIND,
+                    KeyPackageRelayListEvent.KIND,
+                )
+            )
+
+            database.negentropySynchronizeRequestDao().insert(
+                Relays.DefaultDMRelayList.map { relayUrl ->
+                    NegentropySynchronizeRequest(
+                        id = NegentropySynchronizeRequest.computeId(
+                            relayURL = relayUrl.url,
+                            synchronizationFilter
+                        ),
+                        purpose = "synchronization",
+                        synchronizationFilter = synchronizationFilter,
+                        relayURL = relayUrl.url,
+                        level = 0
+                    )
+                }
+            )
         }
         // Handle membership changes...
         database.participantDao().upsert(removedAdmins)

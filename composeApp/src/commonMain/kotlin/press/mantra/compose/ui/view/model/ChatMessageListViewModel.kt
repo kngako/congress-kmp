@@ -74,6 +74,7 @@ import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.nostr.MemberProfileSync
 import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
@@ -251,21 +252,39 @@ class ChatMessageListViewModel(
     }
 
     /**
-     * Finds out where this room's participants read their messages.
+     * Finds out who this room's members are, and where they read their messages.
      *
      * This used to schedule the room's message sync as well — gift wraps for a NIP-17 room,
      * group events for an MLS one. Both are now covered by the subscriptions
      * LiveSubscriptionManager holds open for the whole account, so opening a chat no longer
      * asks for its messages; they are already arriving.
      *
-     * What is left is discovery, not message sync: if we do not hold a participant's
-     * kind-10050 we cannot address a message to them, and that is worth resolving the moment
-     * a chat is opened rather than whenever a background pass gets to it.
+     * What is left is discovery, not message sync, and it is worth doing the moment a chat is
+     * opened rather than whenever a background pass gets to it:
+     *
+     *  - Any member still showing as "LOADING..." — every room, not just NIP-17 ones. See
+     *    [MemberProfileSync] for why a Marmot group's members otherwise stay that way: the
+     *    only ask for their kind:0 was made once, when the Welcome or the commit that added
+     *    them arrived, and nothing they subsequently do prompts another.
+     *  - A NIP-17 participant's kind-10050, without which we cannot address a message to
+     *    them at all. An MLS room needs none: its messages go to the group's own relays.
      */
     fun scheduleSynchronization() {
         logger.d("scheduleSynchronization")
 
         viewModelScope.launch(Dispatchers.IO) {
+            val unnamedMembers = MemberProfileSync.unresolvedMemberPublicKeys(
+                rooms = listOf(localChatRoom),
+                activeUserPublicKey = localChatRoom.chatRoom.userPublicKey,
+            )
+
+            if (unnamedMembers.isNotEmpty()) {
+                logger.i("Members of ${localChatRoom.chatRoom.id} we cannot name yet: $unnamedMembers")
+                nostrRepository.queueNegentropySynchronizeRequest(
+                    MemberProfileSync.requests(unnamedMembers)
+                )
+            }
+
             if (localChatRoom.chatRoom.mlsGroupState == null) {
                 localChatRoom.localParticipants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
 

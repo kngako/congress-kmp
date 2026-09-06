@@ -34,6 +34,7 @@ import press.mantra.compose.network.relays.LiveSubscriptionTransport
 import press.mantra.compose.network.relays.isRelayBackPressure
 import press.mantra.compose.network.sockets.NostrIncomingMessage
 import press.mantra.compose.network.sockets.endsLiveSubscription
+import press.mantra.compose.nostr.MemberProfileSync
 import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
@@ -249,7 +250,8 @@ class LiveSubscriptionManager(
      * guarantee.
      */
     private suspend fun queueCatchUpSynchronization(publicKey: HexKey) {
-        val groupIds = liveGroupIds(publicKey)
+        val rooms = chatRepository.getChatRoomListByPublicKey(publicKey)
+        val groupIds = groupIdsFrom(rooms)
 
         val giftWrapFilter = Nip17Filters.inbox(publicKey)
 
@@ -285,12 +287,19 @@ class LiveSubscriptionManager(
             )
         }
 
-        logger.i("Queueing ${requests.size} catch-up reconciliation(s) over ${groupIds.size} group(s)")
+        // The members none of our rooms can name yet. Asked for here, where every room
+        // this account has is already in hand, because the ask made where a placeholder
+        // is first minted happens once and a Marmot group gives it no second chance --
+        // see [MemberProfileSync].
+        val unnamedMembers = MemberProfileSync.unresolvedMemberPublicKeys(rooms, publicKey)
+        requests += MemberProfileSync.requests(unnamedMembers)
+
+        logger.i(
+            "Queueing ${requests.size} catch-up reconciliation(s) over ${groupIds.size} group(s)" +
+                " and ${unnamedMembers.size} unnamed member(s)"
+        )
         nostrRepository.queueNegentropySynchronizeRequest(requests)
     }
-
-    private suspend fun liveGroupIds(publicKey: HexKey): List<HexKey> =
-        groupIdsFrom(chatRepository.getChatRoomListByPublicKey(publicKey))
 
     /**
      * Keeps the group subscriptions matching the groups we are actually in.
