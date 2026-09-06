@@ -1,22 +1,32 @@
 package press.mantra.compose.nostr.frost
 
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
 import com.vitorpamplona.quartz.nip01Core.tags.dTag.DTag
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.tags.FrostDerivationPathTag
 import press.mantra.compose.nostr.frost.tags.FrostKeyTag
 
 /**
- * What key a Marmot room signs with, announced into the room itself.
+ * What key a Marmot room signs with, signed by the group whose key it is.
  *
- * The coordinator posts one as the room's first message, right after creating
- * it. Content is the group's ChillDKG threshold public key; the tags name the
+ * The room's creator does not announce this; they *propose* it. What goes into
+ * the new room first is a [FrostSigningEvents.PROPOSAL] carrying this event
+ * unsigned, and the state comes into existence when a quorum has signed it --
+ * the same shape a dialect or an artifact is created in.
+ *
+ * ```
+ *  creator --[ 30320 proposal over a 30326 ]-> everyone   "shall we say this room signs with K?"
+ *  ...the session runs...
+ *  everyone --applies the signed 30326 locally--         "the group says this room signs with K"
+ * ```
+ *
+ * Content is the group's ChillDKG threshold public key; the tags name the
  * ceremony that produced it and the path the room's id was derived at.
- *
- * ```
- *  coordinator --[ 30326 group key state ]-> everyone   "this room signs with K, at m/9420/0/0"
- * ```
  *
  * ### What it is for
  *
@@ -32,23 +42,31 @@ import press.mantra.compose.nostr.frost.tags.FrostKeyTag
  *
  * ### Trusted no further than it can be checked
  *
- * The coordinator posts it, and the coordinator is untrusted by construction.
- * A receiver therefore verifies rather than believes: the room's id *is* the
- * threshold key derived at the path, so
- * `SharedKeyDerivation.marmotGroupId(content, path) == chatRoomId` has to hold
- * or the state is dropped. That is the same check
- * `FrostSigningManager.completedKey` made by rederiving, kept rather than
- * replaced -- this event makes the association explicit and cheap to look up,
- * not easier to forge.
+ * Two independent checks, and a state has to pass both -- see [isSignedByGroup]
+ * and `GroupKeyState.verifies`.
+ *
+ * The derivation is the older one and still the load-bearing one: the room's id
+ * *is* the threshold key derived at the path, so
+ * `SharedKeyDerivation.marmotGroupId(content, path) == chatRoomId` has to hold.
+ * A state that fails it names a key the room was not made from, whoever signed
+ * it.
+ *
+ * The signature is what the proposal flow adds. A state now carries a BIP-340
+ * signature by the key that same derivation reaches -- which, since a room's id
+ * *is* that key, means a state is signed by the room it is about, and no single
+ * member can produce it. So a member cannot decide on their own what the room
+ * signs with, even truthfully. The two checks answer different questions and
+ * neither replaces the other: the derivation says the state is true, the
+ * signature says the group said it.
  *
  * ### Replaceable, by this app rather than by a relay
  *
- * Like every kind in [FrostSigningEvents] this is a rumor inside a Marmot group
- * event, so no relay ever sees it and the addressable semantics of the 3xxxx
- * range never fire. [DTag] is the room id and the newest state per room wins,
- * which the local store enforces on its own. Being able to say it twice is what
- * matters in practice: a redelivered announcement, or a second member saying the
- * same true thing, folds away instead of accumulating.
+ * Like every kind in [FrostSigningEvents] this lives inside a Marmot group, so
+ * no relay ever sees it and the addressable semantics of the 3xxxx range never
+ * fire. [DTag] is the room id and the newest state per room wins, which the
+ * local store enforces on its own. Being able to say it twice is what matters
+ * in practice: a session replayed after a crash, or a second proposal for the
+ * same true state, folds away instead of accumulating.
  *
  * One room only ever names one key today. A group that re-runs its ceremony
  * derives a *different* room from the new key, so rotation in place does not
@@ -105,4 +123,50 @@ object GroupKeyStateEvent {
     fun parseThresholdPublicKey(content: String): HexKey? =
         content.trim()
             .takeIf { it.length == 66 && it.all { char -> char.isDigit() || char in 'a'..'f' || char in 'A'..'F' } }
+
+    /**
+     * Whether the room derived from [thresholdPublicKey] at [path] actually
+     * signed [event].
+     *
+     * Three things, and all three are needed. The author has to be the key that
+     * derivation reaches, or a real signature by some other group -- or by the
+     * same group in another of its rooms -- would pass. The id has to be the
+     * hash of the fields it is sitting next to, or the signature covers a
+     * message that is not this event and the fields could then say anything. And
+     * the signature has to verify.
+     *
+     * Note what is being checked against what: the key in the *content*, walked
+     * to the path in the *tags*, is what has to have signed. Since that walk is
+     * also the room's id, the author of a state that passes is the room it
+     * belongs to -- so a state signed by one group about another group's key
+     * fails here, which is the point. Only a room may say what it signs with.
+     *
+     * Everything is caught, because every input is off the wire: a pubkey that
+     * is not a point, a signature that is not 64 bytes, hex that is not hex.
+     * All of them mean the same thing here, which is no.
+     */
+    fun isSignedByGroup(
+        event: Event,
+        thresholdPublicKey: HexKey,
+        path: List<Long>
+    ): Boolean = runCatching {
+        val author = SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path)
+        if (!event.pubKey.equals(author, ignoreCase = true)) return false
+
+        val hashes = EventHasher.hashIdCheck(
+            id = event.id,
+            pubKey = event.pubKey,
+            createdAt = event.createdAt,
+            kind = event.kind,
+            tags = event.tags,
+            content = event.content
+        )
+        if (!hashes) return false
+
+        Nip01Crypto.verify(
+            signature = event.sig.hexToByteArray(),
+            hash = event.id.hexToByteArray(),
+            pubKey = event.pubKey.hexToByteArray()
+        )
+    }.getOrDefault(false)
 }

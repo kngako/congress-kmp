@@ -1,12 +1,16 @@
 package press.mantra.compose.managers
 
 import press.mantra.compose.extensions.toHex
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.PrivateKey
+import fr.acinq.bitcoin.PublicKey
 import fr.acinq.secp256k1.Hex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
+import press.mantra.compose.database.model.FrostSigningSession
 
 /**
  * The derivation every member's device has to agree on, run against real FROST
@@ -125,4 +129,50 @@ class SharedKeyDerivationTest {
 
         assertEquals(derived.publicKey, derived.cache.tweakedPublicKey)
     }
+
+    @Test
+    fun `a walk of no steps lands on the threshold key itself`() {
+        // What a signing session with no path signs as: a row written before that
+        // column existed, or a room that is not derived from the key at all. Both
+        // have to reach the untweaked key, or a session caught by the migration
+        // would change which key it signs as between two of its own rounds.
+        val nowhere = SharedKeyDerivation.derive(thresholdPublicKey, emptyList())
+
+        assertEquals(
+            PublicKey(ByteVector(thresholdPublicKey.hexToByteArray())).xOnly().value.toHex(),
+            nowhere.hex
+        )
+        assertEquals(nowhere.publicKey, nowhere.cache.tweakedPublicKey)
+
+        // And it is not any room: the admin path walks somewhere else entirely.
+        assertNotEquals(nowhere.hex, SharedKeyDerivation.marmotGroupId(thresholdPublicKey))
+    }
+
+    @Test
+    fun `a session with no derivation path walks nowhere`() {
+        // The column is nullable and null means "no derivation", which has to read
+        // back as the empty walk above rather than as the default path.
+        assertEquals(emptyList(), session(derivationPath = null).pathIndices())
+        assertEquals(
+            SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+            session(derivationPath = "m/9420/0/0").pathIndices()
+        )
+        // An unwalkable string is not a path anybody signed at either.
+        assertEquals(emptyList(), session(derivationPath = "m/9420'/0/0").pathIndices())
+    }
+
+    private fun session(derivationPath: String?) = FrostSigningSession(
+        id = "s".repeat(64),
+        chatRoomId = "room",
+        coordinatorPublicKey = "c".repeat(64),
+        userPublicKey = "u".repeat(64),
+        dkgSessionId = "k".repeat(64),
+        threshold = 2,
+        participantCount = 3,
+        signerId = 0,
+        derivationPath = derivationPath,
+        unsignedEventJson = "{}",
+        eventId = "e".repeat(64),
+        nonceRandom = "f".repeat(64)
+    )
 }

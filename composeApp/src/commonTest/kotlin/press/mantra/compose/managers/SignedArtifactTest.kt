@@ -40,7 +40,6 @@ import press.mantra.compose.nostr.nip30303.ArtifactEvent
 class SignedArtifactTest {
     private val participants = 3
     private val threshold = 2
-    private val chatRoomId = "room"
 
     /** The member who filled in the form. Nothing they own should end up on the row. */
     private val proposer = "9".repeat(64)
@@ -55,10 +54,21 @@ class SignedArtifactTest {
         threshold = threshold
     )
 
-    private val tweakCache: TweakCache = TweakCache.create(keyMaterial.thresholdPublicKey)
+    /**
+     * The room the group signs in: derived from its key at the admin path, which
+     * is what makes the room's id and the key it signs as one value.
+     */
+    private val room: SharedKeyDerivation.Derived = SharedKeyDerivation.derive(
+        thresholdPublicKey = keyMaterial.thresholdPublicKey.value.toHex(),
+        path = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+    )
 
-    /** The group's nostr identity: the x-only key a BIP-340 signature verifies against. */
-    private val groupPubKey = tweakCache.tweakedPublicKey.value.toHex()
+    private val tweakCache: TweakCache = room.cache
+
+    /** The group's nostr identity here, which is also [chatRoomId]. */
+    private val groupPubKey = room.hex
+
+    private val chatRoomId = room.hex
 
     private fun proposalTemplate(versionLabel: String = "1.0") = ArtifactEvent.build(
         name = "In Detention",
@@ -99,6 +109,7 @@ class SignedArtifactTest {
         threshold = threshold,
         participantCount = participants,
         signerId = 0,
+        derivationPath = SharedKeyDerivation.formatPath(),
         unsignedEventJson = unsignedEvent.toJson(),
         eventId = unsignedEvent.id,
         nonceRandom = "f".repeat(64)
@@ -158,6 +169,22 @@ class SignedArtifactTest {
         assertNotNull(artifact)
         assertEquals(groupPubKey, artifact.publicKey)
         assertNotEquals(proposer, artifact.publicKey)
+    }
+
+    @Test
+    fun `the group it is authored by is the room it was signed in`() {
+        // Signing runs at the room's derivation path, so the author is the room's
+        // own id rather than the bare threshold key. That is what lets anybody
+        // holding the row check it without being told which key to expect -- and
+        // it is why the path a session signs at cannot come from the proposer.
+        val artifact = MantraArtifact.fromArtifactEvent(signedArtifactEvent(), chatRoomId)
+
+        assertEquals(chatRoomId, artifact?.publicKey)
+        assertNotEquals(
+            keyMaterial.thresholdPublicKey.xOnly().value.toHex(),
+            artifact?.publicKey,
+            "an artifact must be signed by the room's key, not by the group's root key"
+        )
     }
 
     @Test

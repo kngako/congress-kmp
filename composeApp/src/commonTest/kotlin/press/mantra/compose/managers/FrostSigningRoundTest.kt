@@ -51,10 +51,23 @@ class FrostSigningRoundTest {
         threshold = threshold
     )
 
-    private val tweakCache: TweakCache = TweakCache.create(keyMaterial.thresholdPublicKey)
+    /**
+     * The room the group signs in, derived at the admin path.
+     *
+     * The cache carries the path's tweaks, and every call below is given it
+     * rather than a bare `TweakCache.create` -- because that is what the manager
+     * does, and because a tweaked cache is precisely the part most likely to be
+     * wired up wrong without saying so.
+     */
+    private val room: SharedKeyDerivation.Derived = SharedKeyDerivation.derive(
+        thresholdPublicKey = keyMaterial.thresholdPublicKey.value.toHex(),
+        path = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+    )
 
-    /** The group's nostr identity: the x-only key a BIP-340 signature verifies against. */
-    private val groupPubKey = tweakCache.tweakedPublicKey.value.toHex()
+    private val tweakCache: TweakCache = room.cache
+
+    /** The group's nostr identity: the room's own id, which is what it signs as. */
+    private val groupPubKey = room.hex
 
     /** The 32 bytes actually signed — a nostr event id, exactly as the manager computes it. */
     private fun eventId(content: String): String = EventHasher.hashId(
@@ -116,7 +129,7 @@ class FrostSigningRoundTest {
                 hash = id.hexToByteArray(),
                 pubKey = groupPubKey.hexToByteArray()
             ),
-            "the aggregated signature must verify against the group's x-only key"
+            "the aggregated signature must verify against the room's own key"
         )
     }
 
@@ -336,10 +349,15 @@ class FrostSigningCompletionTest {
         threshold = 2
     )
 
-    private val tweakCache: TweakCache = TweakCache.create(keyMaterial.thresholdPublicKey)
+    private val room: SharedKeyDerivation.Derived = SharedKeyDerivation.derive(
+        thresholdPublicKey = keyMaterial.thresholdPublicKey.value.toHex(),
+        path = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+    )
+
+    private val tweakCache: TweakCache = room.cache
 
     /** The group's nostr identity, exactly as `unsignedEventOf` derives it. */
-    private val groupPubKey = tweakCache.tweakedPublicKey.value.toHex()
+    private val groupPubKey = room.hex
 
     /** The event the group is asked to sign, built the way the manager builds it. */
     private val unsignedEvent = Event(
@@ -406,6 +424,7 @@ class FrostSigningCompletionTest {
         threshold = 2,
         participantCount = 3,
         signerId = 2,
+        derivationPath = SharedKeyDerivation.formatPath(),
         unsignedEventJson = unsignedEvent.toJson(),
         eventId = unsignedEvent.id,
         nonceRandom = "f".repeat(64),

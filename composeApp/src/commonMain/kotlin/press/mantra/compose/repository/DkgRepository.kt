@@ -2,7 +2,7 @@ package press.mantra.compose.repository
 
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
-import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -44,17 +44,20 @@ interface DkgRepository {
     )
 
     /**
-     * Tells [chatRoomId] which ceremony's key it signs with, as its first message.
+     * Asks the room to sign a statement of which ceremony's key it signs with,
+     * as its first message.
      *
-     * Called once by whoever creates the room. Null if the ritual has produced
-     * no key yet, or if the room does not derive from the one it produced --
-     * both of which mean there is nothing true to announce.
+     * Called once by whoever creates the room. What comes back is the signing
+     * session, not the state: the state exists when a quorum has signed, which
+     * is the point of proposing it rather than announcing it. Null if the ritual
+     * has produced no key yet, or if the room does not derive from the one it
+     * produced -- both of which mean there is nothing true to propose.
      */
-    suspend fun announceGroupKeyState(
-        chatRoomId: String,
+    suspend fun proposeGroupKeyState(
+        localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         session: DkgSession
-    ): GroupKeyState?
+    ): FrostSigningSession?
 
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
@@ -80,11 +83,11 @@ interface DkgRepository {
                 nostrPrivateKey: ByteArray
             ) = Unit
 
-            override suspend fun announceGroupKeyState(
-                chatRoomId: String,
+            override suspend fun proposeGroupKeyState(
+                localChatRoom: LocalChatRoom,
                 userPublicKey: HexKey,
                 session: DkgSession
-            ): GroupKeyState? = null
+            ): FrostSigningSession? = null
         }
     }
 }

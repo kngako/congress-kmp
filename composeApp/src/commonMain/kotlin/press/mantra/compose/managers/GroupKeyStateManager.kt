@@ -3,26 +3,41 @@ package press.mantra.compose.managers
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import kotlin.time.Clock
 import kotlin.time.Instant
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
-import press.mantra.compose.database.model.MarmotInnerEvent
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 
 /**
- * Announces and files what key a room signs with.
+ * Puts what key a room signs with to the group, and files what the group says.
  *
- * The coordinator [announce]s once, as the new room's first message; every
- * other member [record]s what arrives. Both ends land on the same
- * [GroupKeyState] row, which is what a signing request is resolved against --
- * see `FrostSigningManager.completedKey`.
+ * The room's creator [propose]s it as the new room's first message; every
+ * device [record]s the state once the signing session behind it produces a
+ * signature. Both ends land on the same [GroupKeyState] row, which is what a
+ * signing request is resolved against -- see `FrostSigningManager.completedKey`.
  *
- * Nothing here is trusted on the strength of who said it. A state is kept only
- * if the room's id rederives from the key it names, which is the same check
- * `completedKey` used to make by scanning, and the reason a coordinator cannot
- * point a room at a key it was not made from.
+ * ### Why this is proposed rather than announced
+ *
+ * It used to be announced: the coordinator wrote the row, said so in the room,
+ * and every receiver kept the statement if the room's id rederived from the key
+ * it named. That check is still here and still the thing safety rests on -- a
+ * state that does not rederive its own room is dropped, whoever it came from --
+ * but it left the *first* thing a group ever does as the one thing one member
+ * decides alone.
+ *
+ * So it goes through the same door everything else the group says goes through.
+ * A room's key state is now a `FrostSigningEvents.PROPOSAL` over a
+ * [GroupKeyStateEvent], and the state exists when a quorum has signed it, on
+ * every device at once, authored by the group's own key. The first thing the
+ * group does is now something the group did.
+ *
+ * Nothing about that makes the room usable any later than before: signing falls
+ * back to rederiving while the session runs, which is exactly what every room
+ * did before this table existed.
  */
 object GroupKeyStateManager {
     private const val TAG = "GroupKeyStateManager"
@@ -34,34 +49,45 @@ object GroupKeyStateManager {
         database.groupKeyStateDao().getByChatRoomId(chatRoomId)
 
     /**
-     * Says what the freshly made room signs with, and files it locally.
+     * Asks the group to say what the freshly made room signs with.
      *
-     * Called once, by the member who created the room, before anybody has been
-     * added to it -- the announcement is the room's first message, so a member
-     * arriving on a welcome finds it waiting rather than having to be told
-     * separately.
+     * Called once, by the member who created the room, as its first application
+     * message -- so a member arriving on a welcome finds the session waiting
+     * rather than having to be told about the key separately.
      *
-     * Queued before it is recorded, matching the signing pipeline: a crash
-     * between the two costs a duplicate announcement, which [record] folds
-     * away, rather than a room whose key nobody ever named.
+     * No row is written here, and that is the whole change. The state is not
+     * this device's to assert; it appears on every device together when
+     * `FrostSigningManager` completes the session and applies the signed event,
+     * which is the same path that turns a signed proposal into a dialect.
      *
-     * Refuses to announce a state that does not describe the room, because a
+     * The session signs at the room's own path, so what comes back is a state
+     * signed by the very key it names -- the room's id being that key. A reader
+     * needs nothing but the event and the room it arrived in to check that.
+     *
+     * Refuses to propose a state that does not describe the room, because a
      * state that fails [GroupKeyState.verifies] here is this device having
-     * derived the room from one key and announced another -- a bug worth
-     * failing on rather than broadcasting.
+     * derived the room from one key and proposed another -- a bug worth failing
+     * on rather than asking the group to sign.
+     *
+     * [key] is handed to the signing session rather than looked up from the
+     * room, because the room has no key state yet and looking one up is exactly
+     * what this session exists to make possible.
      */
-    suspend fun announce(
+    suspend fun propose(
         database: MantraDatabase,
-        chatRoomId: String,
+        localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
-        dkgSessionId: String,
-        thresholdPublicKey: HexKey,
+        key: DkgSession,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
         createdAt: Long = Clock.System.now().epochSeconds
-    ): GroupKeyState {
+    ): FrostSigningSession {
+        val chatRoomId = localChatRoom.chatRoom.id
+        val thresholdPublicKey = key.thresholdPublicKey
+            ?: throw IllegalStateException("Ceremony ${key.id} has produced no key for $chatRoomId to sign with")
+
         val state = GroupKeyState(
             chatRoomId = chatRoomId,
-            dkgSessionId = dkgSessionId,
+            dkgSessionId = key.id,
             thresholdPublicKey = thresholdPublicKey,
             derivationPath = SharedKeyDerivation.formatPath(path),
             announcedBy = userPublicKey,
@@ -72,39 +98,26 @@ object GroupKeyStateManager {
             "Room $chatRoomId is not derived from $thresholdPublicKey at ${state.derivationPath}"
         }
 
-        val tags = GroupKeyStateEvent.assembleTags(
-            chatRoomId = chatRoomId,
-            dkgSessionId = dkgSessionId,
-            path = path
+        logger.i("Proposing key ${state.thresholdPublicKey} for room $chatRoomId at ${state.derivationPath}")
+
+        return FrostSigningManager.proposeSigning(
+            database = database,
+            localChatRoom = localChatRoom,
+            userPublicKey = userPublicKey,
+            kind = GroupKeyStateEvent.KIND,
+            tags = GroupKeyStateEvent.assembleTags(
+                chatRoomId = chatRoomId,
+                dkgSessionId = key.id,
+                path = path
+            ),
+            content = thresholdPublicKey,
+            key = key,
+            createdAt = createdAt
         )
-
-        database.marmotInnerEventDao().upsert(
-            MarmotInnerEvent(
-                // The rumor id the outbound pipeline will recompute from these
-                // same fields when it assembles the event to encrypt.
-                id = EventHasher.hashId(
-                    pubKey = userPublicKey,
-                    createdAt = createdAt,
-                    tags = tags,
-                    content = thresholdPublicKey,
-                    kind = GroupKeyStateEvent.KIND
-                ),
-                publicKey = userPublicKey,
-                kind = GroupKeyStateEvent.KIND,
-                createdAt = Instant.fromEpochSeconds(createdAt),
-                tags = tags,
-                content = thresholdPublicKey,
-                chatRoomId = chatRoomId
-            )
-        )
-
-        logger.i("Announcing key ${state.thresholdPublicKey} for room $chatRoomId at ${state.derivationPath}")
-
-        return database.groupKeyStateDao().replace(state)
     }
 
     /**
-     * Files an inbound announcement, or drops it and says why.
+     * Files a state the group signed, or drops it and says why.
      *
      * Storing is all this adds to [stateFrom], which is where the deciding
      * happens -- kept apart so the check a member's safety rests on can be
@@ -118,15 +131,22 @@ object GroupKeyStateManager {
         stateFrom(chatRoomId, innerEvent)?.let { database.groupKeyStateDao().replace(it) }
 
     /**
-     * The state an announcement amounts to, or null if it amounts to none.
+     * The state an event amounts to, or null if it amounts to none.
      *
-     * Every reason to return null is a reason the announcement does not describe
-     * this room, and none of them are about who sent it: a member with no share,
-     * or none of the ceremony at all, can announce a true state and it is still
-     * true. What cannot be tolerated is a state naming a key the room was not
-     * derived from, because acting on one means signing with a share that will
-     * not aggregate -- or, worse, treating a key the group does not hold as the
-     * key the group holds.
+     * Two questions, and a state has to answer both. Is it true -- does the room
+     * rederive from the key it names? And did the group say it -- does the
+     * signature verify against the identity of that same key?
+     *
+     * The first is the one that cannot be given up. Acting on a state naming a
+     * key the room was not derived from means signing with a share that will not
+     * aggregate, or worse, treating a key the group does not hold as the key the
+     * group holds. It is also entirely independent of who is speaking: a member
+     * with no share, or none of the ceremony at all, can state a true state and
+     * it is still true.
+     *
+     * The second is what the proposal flow buys. It does not make a state truer;
+     * it makes a state the group's, so that the record of what a room signs with
+     * is a thing a quorum agreed to rather than a thing its creator said.
      */
     fun stateFrom(chatRoomId: String, innerEvent: Event): GroupKeyState? {
         val announced = GroupKeyStateEvent.parseChatRoomId(innerEvent.tags)
@@ -153,6 +173,18 @@ object GroupKeyStateManager {
             return null
         }
 
+        // Only the group may say what the group signs with. A member holding a
+        // single share cannot produce this signature, so nothing short of a
+        // quorum can put a room's key state on the record -- not even a member
+        // saying something true.
+        if (!GroupKeyStateEvent.isSignedByGroup(innerEvent, thresholdPublicKey, path)) {
+            logger.w(
+                "Key state in $chatRoomId from ${innerEvent.pubKey} carries no signature by " +
+                    "the group holding $thresholdPublicKey; dropping"
+            )
+            return null
+        }
+
         val state = GroupKeyState(
             chatRoomId = chatRoomId,
             dkgSessionId = dkgSessionId,
@@ -162,8 +194,8 @@ object GroupKeyStateManager {
             announcedAt = Instant.fromEpochSeconds(innerEvent.createdAt)
         )
 
-        // The whole trust model, in one line. Anybody may say what this room
-        // signs with; only the truth rederives the room they said it in.
+        // Half the trust model, in one line, and the half that does not care who
+        // is speaking. Only the truth rederives the room it was stated in.
         if (!state.verifies()) {
             logger.w(
                 "Key state from ${innerEvent.pubKey} names $thresholdPublicKey at " +

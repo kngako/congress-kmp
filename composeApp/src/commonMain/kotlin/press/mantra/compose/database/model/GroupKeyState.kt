@@ -12,14 +12,19 @@ import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.managers.SharedKeyDerivation
 
 /**
- * Which shared key a room signs with, as this device has been told.
+ * Which shared key a room signs with, as the group itself has said.
  *
- * Written from a `GroupKeyStateEvent` -- the room's own announcement of the
- * ceremony behind it -- and read when a signing request arrives, to pick the
- * secret share out of the right [DkgSession]. A device that took part in more
- * than one ceremony holds more than one share, and they are not
- * interchangeable: a partial signature made with the wrong one cannot
- * aggregate.
+ * Written from a `GroupKeyStateEvent` -- the room's own statement of the
+ * ceremony behind it, signed by the group's threshold key -- and read when a
+ * signing request arrives, to pick the secret share out of the right
+ * [DkgSession]. A device that took part in more than one ceremony holds more
+ * than one share, and they are not interchangeable: a partial signature made
+ * with the wrong one cannot aggregate.
+ *
+ * The row appears on every member's device at once, when the signing session
+ * the room opened with produces a signature. Until then a room has no state and
+ * signing resolves its key by rederiving, which is what every room did before
+ * this table existed.
  *
  * ### Why this is a row and not a rederivation
  *
@@ -75,10 +80,14 @@ data class GroupKeyState(
     /** The path [chatRoomId] was derived at, `m/9420/0/0` style. */
     val derivationPath: String,
 
-    /** Who announced it. Kept for the transcript; the derivation is what vouches for it. */
+    /**
+     * Who said it: the group's own nostr identity, since only a quorum can put
+     * a state on the record. Kept for the transcript -- the derivation below and
+     * the signature on the event are what vouch for it.
+     */
     val announcedBy: HexKey,
 
-    /** The announcement's own timestamp, so the newest state per room wins. */
+    /** The signed event's own timestamp, so the newest state per room wins. */
     val announcedAt: Instant,
 
     override val createdAt: Instant = Clock.System.now(),
@@ -91,10 +100,13 @@ data class GroupKeyState(
     /**
      * Whether this state actually describes the room it claims to.
      *
-     * The room's id is the threshold key derived at the path, so this is the
-     * whole of the trust model: a state that does not rederive its own room was
-     * announced by somebody pointing the room at a key it was not made from.
-     * Checked before the row is written and cheap enough to check again.
+     * The room's id is the threshold key derived at the path, so a state that
+     * does not rederive its own room points the room at a key it was not made
+     * from. Checked before the row is written and cheap enough to check again.
+     *
+     * Half the trust model, and the half that does not care who is speaking. The
+     * other half is `GroupKeyStateEvent.isSignedByGroup`, which asks whether the
+     * group said it rather than whether it is true.
      */
     fun verifies(): Boolean {
         val path = pathIndices() ?: return false

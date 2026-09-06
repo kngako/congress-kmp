@@ -1,41 +1,75 @@
 package press.mantra.compose.managers
 
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
+import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
+import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
+import fr.acinq.bitcoin.ByteVector
+import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.PrivateKey
-import fr.acinq.secp256k1.Hex
+import fr.acinq.bitcoin.XonlyPublicKey
+import fr.acinq.bitcoin.crypto.frost.Frost
+import fr.acinq.bitcoin.crypto.frost.IndividualNonce
+import fr.acinq.bitcoin.crypto.frost.KeyMaterial
+import fr.acinq.bitcoin.crypto.frost.SecretNonce
+import fr.acinq.bitcoin.crypto.frost.Session
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 
 /**
- * What a room's key-state announcement is allowed to convince a member of.
+ * What a room's key state is allowed to convince a member of.
  *
- * The announcement is made by the coordinator, and the coordinator is untrusted
- * by construction -- the same assumption every other part of the ceremony is
- * written under. So the interesting cases here are all the ones where a state
- * is *wrong*: a member who acts on a state naming a key their room was not made
- * from signs with a share that cannot aggregate, or worse, treats a key the
- * group does not hold as the key the group holds.
+ * Two independent things have to hold, and the tests come in those two halves.
+ *
+ * A state has to be *true*: the room's id is the threshold key derived at the
+ * path, so a state that does not rederive its own room is naming a key the room
+ * was not made from. A member who acts on one signs with a share that cannot
+ * aggregate, or worse, treats a key the group does not hold as the key the group
+ * holds. That check knows nothing about who is speaking and never did.
+ *
+ * And a state has to be the *group's*: it is now produced by a FROST signing
+ * session rather than announced by whoever made the room, so it carries a
+ * signature no single member can make. That does not make a state truer -- the
+ * derivation already settled truth -- it makes the first thing on a group's
+ * record something the group agreed to.
  *
  * `GroupKeyStateManager` needs a database and so cannot be stood up here. What
- * can be is the check it defers to, which is where the whole trust model lives.
+ * can be is the deciding it defers to, which is where both halves live.
  */
 class GroupKeyStateTest {
-    /** Stands in for a ceremony's output. Any valid point will do. */
-    private val thresholdPublicKey = PrivateKey(
-        Hex.decode("1c0ffee0000000000000000000000000000000000000000000000000000000a1")
-    ).publicKey().value.toHex()
+    private val participants = 3
+    private val threshold = 2
 
-    /** A second group's key, for the states that name the wrong one. */
-    private val otherKey = PrivateKey(
-        Hex.decode("2bada550000000000000000000000000000000000000000000000000000000b2")
-    ).publicKey().value.toHex()
+    /** Stands in for a completed ceremony. Any valid key will do. */
+    private val keyMaterial: KeyMaterial = Frost.trustedDealerKeygen(
+        thresholdSecretKey = PrivateKey(
+            ByteVector32("1c0ffee0000000000000000000000000000000000000000000000000000000a1")
+        ),
+        nParticipants = participants,
+        threshold = threshold
+    )
+
+    /** A second group, entirely: its own key, its own shares, its own quorum. */
+    private val otherKeyMaterial: KeyMaterial = Frost.trustedDealerKeygen(
+        thresholdSecretKey = PrivateKey(
+            ByteVector32("2bada550000000000000000000000000000000000000000000000000000000b2")
+        ),
+        nParticipants = participants,
+        threshold = threshold
+    )
+
+    private val thresholdPublicKey = keyMaterial.thresholdPublicKey.value.toHex()
+
+    /** The other group's key, for the states that name the wrong one. */
+    private val otherKey = otherKeyMaterial.thresholdPublicKey.value.toHex()
 
     private val path = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
 
@@ -61,9 +95,9 @@ class GroupKeyStateTest {
 
     @Test
     fun `a state naming another group's key does not verify`() {
-        // The attack this is here for: a coordinator pointing the room at a key
-        // the group never made, so that everything signed in it is signed by
-        // whoever holds that key instead.
+        // The attack this is here for: a room pointed at a key the group never
+        // made, so that everything signed in it is signed by whoever holds that
+        // key instead.
         assertFalse(state(thresholdPublicKey = otherKey).verifies())
     }
 
@@ -89,7 +123,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `the tags a state is announced on read back as they were written`() {
+    fun `the tags a state is proposed on read back as they were written`() {
         val tags = GroupKeyStateEvent.assembleTags(
             chatRoomId = chatRoomId,
             dkgSessionId = "ceremony-1",
@@ -136,79 +170,272 @@ class GroupKeyStateTest {
         )
     }
 
-    // ---- The announcement as it actually arrives -------------------------
+    // ---- The state as the group actually makes one -----------------------
     //
     // Everything above checks the verdict on a state already assembled. These
-    // check the assembling: a real Event, with the tags and content an
-    // announcement is carried on, through the function the inbound path calls.
+    // check the assembling: a real Event, signed by a real quorum against real
+    // FROST, through the function the inbound path calls.
 
-    private fun announcement(
+    /**
+     * A quorum of [material]'s group signing [eventId], in the manager's order.
+     *
+     * The same shape `FrostSigningManager.advance` runs -- nonces, a signer set,
+     * partial signatures, an aggregate -- because a signature assembled any
+     * other way would not be evidence that this check accepts the ones the app
+     * produces.
+     */
+    private fun groupSignature(material: KeyMaterial, eventId: String): String =
+        groupSignatureAt(material, path, eventId)
+
+    private fun groupSignatureAt(
+        material: KeyMaterial,
+        path: List<Long>,
+        eventId: String
+    ): String {
+        val cache = identityOf(material, path).cache
+        val message = ByteVector(eventId.hexToByteArray())
+        val signerIds = listOf(0, 1)
+
+        val nonces = signerIds.map { signerId ->
+            SecretNonce.generate(
+                sessionRandom = ByteVector32("a".repeat(63) + "${signerId + 1}"),
+                secretShare = material.secretShares[signerId],
+                publicShare = material.publicShares[signerId],
+                tweakedThresholdPublicKey = cache.tweakedPublicKey,
+                message = message,
+                extraInput = null
+            )
+        }
+
+        val signingSession = Session.create(
+            aggregatedNonce = IndividualNonce.aggregate(nonces.map { it.second }).right!!,
+            signerIds = signerIds.map { it.toUInt() },
+            signerPublicShares = signerIds.map { material.publicShares[it] },
+            nParticipants = participants,
+            threshold = threshold,
+            tweakCache = cache,
+            message = message
+        )
+
+        val partials = signerIds.mapIndexed { position, signerId ->
+            signingSession.sign(
+                nonces[position].first,
+                material.secretShares[signerId],
+                signerId.toUInt()
+            ).right!!
+        }
+
+        return signingSession.aggregateSigs(partials).right!!.toByteArray().toHex()
+    }
+
+    /**
+     * A group's room at [path]: the cache a signature is made with and the key it
+     * verifies against, which is also the room's own id.
+     */
+    private fun identityOf(
+        material: KeyMaterial,
+        path: List<Long> = this.path
+    ): SharedKeyDerivation.Derived =
+        SharedKeyDerivation.derive(material.thresholdPublicKey.value.toHex(), path)
+
+    /**
+     * The event a proposal carries: the key state re-authored under the room's
+     * key, exactly as `FrostSigningManager.unsignedEventOf` does it.
+     */
+    private fun unsignedKeyState(
         content: String = thresholdPublicKey,
         tags: Array<Array<String>> = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path),
-        pubKey: String = "c00rd1na70r",
-        createdAt: Long = 1_700_000_000
-    ) = Event(
-        id = "an-id",
-        pubKey = pubKey,
-        createdAt = createdAt,
-        kind = GroupKeyStateEvent.KIND,
-        tags = tags,
-        content = content,
-        sig = ""
+        createdAt: Long = 1_700_000_000,
+        author: KeyMaterial = keyMaterial
+    ): Event {
+        val groupPubKey = identityOf(author).hex
+
+        return Event(
+            id = EventHasher.hashId(
+                pubKey = groupPubKey,
+                createdAt = createdAt,
+                kind = GroupKeyStateEvent.KIND,
+                tags = tags,
+                content = content
+            ),
+            pubKey = groupPubKey,
+            createdAt = createdAt,
+            kind = GroupKeyStateEvent.KIND,
+            tags = tags,
+            content = content,
+            sig = ""
+        )
+    }
+
+    /**
+     * A finished key state, through the same call that hands a completed session
+     * its event -- so what these tests judge is what a device actually applies.
+     */
+    private fun signedKeyState(
+        content: String = thresholdPublicKey,
+        tags: Array<Array<String>> = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path),
+        createdAt: Long = 1_700_000_000,
+        author: KeyMaterial = keyMaterial,
+        signer: KeyMaterial = author
+    ): Event {
+        val unsigned = unsignedKeyState(content, tags, createdAt, author)
+
+        return FrostSigningManager.signedEvent(
+            session = sessionOver(unsigned),
+            signature = groupSignature(signer, unsigned.id)
+        )
+    }
+
+    private fun sessionOver(unsignedEvent: Event) = FrostSigningSession(
+        id = "s".repeat(64),
+        chatRoomId = chatRoomId,
+        coordinatorPublicKey = "c00rd1na70r",
+        userPublicKey = "c00rd1na70r",
+        dkgSessionId = "ceremony-1",
+        threshold = threshold,
+        participantCount = participants,
+        signerId = 0,
+        derivationPath = SharedKeyDerivation.formatPath(path),
+        unsignedEventJson = unsignedEvent.toJson(),
+        eventId = unsignedEvent.id,
+        nonceRandom = "f".repeat(64)
     )
 
     @Test
-    fun `an announcement of the room it arrives in is taken`() {
-        val state = GroupKeyStateManager.stateFrom(chatRoomId, announcement())
+    fun `a state the group signed about the room it arrives in is taken`() {
+        val state = GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState())
 
         assertEquals(chatRoomId, state?.chatRoomId)
         assertEquals("ceremony-1", state?.dkgSessionId)
         assertEquals(thresholdPublicKey, state?.thresholdPublicKey)
         assertEquals("m/9420/0/0", state?.derivationPath)
-        // Attribution and ordering come off the event, not off the clock.
-        assertEquals("c00rd1na70r", state?.announcedBy)
+        // Attribution and ordering come off the event, not off the clock. The
+        // author is the room itself now, which is the whole point: nobody in
+        // particular said this.
+        assertEquals(chatRoomId, state?.announcedBy)
         assertEquals(Instant.fromEpochSeconds(1_700_000_000), state?.announcedAt)
     }
 
     @Test
-    fun `an announcement naming another group's key is dropped`() {
-        // The one that matters: a coordinator pointing the room at a key the
-        // group never made. Everything else here is malformed input; this is
-        // well-formed input that lies.
-        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, announcement(content = otherKey)))
+    fun `a true state nobody signed is dropped`() {
+        // The change this file exists to pin down. What is being refused here is
+        // not a lie -- this state is perfectly true and rederives its own room --
+        // it is one member deciding alone what the group signs with. That used to
+        // be enough and is not any more.
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, unsignedKeyState()))
     }
 
     @Test
-    fun `an announcement addressed to another room is dropped`() {
+    fun `a state a member signed for themselves is dropped`() {
+        // The obvious way around the check: sign a true state with your own nostr
+        // key and hope the author is not looked at. The author has to be the
+        // identity of the key in the content, and a member is not that.
+        val member = PrivateKey(
+            ByteVector32("3c0ffee0000000000000000000000000000000000000000000000000000000c3")
+        )
+        val memberPubKey = XonlyPublicKey(member.publicKey()).value.toHex()
+        val tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path)
+        val id = EventHasher.hashId(
+            pubKey = memberPubKey,
+            createdAt = 1_700_000_000,
+            kind = GroupKeyStateEvent.KIND,
+            tags = tags,
+            content = thresholdPublicKey
+        )
+
+        val signed = Event(
+            id = id,
+            pubKey = memberPubKey,
+            createdAt = 1_700_000_000,
+            kind = GroupKeyStateEvent.KIND,
+            tags = tags,
+            content = thresholdPublicKey,
+            sig = Nip01Crypto.sign(
+                data = id.hexToByteArray(),
+                privKey = member.value.toByteArray()
+            ).toHex()
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signed))
+    }
+
+    @Test
+    fun `a state one group signed about another group's key is dropped`() {
+        // Only a group may say what its own key is. This one is signed, by a real
+        // quorum, and still refused: the signature is not by the key it names.
+        assertNull(
+            GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(author = otherKeyMaterial))
+        )
+    }
+
+    @Test
+    fun `a state edited after the group signed it is dropped`() {
+        // A signature covers the id, and the id is the hash of the fields. Swap
+        // a field and the two stop agreeing, which is what the id check is for.
+        val signed = signedKeyState()
+        val tampered = Event(
+            id = signed.id,
+            pubKey = signed.pubKey,
+            createdAt = signed.createdAt,
+            kind = signed.kind,
+            tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-2", path),
+            content = signed.content,
+            sig = signed.sig
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, tampered))
+    }
+
+    @Test
+    fun `a state naming another group's key is dropped`() {
+        // Well-formed input that lies. Refused by the derivation rather than by
+        // the signature -- the group here is signing about its own key, it is
+        // simply not the key this room was made from.
+        val siblingRoom = SharedKeyDerivation.marmotGroupId(otherKey, path)
+
+        assertNull(
+            GroupKeyStateManager.stateFrom(
+                chatRoomId,
+                signedKeyState(
+                    content = otherKey,
+                    tags = GroupKeyStateEvent.assembleTags(siblingRoom, "ceremony-1", path),
+                    author = otherKeyMaterial
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `a state addressed to another room is dropped`() {
         val elsewhere = GroupKeyStateEvent.assembleTags(otherKey, "ceremony-1", path)
 
-        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, announcement(tags = elsewhere)))
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(tags = elsewhere)))
     }
 
     @Test
-    fun `an announcement missing any of what it has to say is dropped`() {
+    fun `a state missing any of what it has to say is dropped`() {
         val full = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path)
 
         // No ceremony to reach a share through.
         assertNull(
             GroupKeyStateManager.stateFrom(
                 chatRoomId,
-                announcement(tags = full.filterNot { it[0] == "frost_key" }.toTypedArray())
+                signedKeyState(tags = full.filterNot { it[0] == "frost_key" }.toTypedArray())
             )
         )
         // No path, so nothing to rebuild a TweakCache from.
         assertNull(
             GroupKeyStateManager.stateFrom(
                 chatRoomId,
-                announcement(tags = full.filterNot { it[0] == "frost_path" }.toTypedArray())
+                signedKeyState(tags = full.filterNot { it[0] == "frost_path" }.toTypedArray())
             )
         )
         // No key.
-        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, announcement(content = "")))
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(content = "")))
     }
 
     @Test
-    fun `an announcement carrying no d tag is judged on its derivation alone`() {
+    fun `a state carrying no d tag is judged on its derivation alone`() {
         // The d tag is a convenience for a reader holding the event on its own.
         // Dropping it loses nothing that matters, because the room it arrived in
         // plus the derivation still settle the question.
@@ -219,7 +446,7 @@ class GroupKeyStateTest {
 
         assertEquals(
             chatRoomId,
-            GroupKeyStateManager.stateFrom(chatRoomId, announcement(tags = undirected))?.chatRoomId
+            GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(tags = undirected))?.chatRoomId
         )
     }
 
@@ -241,5 +468,54 @@ class GroupKeyStateTest {
         // refuses to build one. Checked because verifies() is what everything
         // else defers to, and it should not be the thing that trusts its input.
         assertFalse(state(derivationPath = "m/4294967296/0/0").verifies())
+    }
+
+    @Test
+    fun `the room signs as its own id`() {
+        // The whole point of deriving at the room's path. The author of a state
+        // is the room it belongs to, so a reader checking one needs no lookup:
+        // the key they expect is the id of the room they found it in.
+        assertEquals(chatRoomId, signedKeyState().pubKey)
+
+        // And it verifies as that key, which is the half a signature makes true
+        // rather than merely stated.
+        val signed = signedKeyState()
+        assertTrue(
+            Nip01Crypto.verify(
+                signature = signed.sig.hexToByteArray(),
+                hash = signed.id.hexToByteArray(),
+                pubKey = chatRoomId.hexToByteArray()
+            )
+        )
+    }
+
+    @Test
+    fun `a state signed at the wrong path is dropped`() {
+        // The path decides which key the group signs as, so a session that walked
+        // a different one produces an author this room does not answer to -- even
+        // with the right group, the right key and a real quorum behind it.
+        val sibling = listOf(9420L, 0L, 1L)
+        val siblingIdentity = identityOf(keyMaterial, sibling)
+        val tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path)
+
+        val id = EventHasher.hashId(
+            pubKey = siblingIdentity.hex,
+            createdAt = 1_700_000_000,
+            kind = GroupKeyStateEvent.KIND,
+            tags = tags,
+            content = thresholdPublicKey
+        )
+
+        val signed = Event(
+            id = id,
+            pubKey = siblingIdentity.hex,
+            createdAt = 1_700_000_000,
+            kind = GroupKeyStateEvent.KIND,
+            tags = tags,
+            content = thresholdPublicKey,
+            sig = groupSignatureAt(keyMaterial, sibling, id)
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signed))
     }
 }

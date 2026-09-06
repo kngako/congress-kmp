@@ -10,6 +10,7 @@ import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.traits.UserViewableEntity
 import press.mantra.compose.exceptions.MarmotUnprocessableInnerEventException
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -1007,12 +1008,29 @@ data class ChatMessage(
                 // account of the same thing.
                 in FrostSigningEvents.ALL -> null
 
-                // The room saying what key it signs with. Standing state rather
-                // than something that happened, and the room's own id already
-                // says it to anyone who can derive -- so there is nothing here a
-                // reader of the transcript needs told. Falling through to
-                // "unsupported" would put the raw announcement in the chat.
-                GroupKeyStateEvent.KIND -> null
+                // The group saying what key its room signs with, arriving here
+                // the way every group-signed event does: applied by
+                // `FrostSigningManager` once a quorum has signed the proposal it
+                // was carried in.
+                //
+                // Recorded rather than believed. `GroupKeyStateManager` keeps it
+                // only if the room rederives from the key it names *and* the
+                // group holding that key signed it, so a state reaching this
+                // line still has to earn the row.
+                //
+                // No chat line: this is standing state rather than something
+                // that happened, and the session that produced it has already
+                // written the transcript of it happening. Falling through to
+                // "unsupported" would put the raw event in the chat underneath
+                // that.
+                GroupKeyStateEvent.KIND -> {
+                    GroupKeyStateManager.record(
+                        database = database,
+                        chatRoomId = groupId,
+                        innerEvent = event
+                    )
+                    null
+                }
 
                 else -> {
                     ChatMessage(

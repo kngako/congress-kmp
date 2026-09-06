@@ -10,6 +10,7 @@ import kotlin.time.Instant
 import press.mantra.compose.database.model.traits.LocalStoreEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.types.FrostSigningStage
+import press.mantra.compose.managers.SharedKeyDerivation
 
 /**
  * One FROST signing session, as this device sees it.
@@ -76,6 +77,24 @@ data class FrostSigningSession(
     /** This device's FROST id: its index in the ceremony's participant order. */
     val signerId: Int,
 
+    /**
+     * The path off the ceremony's key this session signs at, `m/9420/0/0` style,
+     * or null to sign as the untweaked threshold key.
+     *
+     * An input, and stored for the same reason every other input is: the
+     * [TweakCache] a signature aggregates against is rebuilt from it on every
+     * pass, and a session that resolved a different path after a restart would
+     * regenerate a different nonce from the same seed -- publishing a partial
+     * signature against an aggregate nobody else computed.
+     *
+     * Resolved from the room rather than from the proposer, and only accepted
+     * when it derives the room's own id, so what a session signs as is the room
+     * it is running in. Null is the honest answer for a room that is not derived
+     * from the key at all, and is what sessions predating this column read back
+     * as -- both of which signed as the threshold key itself.
+     */
+    val derivationPath: String? = null,
+
     val stage: FrostSigningStage = FrostSigningStage.COLLECTING_NONCES,
 
     /**
@@ -136,4 +155,15 @@ data class FrostSigningSession(
 
     /** Whether this device was picked to sign. A t-of-n key does not need everyone. */
     fun isSigner(): Boolean = signerIdList()?.contains(signerId) ?: false
+
+    /**
+     * [derivationPath] as indices, and an empty list when there is none.
+     *
+     * Empty rather than null because that is what it means to
+     * `SharedKeyDerivation.derive`: a walk of no steps, ending on the threshold
+     * key itself. An unwalkable string reads the same way, since a path nobody
+     * can walk is not one this session ever signed at.
+     */
+    fun pathIndices(): List<Long> =
+        derivationPath?.let { SharedKeyDerivation.parsePathString(it) } ?: emptyList()
 }

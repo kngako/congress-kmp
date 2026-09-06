@@ -11,12 +11,10 @@ import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
 import fr.acinq.bitcoin.PrivateKey
-import fr.acinq.bitcoin.PublicKey
 import fr.acinq.bitcoin.crypto.frost.AggregatedNonce
 import fr.acinq.bitcoin.crypto.frost.IndividualNonce
 import fr.acinq.bitcoin.crypto.frost.SecretNonce
 import fr.acinq.bitcoin.crypto.frost.Session
-import fr.acinq.bitcoin.crypto.frost.TweakCache
 import fr.acinq.bitcoin.utils.Either
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -54,8 +52,20 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * encrypted group event reaches everyone, rather than one sealed wrap per
  * member per message.
  *
- * Three things are genuinely different, and each of them is why this is a
- * separate manager rather than another branch of that one.
+ * ### What it signs as
+ *
+ * The room's own key, not the group's root threshold key. A signing session is
+ * created with the [SharedKeyDerivation] cache for the path the room was derived
+ * at, so the `pubkey` on every event a room signs is that room's id -- see
+ * [SharedKeyDerivation.marmotGroupId], where those are one value. A reader
+ * holding a signed dialect therefore needs no lookup to check it: the author
+ * they expect is the id of the room they found it in.
+ *
+ * The path comes from the room, never from a proposal -- [signingPath] -- because
+ * it decides which key the group signs as.
+ *
+ * Three things are genuinely different from a ceremony, and each of them is why
+ * this is a separate manager rather than another branch of that one.
  *
  * ### It does not need everybody
  *
@@ -89,9 +99,20 @@ object FrostSigningManager {
     /**
      * Opens a signing session, making this device the coordinator.
      *
-     * [unsignedEvent] is signed as it stands apart from its `pubkey`, which is
+     * The event is signed as it stands apart from its `pubkey`, which is
      * replaced with the group's key: a signature over an event claiming
      * somebody else's author would verify against nothing.
+     *
+     * [key] names the ceremony to sign under, for the one caller that knows it
+     * before the room does: `GroupKeyStateManager.propose`, whose whole job is to
+     * establish the answer [completedKey] would otherwise look up -- a room
+     * proposing its own key state cannot be asked which key it signs with.
+     * Everybody else leaves it null and is resolved from the room, which is the
+     * only form that cannot name a ceremony the room has nothing to do with.
+     *
+     * Even then it is taken only if this device actually holds a share of it, so
+     * naming one cannot talk the session into signing with material it has not
+     * got; anything else falls back as though none was given.
      */
     suspend fun proposeSigning(
         database: MantraDatabase,
@@ -100,15 +121,18 @@ object FrostSigningManager {
         kind: Kind,
         tags: Array<Array<String>>,
         content: String,
+        key: DkgSession? = null,
         createdAt: Long = Clock.System.now().epochSeconds
     ): FrostSigningSession {
-        val key = completedKey(database, localChatRoom.chatRoom.id)
+        val ceremony = key?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
+            ?: completedKey(database, localChatRoom.chatRoom.id)
             ?: throw IllegalStateException("This group has no shared key to sign with")
 
-        val signerId = signerIdOf(database, key, userPublicKey)
-            ?: throw IllegalStateException("This device is not a participant in ceremony ${key.id}")
+        val signerId = signerIdOf(database, ceremony, userPublicKey)
+            ?: throw IllegalStateException("This device is not a participant in ceremony ${ceremony.id}")
 
-        val unsignedEvent = unsignedEventOf(key, kind, tags, content, createdAt)
+        val path = signingPath(database, localChatRoom, ceremony)
+        val unsignedEvent = unsignedEventOf(ceremony, path, kind, tags, content, createdAt)
         val sessionId = RandomInstance.bytes(32).toHex()
 
         val session = FrostSigningSession(
@@ -116,10 +140,11 @@ object FrostSigningManager {
             chatRoomId = localChatRoom.chatRoom.id,
             coordinatorPublicKey = userPublicKey,
             userPublicKey = userPublicKey,
-            dkgSessionId = key.id,
-            threshold = key.threshold,
-            participantCount = key.participantCount,
+            dkgSessionId = ceremony.id,
+            threshold = ceremony.threshold,
+            participantCount = ceremony.participantCount,
             signerId = signerId,
+            derivationPath = path?.let(SharedKeyDerivation::formatPath),
             unsignedEventJson = unsignedEvent.toJson(),
             eventId = unsignedEvent.id,
             // Fresh per session, and never reused: this is the seed the device's
@@ -131,7 +156,7 @@ object FrostSigningManager {
         database.frostSigningSessionDao().upsert(session)
         announceStarted(database, session)
 
-        logger.i("Proposing signature $sessionId over event ${unsignedEvent.id} with key ${key.id}")
+        logger.i("Proposing signature $sessionId over event ${unsignedEvent.id} with key ${ceremony.id}")
 
         broadcast(
             database = database,
@@ -253,8 +278,15 @@ object FrostSigningManager {
         // 32 bytes every signer puts their share behind, so taking the proposer's
         // word for it would let them have the group sign one thing while being
         // shown another.
+        //
+        // The author it is rebuilt under comes from this device's own reading of
+        // the room, for the same reason. A proposer who could choose the path
+        // could choose the key the group signs as, and every signer would put
+        // their share behind an author none of them checked.
+        val path = signingPath(database, localChatRoom, key)
         val unsignedEvent = unsignedEventOf(
             key = key,
+            path = path,
             kind = proposed.kind,
             tags = proposed.tags,
             content = proposed.content,
@@ -280,6 +312,7 @@ object FrostSigningManager {
             threshold = key.threshold,
             participantCount = key.participantCount,
             signerId = signerId,
+            derivationPath = path?.let(SharedKeyDerivation::formatPath),
             unsignedEventJson = unsignedEvent.toJson(),
             eventId = unsignedEvent.id,
             nonceRandom = RandomInstance.bytes(32).toHex()
@@ -460,8 +493,7 @@ object FrostSigningManager {
 
         val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return
         val secretShare = key.secretShare?.let { PrivateKey(ByteVector32(it)) } ?: return
-        val thresholdPublicKey = key.thresholdPublicKey?.let { PublicKey(ByteVector(it.hexToByteArray())) }
-            ?: return
+        val thresholdPublicKey = key.thresholdPublicKey ?: return
 
         try {
             // A signature the group has already made settles this session whether
@@ -486,7 +518,14 @@ object FrostSigningManager {
                 return
             }
 
-            val tweakCache = TweakCache.create(thresholdPublicKey)
+            // The room's key rather than the group's root key. A signature
+            // aggregates against whatever the cache carries, so the cache and the
+            // author on the event have to be the same derivation -- and the
+            // session stores the path exactly so that every pass rebuilds the
+            // same one.
+            val tweakCache = SharedKeyDerivation
+                .derive(thresholdPublicKey, session.pathIndices())
+                .cache
             val message = ByteVector(session.eventId.hexToByteArray())
             val publicShares = key.publicShareList()
 
@@ -815,10 +854,10 @@ object FrostSigningManager {
      * to be outside of -- while a group event needs an MLS one, so the two
      * cannot be the same room.
      *
-     * They are bound together by the room's [GroupKeyState]: the announcement
-     * the room opened with, naming the ceremony behind it. That is a lookup
-     * rather than a search, and it carries the derivation path, so a room
-     * derived anywhere other than [SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH]
+     * They are bound together by the room's [GroupKeyState]: the statement the
+     * room opened with and the group signed, naming the ceremony behind it. That
+     * is a lookup rather than a search, and it carries the derivation path, so a
+     * room derived anywhere other than [SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH]
      * is findable at all -- which the rederivation below cannot manage, since it
      * can only rederive at the one path the constant names.
      *
@@ -827,10 +866,17 @@ object FrostSigningManager {
      * a room to a key is still that the room's id *is* the key, and a room still
      * cannot be pointed at a key it was not derived from.
      *
-     * Two fallbacks behind it, both for rooms that predate the table: the
-     * original scan over every ceremony this device holds a share for, and then
-     * a ceremony held in this very room, which is not how the app wires things
-     * today but costs one lookup to keep honest.
+     * Two fallbacks behind it. The first is the original scan over every
+     * ceremony this device holds a share for, rederiving each one's room id
+     * until one matches; the second is a ceremony held in this very room, which
+     * is not how the app wires things today but costs one lookup to keep honest.
+     *
+     * They are not only for rooms that predate the table. A room's key state is
+     * itself signed by the group, so between creating a room and that session
+     * completing there is no state to read, and the scan is what keeps the room
+     * usable in the meantime -- including for the key-state session's own
+     * members. `GroupKeyStateManager.propose` is the one caller that does not
+     * come through here at all, because it names the ceremony outright.
      */
     suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
         GroupKeyStateManager.keyStateFor(database, chatRoomId)?.let { state ->
@@ -858,21 +904,72 @@ object FrostSigningManager {
         completedKey(database, chatRoomId) != null
 
     /**
-     * The unsigned event a session signs: the caller's fields under the group's
-     * key, with the id computed from them.
+     * The path off [key] that a signature made in this room is derived at, or
+     * null when the room is not derived from [key] at all.
+     *
+     * A room's id *is* its key, so a candidate path is right exactly when
+     * walking it reaches the room -- which makes this self-checking rather than
+     * trusting. Three candidates, in descending order of how much they know:
+     * the room's [GroupKeyState] if the group has signed one, the path recorded
+     * in the room's own MIP-01 description, and the default the app derives at.
+     * Whichever answers, it answers the same thing: two paths reaching one key
+     * is not a thing that happens.
+     *
+     * Nothing here comes off a proposal. The path decides what key the group
+     * signs as, so a proposer able to choose it could have every signer put
+     * their share behind an author of the proposer's choosing.
+     *
+     * Null is not a failure. `completedKey` will find a key for a room that was
+     * never derived from it -- a ceremony held in that very room, which is the
+     * fallback kept for rooms the app no longer makes -- and such a room has no
+     * key of its own to sign as, so it signs as the group's threshold key, which
+     * is what it always did.
+     */
+    private suspend fun signingPath(
+        database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
+        key: DkgSession
+    ): List<Long>? {
+        val thresholdPublicKey = key.thresholdPublicKey ?: return null
+        val chatRoomId = localChatRoom.chatRoom.id
+
+        val candidates = listOfNotNull(
+            GroupKeyStateManager.keyStateFor(database, chatRoomId)?.pathIndices(),
+            SharedKeyDerivation.parsePath(localChatRoom.chatRoom.description),
+            SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+        )
+
+        return candidates.firstOrNull { path ->
+            runCatching {
+                SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path) == chatRoomId
+            }.getOrDefault(false)
+        }
+    }
+
+    /**
+     * The unsigned event a session signs: the caller's fields under the room's
+     * own key, with the id computed from them.
+     *
+     * [path] is the room's, so the author is the room's id -- see
+     * [SharedKeyDerivation.marmotGroupId], where those are one value. A null
+     * path means no derivation at all, which is the group's threshold key
+     * itself; that is what a room not derived from the key signs as, because
+     * there is no room key for it to be.
      */
     private fun unsignedEventOf(
         key: DkgSession,
+        path: List<Long>?,
         kind: Kind,
         tags: Array<Array<String>>,
         content: String,
         createdAt: Long
     ): Event {
         // Nostr identifies an author by the x-only key a BIP-340 signature
-        // verifies against, which for a FROST key is the tweaked threshold key
-        // rather than the 33-byte value the ceremony reports.
-        val thresholdPublicKey = PublicKey(ByteVector(key.thresholdPublicKey!!.hexToByteArray()))
-        val groupPubKey = TweakCache.create(thresholdPublicKey).tweakedPublicKey.value.toHex()
+        // verifies against, which for a FROST key is the tweaked key the signing
+        // cache carries -- not the 33-byte value the ceremony reports.
+        val groupPubKey = SharedKeyDerivation
+            .derive(key.thresholdPublicKey!!, path ?: emptyList())
+            .hex
 
         return Event(
             id = EventHasher.hashId(

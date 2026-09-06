@@ -179,7 +179,11 @@ object SharedKeyDerivation {
         val root = PublicKey(ByteVector(thresholdPublicKey.hexToByteArray()))
 
         var cache = TweakCache.create(root)
-        var current = XonlyPublicKey(root)
+        // Read back out of the cache rather than taken from the point, so that an
+        // empty path -- a group signing as its own threshold key, with nothing
+        // derived -- returns exactly what a session created from this cache would
+        // produce a signature against.
+        var current = cache.tweakedPublicKey
 
         path.forEach { index ->
             val scalar = tweakScalar(current, index)
@@ -201,7 +205,8 @@ object SharedKeyDerivation {
     }
 
     /**
-     * The Marmot `nostrGroupId` for a room derived at [path].
+     * The Marmot `nostrGroupId` for a room derived at [path] -- which is also the
+     * nostr key that room signs as.
      *
      * Replaces the `RandomInstance.bytes(32)` a Marmot room is normally minted
      * with. Marmot asks that the id be unpredictable to outsiders, which this is --
@@ -209,6 +214,14 @@ object SharedKeyDerivation {
      * buys two things random cannot: every member can compute it without being told,
      * and it is a key the group can sign as, so the room's id and the identity
      * behind it are the same thing.
+     *
+     * That second half is load-bearing rather than decorative. `FrostSigningManager`
+     * signs with the cache from [derive] at the room's own path, so every event a
+     * room's group signs is authored by the room's id -- and a reader checking one
+     * needs no lookup at all, because the author they expect is the id of the room
+     * they found it in. There is deliberately no second name for this value:
+     * "the room's id" and "the key it signs as" are one function because they are
+     * one key.
      */
     fun marmotGroupId(
         thresholdPublicKey: HexKey,

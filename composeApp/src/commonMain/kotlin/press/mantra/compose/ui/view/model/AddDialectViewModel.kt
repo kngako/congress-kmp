@@ -69,8 +69,10 @@ class AddDialectViewModel(
      *
      * The dialect is not created here and does not exist yet. What goes out is a
      * proposal to sign it, and the dialect appears -- on every member's device at
-     * once, authored by the group's shared key rather than by whoever typed it --
-     * when enough members have signed.
+     * once, authored by this room's own key rather than by whoever typed it --
+     * when enough members have signed. That author is the room's id: signing runs
+     * at the path the room was derived at, so a dialect says which room made it
+     * simply by being signed.
      *
      * That is the difference from submitting one. A submission says "I am putting
      * this in front of the group" and the group's only recourse afterwards is

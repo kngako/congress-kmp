@@ -49,6 +49,8 @@ import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.SharedKeyDerivation
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
@@ -318,6 +320,15 @@ private fun WhatIsBeingSigned(event: Event?) {
         ChapterEvent.KIND -> "New chapter" to ChapterEvent(
             event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
         ).name().orEmpty()
+
+        // The one thing a group signs that is about the group rather than about
+        // its work, and the only one a member sees before the room has done
+        // anything. Shown as the path and the ceremony rather than as the key:
+        // the key is the room's own id, which the member is already looking at.
+        GroupKeyStateEvent.KIND -> "This group's shared key" to listOfNotNull(
+            GroupKeyStateEvent.parsePath(event.tags)?.let(SharedKeyDerivation::formatPath),
+            GroupKeyStateEvent.parseDkgSessionId(event.tags)?.take(12)
+        ).joinToString(" · ")
 
         else -> "Event of kind ${event.kind}" to event.content
     }

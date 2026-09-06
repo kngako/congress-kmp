@@ -384,24 +384,34 @@ class DkgRitualViewModel(
                 logger.e("Failed to add members to admin group $groupId", it)
             }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
 
-            // The room's first message: which ceremony's key it signs with, and
-            // the path its id was derived at. What a signer reaches for when a
-            // signing request arrives and it has to pick one of its shares.
+            // The room's first message: a proposal that the group sign a
+            // statement of which ceremony's key it signs with, and the path its
+            // id was derived at. What a signer reaches for when a signing
+            // request arrives and it has to pick one of its shares.
+            //
+            // Proposed rather than declared, so that the first thing on the
+            // record in a group's own room is a thing the group did. Nothing
+            // waits on it: until a quorum signs, a signing request resolves the
+            // key by rederiving, which is what every room did before this event
+            // existed.
             //
             // After the members are added rather than before, which is the only
             // order that works: adding them commits a new epoch, and MLS will not
             // let a member read what was encrypted before the epoch they joined
-            // at. Announced first, the announcement would reach nobody but its
-            // author. It is still the room's first *application* message -- what
-            // comes before it is handshake.
+            // at. Proposed first, the proposal would reach nobody but its author
+            // -- and a proposal nobody receives is one nobody can sign. It is
+            // still the room's first *application* message; what comes before it
+            // is handshake.
             //
-            // A member invited later still misses it for the same reason, and is
-            // left where every member was before this event existed: falling back
-            // to FrostSigningManager.completedKey's rederivation. Re-announcing
-            // on invite is the fix, and is cheap because a repeat announcement
-            // folds away rather than accumulating.
-            dkgRepository.announceGroupKeyState(
-                chatRoomId = localChatRoom.chatRoom.id,
+            // A member invited later misses the session for the same reason, and
+            // so misses the state: a completed session is applied by each device
+            // that ran it and the signed event never goes on the wire. They are
+            // left where every member was before this event existed, falling back
+            // to FrostSigningManager.completedKey's rederivation. Re-proposing on
+            // invite is the fix, and is cheap because a second signature over the
+            // same true state folds away rather than accumulating.
+            dkgRepository.proposeGroupKeyState(
+                localChatRoom = localChatRoom,
                 userPublicKey = activeUserPublicKey,
                 session = session
             )

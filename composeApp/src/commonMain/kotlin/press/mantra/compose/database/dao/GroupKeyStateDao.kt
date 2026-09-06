@@ -23,19 +23,19 @@ abstract class GroupKeyStateDao {
     abstract suspend fun upsert(groupKeyState: GroupKeyState)
 
     /**
-     * Files a state, keeping the newest announcement per room.
+     * Files a state, keeping the newest one per room.
      *
      * This is where the event's replaceable semantics actually happen. Relays
-     * never see a `GroupKeyStateEvent` -- it is a rumor inside a Marmot group
-     * event -- so nothing upstream applies the 3xxxx replacement rule, and an
-     * announcement that arrives twice would otherwise be two rows racing for
-     * one primary key.
+     * never see a `GroupKeyStateEvent` -- it lives inside a Marmot group and is
+     * applied from a completed signing session -- so nothing upstream applies
+     * the 3xxxx replacement rule, and a state that lands twice would otherwise
+     * be two rows racing for one primary key.
      *
-     * Older announcements are dropped rather than applied, so a redelivery from
-     * a relay backfill cannot walk the room back to a state it has already
-     * moved past. An announcement at the same instant is kept as a no-op: two
-     * members announcing the same true thing agree by construction, since both
-     * derived it from the room they are standing in.
+     * Older states are dropped rather than applied, so a session replayed after
+     * a crash cannot walk the room back to a state it has already moved past. A
+     * state at the same instant is kept as a no-op: two runs at the same true
+     * state agree by construction, since both derived it from the room they are
+     * standing in.
      *
      * Returns the state now on file.
      */

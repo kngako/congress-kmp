@@ -41,7 +41,8 @@ interface FrostSigningRepository {
 
     /**
      * Opens a session asking the group to sign an event with these fields. The
-     * author is the group's key, not the proposer's, and is filled in here.
+     * author is the room's own key, not the proposer's, and is filled in here --
+     * the room's id, since signing runs at the path the room was derived at.
      */
     suspend fun proposeSigning(
         localChatRoom: LocalChatRoom,

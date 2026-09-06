@@ -172,7 +172,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 8,
+    version = 9,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -208,7 +208,13 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // ChatMessage. Nullable additions need no default and drop no data, so Room
         // generates this one. Rows written before it come back null, which reads as
         // "not a direct message" -- the only answer that is true of all of them.
-        AutoMigration(from = 7, to = 8)
+        AutoMigration(from = 7, to = 8),
+        // v9 adds the nullable FrostSigningSession.derivationPath, which says
+        // what key off the ceremony's the session signs as. Sessions started
+        // before it read back null, meaning the untweaked threshold key -- which
+        // is what they were signing as, so one caught mid-flight finishes the way
+        // it began rather than switching keys between two of its own rounds.
+        AutoMigration(from = 8, to = 9)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
