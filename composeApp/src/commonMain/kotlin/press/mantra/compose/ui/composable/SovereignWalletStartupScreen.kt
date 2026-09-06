@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.first
 @Composable
 fun SovereignWalletStartupScreen(
     sovereignWalletViewModel: press.mantra.compose.ui.view.model.SovereignWalletViewModel,
-    onNavigateToWalletIntroPage: () -> Unit,
     onNavigateToWalletLandingPage: () -> Unit,
     onSuccessfulStartup: () -> Unit,
     forceWalletId: WalletId?,
@@ -41,10 +40,11 @@ fun SovereignWalletStartupScreen(
         )
     )
 
-    val showIntro = sovereignWalletStartupViewModel.getShowIntroFlow().collectAsState(initial = null)
-    if (showIntro.value == true) {
-        LaunchedEffect(Unit) { onNavigateToWalletIntroPage.invoke() }
-    }
+    // Deliberately no intro gate. `getShowIntro` defaults to true and nothing in this app ever
+    // writes it back to false, so gating on it navigated away from this screen on every cold boot
+    // — and a screen that has been left behind never gets to start the wallet. Startup has to run
+    // to completion here: everything downstream reads the node's key manager. An intro screen has
+    // to be a step inside this flow, not a detour around it.
 
     Box(
         modifier = Modifier
