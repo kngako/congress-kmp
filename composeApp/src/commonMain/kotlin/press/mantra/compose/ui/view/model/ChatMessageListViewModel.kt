@@ -80,9 +80,11 @@ import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
+import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.view.state.ChatMessageListUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.Dispatchers
@@ -119,13 +121,33 @@ class ChatMessageListViewModel(
         private set
 
     /**
-     * The sessions still waiting on this member to agree to sign, by id.
+     * One proposal this member still owes an answer to, as the transcript's
+     * standing notice has to say it.
      *
-     * Held rather than asked for, because it is read at the moment of a tap --
-     * see [hidesOtherDecisions] -- and that is not a moment that can wait on a
-     * query.
+     * Summarised here rather than at render because the summary is parsed out of
+     * stored JSON, and the notice sits in a scrolling list. Named after the first
+     * event it signs, the way the proposal list names its rows -- a batch's later
+     * items hang off its first, so that is what the proposal is about.
      */
-    var proposalsAwaitingYou: Set<String> by mutableStateOf(emptySet())
+    data class AwaitingProposal(
+        val sessionId: String,
+
+        /** The first of its events that could be read, if any could. */
+        val lead: ProposedEvent.Summary?,
+
+        /** The batch's size, readable or not. */
+        val eventCount: Int,
+    )
+
+    /**
+     * The sessions still waiting on this member to agree to sign.
+     *
+     * Held rather than asked for, because both its readers want it already
+     * there: the transcript's standing notice renders off it, and
+     * [hidesOtherDecisions] is consulted at the moment of a tap, which is not a
+     * moment that can wait on a query.
+     */
+    var proposalsAwaitingYou: List<AwaitingProposal> by mutableStateOf(emptyList())
         private set
 
     /**
@@ -143,7 +165,8 @@ class ChatMessageListViewModel(
      * asking to see that, not to be handed the queue.
      */
     fun hidesOtherDecisions(sessionId: String): Boolean =
-        sessionId in proposalsAwaitingYou && proposalsAwaitingYou.size > 1
+        proposalsAwaitingYou.size > 1 &&
+            proposalsAwaitingYou.any { it.sessionId == sessionId }
 
     fun startDirectMessage(participant: Participant) {
         logger.d("Arming a direct message to ${participant.participantPublicKey}")
@@ -208,7 +231,19 @@ class ChatMessageListViewModel(
                 .collect { sessions ->
                     proposalsAwaitingYou = sessions.filter {
                         FrostSigningManager.isAwaitingApproval(it.session, it.items)
-                    }.map { it.session.id }.toSet()
+                    }.map { local ->
+                        AwaitingProposal(
+                            sessionId = local.session.id,
+                            // The first item that can be read, not the first item:
+                            // a batch whose lead is unreadable is still about
+                            // something, and the notice should say what.
+                            lead = local.items.firstNotNullOfOrNull { item ->
+                                Event.fromJsonOrNull(item.unsignedEventJson)
+                                    ?.let { ProposedEvent.summarize(it) }
+                            },
+                            eventCount = local.items.size
+                        )
+                    }
                 }
         }
     }
@@ -343,6 +378,8 @@ class ChatMessageListViewModel(
          * and cannot say which one it meant.
          */
         onOpenSigning: (sessionId: String?) -> Unit,
+        /** Opens the room's proposals, all of them, whatever their state. */
+        onOpenProposals: () -> Unit,
     ) {
 
         Column(
@@ -401,11 +438,29 @@ class ChatMessageListViewModel(
                             val answeredRequests = ChatMessage.answeredRequests(messages)
                             val settledRequests = ChatMessage.settledRequests(messages)
 
+                            // Read out here rather than inside the list, so the
+                            // notice appearing and disappearing is a recomposition
+                            // of this function and not of a lazy item that may not
+                            // be composed at the time.
+                            val awaitingYou = proposalsAwaitingYou
+
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth().padding(5.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 reverseLayout = true
                             ) {
+                                // First item, and the layout is reversed, so this
+                                // sits under the newest message and above the
+                                // composer -- where the reader already is.
+                                if (awaitingYou.isNotEmpty()) {
+                                    item {
+                                        ProposalsAwaitingYouNotice(
+                                            proposals = awaitingYou,
+                                            onClick = onOpenProposals
+                                        )
+                                    }
+                                }
+
                                 item {
                                     if (isReceiverChatMessageRelayListMissing.value) {
                                         Row(
@@ -744,6 +799,108 @@ class ChatMessageListViewModel(
                     frostSigningRepository = frostSigningRepository
                 )
             }
+        }
+    }
+}
+
+/**
+ * What the group is waiting on this member to sign, standing at the foot of the
+ * transcript.
+ *
+ * A proposal announces itself as a line and then the conversation carries it
+ * upward, but the decision it asks for does not expire with the scroll -- and a
+ * member who has not answered is what the whole room is waiting on. So the ask
+ * is restated where the reader already is, under the newest message, and is gone
+ * the moment nothing is owed. Nothing to dismiss: there is no state here beyond
+ * whether the group still needs an answer.
+ *
+ * Named after what it signs when there is one of them, because "a proposal is
+ * waiting" is not something anybody can decide about. With several, the count is
+ * the honest summary -- naming one of several here would say the others were not
+ * there.
+ *
+ * It opens the room's proposals rather than the one it names, in every case. The
+ * transcript's own lines are the way to one proposal; this is the standing count
+ * of what is owed, and the queue is the screen that answers the question it
+ * raises -- including for the one it could not name.
+ */
+@Composable
+private fun ProposalsAwaitingYouNotice(
+    proposals: List<ChatMessageListViewModel.AwaitingProposal>,
+    onClick: () -> Unit,
+) {
+    val single = proposals.singleOrNull()
+
+    val summary = single?.lead
+        ?.let { lead ->
+            listOfNotNull(lead.label, lead.detail.takeIf { it.isNotBlank() })
+                .joinToString(" · ")
+        }
+        // Two ways for a proposal to have no lead, and they are different
+        // situations: a session can exist before its proposal has arrived, and a
+        // proposal can arrive holding events this build cannot read. Said the
+        // same way the proposal list says it.
+        ?: single?.let {
+            if (it.eventCount == 0) {
+                "Nothing has arrived to sign yet"
+            } else {
+                "None of its events could be read"
+            }
+        }
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Draw,
+                contentDescription = null
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = if (single != null) {
+                        "Waiting for your signature"
+                    } else {
+                        "${proposals.size} proposals are waiting for your signature"
+                    },
+                    style = MaterialTheme.typography.labelMedium
+                )
+
+                if (summary != null) {
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // The same word the transcript's own request lines use for the same
+            // thing, so a member reading down the room is not asked twice in two
+            // vocabularies.
+            Text(
+                text = "Review",
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Open the group's proposals"
+            )
         }
     }
 }
