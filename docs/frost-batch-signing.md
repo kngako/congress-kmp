@@ -487,6 +487,32 @@ one rule that a batch is only as available as its worst item, so events that do
 not belong together should not travel together, and the one prohibition that
 `GroupKeyStateManager.propose` must never batch.
 
+### The first caller to weigh it, and decline
+
+Adding a chapter is the case batching looks made for: a chapter is proposed
+with a chunk per paragraph, which before this work would have been one quorum
+each. It signs the chapter alone anyway, and splits the chunks back out of the
+signed text on every device
+([`MantraChunk.chunksOf`](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChunk.kt)).
+Recorded here because the next caller will reach for the same shape:
+
+- **The cap binds on ordinary content.** `MAX_BATCH_SIZE` is 64, so a batched
+  chapter is capped at 63 paragraphs. Prose runs past that, and the failure is
+  a chapter that cannot be proposed at all.
+- **The text would travel twice** — whole in the chapter, again split across
+  the chunks — and the proposal is the term the cap is sized against.
+- **Availability falls with length.** All-or-nothing over `k` items means a
+  long chapter is less likely to get signed than a short one, for no reason a
+  member could see.
+- **The signature would be redundant.** The appendix rejects the manifest shape
+  because an item then needs a lookup to be checked. Here the lookup is a
+  foreign key: a chunk is a pure function of its chapter and cannot be stored
+  without it, so the chapter's signature already covers it.
+
+The general rule this leaves behind: **batch siblings, not derivations.** Events
+that could each have been authored separately are worth a batch; events that are
+a function of another event in the same batch are worth deriving instead.
+
 ---
 
 ## Appendix — what was considered and rejected

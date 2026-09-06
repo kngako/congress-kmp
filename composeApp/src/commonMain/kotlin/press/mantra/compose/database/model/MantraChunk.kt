@@ -95,14 +95,24 @@ data class MantraChunk(
         /**
          * The chunks a chapter is made of, derived from the chapter.
          *
-         * The group signs a chapter; it does not sign these. So the chunks
-         * cannot be events proposed on their own -- that would cost a quorum
-         * per paragraph -- and they cannot be invented by whichever device
-         * notices the chapter first, because an invented id differs on every
-         * device and none of them would agree about which chunk a translation
-         * is of. Deriving them from the signed chapter's own text gives every
-         * device the same rows from the same bytes, which is the only property
-         * that matters here.
+         * The group signs a chapter; it does not sign these. They cannot be
+         * invented by whichever device notices the chapter first, because an
+         * invented id differs on every device and none of them would agree
+         * about which chunk a translation is of. Deriving them from the signed
+         * chapter's own text gives every device the same rows from the same
+         * bytes, which is the only property that matters here.
+         *
+         * They could be signed. `FrostSigningManager.proposeSigningBatch` would
+         * carry the chapter and a chunk per paragraph through one quorum, and
+         * every row would then hold a signature of its own. It is not worth what
+         * it costs: `MAX_BATCH_SIZE` is 64, which caps a chapter at 63
+         * paragraphs and fails an ordinary one outright; the text would go on
+         * the wire twice, whole on the chapter and again split across the
+         * chunks; and a batch is only as available as its worst item, so a
+         * chapter's odds of being signed would fall with its length. What the
+         * signature would prove is proved already -- a chunk is a pure function
+         * of the chapter it hangs off, and it cannot be held without that
+         * chapter, which the foreign key enforces.
          *
          * They are rumors -- empty signature -- because nobody signed them.
          * What the group signed is the chapter they were split out of, and that

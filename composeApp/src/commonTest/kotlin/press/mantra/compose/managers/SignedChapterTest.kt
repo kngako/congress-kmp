@@ -18,7 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.extensions.toHex
@@ -108,24 +108,17 @@ class SignedChapterTest {
         sig = ""
     )
 
-    private fun sessionOver(unsignedEvent: Event) = FrostSigningSession(
-        id = "s".repeat(64),
-        chatRoomId = chatRoomId,
-        coordinatorPublicKey = proposer,
-        userPublicKey = proposer,
-        dkgSessionId = "k".repeat(64),
-        threshold = threshold,
-        participantCount = participants,
-        signerId = 0,
-        derivationPath = SharedKeyDerivation.formatPath(),
+    private fun itemOver(unsignedEvent: Event) = FrostSigningItem(
+        sessionId = "s".repeat(64),
+        itemIndex = 0,
         unsignedEventJson = unsignedEvent.toJson(),
         eventId = unsignedEvent.id,
         nonceRandom = "f".repeat(64)
     )
 
-    /** A quorum signing the session's event, in the manager's order. */
-    private fun groupSignature(session: FrostSigningSession): String {
-        val message = ByteVector(session.eventId.hexToByteArray())
+    /** A quorum signing the item's event, in the manager's order. */
+    private fun groupSignature(item: FrostSigningItem): String {
+        val message = ByteVector(item.eventId.hexToByteArray())
         val signerIds = listOf(0, 1)
 
         val nonces = signerIds.map { signerId ->
@@ -166,8 +159,8 @@ class SignedChapterTest {
         text: String = originalText,
         index: Int = 0,
     ): ChapterEvent {
-        val session = sessionOver(unsignedEventOf(proposalTemplate(name, text, index)))
-        val signed = FrostSigningManager.signedEvent(session, groupSignature(session))
+        val item = itemOver(unsignedEventOf(proposalTemplate(name, text, index)))
+        val signed = FrostSigningManager.signedEvent(item, groupSignature(item))
 
         return ChapterEvent(
             signed.id, signed.pubKey, signed.createdAt, signed.tags, signed.content, signed.sig
@@ -205,15 +198,15 @@ class SignedChapterTest {
         // to be the one that was signed rather than anything recomputed from the
         // proposer. Otherwise members converge on nothing and each holds its own
         // copy of what is meant to be one chapter.
-        val session = sessionOver(unsignedEventOf(proposalTemplate()))
-        val signed = FrostSigningManager.signedEvent(session, groupSignature(session))
+        val item = itemOver(unsignedEventOf(proposalTemplate()))
+        val signed = FrostSigningManager.signedEvent(item, groupSignature(item))
 
         val chapter = MantraChapter.fromChapterEvent(
             ChapterEvent(signed.id, signed.pubKey, signed.createdAt, signed.tags, signed.content, signed.sig),
             chatRoomId
         )
 
-        assertEquals(session.eventId, chapter?.id)
+        assertEquals(item.eventId, chapter?.id)
     }
 
     @Test
