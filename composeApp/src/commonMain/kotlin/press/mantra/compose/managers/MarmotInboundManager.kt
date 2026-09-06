@@ -230,10 +230,17 @@ object MarmotInboundManager {
                 )
 
                 if (mlsBytes == null) {
-                    // Expected when this kind:445 was encrypted with an epoch
-                    // key that predates our join (classical MLS forward
-                    // secrecy), or when the sender's epoch has drifted. Not
-                    // an error — callers should log at DEBUG.
+                    // Expected when the sender's epoch has drifted, or when a
+                    // key that predates our join is what this was encrypted
+                    // with (classical MLS forward secrecy). Not an error —
+                    // callers should log at DEBUG.
+                    //
+                    // The second of those is now rare rather than routine:
+                    // `NostrDao.indexMarmotGroupEvent` holds back anything the
+                    // group published before this device joined, so what
+                    // reaches here from before our epoch is only what sits on
+                    // the boundary — see ChatRoom.predatesMembership. A room
+                    // full of these is a sign that gate is not being applied.
                     GroupEventResult.UndecryptableOuterLayer(
                         localChatRoom.chatRoom.id,
                         retainedEpochCount = retainedExporterSecrets(localChatRoom.chatRoom.id).size,
@@ -656,9 +663,11 @@ object MarmotInboundManager {
      *
      * Returns null when neither the current epoch key nor any retained key
      * decrypts. This happens normally for commits/application messages from
-     * epochs that predate our join (we never held those keys), so callers
-     * should treat null as an expected "nothing to do here" outcome and log
-     * at DEBUG, not as an error.
+     * epochs we never held the keys for, so callers should treat null as an
+     * expected "nothing to do here" outcome and log at DEBUG, not as an error.
+     * Most of that class of event no longer gets this far: what predates this
+     * device's join is held back before any of it is attempted -- see
+     * `ChatRoom.predatesMembership`.
      */
     private fun tryDecryptOuterLayer(
         mlsGroup: MlsGroup,

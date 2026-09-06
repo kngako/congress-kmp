@@ -80,6 +80,24 @@ data class ChatRoom(
     val leftGroupAt: Instant? = null,
 
     /**
+     * When this device became a member of the group, or null for a room that
+     * predates the column.
+     *
+     * The pair to [leftGroupAt], and the thing [memberSince] is really asking
+     * for. Written from the moment the group's own clock says our epoch began:
+     * the Welcome's `created_at`, which the inviter stamps as it mints the
+     * Welcome out of the Add commit that made us a member, or the room's own
+     * creation for a group this device started at epoch 0.
+     *
+     * Stored rather than read off [createdAt] because the two are only
+     * incidentally equal. [createdAt] is row bookkeeping -- when this device
+     * first wrote the row down -- and the question asked here decides which of
+     * the group's messages are ours to read at all. That is not a fact to leave
+     * hanging off a timestamp somebody could reasonably repurpose.
+     */
+    val joinedGroupAt: Instant? = null,
+
+    /**
      * When this device last asked the group for its signed history, or null if
      * it never has or the answer has since arrived.
      *
@@ -143,6 +161,43 @@ data class ChatRoom(
         }
 
     }
+
+    /**
+     * The moment this device joined, falling back to when it wrote the room down.
+     *
+     * A room joined before [joinedGroupAt] existed has no recorded answer, and
+     * [createdAt] is both the best one available and the one every path that
+     * writes [joinedGroupAt] would have written anyway: a joiner's row is created
+     * from the Welcome, and a creator's when it creates the group.
+     */
+    val memberSince: Instant get() = joinedGroupAt ?: createdAt
+
+    /**
+     * Whether something the group published at [publishedAt] belongs to an epoch
+     * this device was never in.
+     *
+     * MLS gives a joiner the key schedule from their own epoch forward and
+     * nothing before it, so a kind:445 older than [memberSince] cannot be read
+     * now and cannot be read later -- not by waiting, and not by replaying it.
+     * The point of asking is to leave those alone rather than file a line saying
+     * a message arrived that nobody can show.
+     *
+     * Time is the only thing to ask it of. The epoch a kind:445 was encrypted
+     * under is inside the outer layer, so an event this device cannot decrypt
+     * cannot be asked what epoch it is from, and "before we joined", "from an
+     * epoch we have not caught up to" and "from an epoch that fell out of the
+     * retention window" all look identical from the outside. What separates the
+     * first from the other two is that it was published before the group made
+     * the epoch we joined at.
+     *
+     * Strictly before, so an event stamped in the same second as our Welcome is
+     * still read. The error worth avoiding runs one way: an unreadable event
+     * costs a wasted decrypt, and a discarded readable one is a message the
+     * member never sees. The commit that added us sits exactly on that boundary
+     * and is unreadable by construction -- it is the last act of the epoch
+     * before ours -- so a room may still show one placeholder for it.
+     */
+    fun predatesMembership(publishedAt: Instant): Boolean = publishedAt < memberSince
 
     fun toMlsGroup(): MlsGroup? {
         return mlsGroupState?.let {
