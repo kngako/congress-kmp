@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
+import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.widgets.DetailRow
@@ -51,6 +56,8 @@ fun TranslationArtifactVersionDetailScreen(
     relayHint: String?,
     initialTranslationArtifactVersionDetailUIState: TranslationArtifactVersionDetailUIState = TranslationArtifactVersionDetailUIState.Loading,
     mantraRepository: MantraRepository,
+    chatRepository: ChatRepository,
+    frostSigningRepository: FrostSigningRepository,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -62,6 +69,8 @@ fun TranslationArtifactVersionDetailScreen(
             relayHint = relayHint,
             initialTranslationArtifactVersionDetailUIState = initialTranslationArtifactVersionDetailUIState,
             mantraRepository = mantraRepository,
+            chatRepository = chatRepository,
+            frostSigningRepository = frostSigningRepository,
         )
     )
 
@@ -97,6 +106,75 @@ fun TranslationArtifactVersionDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    // Chapters the source version has and this translation
+                    // does not. Above the list rather than after it: a chapter
+                    // that is not here is invisible from a list of the ones
+                    // that are.
+                    val localChatRoom = translationDetailUIState.localChatRoom
+                    val missingChapters = translationDetailUIState.missingChapters
+
+                    if (missingChapters.isNotEmpty()) {
+                        item {
+                            Card {
+                                ListItem(
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.PlaylistAdd,
+                                            contentDescription = "Chapters missing from this translation"
+                                        )
+                                    },
+                                    headlineContent = {
+                                        Text(
+                                            "${missingChapters.size} " +
+                                                (if (missingChapters.size == 1) "chapter is" else "chapters are") +
+                                                " not in this translation yet"
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            if (!translationDetailUIState.canSign) {
+                                                "This group has no shared key, so it cannot sign them in."
+                                            } else {
+                                                "They were signed into the artifact after this " +
+                                                    "translation. Ask the group to add them so they " +
+                                                    "can be translated."
+                                            }
+                                        )
+                                    },
+                                    trailingContent = {
+                                        TextButton(
+                                            enabled = localChatRoom != null &&
+                                                translationDetailUIState.canSign &&
+                                                !translationDetailViewModel.isActionPending.value,
+                                            onClick = {
+                                                if (localChatRoom == null) return@TextButton
+
+                                                translationDetailViewModel.catchUpMissingChapters(
+                                                    localChatRoom = localChatRoom,
+                                                    missingChapters = missingChapters,
+                                                    onSuccess = { sessionId ->
+                                                        onNavigateToRoute.invoke(
+                                                            FrostSigningRoute(
+                                                                activeUserPublicKey = activeUserPublicKey,
+                                                                chatRoomId = chatRoomId,
+                                                                sessionId = sessionId
+                                                            )
+                                                        )
+                                                    },
+                                                    onFailure = {}
+                                                )
+                                            }
+                                        ) {
+                                            Text("Propose")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        item { HorizontalDivider() }
+                    }
+
                     // Chapters with translation progress
                     item {
                         Text(
@@ -212,6 +290,8 @@ private fun TranslationArtifactVersionDetailScreenPreview() {
                     )
                 ),
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
                 onNavigateToRoute = {},
                 onNavigateBack = {}
             )

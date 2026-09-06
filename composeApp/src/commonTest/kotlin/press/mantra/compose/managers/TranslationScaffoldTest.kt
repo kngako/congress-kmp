@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import press.mantra.compose.database.model.MantraChapter
+import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
@@ -12,10 +13,11 @@ import press.mantra.compose.nostr.nip30303.tags.TranslationArtifactVersionIdTag
 /**
  * The join between a translation and the chapters it is of, as a pure function.
  *
- * Both ends arrive on their own schedule, so this is built from two
- * directions -- a translation being proposed, and a chapter being proposed.
- * What it must not do is disagree with itself about what a translation covers
- * depending on which direction it was built from.
+ * Both ends arrive on their own schedule, so this is built from three
+ * directions -- a translation being proposed, a chapter being proposed, and a
+ * catch-up filling in what the two missed. What it must not do is disagree with
+ * itself about what a translation covers depending on which direction it was
+ * built from.
  */
 class TranslationScaffoldTest {
 
@@ -34,6 +36,17 @@ class TranslationScaffoldTest {
         signature = "",
         chatRoomId = "r".repeat(64),
     )
+
+    private fun translationChapterFor(chapter: MantraChapter, translationId: String) =
+        MantraTranslationChapter(
+            id = "t${chapter.id}".take(64),
+            publicKey = "p".repeat(64),
+            chapterId = chapter.id,
+            translationArtifactVersionId = translationId,
+            index = chapter.index,
+            signature = "",
+            chatRoomId = "r".repeat(64),
+        )
 
     private fun parse(templates: List<com.vitorpamplona.quartz.nip01Core.signers.EventTemplate<TranslationChapterEvent>>) =
         templates.map { template ->
@@ -90,10 +103,10 @@ class TranslationScaffoldTest {
     }
 
     @Test
-    fun `a chapter keeps its own position, not its position in the list`() {
+    fun `a catch-up keeps each chapter's own position, not the position in the gap`() {
         val chapters = (0..5).map(::sourceChapter)
 
-        // A caller may hold a subset, and the subset is not contiguous.
+        // A catch-up proposes a subset, and the subset is not contiguous.
         // Counting the list would renumber chapters 3 and 5 as 1 and 2, which
         // is a translation that reads in a different order than the work.
         val templates = TranslationScaffold.chaptersOf(
@@ -134,6 +147,37 @@ class TranslationScaffoldTest {
                 chapters = emptyList(),
                 createdAt = 1_000,
             ).isEmpty()
+        )
+    }
+
+    @Test
+    fun `what is missing is matched on the chapter named, not on how many there are`() {
+        val chapters = (0..3).map(::sourceChapter)
+
+        // Chapter 1 never landed but chapter 2 did, which a count would read as
+        // "the last one is missing" and scaffold the wrong chapter.
+        val missing = TranslationScaffold.chaptersMissingFrom(
+            translationChapters = listOf(chapters[0], chapters[2]).map {
+                translationChapterFor(it, translationA)
+            },
+            sourceChapters = chapters,
+        )
+
+        assertEquals(listOf(chapters[1].id, chapters[3].id), missing.map { it.id })
+    }
+
+    @Test
+    fun `a translation that is already complete is missing nothing`() {
+        val chapters = (0..2).map(::sourceChapter)
+
+        // So that running a catch-up twice proposes nothing the second time,
+        // rather than a second copy of every chapter under fresh ids.
+        assertEquals(
+            emptyList(),
+            TranslationScaffold.chaptersMissingFrom(
+                translationChapters = chapters.map { translationChapterFor(it, translationA) },
+                sourceChapters = chapters,
+            )
         )
     }
 }

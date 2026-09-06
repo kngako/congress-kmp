@@ -3,6 +3,7 @@ package press.mantra.compose.managers
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import press.mantra.compose.database.model.MantraChapter
+import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 
 /**
@@ -15,9 +16,10 @@ import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
  *
  * Both ends of that join arrive on their own schedule -- a chapter is signed
  * into an artifact that already has translations, a translation is started on
- * an artifact that already has chapters -- so the same scaffolding has to be
- * built from either side. One function for both, because two copies of a cross
- * product is two chances to disagree about what a translation covers.
+ * an artifact that already has chapters -- so the same scaffolding is built
+ * from either side and, when the two miss each other, afterwards. One function
+ * for all three, because three copies of a cross product is three chances to
+ * disagree about what a translation covers.
  */
 object TranslationScaffold {
 
@@ -62,13 +64,29 @@ object TranslationScaffold {
                 TranslationChapterEvent.build(
                     translationArtifactVersionId = translationArtifactVersionId,
                     chapterId = chapter.id,
-                    // The source chapter's own position, never this list's:
-                    // a caller may hold a subset, and counting the list would
-                    // renumber the chapters it happens to be holding.
+                    // The source chapter's own position, never this list's: a
+                    // catch-up proposes a subset, so counting the list would
+                    // renumber the chapters it happens to be filling in.
                     index = chapter.index,
                     createdAt = createdAt,
                 )
             }
         }
 
+    /**
+     * The source chapters a translation has nothing for yet.
+     *
+     * Matched on the source chapter each translation chapter names rather than
+     * on how many there are of each. A translation that is missing its second
+     * chapter and has picked up its third is not a translation that is missing
+     * its last one, and a count would say it was.
+     */
+    fun chaptersMissingFrom(
+        translationChapters: List<MantraTranslationChapter>,
+        sourceChapters: List<MantraChapter>,
+    ): List<MantraChapter> {
+        val covered = translationChapters.mapTo(mutableSetOf()) { it.chapterId }
+
+        return sourceChapters.filterNot { it.id in covered }
+    }
 }

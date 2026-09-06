@@ -932,6 +932,8 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
                 onNavigateToRoute = { actionRoute ->
                     navController.navigate(
                         route = actionRoute
