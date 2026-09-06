@@ -424,6 +424,24 @@ class ChatMessageListViewModel(
                                         return@items
                                     }
 
+                                    // Inviting somebody is nobody's words either, and
+                                    // for a while it was not in the room at all: the
+                                    // line was written when the Welcome went out, which
+                                    // on the deferred path is a relay round trip away
+                                    // and may never happen. Passed as answered and
+                                    // settled for the same reason the chronicle's are
+                                    // -- these report rather than ask, so they stay in
+                                    // the quiet tint and offer nothing to review.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES) {
+                                        RitualNotice(
+                                            localChatMessage = localChatMessage,
+                                            isAnswered = true,
+                                            isSettled = true,
+                                            onClick = {}
+                                        )
+                                        return@items
+                                    }
+
                                     // Signing lines are the same kind of thing and get
                                     // the same treatment -- nobody said them either --
                                     // but they lead somewhere else, because what a
@@ -745,6 +763,13 @@ private fun RitualNotice(
         ChatMessage.TYPE_CHRONICLE_SENT -> Icons.Default.Upload
         ChatMessage.TYPE_CHRONICLE_RECEIVED -> Icons.Default.Download
 
+        // An invite made and an invite sent are two separate steps on the deferred
+        // path, so they get separate icons -- the whole reason both lines exist is
+        // to be able to see that the first happened and the second did not.
+        ChatMessage.TYPE_MEMBER_INVITED -> Icons.Default.PersonAdd
+        ChatMessage.TYPE_MEMBER_INVITE_SENT -> Icons.Default.Upload
+        ChatMessage.TYPE_MEMBER_INVITE_FAILED -> Icons.Default.ErrorOutline
+
         else -> Icons.Default.PanTool
     }
 
@@ -763,7 +788,8 @@ private fun RitualNotice(
 
     val tint = when {
         chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||
-            chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ->
+            chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ||
+            chatMessage.messageType == ChatMessage.TYPE_MEMBER_INVITE_FAILED ->
             MaterialTheme.colorScheme.error
         isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant

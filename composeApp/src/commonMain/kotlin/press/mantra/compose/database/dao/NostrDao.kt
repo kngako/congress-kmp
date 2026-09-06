@@ -706,6 +706,14 @@ abstract class NostrDao(
                                             description = group.currentMarmotData()?.description?.ifBlank { null },
                                             initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
                                             createdAt = decryptedGiftWrapPayload.createdAt,
+                                            // The Welcome's own `created_at`, which the
+                                            // inviter stamps as it mints the Welcome out of
+                                            // the Add commit that made us a member. That
+                                            // commit is what created the epoch we are joining
+                                            // at, so it is the group's clock on when this
+                                            // room's history stops being ours to read. See
+                                            // ChatRoom.predatesMembership.
+                                            joinedGroupAt = decryptedGiftWrapPayload.createdAt,
                                             mlsGroupState = group.saveState().encodeTls().toHex(),
                                         )
                                     )
@@ -1145,6 +1153,13 @@ abstract class NostrDao(
      * see [reindexMarmotGroupEvents]. Throws for a room this device cannot process
      * the event against at all, which the caller decides what to do about: a first
      * delivery lets it roll back its transaction, a replay logs it and moves on.
+     *
+     * An event from before this device joined is not read and not filed -- see
+     * [ChatRoom.predatesMembership]. Nothing about it is this device's: not the
+     * epoch key it was encrypted under, and so not the message either. Reading it
+     * anyway is how a room a member was invited to yesterday opened on a screenful
+     * of "Undecryptable Message" above the conversation, one line for every
+     * message the group had sent before they arrived.
      */
     private suspend fun indexMarmotGroupEvent(
         groupEvent: GroupEvent,
@@ -1153,6 +1168,11 @@ abstract class NostrDao(
     ) {
         val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
             ?: throw MarmotMissingChatGroupException("Couldn't find chatRoom for ${groupEvent.id}")
+
+        if (localChatRoom.chatRoom.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt))) {
+            logger.d("${groupEvent.id} predates this device joining $chatRoomId, nothing to index")
+            return
+        }
 
         // Through the cache rather than rebuilt here, so the secret
         // tree's skipped-generation keys survive from one message to
@@ -1314,16 +1334,22 @@ abstract class NostrDao(
      * recovered by one pass can be what lets the next read the messages that were
      * waiting on it.
      *
+     * Events from before this device joined are left out of the sweep entirely --
+     * see [ChatRoom.predatesMembership]. They are the one part of the backlog a
+     * replay can say something about in advance: no pass will ever read them, so
+     * replaying them only spends a refused decrypt each time and reports every one
+     * of them as a failure, on a room where nothing is wrong.
+     *
      * What this cannot do is recover a message whose key is gone: an application
-     * message the ratchet has already advanced past, or one from an epoch that
-     * predates this device joining. Those stay unreadable however often they are
-     * replayed.
+     * message the ratchet has already advanced past. Those stay unreadable however
+     * often they are replayed.
      */
     open suspend fun reindexMarmotGroupEvents(
         chatRoomId: String,
         activeKeyPair: KeyPair,
     ): MarmotReindexReport {
         val userPublicKey = activeKeyPair.pubKey.toHex()
+        val chatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom
 
         // The query's LIKE only narrows; the h tag is what decides the room. Sorted
         // by CommitOrdering's own comparator rather than left in createdAt order, so
@@ -1338,7 +1364,20 @@ abstract class NostrDao(
             }
             .sortedWith(CommitOrdering.comparator)
 
-        logger.i("Reindex $chatRoomId: ${groupEvents.size} stored group event(s)")
+        // Held back rather than dropped from the report: they are counted in
+        // `stored` and again on their own, so the screen can say a room is mostly
+        // older than the member reading it instead of calling those events read.
+        //
+        // A room with no row to ask keeps every event, so a replay against one
+        // does what it always did rather than quietly finding nothing to do.
+        val (readable, predatingMembership) = groupEvents.partition { groupEvent ->
+            chatRoom?.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt)) != true
+        }
+
+        logger.i(
+            "Reindex $chatRoomId: ${groupEvents.size} stored group event(s), " +
+                "${predatingMembership.size} from before this device joined"
+        )
 
         // Held commits are what a replay is most often for, and they are only ever
         // cleared by one applying -- see MarmotInboundManager.forgetPendingCommits.
@@ -1351,7 +1390,8 @@ abstract class NostrDao(
 
         return MarmotReindexSweep.run(
             stored = groupEvents.size,
-            unresolved = groupEvents.filterNot { it.id in resolved },
+            predatingMembership = predatingMembership.size,
+            unresolved = readable.filterNot { it.id in resolved },
             replay = { groupEvent ->
                 indexMarmotGroupEvent(
                     groupEvent = groupEvent,

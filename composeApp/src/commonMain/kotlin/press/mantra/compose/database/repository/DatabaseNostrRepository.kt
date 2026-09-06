@@ -439,15 +439,45 @@ class DatabaseNostrRepository(
                     database.chatRoomDao().findChatRoomById(marmotCommitResult.chatRoomId)?.let { localChatRoom ->
                         // TODO: Update status of participant Invitation.PENDING -> Invitation.SENT
                         logger.d("localChatRoom: $localChatRoom")
-                        marmotCommitResult.welcomeBytes?.let { welcomeBytes ->
-                            logger.d("welcomeBytes: ${welcomeBytes.toHex()}")
-                            database.marmotOutboundDao().deliveryWelcome(
-                                nostrGroupId = marmotCommitResult.chatRoomId,
+                        val welcomeBytes = marmotCommitResult.welcomeBytes
+                        if (welcomeBytes == null) {
+                            // The commit was acknowledged and there is nothing to let
+                            // the invitee in with, so this invite is over. Nobody is
+                            // waiting on the answer by now -- the screen that asked
+                            // closed when the commit was made -- which is why it goes
+                            // in the room rather than to a caller.
+                            database.marmotOutboundDao().announceInviteFailed(
+                                chatRoomId = marmotCommitResult.chatRoomId,
                                 userPublicKey = marmotCommitResult.userPublicKey,
-                                welcomeBytes = welcomeBytes,
+                                peerPublicKey = database.marmotKeyPackageDao()
+                                    .getMarmotKeyPackageById(marmotCommitResult.peerKeyPackageEventId)
+                                    ?.publicKey,
+                                reason = "the commit carried no invitation",
+                            )
+                            return@let
+                        }
+
+                        logger.d("welcomeBytes: ${welcomeBytes.toHex()}")
+                        val delivered = database.marmotOutboundDao().deliveryWelcome(
+                            nostrGroupId = marmotCommitResult.chatRoomId,
+                            userPublicKey = marmotCommitResult.userPublicKey,
+                            welcomeBytes = welcomeBytes,
+                            peerKeyPackageEventId = marmotCommitResult.peerKeyPackageEventId,
+                            createdAt = marmotCommitResult.createdAt,
+                            relays = Relays.DefaultDMRelayList.map { it.url } // TODO: Get localChatRoom relays...
+                        )
+
+                        // This is the deferred delivery site, and the only one where
+                        // the Welcome goes out later than the invite that made it --
+                        // so it is the only one that owes the room a second line. An
+                        // invite whose room was still just its creator sent its
+                        // Welcome in the same breath and said so once already. A
+                        // failure needs nothing here: `deliveryWelcome` files its own.
+                        if (delivered) {
+                            database.marmotOutboundDao().announceInviteSent(
+                                chatRoomId = marmotCommitResult.chatRoomId,
+                                userPublicKey = marmotCommitResult.userPublicKey,
                                 peerKeyPackageEventId = marmotCommitResult.peerKeyPackageEventId,
-                                createdAt = marmotCommitResult.createdAt,
-                                relays = Relays.DefaultDMRelayList.map { it.url } // TODO: Get localChatRoom relays...
                             )
                         }
                     }
