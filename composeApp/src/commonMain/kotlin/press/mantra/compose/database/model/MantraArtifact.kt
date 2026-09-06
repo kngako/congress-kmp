@@ -11,6 +11,7 @@ import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
 import press.mantra.compose.nostr.nip30303.tags.DialectIdTag
 import press.mantra.compose.nostr.nip30303.tags.LicenseTag
 import press.mantra.compose.nostr.nip30303.tags.UrlTag
@@ -65,12 +66,34 @@ data class MantraArtifact(
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): OptionalNostrEventEntity, TimestampedEntity {
-    fun toArtifactEvent(): ArtifactEvent {
+    /**
+     * The event the group signed, rebuilt from this row.
+     *
+     * [versionLabel] is a parameter because it is not on this row and cannot be.
+     * `fromArtifactEvent` reads the artifact's own fields and drops the version
+     * metadata, which `ChatMessage.applyInnerEvent` has by then turned into the
+     * artifact's first `MantraArtifactVersion`. It was still part of what the
+     * group put its signature to, so a rebuild without it hashes to a different
+     * id and produces an event the signature does not cover -- which a receiver
+     * reads as a forgery, silently. Recover it from the initial version: the one
+     * whose `createdAt` is this artifact's, since `initialVersionOf` derives it
+     * from the same event.
+     *
+     * Tag order matches [ArtifactEvent.build] exactly -- alt first -- for the
+     * same reason, and `ArchiveRoundTripTest` is what says so. Both of those were
+     * wrong here until an archive needed to rebuild an artifact and nothing had
+     * ever called this.
+     */
+    fun toArtifactEvent(versionLabel: String): ArtifactEvent {
         return ArtifactEvent(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
+            // Tag order matches ArtifactEvent.build so the event id round-trips.
             tags = TagArrayBuilder<ArtifactEvent>()
+                .addUnique(
+                    AltTag.assemble(ArtifactEvent.ALT_DESCRIPTION)
+                )
                 .addUnique(UrlTag.assemble(url))
                 .addUnique(VisibilityTag.assemble(visibility))
                 .addUnique(LicenseTag.assemble(license))
@@ -78,7 +101,7 @@ data class MantraArtifact(
                     DialectIdTag.assemble(dialectId)
                 )
                 .addUnique(
-                    AltTag.assemble(ArtifactEvent.ALT_DESCRIPTION)
+                    ArtifactVersionMetadataTag.assemble(versionLabel)
                 )
                 .build(),
             content = name,

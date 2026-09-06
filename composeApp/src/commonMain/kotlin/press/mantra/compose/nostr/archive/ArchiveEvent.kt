@@ -15,14 +15,11 @@ import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
 import press.mantra.compose.nostr.archive.tags.ArchivePageTag
 import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
-import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
-import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
-import press.mantra.compose.nostr.nip30303.TranslationEvent
 
 /**
  * 30327
@@ -165,22 +162,43 @@ class ArchiveEvent(
          * what the room signs with, replayed by whoever kept a copy. Nothing but
          * this list stops it.
          *
-         * Absent on purpose: the contributor-list kinds (30305, 30307, 30310).
-         * `ChatMessage.applyInnerEvent` has no arm that writes a row for any of
-         * them, so archiving them would cost bytes and restore nothing. They
-         * belong here on the day that changes, and the test that this list is a
-         * subset of what `applyInnerEvent` handles is what should catch it.
+         * ### What is missing from it, and why
+         *
+         * **Only kinds the group actually signs can be here**, because an archive
+         * that cannot be verified is one that has to be believed. Six of the
+         * thirteen nip30303 kinds reach a signing session; the rest travel as
+         * rumors -- empty signature, member author, vouched for by the MLS frame
+         * they arrived in and by nothing that survives leaving it.
+         *
+         * Left out for that reason, and this is a real limit rather than an
+         * oversight:
+         *
+         *  - `ArtifactVersionEvent` (30301). Never signed. The version an
+         *    artifact starts life with is *derived* from the signed artifact by
+         *    `MantraArtifactVersion.initialVersionOf`, which the artifact's own
+         *    arm in `applyInnerEvent` runs -- so archiving the artifact brings its
+         *    version along and the chapters hanging off it keep their foreign
+         *    key. Later versions go through `MantraDao.addArtifactVersion` as
+         *    rumors, and no screen calls it today.
+         *  - `TranslationChunkEvent` (30309) -- **the translated text itself**.
+         *    `MantraDao.saveTranslation` submits it as a member's rumor, because
+         *    a translation is one member's work rather than a group decision.
+         *    So an archive restores everything a translation hangs on and not the
+         *    translation. See docs/member-archive.md for what closing that would
+         *    take; it is not a line in this list.
+         *  - `TranslationEvent` (30311). Nothing builds one; the inbound arm
+         *    exists and no producer does.
+         *  - The contributor lists (30305, 30307, 30310). `applyInnerEvent` has
+         *    no arm that writes a row for any of them, so archiving them would
+         *    cost bytes and restore nothing.
          */
         private val APPLY_ORDER: List<Kind> = listOf(
             DialectEvent.KIND,
             ArtifactEvent.KIND,
-            ArtifactVersionEvent.KIND,
             ChapterEvent.KIND,
             ChunkEvent.KIND,
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
-            TranslationChunkEvent.KIND,
-            TranslationEvent.KIND,
         )
 
         /** Every kind an archive may carry. */

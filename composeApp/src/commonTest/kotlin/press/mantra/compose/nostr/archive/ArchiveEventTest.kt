@@ -179,20 +179,38 @@ class ArchiveEventTest {
     // ---- What an archive may carry ---------------------------------------
 
     @Test
-    fun `the allowlist is every kind an archive can restore, and only those`() {
+    fun `the allowlist is every kind the group signs, and only those`() {
         listOf(
             DialectEvent.KIND,
             ArtifactEvent.KIND,
-            ArtifactVersionEvent.KIND,
             ChapterEvent.KIND,
             ChunkEvent.KIND,
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
-            TranslationChunkEvent.KIND,
-            TranslationEvent.KIND,
         ).forEach { assertTrue(ArchiveEvent.isArchivable(it), "kind $it should be archivable") }
 
-        assertEquals(9, ArchiveEvent.ARCHIVABLE_KINDS.size)
+        assertEquals(6, ArchiveEvent.ARCHIVABLE_KINDS.size)
+    }
+
+    @Test
+    fun `the kinds nobody signs are left out, translations included`() {
+        // The limit worth knowing about before reading anything else here. An
+        // archive can only carry what the receiver can check, and six of the
+        // thirteen nip30303 kinds reach a signing session. The rest travel as
+        // rumors -- empty signature, member author -- vouched for by the MLS
+        // frame they arrived in and by nothing that survives leaving it.
+
+        // The translated text. MantraDao.saveTranslation submits it as the
+        // member's own rumor, so an archive restores everything a translation
+        // hangs on and not the translation.
+        assertFalse(ArchiveEvent.isArchivable(TranslationChunkEvent.KIND))
+
+        // Never signed either: derived from the signed artifact on arrival, which
+        // is what keeps a chapter's foreign key satisfied without archiving it.
+        assertFalse(ArchiveEvent.isArchivable(ArtifactVersionEvent.KIND))
+
+        // Nothing builds one of these at all.
+        assertFalse(ArchiveEvent.isArchivable(TranslationEvent.KIND))
     }
 
     @Test
@@ -235,17 +253,18 @@ class ArchiveEventTest {
         // Every one of these is a foreign key in Room, so an archive applied the
         // other way round is a constraint violation rather than a wrong answer.
         assertTrue(rank(DialectEvent.KIND) < rank(ArtifactEvent.KIND))
-        assertTrue(rank(ArtifactEvent.KIND) < rank(ArtifactVersionEvent.KIND))
-        assertTrue(rank(ArtifactVersionEvent.KIND) < rank(ChapterEvent.KIND))
         assertTrue(rank(ChapterEvent.KIND) < rank(ChunkEvent.KIND))
-        assertTrue(rank(ArtifactVersionEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
-        assertTrue(rank(DialectEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
         assertTrue(rank(TranslationArtifactVersionEvent.KIND) < rank(TranslationChapterEvent.KIND))
         assertTrue(rank(ChapterEvent.KIND) < rank(TranslationChapterEvent.KIND))
-        assertTrue(rank(ChunkEvent.KIND) < rank(TranslationChunkEvent.KIND))
-        assertTrue(rank(TranslationChapterEvent.KIND) < rank(TranslationChunkEvent.KIND))
-        assertTrue(rank(TranslationChunkEvent.KIND) < rank(TranslationEvent.KIND))
-        assertTrue(rank(TranslationArtifactVersionEvent.KIND) < rank(TranslationEvent.KIND))
+        assertTrue(rank(DialectEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
+
+        // A chapter and a translation artifact version both hang off an artifact
+        // *version*, which is not archived: it is derived from the signed
+        // artifact by the artifact's own arm in applyInnerEvent. So the artifact
+        // has to land before either of them, and the dependency runs through a
+        // kind that is not in this list at all.
+        assertTrue(rank(ArtifactEvent.KIND) < rank(ChapterEvent.KIND))
+        assertTrue(rank(ArtifactEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
 
         // And the numbers really do disagree with the order, which is why this is
         // a list rather than a sortedBy { kind }.
@@ -256,22 +275,22 @@ class ArchiveEventTest {
     @Test
     fun `sorting a page puts what is referenced before what refers to it`() {
         val jumbled = listOf(
-            payload(TranslationEvent.KIND),
+            payload(TranslationChapterEvent.KIND),
             payload(ChunkEvent.KIND),
             payload(DialectEvent.KIND),
+            payload(TranslationArtifactVersionEvent.KIND),
             payload(ChapterEvent.KIND),
             payload(ArtifactEvent.KIND),
-            payload(ArtifactVersionEvent.KIND),
         )
 
         assertEquals(
             listOf(
                 DialectEvent.KIND,
                 ArtifactEvent.KIND,
-                ArtifactVersionEvent.KIND,
                 ChapterEvent.KIND,
                 ChunkEvent.KIND,
-                TranslationEvent.KIND,
+                TranslationArtifactVersionEvent.KIND,
+                TranslationChapterEvent.KIND,
             ),
             ArchiveEvent.inApplyOrder(jumbled).map { it.kind }
         )

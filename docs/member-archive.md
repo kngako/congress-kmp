@@ -265,9 +265,13 @@ array containing a non-event is refused whole.
 
 `ArchiveManager.assemble(database, chatRoomId, recipient): List<EventTemplate<*>>`
 
-Read every group-signed event this device holds for the room, order it, pack it
-into pages, and queue each page as a `MarmotInnerEvent` -- the ordinary outbound
-path, nothing new.
+Read every group-signed event this device holds for the room, order it, and pack
+it into pages.
+
+**Assembling only.** Queueing each page as a `MarmotInnerEvent` moved to Phase 5,
+where the thing that decides *when* to send one lives. Splitting them keeps this
+phase testable against a real database with no outbound path in the way, and
+keeps the decision about transcript lines next to the decision about triggers.
 
 ### Where the events come from
 
@@ -282,6 +286,44 @@ phase.** If any entity's `toXEvent` does not round-trip to an id whose signature
 still verifies, that entity cannot be archived at all, and it is better to find
 out in an afternoon than in Phase 8. A round-trip test per kind, over rows
 produced by a real signing session, is the gate on the rest of this work.
+
+**It was right to run it first.** Every `toXEvent()` in the codebase turned out
+to be unused in production -- written for exactly this and never called, so the
+"tag order matches build so the event id round-trips" comments on them were
+claims nothing had checked. One was wrong. `MantraArtifact.toArtifactEvent` put
+the alt tag last where `ArtifactEvent.build` puts it first, *and* left out the
+version metadata tag entirely -- because that tag is not on the artifact row at
+all. `fromArtifactEvent` reads the artifact's own fields and drops the version
+label, which `applyInnerEvent` has by then turned into the artifact's first
+`MantraArtifactVersion`. So the label comes back as a parameter, read off the
+initial version -- the one whose `createdAt` is the artifact's, since
+`initialVersionOf` derives it from the same event.
+
+Neither fault would have shown up as an error. Both produce a well-formed
+artifact whose id no longer matches its fields, which every receiver drops as a
+forgery, silently, one kind at a time.
+
+### What is actually archivable, which is less than it looks
+
+Only six of the thirteen nip30303 kinds ever reach a signing session. The rest
+travel as rumors -- empty signature, member author, vouched for by the MLS frame
+they arrived in and by nothing that survives leaving it -- so they cannot be put
+in front of somebody who has no way to check them.
+
+| kind | | why |
+|---|---|---|
+| 30304 Dialect, 30300 Artifact, 30302 Chapter, 30303 Chunk, 30306 TranslationArtifactVersion, 30308 TranslationChapter | archivable | proposed through `proposeSigning`/`proposeSigningBatch` |
+| 30301 ArtifactVersion | no | never signed; derived from the signed artifact on arrival, which is what keeps a chapter's foreign key satisfied without archiving it |
+| 30309 TranslationChunk | no | **the translated text itself.** `MantraDao.saveTranslation` submits it as the member's own rumor |
+| 30311 Translation | no | nothing builds one; the inbound arm exists and no producer does |
+| 30305, 30307, 30310 contributor lists | no | `applyInnerEvent` has no arm that writes a row for any of them |
+
+The second row of "no" is the one that matters and it is not a detail: **an
+archive restores everything a translation hangs on and not the translation.** A
+new member gets the dialects, the artifacts, the chapters, the source chunks,
+which translations exist and their chapter scaffolding -- the whole structure,
+enough to start translating -- and none of the translated text. See
+[What this does not do](#what-this-does-not-do).
 
 ### Ordering
 
@@ -573,6 +615,29 @@ ids that the group signs periodically -- one quorum, cheap, and rejected as the
 general answer for the reason
 [frost-batch-signing.md](./frost-batch-signing.md#appendix--what-was-considered-and-rejected)
 gives for manifests. Worth revisiting once anything depends on completeness.
+
+**The translated text is not archived.** The largest gap, and it follows from the
+same rule everything else here follows from. A translation chunk is submitted by
+`MantraDao.saveTranslation` as the member's own rumor, because a translation is
+one member's work rather than a group decision -- so it carries no signature, and
+an archive carrying it would be asking its recipient to believe whoever sent it.
+A new member therefore receives the entire structure and none of the prose.
+
+Three ways out, in increasing order of how much they cost:
+
+ - **Send them anyway, marked unverified**, and let the reader see which rows
+   came with a group signature and which came on one member's word. Cheap, and it
+   gives up the property that makes the rest of this safe, so it needs its own
+   screen language rather than a quiet inclusion.
+ - **Corroborate.** Every member's archive is an independent copy, so a
+   translation two members' archives agree on is a claim two devices make. That
+   is a real strengthening and it needs a second archive to compare against,
+   which the request path already makes ordinary.
+ - **Sign them.** The group already puts a quorum behind a chapter and its
+   chunks; putting one behind a translation would make it archivable like
+   everything else. It is also a product decision about whether translating is an
+   act of the group or of a member, which is not a decision this document gets to
+   make.
 
 **The chat is gone and stays gone.** By design, restated here because it is the
 first thing a new member will notice and the archive is what makes them expect
