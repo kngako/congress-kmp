@@ -45,16 +45,6 @@ interface FrostSigningRepository {
 
     suspend fun getSessionById(sessionId: String): FrostSigningSession?
 
-    /**
-     * The session a room is currently running, or its most recent one if none is.
-     *
-     * For callers that mean "the signing going on here" without holding an id --
-     * a transcript line, mostly. Prefers a live session because that is the one
-     * anybody tapping through wants to act on; a finished one is only what is
-     * left to show when there is nothing live.
-     */
-    suspend fun liveSessionForChatRoom(chatRoomId: String): FrostSigningSession?
-
     /** Whether this room holds a key it can sign with, so the UI offers nothing that would fail. */
     suspend fun canSign(chatRoomId: String): Boolean
 
@@ -155,8 +145,6 @@ interface FrostSigningRepository {
             override suspend fun getItems(sessionId: String): List<FrostSigningItem> = emptyList()
 
             override suspend fun getSessionById(sessionId: String): FrostSigningSession? = null
-
-            override suspend fun liveSessionForChatRoom(chatRoomId: String): FrostSigningSession? = null
 
             override suspend fun canSign(chatRoomId: String): Boolean = false
 

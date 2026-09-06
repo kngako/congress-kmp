@@ -426,6 +426,16 @@ what a line older than the column has to be read by, and is right for those
 rooms: nothing that predates batch proposals ran two sessions at once. A ceremony
 line still uses the clock always, since a room runs one ritual at a time.
 
+The transcript answers one question about a proposal — is this still asking
+something of you — and answers it in the middle of everything else the room said.
+Two open proposals need a place that shows both, so `ProposalListScreen` lists a
+room's sessions newest first with the ones waiting on the reader gathered at the
+top, and the room's history under them. `FrostSigningRoute.sessionId` stopped
+being optional at the same time: it existed for transcript lines that could not
+say which session they meant, resolved to "the room's live session", and that
+guess is exactly what two proposals make wrong. A line too old to name its
+session opens the list instead.
+
 ---
 
 ## Phase 6 — the test that actually proves it

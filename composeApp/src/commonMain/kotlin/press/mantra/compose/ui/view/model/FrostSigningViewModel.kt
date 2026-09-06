@@ -25,7 +25,7 @@ import press.mantra.compose.ui.view.state.FrostSigningUIState
 
 class FrostSigningViewModel(
     val chatRoomId: String,
-    val sessionId: String?,
+    val sessionId: String,
     val activeUserPublicKey: HexKey,
     initialFrostSigningUIState: FrostSigningUIState,
     val chatRepository: ChatRepository,
@@ -53,22 +53,12 @@ class FrostSigningViewModel(
                 return@launch
             }
 
-            // A transcript line knows its room but not its session, so resolve one
-            // before watching anything.
-            val id = sessionId
-                ?: frostSigningRepository.liveSessionForChatRoom(chatRoomId)?.id
-            if (id == null) {
-                frostSigningUIState =
-                    FrostSigningUIState.Error("This group is not signing anything right now.")
-                return@launch
-            }
-
             frostSigningUIState = FrostSigningUIState.Loaded(localChatRoom = localChatRoom)
 
             combine(
-                frostSigningRepository.observeSessionById(id),
-                frostSigningRepository.observeMessages(id),
-                frostSigningRepository.observeItems(id)
+                frostSigningRepository.observeSessionById(sessionId),
+                frostSigningRepository.observeMessages(sessionId),
+                frostSigningRepository.observeItems(sessionId)
             ) { session, messages, items -> Triple(session, messages, items) }
                 .collect { (session, messages, items) ->
                     frostSigningUIState = FrostSigningUIState.Loaded(
@@ -138,7 +128,7 @@ class FrostSigningViewModel(
 
         fun factory(
             chatRoomId: String,
-            sessionId: String?,
+            sessionId: String,
             activeUserPublicKey: HexKey,
             initialFrostSigningUIState: FrostSigningUIState = FrostSigningUIState.Loading,
             chatRepository: ChatRepository,

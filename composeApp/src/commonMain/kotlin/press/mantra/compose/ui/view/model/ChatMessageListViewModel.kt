@@ -237,7 +237,15 @@ class ChatMessageListViewModel(
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
-    fun RenderMessages(onOpenSharedKey: () -> Unit, onOpenSigning: () -> Unit) {
+    fun RenderMessages(
+        onOpenSharedKey: () -> Unit,
+        /**
+         * Opens the signing this line is about, by session id -- or the room's
+         * whole list of proposals when the line predates [ChatMessage.frostSigningSessionId]
+         * and cannot say which one it meant.
+         */
+        onOpenSigning: (sessionId: String?) -> Unit,
+    ) {
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -383,7 +391,11 @@ class ChatMessageListViewModel(
                                             localChatMessage = localChatMessage,
                                             isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                             isSettled = localChatMessage.chatMessage.id in settledRequests,
-                                            onClick = onOpenSigning
+                                            onClick = {
+                                                onOpenSigning(
+                                                    localChatMessage.chatMessage.frostSigningSessionId
+                                                )
+                                            }
                                         )
                                         return@items
                                     }

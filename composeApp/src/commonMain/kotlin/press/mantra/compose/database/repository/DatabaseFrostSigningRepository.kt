@@ -13,7 +13,6 @@ import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
-import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.FrostSigningRepository
 
@@ -40,14 +39,6 @@ class DatabaseFrostSigningRepository(
 
     override suspend fun getSessionById(sessionId: String): FrostSigningSession? =
         database.frostSigningSessionDao().getSessionById(sessionId)
-
-    override suspend fun liveSessionForChatRoom(chatRoomId: String): FrostSigningSession? {
-        val sessions = database.frostSigningSessionDao().getSessionsForChatRoom(chatRoomId)
-
-        return sessions.firstOrNull {
-            it.stage != FrostSigningStage.COMPLETE && it.stage != FrostSigningStage.FAILED
-        } ?: sessions.firstOrNull()
-    }
 
     override suspend fun canSign(chatRoomId: String): Boolean =
         FrostSigningManager.canSign(database, chatRoomId)

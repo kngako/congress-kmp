@@ -48,6 +48,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
@@ -147,14 +148,25 @@ fun ChatRoomMessagingScreen(
                                         )
                                     )
                                 },
-                                onOpenSigning = {
-                                    // No session id: a chat row carries none, and the
-                                    // screen resolves the room's live one.
+                                onOpenSigning = { sessionId ->
+                                    // A line written before chat rows named their
+                                    // session cannot say which proposal it is about,
+                                    // and the room may have several. The list is the
+                                    // honest answer: it shows all of them with their
+                                    // own state, rather than guessing at one.
                                     onNavigateToRoute.invoke(
-                                        FrostSigningRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = chatRoomId
-                                        )
+                                        if (sessionId == null) {
+                                            ProposalListRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        } else {
+                                            FrostSigningRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId,
+                                                sessionId = sessionId
+                                            )
+                                        }
                                     )
                                 }
                             )

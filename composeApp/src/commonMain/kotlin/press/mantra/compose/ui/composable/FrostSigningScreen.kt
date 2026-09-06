@@ -74,7 +74,7 @@ import press.mantra.compose.ui.view.state.FrostSigningUIState
 fun FrostSigningScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
-    sessionId: String?,
+    sessionId: String,
     initialFrostSigningUIState: FrostSigningUIState = FrostSigningUIState.Loading,
     chatRepository: ChatRepository,
     frostSigningRepository: FrostSigningRepository,
