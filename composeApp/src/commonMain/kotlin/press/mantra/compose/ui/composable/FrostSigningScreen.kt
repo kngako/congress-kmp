@@ -138,15 +138,25 @@ fun FrostSigningScreen(
                 // flash an error on the way in.
                 val session = state.session ?: return@Scaffold Loading(padding)
 
+                val proposed = frostSigningViewModel.proposedEvents(state.items)
+
+                // Every event of the batch has to be readable before any of it can
+                // be signed. A member cannot check what they cannot see, and a
+                // batch is all-or-nothing: agreeing to the two that rendered would
+                // be agreeing to the third as well.
+                val readable = state.items.isNotEmpty() && proposed.size == state.items.size
+
+                val scrollState = rememberScrollState()
+
                 Column(
                     modifier = Modifier
                         .padding(padding)
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scrollState)
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    WhatIsBeingSigned(frostSigningViewModel.proposedEvents(state.items).firstOrNull())
+                    WhatIsBeingSigned(proposed, state.items.size)
 
                     HorizontalDivider()
 
@@ -234,9 +244,29 @@ fun FrostSigningScreen(
 
                         Text(
                             text = "Nothing has been published from this device yet. Signing " +
-                                "puts your share behind this event; it cannot be taken back.",
+                                "puts your share behind " +
+                                (if (proposed.size > 1) "all ${proposed.size} of these events" else "this event") +
+                                "; it cannot be taken back.",
                             style = MaterialTheme.typography.bodySmall
                         )
+
+                        // A batch can hide an event below the fold in a way one
+                        // event cannot: what is off-screen is not further detail
+                        // about the thing on screen, it is a different thing the
+                        // member would also be signing. So a batch's Sign button
+                        // waits until the list has been read to the end. maxValue
+                        // is Int.MAX_VALUE until the first layout, and 0 when
+                        // everything already fits.
+                        val seenEverything = proposed.size <= 1 ||
+                            (scrollState.maxValue != Int.MAX_VALUE && scrollState.value >= scrollState.maxValue)
+
+                        if (readable && !seenEverything) {
+                            Text(
+                                text = "Read to the end of the list to sign.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -244,7 +274,8 @@ fun FrostSigningScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
-                                enabled = !frostSigningViewModel.isActionPending.value,
+                                enabled = readable && seenEverything &&
+                                    !frostSigningViewModel.isActionPending.value,
                                 onClick = { frostSigningViewModel.approve(onNavigateBack) }
                             ) {
                                 Icon(Icons.Default.Draw, contentDescription = null)
@@ -252,6 +283,11 @@ fun FrostSigningScreen(
                                 Text("Sign")
                             }
 
+                            // Declining stays available whatever the screen could
+                            // not show. A member who cannot check what they are
+                            // being asked to sign should still be able to say no,
+                            // and saying nothing is indistinguishable from a phone
+                            // in a pocket -- which leaves the group waiting.
                             TextButton(
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error
@@ -289,16 +325,48 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
  * refusing to describe an event is better than describing it wrongly.
  */
 @Composable
-private fun WhatIsBeingSigned(event: Event?) {
-    if (event == null) {
+private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
+    if (expected == 0 || events.size != expected) {
         Text(
-            text = "This session's event could not be read, so there is nothing to check " +
-                "before signing. Don't sign it.",
+            text = if (expected <= 1) {
+                "This session's event could not be read, so there is nothing to check " +
+                    "before signing. Don't sign it."
+            } else {
+                "Only ${events.size} of this session's $expected events could be read, so " +
+                    "there is no way to check what you would be signing. Don't sign it."
+            },
             color = MaterialTheme.colorScheme.error
         )
         return
     }
 
+    Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        if (events.size > 1) {
+            Text(
+                text = "${events.size} events, signed together",
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
+        events.forEachIndexed { index, event ->
+            if (index > 0) HorizontalDivider()
+
+            OneThingBeingSigned(event)
+        }
+
+        Text(
+            text = "Signed by the group, not by you. Once enough members sign, " +
+                (if (events.size > 1) "these are" else "this is") +
+                " published under the group's shared key.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** One event of the batch, described as the thing it is. */
+@Composable
+private fun OneThingBeingSigned(event: Event) {
     val (label, detail) = when (event.kind) {
         DialectEvent.KIND -> "New dialect" to DialectEvent(
             event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
@@ -337,13 +405,6 @@ private fun WhatIsBeingSigned(event: Event?) {
         Text(text = label, style = MaterialTheme.typography.labelMedium)
 
         Text(text = detail, style = MaterialTheme.typography.titleMedium)
-
-        Text(
-            text = "Signed by the group, not by you. Once enough members sign, this is " +
-                "published under the group's shared key.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

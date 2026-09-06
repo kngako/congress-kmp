@@ -1486,15 +1486,20 @@ object FrostSigningManager {
         )
     }
 
-    private suspend fun announceStarted(database: MantraDatabase, session: FrostSigningSession) =
+    private suspend fun announceStarted(database: MantraDatabase, session: FrostSigningSession) {
+        val count = database.frostSigningSessionDao().countItems(session.id)
+
         announce(
             database = database,
             session = session,
             messageType = ChatMessage.TYPE_FROST_STARTED,
-            content = "asked the group to sign something with its shared key. It takes " +
-                "${session.threshold} of ${session.participantCount} members to do it.",
+            content = "asked the group to sign " +
+                (if (count > 1) "$count events" else "something") +
+                " with its shared key. It takes ${session.threshold} of " +
+                "${session.participantCount} members to do it.",
             actor = session.coordinatorPublicKey
         )
+    }
 
     /**
      * Tells the group's chat that this session is waiting on the reader.
@@ -1511,12 +1516,15 @@ object FrostSigningManager {
 
         update(database, session) { it.copy(approvalRequestedAt = Clock.System.now()) }
 
+        val count = database.frostSigningSessionDao().countItems(session.id)
+
         announce(
             database = database,
             session = session,
             messageType = ChatMessage.TYPE_FROST_APPROVAL_NEEDED,
-            content = "Your approval is needed to sign with the group's shared key. Nothing " +
-                "has been published from this device yet.",
+            content = "Your approval is needed to sign " +
+                (if (count > 1) "$count events " else "") +
+                "with the group's shared key. Nothing has been published from this device yet.",
             actor = session.userPublicKey
         )
     }
@@ -1535,19 +1543,29 @@ object FrostSigningManager {
         kind: Kind,
         actor: HexKey
     ) {
+        // A batch is still one line per member per step -- what changes is the
+        // number in it. Every one of these lines describes work that covered the
+        // whole batch, so saying so is the difference between a member reading
+        // "signed their part" and knowing what they signed.
+        val count = database.frostSigningSessionDao().countItems(session.id)
+        val batch = count > 1
+
         val (messageType, content) = when (kind) {
             FrostSigningEvents.NONCE -> ChatMessage.TYPE_FROST_NONCE to
-                "offered to help sign, sending the one-time value their signature needs."
+                "offered to help sign, sending the one-time " +
+                    (if (batch) "values their signatures need." else "value their signature needs.")
 
             FrostSigningEvents.SIGNER_SET -> ChatMessage.TYPE_FROST_SIGNER_SET to
                 "chose who is signing and combined their one-time values."
 
             FrostSigningEvents.PARTIAL_SIGNATURE -> ChatMessage.TYPE_FROST_PARTIAL_SIGNATURE to
-                "signed their part. On its own it proves nothing; combined with the " +
-                    "others it is the group's signature."
+                "signed their part" + (if (batch) " of all $count events" else "") +
+                    ". On its own it proves nothing; combined with the others it is " +
+                    "the group's " + (if (batch) "signatures." else "signature.")
 
             FrostSigningEvents.SIGNATURE -> ChatMessage.TYPE_FROST_SIGNATURE to
-                "combined the parts into the group's signature."
+                "combined the parts into the group's " +
+                    (if (batch) "$count signatures." else "signature.")
 
             // PROPOSAL and FAILURE are announced by the code that acts on them --
             // both say more than the message itself carries.
