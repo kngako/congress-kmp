@@ -296,10 +296,23 @@ keeps the decision about transcript lines next to the decision about triggers.
 > **Since the `GroupSignedEvent` table landed**, a signed event *is* stored as an
 > event -- `FrostSigningManager` files one per batch it completes, and
 > `ArchiveManager.applyPage` files one per payload it accepts, each with the
-> derivation path its author was reached at. Assembly still rebuilds from rows,
-> because a room whose work predates the table has nothing else to rebuild from.
-> The rest of this section is the reasoning as it stood then, and the round-trip
-> gate it describes is still what holds those rooms up.
+> derivation path its author was reached at. `assemble` reads that table first
+> and rebuilds only what it does not hold, which is work signed before the table
+> existed. So the rest of this section describes the *fallback*: the round-trip
+> gate it argues for is what holds those older rooms up, and it can go once no
+> install still carries pre-v13 work.
+>
+> Two things changed with the source, both worth knowing before reading on:
+>
+> - **The allowlist now does real work on the way out.** The rebuild could only
+>   ever produce document kinds; the table holds everything the group has signed,
+>   and every room signs a `GroupKeyStateEvent` as its first act. `assemble`
+>   filters on `ArchiveEvent.isArchivable` before anything else -- without it
+>   `ArchiveEvent.build` refuses the page and a room's whole archive fails on the
+>   one event every room has.
+> - **An artifact whose initial version row is missing now archives.** The
+>   rebuild has to recover the version label from that row and logs and gives up
+>   without it; on file as an event, the label never left.
 
 Signed events are not stored as events; they are stored as rows. So the archive
 is rebuilt from `Mantra*` rows via each entity's `toXEvent()`, which is exactly

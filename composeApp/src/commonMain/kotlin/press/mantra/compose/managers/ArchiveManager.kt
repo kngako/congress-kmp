@@ -27,22 +27,31 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  * locally by each device that took part and never goes on the wire. This is how
  * it gets to them.
  *
- * ### The rows are the archive
+ * ### The events are the archive, and the rows are the fallback
  *
- * Every payload here is rebuilt from a `Mantra*` row with `toXEvent()`, and
- * stands or falls on that rebuild being byte-identical to what was signed.
- * `ArchiveRoundTripTest` is what says it is, per kind, against a real quorum --
- * and it found two faults in the artifact's rebuild the first time it ran, both
- * of which would have shipped payloads that every receiver drops as forgeries
- * without a word.
+ * `GroupSignedEvent` holds what the group signed, as it signed it, so
+ * [signedEventsOf] reads it first: no rebuild, no round-trip risk, and nothing
+ * that depends on a row having kept every field of the event it came from. The
+ * artifact's version label is the standing example -- it is not on the artifact
+ * row at all, and [rebuiltEventsOf] has to go and find it on the initial version
+ * or leave the artifact out.
  *
- * That was once the only way: a signed event was applied and what survived was
- * the row. `GroupSignedEvent` now keeps the event too, and [applyPage] files one
- * for every payload it accepts -- which is what lets a member who was handed
- * their history hand it on. Assembly still walks the rows, because a room whose
- * work predates that table has no events on file and rebuilding is the only way
- * to reach it. Reading assembled events from the table instead is worth doing
- * once the fallback can be dropped.
+ * A room whose work predates that table has no events on file, so the rebuild
+ * stays as the fallback for exactly what the table is missing, keyed by id.
+ * Every payload it produces stands or falls on being byte-identical to what was
+ * signed; `ArchiveRoundTripTest` is what says it is, per kind, against a real
+ * quorum, and it found two faults in the artifact's rebuild the first time it
+ * ran -- both of which would have shipped payloads that every receiver drops as
+ * forgeries without a word. The fallback can go once no install still holds
+ * pre-v13 work.
+ *
+ * **The allowlist does real work on the way out now.** The rebuild could only
+ * ever produce document kinds; the table holds everything the group has ever
+ * signed, `GroupKeyStateEvent` included -- and every room signs one of those as
+ * its first act. So [signedEventsOf] filters on [ArchiveEvent.isArchivable]
+ * before anything else, which is the same rule [applyPage] applies on the way
+ * in. Without it `ArchiveEvent.build` would refuse the page, and a room's whole
+ * archive would fail on the one event every room has.
  *
  * ### Nothing unverifiable leaves
  *
@@ -75,17 +84,19 @@ object ArchiveManager {
         archiveId: String = RandomInstance.bytes(32).toHex(),
         createdAt: Long = TimeUtils.now(),
     ): List<EventTemplate<ArchiveEvent>> {
-        val rebuilt = signedEventsOf(database, chatRoomId)
+        val held = signedEventsOf(database, chatRoomId)
 
-        val verified = rebuilt.filter { GroupKeyStateEvent.isSignedByRoom(it, chatRoomId) }
-        if (verified.size != rebuilt.size) {
-            // Expected rather than alarming: an artifact version is derived
-            // rather than signed, and a translation is its author's rumor. What
-            // would be worth looking at is this dropping something the group
-            // really did sign, which reads as a broken `toXEvent` rather than as
-            // a missing signature.
+        // One rule over both sources: nothing leaves that the recipient could
+        // not check for themselves. What a drop means depends on where it came
+        // from, and the two are worth telling apart when reading this log --
+        // from the rebuild it is the ordinary case of a member's own rumor
+        // sitting in the same table as the group's work, and from the record it
+        // is a row that has drifted from the event it recorded, which nothing
+        // in this app does on purpose.
+        val verified = held.filter { GroupKeyStateEvent.isSignedByRoom(it, chatRoomId) }
+        if (verified.size != held.size) {
             logger.d(
-                "Leaving ${rebuilt.size - verified.size} of ${rebuilt.size} row(s) out of " +
+                "Leaving ${held.size - verified.size} of ${held.size} event(s) out of " +
                     "$chatRoomId's archive: nothing verifiably signed by the room"
             )
         }
@@ -584,6 +595,55 @@ object ArchiveManager {
     }
 
     /**
+     * Every archivable event this device holds for the room: the ones the group
+     * signed here or sent here, plus anything only the rows still remember.
+     *
+     * The record comes first because it is the event rather than a reconstruction
+     * of one, and the rebuild fills the gap behind it -- keyed by id, so an event
+     * held both ways travels once. A room that upgraded mid-life has both, and
+     * neither half is complete on its own.
+     *
+     * The two disagree only in one direction worth naming. An id the rebuild
+     * produces that the record does not hold is either work from before the
+     * table existed, which is the point of the fallback, or a rebuild that has
+     * gone wrong -- and a wrong rebuild hashes to an id whose signature does not
+     * verify, so the filter in [assemble] drops it either way rather than
+     * shipping a payload every receiver reads as a forgery.
+     *
+     * Order does not matter at this point; [ArchiveEvent.inApplyOrder] settles it
+     * afterwards. It is stable within a rank, so a room holding some of its work
+     * both ways can order two chapters differently from a member holding one way
+     * only. That costs nothing: pages are idempotent and applied payload by
+     * payload, and two members already differed by the order their rows were
+     * written in.
+     */
+    private suspend fun signedEventsOf(
+        database: MantraDatabase,
+        chatRoomId: String,
+    ): List<Event> {
+        val recorded = database.groupSignedEventDao()
+            .getByChatRoomId(chatRoomId)
+            // The allowlist, applied to the source that can actually trip it --
+            // see the class comment. A key state on file is the room's own, and
+            // sending it would be handing every member a validly signed
+            // statement about what the room signs with, replayable forever.
+            .filter { ArchiveEvent.isArchivable(it.kind) }
+            .map { it.toEvent() }
+
+        val onFile = recorded.mapTo(mutableSetOf()) { it.id }
+        val rebuilt = rebuiltEventsOf(database, chatRoomId).filterNot { it.id in onFile }
+
+        if (rebuilt.isNotEmpty()) {
+            logger.d(
+                "Archiving $chatRoomId: ${recorded.size} event(s) as the group signed them, " +
+                    "${rebuilt.size} rebuilt from rows that predate the record"
+            )
+        }
+
+        return recorded + rebuilt
+    }
+
+    /**
      * The room's rows, rebuilt into the events they came from.
      *
      * Walked down the tree rather than queried per kind, because only dialects
@@ -592,11 +652,18 @@ object ArchiveManager {
      * artifact row -- see `MantraArtifact.toArtifactEvent` -- and the version it
      * went into is one step away here.
      *
-     * Order does not matter at this point; [ArchiveEvent.inApplyOrder] settles it
-     * afterwards. What matters is that nothing is missed, so this returns
-     * everything and the verify filter above decides what can travel.
+     * Still walked on every archive, and by now it contributes nothing in most
+     * rooms: everything signed or applied since `GroupSignedEvent` existed is on
+     * file as an event, and [signedEventsOf] discards whatever this rebuilds of
+     * it. The walk is a handful of indexed queries against a room's own rows,
+     * and it is what makes a half-upgraded room whole, so it runs rather than
+     * being skipped when the record looks complete -- there is no way to tell a
+     * complete record from a partial one without doing it.
+     *
+     * It returns everything it can rebuild and lets [signedEventsOf] and the
+     * verify filter decide what can travel.
      */
-    private suspend fun signedEventsOf(
+    private suspend fun rebuiltEventsOf(
         database: MantraDatabase,
         chatRoomId: String,
     ): List<Event> = buildList {

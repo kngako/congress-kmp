@@ -24,12 +24,14 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.archive.ArchiveEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -132,6 +134,16 @@ class ArchiveAssemblyJvmTest {
         )
     }
 
+    /**
+     * Every event `apply` has been given, in the order it was given them.
+     *
+     * A test that wants the room's work on file as events too replays this
+     * through [record], which is the pair `FrostSigningManager.complete` writes
+     * in one pass. Kept here rather than returned by `seedSignedWork` so the
+     * seeding reads the same in both worlds.
+     */
+    private val applied = mutableListOf<Event>()
+
     /** What `FrostSigningManager.applySignedEvent` does, through the same call. */
     private suspend fun apply(template: EventTemplate<*>): Event {
         val event = signed(template)
@@ -147,8 +159,27 @@ class ArchiveAssemblyJvmTest {
             createdAt = Instant.fromEpochSeconds(event.createdAt)
         )
 
+        applied += event
+
         return event
     }
+
+    /** What `FrostSigningManager.recordSignedEvents` does, through the same table. */
+    private suspend fun record(vararg events: Event) {
+        db.groupSignedEventDao().recordAll(
+            events.map {
+                GroupSignedEvent.fromEvent(
+                    event = it,
+                    chatRoomId = chatRoomId,
+                    derivationPath = SharedKeyDerivation.formatPath(),
+                    frostSigningSessionId = "session-1",
+                )
+            }
+        )
+    }
+
+    /** The whole seeded batch on file as events, as a device that signed it holds it. */
+    private suspend fun recordEverythingApplied() = record(*applied.toTypedArray())
 
     /** ChatRoom -> Profile -> NostrEvent, the foreign key chain a room hangs off. */
     private suspend fun seedRoom() {
@@ -374,6 +405,186 @@ class ArchiveAssemblyJvmTest {
         assertEquals(1, page.page()?.count)
         assertEquals(newMember, page.recipient())
         assertNotNull(page.archiveId())
+    }
+
+    // ---- Reading from the record rather than rebuilding -------------------
+
+    /**
+     * The events, not a reconstruction of them.
+     *
+     * Byte-for-byte against what was signed, which is the assertion the whole
+     * rebuild machinery exists to approximate. Here it is exact by construction:
+     * nothing is rebuilt, so there is no tag order to get wrong and no field a
+     * row could have failed to keep.
+     */
+    @Test
+    fun `an archive carries the group's events as the group signed them`() = runBlocking {
+        seedSignedWork()
+        recordEverythingApplied()
+
+        val payloads = archivedPayloads().associateBy { it.id }
+
+        assertEquals(
+            applied.map { it.id }.toSet(),
+            payloads.keys,
+            "everything the group signed here should be in the archive"
+        )
+        applied.forEach { event ->
+            assertEquals(
+                event.toJson(),
+                assertNotNull(payloads[event.id]).toJson(),
+                "kind ${event.kind} did not travel as the group signed it"
+            )
+        }
+    }
+
+    /**
+     * Both sources, one archive, and nothing counted twice.
+     *
+     * The state a device upgrading mid-life is in: older work only the rows
+     * remember, newer work on file as events. Neither half is the archive on its
+     * own, and an event held both ways is still one event.
+     */
+    @Test
+    fun `work held both ways travels exactly once`() = runBlocking {
+        seedSignedWork()
+
+        // Half the batch on file, the other half only as rows -- which is what
+        // a room that was upgraded partway through its life looks like.
+        record(*applied.take(applied.size / 2).toTypedArray())
+
+        val payloads = archivedPayloads()
+
+        assertEquals(
+            applied.map { it.id }.toSet(),
+            payloads.map { it.id }.toSet(),
+            "the two sources together should still be the whole record"
+        )
+        assertEquals(
+            payloads.size,
+            payloads.map { it.id }.toSet().size,
+            "an event on file and rebuildable is one event, not two"
+        )
+    }
+
+    /**
+     * The failure this source made possible, and the allowlist that stops it.
+     *
+     * A key state is group-signed and verifies perfectly, and every room signs
+     * one as its first act -- so it is on file in every room that has ever
+     * signed anything. The rebuild could not reach one because no `Mantra*` row
+     * holds it; the record holds every kind. Without the filter on the way out
+     * `ArchiveEvent.build` refuses the page and the room's whole archive fails
+     * on the one event every room has.
+     */
+    @Test
+    fun `a key state the room really signed is never archived`() = runBlocking {
+        seedSignedWork()
+        recordEverythingApplied()
+
+        val keyState = signed(
+            EventTemplate<Event>(
+                createdAt = 1_700_000_070L,
+                kind = GroupKeyStateEvent.KIND,
+                tags = GroupKeyStateEvent.assembleTags(
+                    chatRoomId = chatRoomId,
+                    dkgSessionId = "the-ceremony",
+                ),
+                content = keyMaterial.thresholdPublicKey.value.toHex(),
+            )
+        )
+        record(keyState)
+        assertTrue(
+            GroupKeyStateEvent.isSignedByRoom(keyState, chatRoomId),
+            "the point of this test is that verification passes"
+        )
+
+        val payloads = archivedPayloads()
+
+        assertTrue(payloads.isNotEmpty(), "the rest of the room's work still archives")
+        assertEquals(
+            ArchiveEvent.ARCHIVABLE_KINDS,
+            payloads.map { it.kind }.toSet(),
+            "an archive carries the document kinds and nothing else"
+        )
+        assertTrue(payloads.none { it.id == keyState.id })
+    }
+
+    /** The same rule, for a kind that is merely not on the list rather than dangerous. */
+    @Test
+    fun `a signed kind the archive has no arm for is left behind`() = runBlocking {
+        seedSignedWork()
+        recordEverythingApplied()
+
+        record(
+            signed(
+                EventTemplate<Event>(
+                    createdAt = 1_700_000_080L,
+                    kind = SubmissionEvent.KIND,
+                    tags = emptyArray(),
+                    content = "{}",
+                )
+            )
+        )
+
+        assertEquals(
+            ArchiveEvent.ARCHIVABLE_KINDS,
+            archivedPayloads().map { it.kind }.toSet()
+        )
+    }
+
+    /**
+     * The case the rebuild cannot reach at all, which is why the record is the
+     * source and not merely a faster one.
+     *
+     * `MantraArtifact` does not hold the version label it was signed with --
+     * `fromArtifactEvent` drops it -- so `toArtifactEvent` has to go and find it
+     * on the initial version, and an artifact whose version row is missing is one
+     * the rebuild logs and leaves out. On file as an event there is nothing to
+     * find: the label never left.
+     */
+    @Test
+    fun `an artifact the rebuild has to leave out still archives from the record`() = runBlocking {
+        seedRoom()
+
+        val dialect = apply(
+            DialectEvent.build(name = "isiZulu", country = "ZA", language = "zu", createdAt = 1_700_000_000L)
+        )
+
+        // Applied without the second item of its batch, so no version row carries
+        // the label back. A device that was offline for half a batch, or one that
+        // failed to apply the version, is in exactly this state.
+        val artifact = apply(
+            ArtifactEvent.build(
+                name = "In Detention",
+                url = "https://example.com/in-detention",
+                visibility = "private",
+                license = "cc",
+                dialectId = dialect.id,
+                versionLabel = "1.0",
+                createdAt = 1_700_000_010L
+            )
+        )
+
+        assertEquals(
+            emptyList(),
+            db.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(artifact.id),
+            "this test is only about an artifact whose initial version is missing"
+        )
+
+        // Rows only: the rebuild reaches the dialect and gives up on the artifact.
+        assertEquals(
+            listOf(dialect.id),
+            archivedPayloads().map { it.id },
+        )
+
+        record(dialect, artifact)
+
+        assertEquals(
+            setOf(dialect.id, artifact.id),
+            archivedPayloads().map { it.id }.toSet(),
+            "the record holds the whole event, version label and all"
+        )
     }
 
     @Test
