@@ -129,6 +129,37 @@ The group state is persisted after `commit()` and before any Welcome is delivere
 so a crash between the two leaves the group at the epoch the Welcomes describe
 rather than one behind it.
 
+## What the room is told
+
+An invite writes three kinds of line into the room's transcript, none of which
+travels — see `ChatMessage.MEMBERSHIP_TYPES`. They exist because the deferral
+above is invisible from anywhere else: the screen that asks for an invite closes
+the moment the commit is made, and everything that can still go wrong goes wrong
+after that.
+
+| line                        | written by                              | says                                  |
+|-----------------------------|-----------------------------------------|---------------------------------------|
+| `TYPE_MEMBER_INVITED`       | `inviteMember`, `addMembersToChatRoom`  | the membership change was made        |
+| `TYPE_MEMBER_INVITE_SENT`   | `DatabaseNostrRepository`               | the deferred Welcome went on the wire |
+| `TYPE_MEMBER_INVITE_FAILED` | `deliveryWelcome`, `DatabaseChatRepository` | it did not, and why              |
+
+The invite line is written **when the invite is made**, inside the caller's
+transaction. Both halves of that matter: written any later and an invite waiting
+on an ack that never comes leaves the room showing nothing, which is what this
+looked like before; written outside the transaction and an invite that does not
+survive `addMember` leaves the room claiming one was made.
+
+Only the immediate branch's Welcome goes out in the same breath as the invite, so
+only the deferred branch owes a second line. Where the two are one event, one line
+is the whole truth — and `createdAt` is stored to the second, so a second line
+would be one the transcript could not reliably order after the first anyway.
+
+A refusal is the awkward case, because rolling the transaction back is right and
+takes the account of it with it. `DatabaseChatRepository.inviteMember` catches,
+writes the failed line from outside the transaction, and rethrows — the throw is
+what puts a message on the invite screen now, the line is what is still there
+tomorrow.
+
 ## Other things that bite
 
 **Sequential invites each advance the epoch.** Where they still happen — the
@@ -140,9 +171,12 @@ error.
 
 **A member with no published key package cannot be added.** A Marmot invite needs
 the invitee's `MarmotKeyPackage`. Both call sites look it up with a timeout and
-collect the ones that failed. Today that only reaches the log — the
-`TODO: Update status of participant Invitation.PENDING -> Invitation.SENT` at the
-Welcome delivery site is the same gap seen from the other end.
+collect the ones that failed. That is still only a log and a returned list —
+nothing puts it in the room, because it happens before there is an invite to write
+a line about. The `TODO: Update status of participant Invitation.PENDING ->
+Invitation.SENT` at the Welcome delivery site is the same gap seen from the other
+end: the transcript lines above say what happened, but a Participant row still
+carries no state saying where its invite got to.
 
 **`deliveryWelcome` uses `Relays.DefaultDMRelayList`, not the room's relays.**
 There is a `TODO: Get localChatRoom relays...` on the ack-triggered call site.

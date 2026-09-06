@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
@@ -65,6 +66,7 @@ fun ChatRoomMessagingScreen(
     initialChatRoomMessagingUIState: ChatRoomMessagingUIState = ChatRoomMessagingUIState.Loading,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
+    frostSigningRepository: FrostSigningRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
@@ -100,7 +102,8 @@ fun ChatRoomMessagingScreen(
                 factory = press.mantra.compose.ui.view.model.ChatMessageListViewModel.factory(
                     localChatRoom = chatRoomDetailUIState.localChatRoom,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
+                    frostSigningRepository = frostSigningRepository
                 )
             )
 
@@ -149,13 +152,21 @@ fun ChatRoomMessagingScreen(
                                     )
                                 },
                                 onOpenSigning = { sessionId ->
-                                    // A line written before chat rows named their
-                                    // session cannot say which proposal it is about,
-                                    // and the room may have several. The list is the
-                                    // honest answer: it shows all of them with their
-                                    // own state, rather than guessing at one.
+                                    // Two reasons to open the queue instead of the one
+                                    // proposal. A line written before chat rows named
+                                    // their session cannot say which proposal it is
+                                    // about, and the room may have several -- the list
+                                    // is the honest answer there, showing all of them
+                                    // with their own state rather than guessing at one.
+                                    //
+                                    // The other is that the proposal they tapped is
+                                    // not the only one waiting on them, in which case
+                                    // it is not the whole of what is being asked and a
+                                    // screen showing only it would say it was.
                                     onNavigateToRoute.invoke(
-                                        if (sessionId == null) {
+                                        if (sessionId == null ||
+                                            chatMessageListViewModel.hidesOtherDecisions(sessionId)
+                                        ) {
                                             ProposalListRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 chatRoomId = chatRoomId
@@ -440,6 +451,7 @@ private fun ChatRoomMessagingScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {}
             )

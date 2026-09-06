@@ -2,6 +2,7 @@ package press.mantra.compose.ui.view.model
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +29,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.extensions.toChatListTimestampString
 import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
@@ -186,11 +189,36 @@ class ChatRoomListViewModel(
                                             )
                                         }
                                     ) {
-                                        Column(
-                                            modifier = Modifier.padding(20.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            localChatRoom.RenderChatRoomTitleText()
+                                            // Both lines are clipped to one, so the name
+                                            // and the preview keep their width whatever
+                                            // was said -- a long message must not push
+                                            // the clock off the row.
+                                            Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                localChatRoom.RenderChatRoomTitleText()
+                                                localChatRoom.RenderChatRoomLastMessageText()
+                                            }
+
+                                            // Absent rather than blank for a room with
+                                            // nothing in it: there is no time to show,
+                                            // and the room's own creation -- which is
+                                            // what it sorts on -- is not one the user
+                                            // has any reason to read here.
+                                            localChatRoom.lastChatMessage?.let { lastChatMessage ->
+                                                Text(
+                                                    text = lastChatMessage.createdAt.toChatListTimestampString(),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
                                         }
                                     }
                                 }

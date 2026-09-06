@@ -2,6 +2,7 @@ package press.mantra.compose.database.model
 
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
+import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.experimental.nip82SoftwareApps.application.name
 import press.mantra.compose.database.MantraDatabase
@@ -69,6 +70,11 @@ import kotlin.time.Instant
             onDelete = ForeignKey.CASCADE,
         ),
     ],
+    // The chat list reads the newest line of every room the user is in, once per
+    // room, and re-reads all of them each time a message lands anywhere. Without
+    // this that is a scan of every message this device holds, per room, per
+    // arrival -- work that grows with the whole history rather than with the room.
+    indices = [Index("chatRoomId")],
 )
 data class ChatMessage(
     @PrimaryKey(autoGenerate = true)
@@ -355,6 +361,49 @@ data class ChatMessage(
             TYPE_CHRONICLE_REQUESTED,
             TYPE_CHRONICLE_SENT,
             TYPE_CHRONICLE_RECEIVED,
+        )
+
+        /**
+         * Adding a member to the group, as lines in the group's chat.
+         *
+         * An invite is two separate things, and in an established group they can be
+         * minutes apart: the membership change this device commits, and the Welcome
+         * that lets the invitee in going on the wire. The second waits on a relay
+         * acknowledging the commit -- see docs/marmot-membership.md -- and it is the
+         * one that can fail after the screen that asked for it has closed, which
+         * leaves the transcript as the only place able to say so.
+         *
+         * So [TYPE_MEMBER_INVITED] is written the moment the invite is made, and
+         * [TYPE_MEMBER_INVITE_SENT] only where the Welcome is delivered later than
+         * that. Where the two happen together -- a group that is still only its
+         * creator has nobody to inform, so its Welcome goes out immediately -- there
+         * is one line, because there was one event.
+         *
+         * Written by the inviter's device, for itself. None of these travels: what
+         * the group receives is the commit, and each member's transcript is written
+         * from what it made of that. A member watching from the side sees nothing
+         * here, correctly.
+         *
+         * Content is a whole sentence rather than a predicate, so these stay out of
+         * the AUTHORED sets and nothing prefixes a name to them. The invitee's name
+         * is written into the content the way the chronicle's is, which does not
+         * follow a rename and is the accepted cost for a line about a thing that
+         * happened once.
+         */
+        const val TYPE_MEMBER_INVITED = "memberInvited"
+        const val TYPE_MEMBER_INVITE_SENT = "memberInviteSent"
+        const val TYPE_MEMBER_INVITE_FAILED = "memberInviteFailed"
+
+        /**
+         * Every membership line, for the one check the transcript dispatches on.
+         *
+         * A type missing from here renders as a chat bubble -- silently, and looking
+         * exactly like the inviter having said "Invited Bob to the group".
+         */
+        val MEMBERSHIP_TYPES = setOf(
+            TYPE_MEMBER_INVITED,
+            TYPE_MEMBER_INVITE_SENT,
+            TYPE_MEMBER_INVITE_FAILED,
         )
 
         const val TYPE_UNDECRYPTABLE_OUTER_LAYER = "undecryptableOuterLayer"

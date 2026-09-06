@@ -109,6 +109,24 @@ class NotaryViewModel(
         }
     }
 
+    /**
+     * Sign and publish everything queued for this key, not just the lowest kind.
+     *
+     * The last of the notary's three queues to be a single row, and the one already
+     * observed to stall: `NostrDao.commitPublishedNostrEvent` carries the account of an
+     * indexing throw rolling `signedAt` back, after which nothing queued behind that row
+     * was ever signed. That was fixed by moving indexing out of the transaction, which
+     * closed the one known way in and left the queue as narrow as it was.
+     *
+     * `UnsignedNostrEvent.equals` is a plain value comparison, so this was the frozen
+     * variant rather than the retrying one: the failed row's re-emission compared equal to
+     * the last, `distinctUntilChanged` dropped it, and the collector saw nothing again for
+     * the life of the session. Both go, for the reason given on
+     * [observeUnprocessedMarmotInnerEvents].
+     *
+     * Serially and in the query's order: kind 0 is what NavigationViewModel is waiting on,
+     * and a replaceable kind queued twice must go out oldest first or the older one wins.
+     */
     private suspend fun observeUnsignedNostrEvents(
         keyPair: KeyPair
     ) {
@@ -118,8 +136,11 @@ class NotaryViewModel(
         logger.i { "observeUnsignedNostrEvents: ${keyPair.pubKey.toHexKey()}" }
         nostrRepository.observeUnsignedNostrEvents(
             publicKey = keyPair.pubKey.toHexKey()
-        ).distinctUntilChanged().collect { unsignedNostrEventOrNull ->
-            unsignedNostrEventOrNull?.let { unsignedNostrEvent ->
+        ).collect { unsignedNostrEvents ->
+            unsignedNostrEvents.forEach { unsignedNostrEvent ->
+                // Per row: a publish that throws rolls back its own transaction and
+                // nothing else, so the row stays queued for the next pass and the rest of
+                // the account's events still go out.
                 guardNotarization("unsigned event ${unsignedNostrEvent.id} (kind ${unsignedNostrEvent.kind})") {
                     logger.d("Unsigned: ${unsignedNostrEvent.kind}")
                     val event = tempSigner.signNormal<Event>(

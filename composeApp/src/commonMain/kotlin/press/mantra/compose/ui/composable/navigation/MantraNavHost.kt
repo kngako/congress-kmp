@@ -739,6 +739,7 @@ fun MantraNavHost(
                 relayHint = route.relayHint,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
                 onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
                     navController.navigate(
                         route = chatRoomDetailRoute
