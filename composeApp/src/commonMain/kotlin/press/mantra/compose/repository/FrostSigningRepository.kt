@@ -119,6 +119,17 @@ interface FrostSigningRepository {
     /** Refuses, and says so, since a t-of-n group can proceed without this member. */
     suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String)
 
+    /**
+     * The events a session was opened over, signature or no signature.
+     *
+     * What [signedEvents] gives back once the group has answered, and what it
+     * refuses to give back before then. A caller wanting an id -- to open a
+     * second session over events that name one of these -- needs it while the
+     * first session is still running, and the id is settled at proposal time:
+     * it is the hash the signers are putting their shares behind.
+     */
+    fun unsignedEvents(items: List<FrostSigningItem>): List<Event>
+
     /** The finished events, or empty while any of them is still running. */
     fun signedEvents(items: List<FrostSigningItem>): List<Event>
 
@@ -167,6 +178,8 @@ interface FrostSigningRepository {
             override suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String) = Unit
 
             override suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String) = Unit
+
+            override fun unsignedEvents(items: List<FrostSigningItem>): List<Event> = emptyList()
 
             override fun signedEvents(items: List<FrostSigningItem>): List<Event> = emptyList()
         }

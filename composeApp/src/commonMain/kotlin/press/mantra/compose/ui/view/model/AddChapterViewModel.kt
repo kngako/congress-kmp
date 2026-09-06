@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.repository.ChatRepository
@@ -114,15 +115,19 @@ class AddChapterViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
+            // Where this chapter sits in the version, read now rather than
+            // derived on arrival: the index is signed into the event, and a
+            // device applying it cannot recount from a version other members
+            // may have added to in a different order. The scaffolding proposed
+            // below is placed at the same one, so a translation chapter agrees
+            // with the chapter it stands for.
+            val chapterIndex = mantraRepository.getChaptersForArtifactVersion(artifactVersion.id).size
+
             val chapterEventTemplate = ChapterEvent.build(
                 artifactVersionId = artifactVersion.id,
                 name = name,
                 originalText = originalText,
-                // Where this chapter sits in the version, read now rather than
-                // derived on arrival: the index is signed into the event, and a
-                // device applying it cannot recount from a version other members
-                // may have added to in a different order.
-                index = mantraRepository.getChaptersForArtifactVersion(artifactVersion.id).size,
+                index = chapterIndex,
                 wordCount = Markdown.wordCount(originalText),
                 characterCount = Markdown.characterCount(originalText),
             )
@@ -143,6 +148,17 @@ class AddChapterViewModel(
             }.getOrNull()
 
             if (session != null) {
+                // Before navigating, not after: the route this screen sits on
+                // is popped on success, which clears this view model and takes
+                // `viewModelScope` with it. Scaffolding launched afterwards
+                // would be cancelled somewhere in the middle.
+                scaffoldIntoTranslations(
+                    localChatRoom = localChatRoom,
+                    artifactVersion = artifactVersion,
+                    chapterIndex = chapterIndex,
+                    chapterSessionId = session.id,
+                )
+
                 nameField.clearText()
                 originalTextField.clearText()
 
@@ -156,6 +172,81 @@ class AddChapterViewModel(
             }
 
             isActionPending.value = false
+        }
+    }
+
+    /**
+     * Asks the group to scaffold this chapter into every translation of the
+     * version, in sessions of their own.
+     *
+     * Its own session rather than more items on the chapter's, because the two
+     * would otherwise compete for one batch: a chapter is capped at
+     * [MAX_CHUNKS_PER_CHAPTER] paragraphs, and every dialect the group works in
+     * would take one of those places away. How long a chapter may be and how
+     * many languages it is read in have nothing to do with each other, and a
+     * shared cap would make the first move whenever somebody else did the
+     * second.
+     *
+     * Sessions run independently -- every message carries the session it
+     * belongs to, and each mints its own nonce material -- so a second one
+     * opened here costs the admins another approval and nothing else.
+     *
+     * **What a separate session gives up.** A batch is all-or-nothing; two
+     * sessions are not. If the chapter fails to reach a quorum while this one
+     * succeeds, these are valid signatures over rows naming a chapter nobody
+     * has: they fail a foreign key on the way in, are logged by
+     * `applySignedEvent`, and never become rows. Harmless, and not recoverable
+     * either -- a re-proposed chapter is a different id -- so the catch-up on
+     * the translation is what fills the gap afterwards.
+     *
+     * The chapter is named as the group will author it: [chapterSessionId]'s
+     * first item is the unsigned chapter, whose id is the hash its signers are
+     * putting their shares behind, and it is settled at proposal time rather
+     * than when the quorum arrives.
+     *
+     * Failure here is logged and swallowed. The chapter has already been
+     * proposed and is the thing that was asked for; losing it because its
+     * scaffolding could not be opened would be the wrong way round.
+     */
+    private suspend fun scaffoldIntoTranslations(
+        localChatRoom: LocalChatRoom,
+        artifactVersion: MantraArtifactVersion,
+        chapterIndex: Int,
+        chapterSessionId: String,
+    ) {
+        runCatching {
+            val translations = mantraRepository
+                .getTranslationsForArtifactVersion(artifactVersion.id)
+                .ifEmpty { return@runCatching }
+
+            val chapter = frostSigningRepository
+                .unsignedEvents(frostSigningRepository.getItems(chapterSessionId))
+                .firstOrNull() ?: return@runCatching
+
+            // One session per MAX_BATCH_SIZE translations. A group with more
+            // dialects than a batch holds is not a group this should refuse;
+            // it is one that answers twice.
+            translations.chunked(FrostSigningManager.MAX_BATCH_SIZE).forEach { batch ->
+                frostSigningRepository.proposeSigningBatch(
+                    localChatRoom = localChatRoom,
+                    userPublicKey = activeUserPublicKey,
+                    events = TranslationScaffold.chaptersOf(
+                        translationArtifactVersionIds = batch.map { it.id },
+                        chapters = listOf(
+                            TranslationScaffold.SourceChapter(
+                                id = chapter.id,
+                                index = chapterIndex,
+                            )
+                        ),
+                        createdAt = chapter.createdAt,
+                    )
+                )
+            }
+        }.onFailure { error ->
+            logger.e(
+                "Proposed the chapter but could not ask for it in this version's translations",
+                error
+            )
         }
     }
 

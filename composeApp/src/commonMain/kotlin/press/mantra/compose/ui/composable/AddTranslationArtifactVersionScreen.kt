@@ -263,11 +263,12 @@ fun AddTranslationArtifactVersionScreen(
                         // What the group is being asked to sign, counted before
                         // the tap rather than described after it: the chapters
                         // are the rest of the batch. The empty case is worth
-                        // its own sentence, because a translation proposed now
-                        // is not reached by chapters signed after it.
+                        // its own sentence, so that a translation of an artifact
+                        // nobody has written into yet does not read as broken.
                         text = if (chapterCount == 0) {
                             "The artifact has no chapters yet, so the group would sign the " +
-                                "translation on its own. Chapters added afterwards do not join it."
+                                "translation on its own. Chapters signed afterwards are put " +
+                                "into it as they are added."
                         } else {
                             "The group signs the translation and " +
                                 "$chapterCount ${if (chapterCount == 1) "chapter" else "chapters"} " +

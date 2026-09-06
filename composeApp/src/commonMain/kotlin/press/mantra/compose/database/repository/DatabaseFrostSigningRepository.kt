@@ -138,6 +138,9 @@ class DatabaseFrostSigningRepository(
         }
     }
 
+    override fun unsignedEvents(items: List<FrostSigningItem>): List<Event> =
+        items.map { Event.fromJson(it.unsignedEventJson) }
+
     override fun signedEvents(items: List<FrostSigningItem>): List<Event> =
         FrostSigningManager.signedEvents(items)
 

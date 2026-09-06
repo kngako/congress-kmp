@@ -53,6 +53,13 @@ interface MantraRepository {
 
     suspend fun getTranslation(id: String): MantraTranslationArtifactVersion?
 
+    /**
+     * The translations of one artifact version: what a chapter signed into that
+     * version has to be scaffolded into, and what a translation is caught up
+     * against.
+     */
+    suspend fun getTranslationsForArtifactVersion(artifactVersionId: String): List<MantraTranslationArtifactVersion>
+
     suspend fun getTranslationChapter(id: String): MantraTranslationChapter?
 
     suspend fun getTranslationChapters(translationArtifactVersionId: String): List<MantraTranslationChapter>
@@ -104,6 +111,8 @@ interface MantraRepository {
             override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
             override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? = null
+
+            override suspend fun getTranslationsForArtifactVersion(artifactVersionId: String): List<MantraTranslationArtifactVersion> = emptyList()
 
             override suspend fun getTranslationChapter(id: String): MantraTranslationChapter? = null
 

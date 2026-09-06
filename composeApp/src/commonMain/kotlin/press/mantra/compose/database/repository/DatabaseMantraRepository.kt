@@ -73,6 +73,9 @@ class DatabaseMantraRepository(
     override suspend fun getTranslation(id: String): MantraTranslationArtifactVersion? =
         database.mantraTranslationArtifactVersionDao().getTranslationById(id)
 
+    override suspend fun getTranslationsForArtifactVersion(artifactVersionId: String): List<MantraTranslationArtifactVersion> =
+        database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactVersionId(artifactVersionId)
+
     override suspend fun getTranslationChapter(id: String): MantraTranslationChapter? =
         database.mantraTranslationChapterDao().getTranslationChapterById(id)
 

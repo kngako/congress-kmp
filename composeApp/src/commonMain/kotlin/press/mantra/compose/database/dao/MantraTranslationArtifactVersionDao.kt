@@ -24,6 +24,21 @@ interface MantraTranslationArtifactVersionDao {
     )
     suspend fun getTranslationsByArtifactId(artifactId: String): List<MantraTranslationArtifactVersion>
 
+    /**
+     * Translations of one version, which is what a chapter of that version has
+     * to be scaffolded into. Narrower than [getTranslationsByArtifactId]: a
+     * chapter belongs to a version, and a translation of an older version is
+     * not a translation the chapter is in.
+     */
+    @Query(
+        """
+        SELECT * FROM MantraTranslationArtifactVersion
+        WHERE artifactVersionId = :artifactVersionId
+        ORDER BY createdAt DESC
+        """
+    )
+    suspend fun getTranslationsByArtifactVersionId(artifactVersionId: String): List<MantraTranslationArtifactVersion>
+
     @Query("SELECT * FROM MantraTranslationArtifactVersion WHERE id = :id")
     suspend fun getTranslationById(id: String): MantraTranslationArtifactVersion?
 }

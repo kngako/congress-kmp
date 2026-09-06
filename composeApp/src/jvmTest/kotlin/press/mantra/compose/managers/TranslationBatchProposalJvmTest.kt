@@ -10,6 +10,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
@@ -24,8 +25,12 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.text.Markdown
+import press.mantra.compose.ui.view.model.AddChapterViewModel
 import press.mantra.compose.ui.view.model.AddTranslationArtifactVersionViewModel
 
 /**
@@ -265,6 +270,113 @@ class TranslationBatchProposalJvmTest {
             AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION + 1
         )
         assertEquals(FrostSigningManager.MAX_BATCH_SIZE, events.size)
+    }
+
+    /** Exactly what `AddChapterViewModel.addChapter` proposes: the chapter, then its chunks. */
+    private suspend fun proposeChapter(paragraphs: Int, index: Int = 0) =
+        FrostSigningManager.proposeSigningBatch(
+            database = db,
+            localChatRoom = room,
+            userPublicKey = proposer,
+            lead = (1..paragraphs).joinToString("\n\n") { "Paragraph $it." }.let { text ->
+                ChapterEvent.build(
+                    artifactVersionId = artifactVersionId,
+                    name = "Chapter ${index + 1}",
+                    originalText = text,
+                    index = index,
+                    wordCount = Markdown.wordCount(text),
+                    characterCount = Markdown.characterCount(text),
+                )
+            },
+            dependents = ChunkEvent::splitOf
+        )
+
+    /** And what it proposes straight afterwards: that chapter, into every translation. */
+    private suspend fun proposeScaffolding(chapter: Event, index: Int, translationIds: List<String>) =
+        FrostSigningManager.proposeSigningBatch(
+            database = db,
+            localChatRoom = room,
+            userPublicKey = proposer,
+            events = TranslationScaffold.chaptersOf(
+                translationArtifactVersionIds = translationIds,
+                chapters = listOf(TranslationScaffold.SourceChapter(id = chapter.id, index = index)),
+                createdAt = chapter.createdAt,
+            )
+        )
+
+    @Test
+    fun `a chapter's scaffolding runs beside it as a session of its own`() = runBlocking {
+        openDevice()
+
+        val translationIds = listOf("1".repeat(64), "2".repeat(64), "3".repeat(64))
+
+        val chapterSession = proposeChapter(paragraphs = 2)
+        val chapter = itemEvents(chapterSession.id).first()
+        val scaffoldSession = proposeScaffolding(chapter, index = 0, translationIds = translationIds)
+
+        // Two live sessions in one room, which is the whole point: every FROST
+        // message carries the session it belongs to, so neither is the room's
+        // "current" one and nothing had to be finished before the second
+        // opened.
+        assertNotEquals(chapterSession.id, scaffoldSession.id)
+        assertEquals(2, db.frostSigningSessionDao().getSessionsForChatRoom(roomId).size)
+
+        // The chapter's batch is what it would have been with no translations
+        // at all: the chapter and a chunk per paragraph, and nothing else.
+        val chapterItems = itemEvents(chapterSession.id)
+        assertEquals(3, chapterItems.size)
+        assertEquals(ChapterEvent.KIND, chapterItems.first().kind)
+        assertTrue(chapterItems.drop(1).all { it.kind == ChunkEvent.KIND })
+
+        // And the scaffolding names that chapter, in every translation.
+        val scaffolded = itemEvents(scaffoldSession.id).map {
+            TranslationChapterEvent(it.id, it.pubKey, it.createdAt, it.tags, it.content, it.sig)
+        }
+        assertEquals(translationIds, scaffolded.map { it.translationArtifactVersionId() })
+        assertTrue(scaffolded.all { it.chapterId() == chapter.id })
+    }
+
+    @Test
+    fun `the two sessions never share nonce material`() = runBlocking {
+        openDevice()
+
+        val chapterSession = proposeChapter(paragraphs = 2)
+        val chapter = itemEvents(chapterSession.id).first()
+        val scaffoldSession = proposeScaffolding(
+            chapter,
+            index = 0,
+            translationIds = listOf("1".repeat(64), "2".repeat(64))
+        )
+
+        // The one thing concurrency could get wrong. Two partial signatures
+        // under a single secret nonce are two equations in one unknown, and the
+        // share falls out; seeds are minted per item per session precisely so
+        // that running two at once cannot arrange it.
+        val seeds = (
+            db.frostSigningSessionDao().getItems(chapterSession.id) +
+                db.frostSigningSessionDao().getItems(scaffoldSession.id)
+            ).map { it.nonceRandom }
+
+        assertEquals(5, seeds.size)
+        assertEquals(seeds.size, seeds.distinct().size)
+    }
+
+    @Test
+    fun `the caps do not compete`() = runBlocking {
+        openDevice()
+
+        // The reason the scaffolding is a second session rather than more items
+        // on the chapter's. A chapter of the longest allowed length still
+        // proposes with translations waiting for it; sharing one batch, every
+        // dialect the group worked in would have cost it a paragraph.
+        val translationIds = (1..8).map { it.toString().repeat(64).take(64) }
+
+        val chapterSession = proposeChapter(paragraphs = AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER)
+        val chapter = itemEvents(chapterSession.id).first()
+        val scaffoldSession = proposeScaffolding(chapter, index = 0, translationIds = translationIds)
+
+        assertEquals(FrostSigningManager.MAX_BATCH_SIZE, itemEvents(chapterSession.id).size)
+        assertEquals(translationIds.size, itemEvents(scaffoldSession.id).size)
     }
 
     @Test
