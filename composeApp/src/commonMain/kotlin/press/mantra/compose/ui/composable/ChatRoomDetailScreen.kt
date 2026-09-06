@@ -637,13 +637,27 @@ private fun ReindexMarmotGroupEventsButton(
         when (reindexState) {
             is ChatRoomDetailViewModel.ReindexState.Done -> {
                 val report = reindexState.report
+                // What was published before this member joined is named rather
+                // than counted as read. Their epoch keys were never on this
+                // device, so "all read" would be a claim about messages nobody
+                // here can open -- and a room that is mostly older than the
+                // member is the ordinary case for anyone invited into one.
+                val beforeJoining =
+                    if (report.predatingMembership > 0) {
+                        " · ${report.predatingMembership} from before you joined"
+                    } else {
+                        ""
+                    }
                 Text(
                     text = when {
-                        report.isNoOp -> "Nothing to reindex · ${report.stored} event(s) all read"
+                        report.isNoOp ->
+                            "Nothing to reindex · ${report.stored - report.predatingMembership} " +
+                                "event(s) all read$beforeJoining"
                         report.recovered > 0 && report.failed > 0 ->
-                            "Recovered ${report.recovered} of ${report.unresolved} · ${report.failed} still unreadable"
-                        report.recovered > 0 -> "Recovered ${report.recovered} of ${report.unresolved} event(s)"
-                        else -> "${report.failed} event(s) still unreadable"
+                            "Recovered ${report.recovered} of ${report.unresolved} · ${report.failed} still unreadable$beforeJoining"
+                        report.recovered > 0 ->
+                            "Recovered ${report.recovered} of ${report.unresolved} event(s)$beforeJoining"
+                        else -> "${report.failed} event(s) still unreadable$beforeJoining"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center

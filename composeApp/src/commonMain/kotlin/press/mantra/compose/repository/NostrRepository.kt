@@ -34,7 +34,14 @@ interface NostrRepository {
 
     suspend fun deleteConnection(connection: Connection)
 
-    suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?>
+    /**
+     * The whole unsigned backlog for [publicKey], lowest kind first.
+     *
+     * See `UnsignedNostrEventDao.observeUnsignedNostrEvents`: a row that cannot be
+     * published used to be the entire queue. Callers work through it in order, and a row
+     * that fails costs only itself.
+     */
+    suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<List<UnsignedNostrEvent>>
 
     suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?>
 
@@ -195,7 +202,7 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
+            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<List<UnsignedNostrEvent>> {
                 TODO("Not yet implemented")
             }
 

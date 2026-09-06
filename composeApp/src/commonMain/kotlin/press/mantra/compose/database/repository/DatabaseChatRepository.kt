@@ -168,11 +168,30 @@ class DatabaseChatRepository(
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage
     ) {
-        database.marmotOutboundDao().inviteMemberToChatRoom(
-            localChatRoom = localChatRoom,
-            peerPublicKey = peerPublicKey,
-            peerKeyPackage = peerKeyPackage
-        )
+        try {
+            database.marmotOutboundDao().inviteMemberToChatRoom(
+                localChatRoom = localChatRoom,
+                peerPublicKey = peerPublicKey,
+                peerKeyPackage = peerKeyPackage
+            )
+        } catch (e: Throwable) {
+            // Outside the transaction that just went down, which is the point: the
+            // invite line `inviteMember` writes went with it, so an invite refused
+            // for want of MLS state or over a mismatched credential left the room
+            // with nothing at all to show. The caller still gets the throw and
+            // still puts its own message on the invite screen -- this is the copy
+            // that is still there tomorrow.
+            logger.e("Failed to invite $peerPublicKey to ${localChatRoom.chatRoom.id}", e)
+            runCatching {
+                database.marmotOutboundDao().announceInviteFailed(
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    peerPublicKey = peerPublicKey,
+                    reason = e.message,
+                )
+            }.onFailure { logger.e("Failed to record the refused invite:", it) }
+            throw e
+        }
     }
     override suspend fun addMembers(
         localChatRoom: LocalChatRoom,
