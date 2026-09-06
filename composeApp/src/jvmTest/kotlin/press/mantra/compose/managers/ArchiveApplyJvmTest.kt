@@ -404,8 +404,10 @@ class ArchiveApplyJvmTest {
         senderArchive().forEach { deliver(it) }
 
         assertEquals(
-            0,
-            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size,
+            emptyList(),
+            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
+                .filterNot { it in ChatMessage.ARCHIVE_TYPES },
             "the archive restores the work; the conversation is forward secret and stays gone"
         )
     }
@@ -593,7 +595,12 @@ class ArchiveApplyJvmTest {
         archive.forEach { deliver(it) }
 
         assertEquals(afterFirst, rowCounts(receiver))
-        assertEquals(0, receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+        assertEquals(
+            emptyList(),
+            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
+                .filterNot { it in ChatMessage.ARCHIVE_TYPES },
+        )
     }
 
     // ---- Asking for one --------------------------------------------------
@@ -612,7 +619,14 @@ class ArchiveApplyJvmTest {
         // does not depend on one, and a row of envelopes in the transcript is not
         // what an archive should leave behind.
         assertEquals(1, queued(receiver, ArchiveRequestEvent.KIND).size)
-        assertEquals(0, receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+
+        // One line saying so, and nothing else. Asking is a thing this device did
+        // and the room would otherwise sit empty with no explanation.
+        assertEquals(
+            listOf(ChatMessage.TYPE_ARCHIVE_REQUESTED),
+            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
+        )
     }
 
     @Test
@@ -672,8 +686,12 @@ class ArchiveApplyJvmTest {
         assertEquals(newMember, page.recipient())
         assertEquals(ArchiveEvent.ARCHIVABLE_KINDS, page.payloads()?.map { it.kind }?.toSet())
 
-        // And no chat line for it, for the same reason the request has none.
-        assertEquals(0, sender.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId).size)
+        // One line about the archive, and no line per page.
+        assertEquals(
+            listOf(ChatMessage.TYPE_ARCHIVE_SENT),
+            sender.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
+        )
     }
 
     @Test
@@ -803,6 +821,54 @@ class ArchiveApplyJvmTest {
             sender.giftWrapPayloadDao()
                 .getByChatRoomAndKinds(chatRoomId, listOf(WelcomeEvent.KIND))
                 .size
+        )
+    }
+
+    @Test
+    fun `an answered catch-up leaves one line, whatever it took to deliver`() = runBlocking {
+        seedSenderWork()
+        seedRoom(receiver, newMember)
+
+        ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember)
+
+        // Delivered a page at a time and out of order, so the sweep runs several
+        // times over several pages. The transcript is not a log of that.
+        val payloads = senderArchive()
+            .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+
+        payloads.reversed().forEachIndexed { index, payload ->
+            deliver(
+                ArchiveEvent.build(
+                    payloads = listOf(payload),
+                    archiveId = "e".repeat(64),
+                    index = index,
+                    count = payloads.size,
+                    recipient = newMember,
+                    createdAt = 1_700_000_100L + index,
+                )
+            )
+        }
+
+        assertEquals(
+            listOf(ChatMessage.TYPE_ARCHIVE_REQUESTED, ChatMessage.TYPE_ARCHIVE_RECEIVED),
+            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
+        )
+    }
+
+    @Test
+    fun `a push nobody asked for says nothing in the transcript`() = runBlocking {
+        seedSenderWork()
+        seedRoom(receiver, newMember)
+
+        // The invite-time push lands before the member has opened the room, so
+        // "caught up on work you have not seen yet" is a line about nothing.
+        senderArchive().forEach { deliver(it) }
+
+        assertEquals(
+            emptyList(),
+            receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
+                .map { it.chatMessage.messageType }
         )
     }
 }

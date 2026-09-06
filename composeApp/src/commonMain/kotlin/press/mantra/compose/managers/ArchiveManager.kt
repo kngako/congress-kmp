@@ -153,6 +153,14 @@ object ArchiveManager {
 
         database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = Clock.System.now()))
 
+        announce(
+            database = database,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+            messageType = ChatMessage.TYPE_ARCHIVE_REQUESTED,
+            content = "Asked this group for its signed work",
+        )
+
         logger.i("Asked $chatRoomId for its signed history")
 
         return true
@@ -201,9 +209,53 @@ object ArchiveManager {
             )
         }
 
+        val name = database.profileDao().getProfileByPublicKey(recipient)
+            ?.humanReadableNameOrPubkey()
+            ?: recipient.take(8)
+
+        announce(
+            database = database,
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+            messageType = ChatMessage.TYPE_ARCHIVE_SENT,
+            content = "Sent this group's signed work to $name",
+        )
+
         logger.i("Sending ${recipient.take(8)} ${pages.size} archive page(s) for $chatRoomId")
 
         return pages.size
+    }
+
+    /**
+     * One line in the room's transcript.
+     *
+     * Written by the device it happened on, for itself. None of these travels --
+     * an archive is not an event in the group's life, it is one member being
+     * caught up -- so a member watching from the side sees nothing, correctly.
+     *
+     * Content is a whole sentence rather than a predicate, so these stay out of
+     * the AUTHORED sets and nothing prefixes a name to them. See
+     * [ChatMessage.ARCHIVE_TYPES].
+     */
+    private suspend fun announce(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        messageType: String,
+        content: String,
+    ) {
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = content,
+                messageType = messageType,
+                chatRoomId = chatRoomId,
+                senderPublicKey = userPublicKey,
+                isUserMessage = true,
+                giftWrapPayloadId = null,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null,
+            )
+        )
     }
 
     /**
@@ -381,6 +433,23 @@ object ArchiveManager {
             database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.let { chatRoom ->
                 if (chatRoom.archiveRequestedAt != null) {
                     database.chatRoomDao().upsert(chatRoom.copy(archiveRequestedAt = null))
+
+                    // One line per answered request, which is as close to one per
+                    // archive as this can get: the pages of an archive are not
+                    // distinguishable from each other here, and clearing the stamp
+                    // is exactly the moment a catch-up stops being pending.
+                    //
+                    // A push behind a Welcome writes none, because the room was
+                    // never asked. That is right: it lands before the member has
+                    // opened the room, and "caught up on work you have not seen
+                    // yet" is a line about nothing.
+                    announce(
+                        database = database,
+                        chatRoomId = chatRoomId,
+                        userPublicKey = userPublicKey,
+                        messageType = ChatMessage.TYPE_ARCHIVE_RECEIVED,
+                        content = "Caught up on ${pass.applied} item(s) of this group's signed work",
+                    )
                 }
             }
         }

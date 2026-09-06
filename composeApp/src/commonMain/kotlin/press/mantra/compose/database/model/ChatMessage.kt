@@ -322,6 +322,41 @@ data class ChatMessage(
          * the commit is one of several competing for an epoch and none has been
          * applied. Neither says anything a member wrote.
          */
+        /**
+         * Handing a member the group's signed record, as lines in the chat.
+         *
+         * One line per archive rather than per page. A member who joins a working
+         * group has a room that fills itself in without explanation, and the
+         * alternative to saying so once is either silence -- which looks like a
+         * group that has done nothing -- or a line per applied payload, which is
+         * the transcript the archive deliberately does not write.
+         *
+         * Content is self-contained: these are not predicates for a name to be
+         * read in front of, so they stay out of the AUTHORED sets. A recipient's
+         * name is written into the sent line the way the invite line writes one,
+         * which does not follow a rename and is the accepted cost for a line
+         * about a thing that happened once.
+         *
+         * The received line names no sender on purpose. An archive can be
+         * assembled out of pages from more than one member, so attributing the
+         * catch-up to one of them would be a guess dressed as a fact.
+         */
+        const val TYPE_ARCHIVE_REQUESTED = "archiveRequested"
+        const val TYPE_ARCHIVE_SENT = "archiveSent"
+        const val TYPE_ARCHIVE_RECEIVED = "archiveReceived"
+
+        /**
+         * Every archive line, for the one check the transcript dispatches on.
+         *
+         * A type missing from here renders as a chat bubble -- silently, and
+         * looking exactly like a member having said "Caught up on 12 items".
+         */
+        val ARCHIVE_TYPES = setOf(
+            TYPE_ARCHIVE_REQUESTED,
+            TYPE_ARCHIVE_SENT,
+            TYPE_ARCHIVE_RECEIVED,
+        )
+
         const val TYPE_UNDECRYPTABLE_OUTER_LAYER = "undecryptableOuterLayer"
         const val TYPE_PENDING_COMMIT = "pendingCommit"
 

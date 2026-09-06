@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.PersonAdd
@@ -406,6 +408,22 @@ class ChatMessageListViewModel(
                                         return@items
                                     }
 
+                                    // Catching a member up is nobody's words either,
+                                    // and it leads nowhere: the work it delivered is
+                                    // in the artifact list, not behind this line.
+                                    // Passed as answered and settled because those
+                                    // are about requests and this asks nothing --
+                                    // which is what keeps it in the quiet tint.
+                                    if (localChatMessage.chatMessage.messageType in ChatMessage.ARCHIVE_TYPES) {
+                                        RitualNotice(
+                                            localChatMessage = localChatMessage,
+                                            isAnswered = true,
+                                            isSettled = true,
+                                            onClick = {}
+                                        )
+                                        return@items
+                                    }
+
                                     // Signing lines are the same kind of thing and get
                                     // the same treatment -- nobody said them either --
                                     // but they lead somewhere else, because what a
@@ -722,6 +740,10 @@ private fun RitualNotice(
         ChatMessage.TYPE_FROST_COMPLETE -> Icons.Default.CheckCircle
         ChatMessage.TYPE_FROST_FAILED -> Icons.Default.ErrorOutline
         ChatMessage.TYPE_FROST_APPROVAL_NEEDED -> Icons.Default.Draw
+
+        ChatMessage.TYPE_ARCHIVE_REQUESTED -> Icons.Default.History
+        ChatMessage.TYPE_ARCHIVE_SENT -> Icons.Default.Upload
+        ChatMessage.TYPE_ARCHIVE_RECEIVED -> Icons.Default.Download
 
         else -> Icons.Default.PanTool
     }

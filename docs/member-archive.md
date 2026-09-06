@@ -530,23 +530,41 @@ occasions.
 
 **A day.**
 
-- **A room being backfilled says so.** A banner on the room and on the artifact
-  list: *"Catching up on this group's work"*, with the page count from
-  `ArchivePageTag` when an archive is in flight. Without it the first minutes in
-  a new room are indistinguishable from a group that has done nothing, which is
-  the wrong first impression and generates the support question this whole
-  document exists to answer.
-- **A "Send history" action** on the member row, for the case the automation
-  misses and for testing. It queues an archive to that member.
-- **The transcript gets one line per archive**, not one per event: *"Sent the
-  group's history to X"* / *"Received the group's history"*. `TYPE_ARCHIVE`,
-  added to `FROST_TYPES`' neighbours in
-  [ChatMessage.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/ChatMessage.kt)
-  -- check every set a new type has to be added to, because one missed set
-  renders it silently as a chat bubble.
-- **Say what the new member cannot do.** See below; this is the part of the
-  feature most likely to be reported as a bug, and the screen is where to answer
-  it.
+**The transcript gets one line per archive**, not one per event. Three types --
+`TYPE_ARCHIVE_REQUESTED`, `TYPE_ARCHIVE_SENT`, `TYPE_ARCHIVE_RECEIVED` -- in
+`ARCHIVE_TYPES`, with an arm in the transcript that renders them as notices. A
+type missing from that set renders as a chat bubble, silently, looking exactly
+like a member having said *"Caught up on 12 items"*.
+
+Three decisions inside that:
+
+- **The received line is written when the request stamp is cleared**, which is as
+  close to one-per-archive as this can get: an archive's pages are not
+  distinguishable from each other at apply time, and clearing the stamp is
+  exactly the moment a catch-up stops being pending.
+- **A push behind a Welcome writes no line at all**, because the room was never
+  asked. It lands before the member has opened the room, and *"caught up on work
+  you have not seen yet"* is a line about nothing.
+- **The received line names no sender.** An archive can be assembled from pages
+  sent by more than one member, so attributing the catch-up to one of them would
+  be a guess dressed as a fact.
+
+**Not done, and deliberately.** Two items from this phase's first draft are
+left out rather than written blind:
+
+- *A banner on the room saying it is catching up.* Worth having -- the first
+  minutes in a new room otherwise look like a group that has done nothing -- but
+  it is UI state plumbed through a view model into a layout, and the transcript
+  line covers the same ground badly rather than not at all. Do it with the app
+  running.
+- *A "Send history" action on the member row.* A convenience, not a mechanism:
+  both real paths are automatic, so this is for the case the automation misses,
+  and it wants a screen to live on.
+
+**Say what the new member cannot do.** Still unwritten, and still the part of
+this most likely to be reported as a bug: an archive does not make its recipient
+able to sign, and it does not carry the translated text. Both belong in front of
+a member the first time they open a room they were added to late.
 
 ---
 
