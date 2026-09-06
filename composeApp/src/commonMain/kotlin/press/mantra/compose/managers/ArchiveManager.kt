@@ -42,8 +42,10 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  * signed; `ArchiveRoundTripTest` is what says it is, per kind, against a real
  * quorum, and it found two faults in the artifact's rebuild the first time it
  * ran -- both of which would have shipped payloads that every receiver drops as
- * forgeries without a word. The fallback can go once no install still holds
- * pre-v13 work.
+ * forgeries without a word. Both it and everything that exists only to hold it
+ * up are marked `@Deprecated`; the fallback can go once no install still holds
+ * pre-v13 work, and docs/member-archive.md's "Retiring the rebuild" is the list
+ * of what goes with it.
  *
  * **The allowlist does real work on the way out now.** The rebuild could only
  * ever produce document kinds; the table holds everything the group has ever
@@ -662,7 +664,18 @@ object ArchiveManager {
      *
      * It returns everything it can rebuild and lets [signedEventsOf] and the
      * verify filter decide what can travel.
+     *
+     * Deprecated rather than merely legacy: it is a whole mechanism kept alive
+     * for a shrinking set of rows, and it takes eight `toXEvent()` methods and a
+     * ten-case round-trip suite with it. **docs/member-archive.md, "Retiring the
+     * rebuild", is the checklist** -- what goes, what only looks like it goes,
+     * and the one thing that has to be true before any of it can.
      */
+    @Deprecated(
+        "Archive fallback for work signed before the GroupSignedEvent table. " +
+            "Goes when the last pre-v13 install does -- see the removal checklist " +
+            "in docs/member-archive.md."
+    )
     private suspend fun rebuiltEventsOf(
         database: MantraDatabase,
         chatRoomId: String,

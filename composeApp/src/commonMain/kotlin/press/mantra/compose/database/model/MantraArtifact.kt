@@ -87,6 +87,11 @@ data class MantraArtifact(
      * wrong here until an archive needed to rebuild an artifact and nothing had
      * ever called this.
      */
+    @Deprecated(
+        "Archive fallback for work signed before the GroupSignedEvent table. Read the " +
+            "event off that table instead; this rebuild goes when the last pre-v13 install " +
+            "does -- see the removal checklist in docs/member-archive.md."
+    )
     fun toArtifactEvent(versionLabel: String): ArtifactEvent {
         return ArtifactEvent(
             id = id,
