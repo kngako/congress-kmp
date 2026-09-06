@@ -392,8 +392,8 @@ private fun OneThingBeingSigned(event: Event) {
             // The text is the substance of a chapter -- signing one is putting
             // the group's name to what everybody will translate from -- but it
             // is a whole chapter, so its size stands in for it here. The chunk
-            // count is what the text will actually split into, counted the same
-            // way the split itself counts (see MantraChunk.chunksOf).
+            // count says how many of the batch's other items came out of this
+            // text, which is the rest of what is being signed.
             val chunkCount = chapter.originalText()?.let { Markdown.splitParagraphs(it).size }
 
             listOfNotNull(

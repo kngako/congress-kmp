@@ -9,8 +9,9 @@ kept as written -- they are the reasoning, and the code is easier to read
 against the argument it came from than against a summary of itself. Where the
 implementation chose differently from the first draft the section says so.
 `FrostSigningManager.proposeSigningBatch` and
-`FrostSigningRepository.proposeSigningBatch` are the entry points; nothing in
-the app calls them yet, which is Phase 7's point.
+`FrostSigningRepository.proposeSigningBatch` are the entry points. Adding a
+chapter is the first caller, and needed a second form of them; see
+[The first caller](#the-first-caller-a-chapter-and-its-chunks).
 
 The headline: **there is no such thing as one FROST signature over many
 messages, and no way to reuse a nonce across them.** What can be batched is the
@@ -487,31 +488,40 @@ one rule that a batch is only as available as its worst item, so events that do
 not belong together should not travel together, and the one prohibition that
 `GroupKeyStateManager.propose` must never batch.
 
-### The first caller to weigh it, and decline
+### The first caller: a chapter and its chunks
 
-Adding a chapter is the case batching looks made for: a chapter is proposed
-with a chunk per paragraph, which before this work would have been one quorum
-each. It signs the chapter alone anyway, and splits the chunks back out of the
-signed text on every device
-([`MantraChunk.chunksOf`](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChunk.kt)).
-Recorded here because the next caller will reach for the same shape:
+Adding a chapter is the first thing in the app to batch. A chapter is proposed
+together with a chunk per paragraph — before this work, one quorum each, which
+is why the chunks were briefly derived on arrival from the signed chapter's text
+instead. They are signed now, and each carries the group's signature over its own
+words: a translation is of a chunk, and a chunk that can be checked on its own is
+worth more than one that can only be checked by re-deriving it.
 
-- **The cap binds on ordinary content.** `MAX_BATCH_SIZE` is 64, so a batched
-  chapter is capped at 63 paragraphs. Prose runs past that, and the failure is
-  a chapter that cannot be proposed at all.
-- **The text would travel twice** — whole in the chapter, again split across
-  the chunks — and the proposal is the term the cap is sized against.
-- **Availability falls with length.** All-or-nothing over `k` items means a
-  long chapter is less likely to get signed than a short one, for no reason a
-  member could see.
-- **The signature would be redundant.** The appendix rejects the manifest shape
-  because an item then needs a lookup to be checked. Here the lookup is a
-  foreign key: a chunk is a pure function of its chapter and cannot be stored
-  without it, so the chapter's signature already covers it.
+Two things it needed that a flat list could not give:
 
-The general rule this leaves behind: **batch siblings, not derivations.** Events
-that could each have been authored separately are worth a batch; events that are
-a function of another event in the same batch are worth deriving instead.
+**An item that names another item.** A chunk carries the id of its chapter, and
+that id is a hash over the group's key at the room's derivation path — neither
+resolved until the proposal is made. A caller computing it would be recomputing
+`signingPath`, the one input that must never come from a proposer. So
+`proposeSigningBatch` has a second form taking a `lead` template and a
+`dependents` builder, which is handed the lead *after* it is authored and returns
+the events referring to it. Every id still comes from `unsignedEventOf`, and an
+item naming a chapter nobody signed stops being a mistake that can be made.
+
+**The lead is item 0.** Items apply in `itemIndex` order, and a chunk row whose
+chapter does not exist yet is a foreign key violation, so the thing being
+referenced has to be signed first in the batch as well as named first.
+
+**What it costs, in front of the user.** `MAX_BATCH_SIZE` is 64 and the chapter
+takes one place, so a chapter is capped at 63 paragraphs and a longer one has to
+be split in two. That is a real limit on real prose. `AddChapterScreen` shows the
+chunk count against the cap as the text is typed and refuses to propose past it,
+because the alternative is an `IllegalArgumentException` after the fact.
+
+The general rule this leaves behind: **a batch is for events that arrive
+together and are checked apart.** If the items are only ever read through one of
+them, deriving is cheaper and has no cap; if each is something a member might
+hold, hand it its own signature.
 
 ---
 

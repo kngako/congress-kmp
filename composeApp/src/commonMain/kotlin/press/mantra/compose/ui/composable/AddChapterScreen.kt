@@ -105,7 +105,17 @@ fun AddChapterScreen(
             // A chapter hangs off a version, and the group has to be able to
             // sign; without both there is nothing this screen can propose.
             val artifactVersion = addChapterUIState.artifactVersion
-            val canProposeChapter = artifactVersion != null && addChapterUIState.canSign
+
+            // The chapter and a chunk per paragraph are signed in one session,
+            // and a session signs a bounded number of events. Past that the
+            // chapter has to be split in two, which is worth saying while there
+            // is still a cursor in the text rather than after a failed propose.
+            val tooManyChunks = paragraphCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
+
+            val canProposeChapter = artifactVersion != null &&
+                addChapterUIState.canSign &&
+                paragraphCount > 0 &&
+                !tooManyChunks
 
             // M3 gives a FAB no `enabled`, so borrow the disabled colours every
             // other button in the app uses rather than inventing a shade here.
@@ -147,7 +157,7 @@ fun AddChapterScreen(
                                     buttonColors.disabledContentColor
                                 },
                                 onClick = {
-                                    if (artifactVersion == null || !addChapterUIState.canSign) {
+                                    if (artifactVersion == null || !canProposeChapter) {
                                         return@ExtendedFloatingActionButton
                                     }
 
@@ -205,6 +215,14 @@ fun AddChapterScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
+                    } else if (tooManyChunks) {
+                        Text(
+                            text = "$paragraphCount chunks is more than the group can sign in " +
+                                "one go. Split the chapter so that no part of it is over " +
+                                "${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER} paragraphs.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
 
                     OutlinedTextField(
@@ -228,8 +246,18 @@ fun AddChapterScreen(
                     )
 
                     Text(
-                        text = "$wordCount words · $characterCount characters · $paragraphCount ${if (paragraphCount == 1) "chunk" else "chunks"}",
-                        style = MaterialTheme.typography.labelMedium
+                        // The chunk count is what the group is asked to sign
+                        // alongside the chapter, so it is a count of the work
+                        // being proposed rather than a curiosity about the text.
+                        text = "$wordCount words · $characterCount characters · " +
+                            "$paragraphCount ${if (paragraphCount == 1) "chunk" else "chunks"} " +
+                            "of ${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (tooManyChunks) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.typography.labelMedium.color
+                        }
                     )
                 }
             }

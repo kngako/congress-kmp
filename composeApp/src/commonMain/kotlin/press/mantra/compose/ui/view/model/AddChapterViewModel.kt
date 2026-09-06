@@ -18,7 +18,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
@@ -63,21 +65,29 @@ class AddChapterViewModel(
     }
 
     /**
-     * Asks the group to sign a chapter into the artifact.
+     * Asks the group to sign a chapter, and every chunk it splits into, in one
+     * session.
      *
-     * The chapter is not created here and does not exist yet. What goes out is a
-     * proposal to sign it, and the chapter -- with the chunks it splits into --
-     * appears on every member's device at once, authored by this room's own key
-     * rather than by whoever pasted the text, when enough members have signed.
-     * That author is the room's id: signing runs at the path the room was
-     * derived at, so a chapter says which group's artifact it belongs to simply
-     * by being signed.
+     * Nothing is created here. What goes out is a proposal to sign the lot, and
+     * the chapter and its chunks appear on every member's device at once,
+     * authored by this room's own key rather than by whoever pasted the text,
+     * when enough members have signed. That author is the room's id: signing
+     * runs at the path the room was derived at, so a chapter says which group's
+     * artifact it belongs to simply by being signed.
      *
      * That is the difference from submitting one. A submission says "I am
      * putting this in front of the group" and the group's only recourse
      * afterwards is social. A signature is the group saying it, and it takes a
      * quorum to say. The text everyone will translate from is the group's, so
      * the second is the honest one.
+     *
+     * The chunks travel as their own events rather than being split back out of
+     * the signed chapter on each device, so that each one carries the group's
+     * signature over its own text -- a translation is of a chunk, and a chunk
+     * that can be checked on its own is worth more than one that can only be
+     * checked by re-deriving it. What it costs is [MAX_CHUNKS_PER_CHAPTER]: the
+     * batch is capped, the chapter takes one of its places, and a chapter with
+     * more paragraphs than the rest cannot be proposed at all.
      */
     fun addChapter(
         localChatRoom: LocalChatRoom,
@@ -89,8 +99,12 @@ class AddChapterViewModel(
     ) {
         val name = nameField.text.toString()
         val originalText = originalTextField.text.toString()
+        val paragraphs = Markdown.splitParagraphs(originalText)
 
-        if (name.isBlank() || originalText.isBlank()) {
+        // The cap is the group's, not this screen's, and proposing past it
+        // throws rather than failing softly. The form says so as it is typed;
+        // this is the check that has to hold when it does not.
+        if (name.isBlank() || paragraphs.isEmpty() || paragraphs.size > MAX_CHUNKS_PER_CHAPTER) {
             onFailure.invoke()
             return
         }
@@ -100,11 +114,6 @@ class AddChapterViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            // The chunks are not proposed. They are split out of the chapter's
-            // own text when the signed chapter is applied (see
-            // MantraChunk.chunksOf), so one quorum buys the whole chapter rather
-            // than one per paragraph, and every device splits the same text the
-            // same way.
             val chapterEventTemplate = ChapterEvent.build(
                 artifactVersionId = artifactVersion.id,
                 name = name,
@@ -119,12 +128,15 @@ class AddChapterViewModel(
             )
 
             val session = runCatching {
-                frostSigningRepository.proposeSigning(
+                frostSigningRepository.proposeSigningBatch(
                     localChatRoom = localChatRoom,
                     userPublicKey = activeUserPublicKey,
-                    kind = chapterEventTemplate.kind,
-                    tags = chapterEventTemplate.tags,
-                    content = chapterEventTemplate.content,
+                    lead = chapterEventTemplate,
+                    // A chunk names the chapter it belongs to, and that id is a
+                    // hash over the group's key at the room's path -- neither of
+                    // which this screen knows or should. The chapter comes back
+                    // built, and the chunks are cut from the text it carries.
+                    dependents = ChunkEvent::splitOf
                 )
             }.onFailure { error ->
                 logger.e("Failed to propose a chapter for signing", error)
@@ -149,6 +161,17 @@ class AddChapterViewModel(
 
     companion object {
         private const val TAG = "AddChapterViewModel"
+
+        /**
+         * The most paragraphs a chapter can be proposed with.
+         *
+         * A chapter is signed together with a chunk per paragraph, and the
+         * session signs at most [FrostSigningManager.MAX_BATCH_SIZE] events. The
+         * chapter is one of them, so the paragraphs get the rest. A longer
+         * chapter has to be split into two, which is a real limit and belongs in
+         * front of whoever is typing rather than in a failure afterwards.
+         */
+        const val MAX_CHUNKS_PER_CHAPTER: Int = FrostSigningManager.MAX_BATCH_SIZE - 1
 
         fun factory(
             activeUserPublicKey: HexKey,

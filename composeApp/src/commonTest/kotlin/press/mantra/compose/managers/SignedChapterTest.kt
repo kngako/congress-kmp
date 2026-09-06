@@ -23,21 +23,28 @@ import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 
 /**
- * A chapter the group signed, from proposal to rows, against real FROST.
+ * A chapter and its chunks the group signed, from proposal to rows, against
+ * real FROST.
  *
- * Adding a chapter used to write a row and submit it, along with a submission
- * per paragraph; the rows said the submitter wrote them, because they had. Now
- * the group signs the chapter, and the claim this test exists to hold is that
- * the chapter every device ends up with is the group's: authored by the
- * threshold key, carrying a signature that verifies, with an id every member
- * arrives at independently -- and that the chunks each device splits out of it
- * are the same chunks.
+ * Adding a chapter used to write the rows and submit them, one submission for
+ * the chapter and one per paragraph; the rows said the submitter wrote them,
+ * because they had. Now the group signs the lot in one session, and the claim
+ * this test exists to hold is that every row a device ends up with is the
+ * group's: authored by the threshold key, carrying a signature that verifies
+ * over its own id, with the chunks naming the chapter that was signed beside
+ * them.
  *
  * None of that is visible when it breaks. A row whose author is the proposer
  * looks exactly like a row whose author is the group -- both are opaque hex --
- * and a group that disagrees about the ids has two chapters that look like one.
+ * and a chunk that names the wrong chapter is a foreign key away from vanishing
+ * with no sign of why.
+ *
+ * A batch is k independent FROST instances, so the signatures here are made one
+ * per item, each over its own message with its own nonces, which is the only
+ * way they can be made.
  */
 class SignedChapterTest {
     private val participants = 3
@@ -108,22 +115,28 @@ class SignedChapterTest {
         sig = ""
     )
 
-    private fun itemOver(unsignedEvent: Event) = FrostSigningItem(
-        sessionId = "s".repeat(64),
-        itemIndex = 0,
-        unsignedEventJson = unsignedEvent.toJson(),
-        eventId = unsignedEvent.id,
-        nonceRandom = "f".repeat(64)
-    )
+    private fun itemsOver(unsignedEvents: List<Event>) = unsignedEvents.mapIndexed { index, event ->
+        FrostSigningItem(
+            sessionId = "s".repeat(64),
+            itemIndex = index,
+            unsignedEventJson = event.toJson(),
+            eventId = event.id,
+            // One seed per item, never shared: two messages under one nonce is
+            // how a share is extracted.
+            nonceRandom = "f".repeat(63) + "${index + 1}"
+        )
+    }
 
-    /** A quorum signing the item's event, in the manager's order. */
+    /** A quorum signing one item's event, in the manager's order. */
     private fun groupSignature(item: FrostSigningItem): String {
         val message = ByteVector(item.eventId.hexToByteArray())
         val signerIds = listOf(0, 1)
 
         val nonces = signerIds.map { signerId ->
             SecretNonce.generate(
-                sessionRandom = ByteVector32("a".repeat(63) + "${signerId + 1}"),
+                sessionRandom = ByteVector32(
+                    "a".repeat(62) + "${item.itemIndex + 1}${signerId + 1}"
+                ),
                 secretShare = keyMaterial.secretShares[signerId],
                 publicShare = keyMaterial.publicShares[signerId],
                 tweakedThresholdPublicKey = tweakCache.tweakedPublicKey,
@@ -153,16 +166,45 @@ class SignedChapterTest {
         return signingSession.aggregateSigs(partials).right!!.toByteArray().toHex()
     }
 
+    /**
+     * The batch a proposal makes: the chapter, then a chunk per paragraph, cut
+     * from the chapter after it is authored under the group's key -- exactly
+     * what `AddChapterViewModel` hands `proposeSigningBatch` as lead and
+     * dependents.
+     */
+    private fun proposedBatch(
+        name: String = "Chapter 1",
+        text: String = originalText,
+        index: Int = 0,
+    ): List<Event> {
+        val chapter = unsignedEventOf(proposalTemplate(name, text, index))
+
+        return listOf(chapter) + ChunkEvent.splitOf(chapter).map(::unsignedEventOf)
+    }
+
     /** Everything from the form to the rows a device holds afterwards. */
+    private fun signedBatch(
+        name: String = "Chapter 1",
+        text: String = originalText,
+        index: Int = 0,
+    ): List<Event> = itemsOver(proposedBatch(name, text, index)).map { item ->
+        FrostSigningManager.signedEvent(item, groupSignature(item))
+    }
+
     private fun signedChapterEvent(
         name: String = "Chapter 1",
         text: String = originalText,
         index: Int = 0,
-    ): ChapterEvent {
-        val item = itemOver(unsignedEventOf(proposalTemplate(name, text, index)))
-        val signed = FrostSigningManager.signedEvent(item, groupSignature(item))
+    ): ChapterEvent = signedBatch(name, text, index).first().let { signed ->
+        ChapterEvent(
+            signed.id, signed.pubKey, signed.createdAt, signed.tags, signed.content, signed.sig
+        )
+    }
 
-        return ChapterEvent(
+    private fun signedChunkEvents(
+        text: String = originalText,
+    ): List<ChunkEvent> = signedBatch(text = text).drop(1).map { signed ->
+        ChunkEvent(
             signed.id, signed.pubKey, signed.createdAt, signed.tags, signed.content, signed.sig
         )
     }
@@ -198,7 +240,7 @@ class SignedChapterTest {
         // to be the one that was signed rather than anything recomputed from the
         // proposer. Otherwise members converge on nothing and each holds its own
         // copy of what is meant to be one chapter.
-        val item = itemOver(unsignedEventOf(proposalTemplate()))
+        val item = itemsOver(proposedBatch()).first()
         val signed = FrostSigningManager.signedEvent(item, groupSignature(item))
 
         val chapter = MantraChapter.fromChapterEvent(
@@ -243,33 +285,70 @@ class SignedChapterTest {
     }
 
     @Test
-    fun `the chapter arrives with the chunks it splits into`() {
-        // Nothing sends these rows: each device derives them from the chapter it
-        // just applied. A translation is of a chunk rather than of a chapter, so
-        // a chapter that arrives without them cannot be worked on.
-        val signed = signedChapterEvent()
+    fun `the chapter is signed with a chunk for every paragraph`() {
+        // One session, one approval, and a row per paragraph at the end of it.
+        // A translation is of a chunk rather than of a chapter, so a chapter
+        // that arrived without them could not be worked on.
+        val batch = signedBatch()
 
-        val chapter = MantraChapter.fromChapterEvent(signed, chatRoomId)
-        val chunks = MantraChunk.chunksOf(signed, chatRoomId)
-
-        assertEquals(2, chunks.size)
-        assertTrue(chunks.all { it.chapterId == chapter?.id })
-        assertEquals(listOf("The first paragraph.", "The second paragraph."), chunks.map { it.text })
-        assertTrue(chunks.all { it.publicKey == groupPubKey })
-        // Derived, not signed: the group signed the chapter they were split from.
-        assertTrue(chunks.all { it.signature == "" })
+        assertEquals(3, batch.size)
+        assertEquals(ChapterEvent.KIND, batch.first().kind)
+        assertTrue(batch.drop(1).all { it.kind == ChunkEvent.KIND })
     }
 
     @Test
-    fun `two members derive the same chunks from the chapter their group signed`() {
-        // The reason the chunks can be derived at all. Both members hold the same
-        // signed bytes, so both have to land on the same rows -- if they do not,
-        // a translation one of them writes is of a chunk the other does not have.
-        val signed = signedChapterEvent()
+    fun `every chunk the group signed names the chapter it signed beside it`() {
+        // The batch is applied in item order, so the chapter row is written
+        // first and the chunks hang off it. A chunk naming anything else fails a
+        // foreign key and disappears with no sign of why.
+        val batch = signedBatch()
+        val chapter = MantraChapter.fromChapterEvent(
+            batch.first().let {
+                ChapterEvent(it.id, it.pubKey, it.createdAt, it.tags, it.content, it.sig)
+            },
+            chatRoomId
+        )
 
-        val mine = MantraChunk.chunksOf(signed, chatRoomId)
-        val theirs = MantraChunk.chunksOf(signed, chatRoomId)
+        val chunks = signedChunkEvents().map { MantraChunk.fromChunkEvent(it, chatRoomId) }
 
-        assertEquals(mine.map { it.id }, theirs.map { it.id })
+        assertEquals(2, chunks.size)
+        assertTrue(chunks.all { it?.chapterId == chapter?.id })
+        assertEquals(listOf("The first paragraph.", "The second paragraph."), chunks.map { it?.text })
+        assertEquals(listOf(0, 1), chunks.map { it?.index })
+    }
+
+    @Test
+    fun `each chunk row carries a signature the group made over its own id`() {
+        // The point of signing the chunks rather than splitting them out of the
+        // chapter on arrival: a chunk can be checked on its own, by anybody
+        // holding it, without re-deriving it from anything.
+        signedChunkEvents().forEach { signed ->
+            val chunk = MantraChunk.fromChunkEvent(signed, chatRoomId)
+
+            assertNotNull(chunk)
+            assertEquals(groupPubKey, chunk.publicKey)
+            assertNotEquals(proposer, chunk.publicKey)
+            assertTrue(
+                Nip01Crypto.verify(
+                    signature = chunk.signature.hexToByteArray(),
+                    hash = chunk.id.hexToByteArray(),
+                    pubKey = chunk.publicKey.hexToByteArray()
+                ),
+                "a chunk row should carry a signature the group's key made over its own id"
+            )
+        }
+    }
+
+    @Test
+    fun `the chapter and its chunks are different messages to sign`() {
+        // A batch is k FROST instances precisely because it has to be: one nonce
+        // over two messages leaks the share. That the items are distinct
+        // messages is the premise -- `FrostSigningRoundTest` and
+        // `SignedGroupKeyStateTest` hold the manager to giving each its own
+        // nonce; what a chapter has to hold up is that its own items are not
+        // secretly one message repeated.
+        val batch = proposedBatch(text = "Again.\n\nAgain.")
+
+        assertEquals(batch.size, batch.map { it.id }.toSet().size)
     }
 }

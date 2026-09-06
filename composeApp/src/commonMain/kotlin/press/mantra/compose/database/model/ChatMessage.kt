@@ -805,17 +805,19 @@ data class ChatMessage(
                     }
                 }
                 ChapterEvent.KIND -> {
-                    val chapterEvent = ChapterEvent(
-                        id = event.id,
-                        pubKey = event.pubKey,
-                        createdAt = event.createdAt,
-                        tags = event.tags,
-                        content = event.content,
-                        sig = event.sig
-                    )
-
+                    // The chunks the chapter splits into are their own events,
+                    // signed in the same session and applied after it -- see
+                    // AddChapterViewModel.addChapter. Nothing to do here but the
+                    // chapter itself.
                     MantraChapter.fromChapterEvent(
-                        chapterEvent = chapterEvent,
+                        chapterEvent = ChapterEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
                         chatRoomId = groupId,
                     )?.let { mantraChapter ->
                         database.mantraChapterDao().upsert(
@@ -823,24 +825,6 @@ data class ChatMessage(
                                 marmotGroupEventId = marmotGroupEventId,
                             )
                         )
-
-                        // A signed chapter arrives with the chunks it is made
-                        // of, split out here rather than sent, so that every
-                        // device holding the chapter holds the same chunks.
-                        // Nothing hangs off a chapter directly -- a translation
-                        // is of a chunk -- so a chapter without them cannot be
-                        // worked on. A submitted chapter brought its own, which
-                        // is why this splits only what the group signed.
-                        MantraChunk.chunksOf(
-                            chapterEvent = chapterEvent,
-                            chatRoomId = groupId,
-                        ).forEach { chunk ->
-                            database.mantraChunkDao().upsert(
-                                chunk.copy(
-                                    marmotGroupEventId = marmotGroupEventId,
-                                )
-                            )
-                        }
 
                         ChatMessage(
                             giftWrapPayloadId = null,

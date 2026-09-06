@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.eventTemplate
 import com.vitorpamplona.quartz.nip22Comments.RootScope
 import com.vitorpamplona.quartz.nip31Alts.alt
@@ -12,6 +13,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.nostr.nip30303.tags.ChapterIdTag
 import press.mantra.compose.nostr.nip30303.tags.IndexTag
 import press.mantra.compose.nostr.nip30303.tags.WordStatisticsTag
+import press.mantra.compose.text.Markdown
 
 
 @Immutable
@@ -35,6 +37,43 @@ class ChunkEvent(
     companion object {
         const val KIND = 30303
         const val ALT_DESCRIPTION = "Chunk"
+
+        /**
+         * The chunks [chapter]'s text splits into, ready to be signed with it.
+         *
+         * A chapter and its chunks go to the group as one batch, so these are
+         * built from the chapter *after* it has been authored under the group's
+         * key -- [chapter] is the unsigned event the session will sign, which is
+         * where the id each chunk carries comes from. Splitting anywhere else
+         * would mean naming a chapter id before one exists.
+         *
+         * They take the chapter's own timestamp, so the batch reads as one act
+         * rather than as events that happen to share a session.
+         *
+         * Empty when the chapter has no text to split, which is a chapter with
+         * nothing in it to translate.
+         */
+        fun splitOf(chapter: Event): List<EventTemplate<ChunkEvent>> {
+            val originalText = ChapterEvent(
+                id = chapter.id,
+                pubKey = chapter.pubKey,
+                createdAt = chapter.createdAt,
+                tags = chapter.tags,
+                content = chapter.content,
+                sig = chapter.sig
+            ).originalText() ?: return emptyList()
+
+            return Markdown.splitParagraphs(originalText).mapIndexed { index, paragraph ->
+                build(
+                    chapterId = chapter.id,
+                    text = paragraph,
+                    index = index,
+                    wordCount = Markdown.wordCount(paragraph),
+                    characterCount = Markdown.characterCount(paragraph),
+                    createdAt = chapter.createdAt,
+                )
+            }
+        }
 
         fun build(
             chapterId: String,

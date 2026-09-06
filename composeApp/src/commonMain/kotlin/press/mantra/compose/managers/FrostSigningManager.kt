@@ -192,12 +192,43 @@ object FrostSigningManager {
         userPublicKey: HexKey,
         events: List<EventTemplate<*>>,
         key: DkgSession? = null
-    ): FrostSigningSession {
-        require(events.isNotEmpty()) { "A signing session must be given something to sign" }
-        require(events.size <= MAX_BATCH_SIZE) {
-            "A signing session will sign at most $MAX_BATCH_SIZE events, not ${events.size}"
-        }
+    ): FrostSigningSession = proposeSigningBatch(
+        database = database,
+        localChatRoom = localChatRoom,
+        userPublicKey = userPublicKey,
+        lead = events.firstOrNull()
+            ?: throw IllegalArgumentException("A signing session must be given something to sign"),
+        dependents = { events.drop(1) },
+        key = key
+    )
 
+    /**
+     * Opens a session over an event and the events that name it.
+     *
+     * The flat form above cannot express this. A chunk carries the id of the
+     * chapter it belongs to, and that id is not knowable to a caller: it is a
+     * hash over the *group's* key at the *room's* derivation path, and neither
+     * is resolved until this function runs. A caller that computed it anyway
+     * would be recomputing [signingPath], which is the one input in this
+     * protocol that must never come from a proposer -- the path decides which
+     * key the group signs as.
+     *
+     * So [lead] is built here and handed to [dependents], which returns the
+     * events that reference it. Every id in the batch then comes from one place,
+     * and an item naming a chapter nobody signed is not a mistake that can be
+     * made rather than one that has to be tested for.
+     *
+     * The lead is item 0, so it is applied before anything that names it -- a
+     * chunk row whose chapter does not exist yet is a foreign key violation.
+     */
+    suspend fun proposeSigningBatch(
+        database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        lead: EventTemplate<*>,
+        dependents: (lead: Event) -> List<EventTemplate<*>>,
+        key: DkgSession? = null
+    ): FrostSigningSession {
         val ceremony = key?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
             ?: completedKey(database, localChatRoom.chatRoom.id)
             ?: throw IllegalStateException("This group has no shared key to sign with")
@@ -206,7 +237,7 @@ object FrostSigningManager {
             ?: throw IllegalStateException("This device is not a participant in ceremony ${ceremony.id}")
 
         val path = signingPath(database, localChatRoom, ceremony)
-        val unsignedEvents = events.map { template ->
+        val unsignedEventOf = { template: EventTemplate<*> ->
             unsignedEventOf(
                 key = ceremony,
                 path = path,
@@ -216,6 +247,14 @@ object FrostSigningManager {
                 createdAt = template.createdAt
             )
         }
+
+        val leadEvent = unsignedEventOf(lead)
+        val unsignedEvents = listOf(leadEvent) + dependents(leadEvent).map(unsignedEventOf)
+
+        require(unsignedEvents.size <= MAX_BATCH_SIZE) {
+            "A signing session will sign at most $MAX_BATCH_SIZE events, not ${unsignedEvents.size}"
+        }
+
         val sessionId = RandomInstance.bytes(32).toHex()
 
         val session = FrostSigningSession(

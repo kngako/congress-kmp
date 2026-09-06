@@ -81,6 +81,21 @@ class DatabaseFrostSigningRepository(
         )
     }
 
+    override suspend fun proposeSigningBatch(
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        lead: EventTemplate<*>,
+        dependents: (lead: Event) -> List<EventTemplate<*>>
+    ): FrostSigningSession? = proposing(localChatRoom) {
+        FrostSigningManager.proposeSigningBatch(
+            database = database,
+            localChatRoom = localChatRoom,
+            userPublicKey = userPublicKey,
+            lead = lead,
+            dependents = dependents
+        )
+    }
+
     /**
      * Proposing throws when the group has no key, when this device was not in the
      * ceremony, or when a batch is empty or over the cap. All four are states the

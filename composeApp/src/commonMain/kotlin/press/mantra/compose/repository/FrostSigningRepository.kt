@@ -92,6 +92,27 @@ interface FrostSigningRepository {
         events: List<EventTemplate<*>>
     ): FrostSigningSession?
 
+    /**
+     * Opens a session over an event and the events that name it, for a batch
+     * that is not a flat list: a chapter and its chunks, where each chunk
+     * carries the chapter's id.
+     *
+     * That id cannot be worked out by a caller -- it is a hash over the group's
+     * key at the room's derivation path, neither of which is resolved until the
+     * proposal is made -- so [lead] is built first and handed to [dependents],
+     * which returns the events referring to it. The lead is item 0 and so is
+     * applied first, which is what anything holding a foreign key to it needs.
+     *
+     * Everything the flat form says still holds: all-or-nothing, only as
+     * available as its worst item, and a retry is a new batch.
+     */
+    suspend fun proposeSigningBatch(
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        lead: EventTemplate<*>,
+        dependents: (lead: Event) -> List<EventTemplate<*>>
+    ): FrostSigningSession?
+
     /** Agrees to sign, letting the session publish this device's part and run on. */
     suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String)
 
@@ -134,6 +155,13 @@ interface FrostSigningRepository {
                 localChatRoom: LocalChatRoom,
                 userPublicKey: HexKey,
                 events: List<EventTemplate<*>>
+            ): FrostSigningSession? = null
+
+            override suspend fun proposeSigningBatch(
+                localChatRoom: LocalChatRoom,
+                userPublicKey: HexKey,
+                lead: EventTemplate<*>,
+                dependents: (lead: Event) -> List<EventTemplate<*>>
             ): FrostSigningSession? = null
 
             override suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String) = Unit
