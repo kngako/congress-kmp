@@ -110,7 +110,8 @@ object ChillDkgRitualManager {
         memberPublicKeys(localChatRoom).size >= MINIMUM_PARTICIPANTS
 
     /**
-     * Opens a ritual, making this device the coordinator.
+     * Opens a ritual, making this device the coordinator. A room already running
+     * one gets that one back rather than a second.
      *
      * Throws when the group or the threshold cannot support one; the UI checks
      * both before offering the button, so reaching either is a bug rather than a
@@ -123,6 +124,26 @@ object ChillDkgRitualManager {
         nostrPrivateKey: ByteArray,
         threshold: Int
     ): DkgSession {
+        // A room runs one ceremony at a time, and this is reachable twice now that
+        // a robust group opens one as it is created: the room id is derived from
+        // its members, so making the same group again lands back in the same room
+        // and asks again. A second proposal is a second participant set for every
+        // member to reconcile, and the key the first one produced would be left
+        // with nothing pointing at it. A failed ritual is not running, and is
+        // there to be replaced.
+        //
+        // Checked before the arguments are, because a running ritual makes the
+        // requested threshold moot -- it settled that question when it opened.
+        database.dkgSessionDao().getLatestSessionForChatRoom(localChatRoom.chatRoom.id)
+            ?.takeIf { it.stage != DkgRitualStage.FAILED }
+            ?.let { running ->
+                logger.i(
+                    "Room ${localChatRoom.chatRoom.id} is already running ritual " +
+                        "${running.id}; not opening another"
+                )
+                return running
+            }
+
         // Built the way a receiver rebuilds it from the proposal — the p-tags
         // `broadcast` writes, plus this device — so both sides count the same `n`
         // even if the room's own rows have drifted.
