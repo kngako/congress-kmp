@@ -104,14 +104,6 @@ class AddTranslationArtifactVersionViewModel(
         onSuccess: (sessionId: String) -> Unit,
         onFailure: () -> Unit
     ) {
-        // The cap is the group's, not this screen's, and proposing past it
-        // throws rather than failing softly. The form says so before the tap;
-        // this is the check that has to hold when it does not.
-        if (chapters.size > MAX_CHAPTERS_PER_TRANSLATION) {
-            onFailure.invoke()
-            return
-        }
-
         // Guard against double submits from repeated FAB taps.
         if (isActionPending.value) return
         isActionPending.value = true
@@ -141,7 +133,8 @@ class AddTranslationArtifactVersionViewModel(
                     dependents = { translation ->
                         TranslationScaffold.chaptersOf(
                             translationArtifactVersionIds = listOf(translation.id),
-                            chapters = chapters.map(TranslationScaffold.SourceChapter::of),
+                            chapters = chapters.take(MAX_CHAPTERS_PER_TRANSLATION)
+                                .map(TranslationScaffold.SourceChapter::of),
                             createdAt = translation.createdAt,
                         )
                     }
@@ -151,6 +144,15 @@ class AddTranslationArtifactVersionViewModel(
             }.getOrNull()
 
             if (session != null) {
+                // Before navigating, not after: the route this screen sits on
+                // is popped on success, which clears this view model and takes
+                // `viewModelScope` with it.
+                scaffoldRemainingChapters(
+                    localChatRoom = localChatRoom,
+                    chapters = chapters.drop(MAX_CHAPTERS_PER_TRANSLATION),
+                    translationSessionId = session.id,
+                )
+
                 viewModelScope.launch(Dispatchers.Main) {
                     onSuccess.invoke(session.id)
                 }
@@ -164,17 +166,70 @@ class AddTranslationArtifactVersionViewModel(
         }
     }
 
+    /**
+     * Asks the group for the chapters that did not fit the translation's own
+     * session, in sessions of their own.
+     *
+     * The alternative was refusing to translate an artifact of more than
+     * [MAX_CHAPTERS_PER_TRANSLATION] chapters at all, which is a cap on how
+     * long a book may be dressed up as a cap on a batch. A group with a longer
+     * one answers more than once instead.
+     *
+     * The translation is named as the group will author it: the first item of
+     * [translationSessionId] is the unsigned translation, and its id is settled
+     * at proposal time rather than when the quorum arrives.
+     *
+     * These carry the same cost as any second session, and the same one the
+     * chapter side carries: if the translation itself fails to reach a quorum
+     * these are valid signatures over rows naming a translation nobody has.
+     * They fail a foreign key on the way in, are logged, and never become rows
+     * -- and the catch-up on the translation is what fills the gap afterwards.
+     */
+    private suspend fun scaffoldRemainingChapters(
+        localChatRoom: LocalChatRoom,
+        chapters: List<MantraChapter>,
+        translationSessionId: String,
+    ) {
+        if (chapters.isEmpty()) return
+
+        runCatching {
+            val translation = frostSigningRepository
+                .unsignedEvents(frostSigningRepository.getItems(translationSessionId))
+                .firstOrNull() ?: return@runCatching
+
+            chapters.chunked(FrostSigningManager.MAX_BATCH_SIZE).forEach { batch ->
+                frostSigningRepository.proposeSigningBatch(
+                    localChatRoom = localChatRoom,
+                    userPublicKey = activeUserPublicKey,
+                    events = TranslationScaffold.chaptersOf(
+                        translationArtifactVersionIds = listOf(translation.id),
+                        chapters = batch.map(TranslationScaffold.SourceChapter::of),
+                        createdAt = translation.createdAt,
+                    )
+                )
+            }
+        }.onFailure { error ->
+            logger.e(
+                "Proposed the translation but could not ask for the chapters past the first session",
+                error
+            )
+        }
+    }
+
     companion object {
         private const val TAG = "AddTranslationViewModel"
 
         /**
-         * The most chapters an artifact can be translated with in one session.
+         * How many chapters ride in the translation's own session.
          *
          * The translation is signed together with a chapter apiece, and a
          * session signs at most [FrostSigningManager.MAX_BATCH_SIZE] events. The
-         * translation is one of them, so the chapters get the rest. Unlike a
-         * chapter's paragraphs this is not something whoever is looking at the
-         * screen can shorten, so it is said plainly rather than as advice.
+         * translation is one of them, so the chapters get the rest.
+         *
+         * A cap on the session, not on the work: an artifact with more chapters
+         * than this is not refused, it is proposed in more than one session. A
+         * limit whoever is looking at the screen can do nothing about is not a
+         * limit worth telling them to work around.
          */
         const val MAX_CHAPTERS_PER_TRANSLATION: Int = FrostSigningManager.MAX_BATCH_SIZE - 1
 

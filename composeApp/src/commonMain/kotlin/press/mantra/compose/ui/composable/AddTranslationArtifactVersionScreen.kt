@@ -46,6 +46,7 @@ import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
@@ -109,16 +110,18 @@ fun AddTranslationArtifactVersionScreen(
             val artifactVersion = addTranslationUIState.artifactVersion
             val chapterCount = addTranslationUIState.chapters.size
 
-            // The translation and a chapter apiece are signed in one session,
-            // and a session signs a bounded number of events. Past that the
-            // artifact cannot be translated in one go at all, which is worth
-            // saying here rather than after a failed propose.
-            val tooManyChapters = chapterCount > AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION
+            // The translation and a chapter apiece are signed together, and a
+            // session signs a bounded number of events -- so a long artifact is
+            // proposed in more than one, and the admins answer once per
+            // session. That is a number worth seeing before the tap.
+            val sessionCount = 1 + (
+                (chapterCount - AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION)
+                    .coerceAtLeast(0) + FrostSigningManager.MAX_BATCH_SIZE - 1
+                ) / FrostSigningManager.MAX_BATCH_SIZE
 
             val canProposeTranslation = artifactVersion != null &&
                 selectedDialect != null &&
-                addTranslationUIState.canSign &&
-                !tooManyChapters
+                addTranslationUIState.canSign
 
             // M3 gives a FAB no `enabled`, so borrow the disabled colours every
             // other button in the app uses rather than inventing a shade here.
@@ -220,16 +223,6 @@ fun AddTranslationArtifactVersionScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
-                    } else if (tooManyChapters) {
-                        Text(
-                            text = "$chapterCount chapters is more than the group can sign in " +
-                                "one go, so this artifact cannot be translated here. It signs " +
-                                "at most " +
-                                "${AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION} " +
-                                "chapters at a time.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
                     }
 
                     Text("Translate into which dialect?")
@@ -271,16 +264,11 @@ fun AddTranslationArtifactVersionScreen(
                                 "into it as they are added."
                         } else {
                             "The group signs the translation and " +
-                                "$chapterCount ${if (chapterCount == 1) "chapter" else "chapters"} " +
-                                "of ${AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION} " +
-                                "together. Chunks are translated one at a time afterwards."
+                                "$chapterCount ${if (chapterCount == 1) "chapter" else "chapters"}" +
+                                (if (sessionCount == 1) "" else ", in $sessionCount sessions to sign") +
+                                ". Chunks are translated one at a time afterwards."
                         },
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (tooManyChapters) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.typography.labelMedium.color
-                        }
                     )
                 }
             }

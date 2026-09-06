@@ -380,14 +380,54 @@ class TranslationBatchProposalJvmTest {
     }
 
     @Test
-    fun `an artifact of one chapter too many is refused`() = runBlocking {
+    fun `an artifact longer than one session is split across two`() = runBlocking {
         openDevice()
 
-        // Refused here rather than truncated: a batch that quietly dropped its
-        // last chapters would sign a translation the group believes covers the
-        // whole work while the end of it can never be translated. The screen
-        // checks first so this is never what a member sees, but the screen is
-        // not what enforces it.
+        // What `addTranslation` does with an artifact past the cap: the
+        // translation and as many chapters as fit, then the rest naming the
+        // translation the first session is about to sign. Refusing instead
+        // would be a cap on how long a book may be, dressed up as a cap on a
+        // batch.
+        val chapters = sourceChapters(AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION + 3)
+
+        val first = proposeTranslation(
+            chapters.take(AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION)
+        )
+        val translation = itemEvents(first.id).first()
+        val second = FrostSigningManager.proposeSigningBatch(
+            database = db,
+            localChatRoom = room,
+            userPublicKey = proposer,
+            events = TranslationScaffold.chaptersOf(
+                translationArtifactVersionIds = listOf(translation.id),
+                chapters = chapters.drop(AddTranslationArtifactVersionViewModel.MAX_CHAPTERS_PER_TRANSLATION)
+                    .map(TranslationScaffold.SourceChapter::of),
+                createdAt = translation.createdAt,
+            )
+        )
+
+        assertEquals(FrostSigningManager.MAX_BATCH_SIZE, itemEvents(first.id).size)
+        assertEquals(3, itemEvents(second.id).size)
+
+        // Every chapter of the work is covered exactly once, across both, and
+        // each names the translation as the group will author it.
+        val scaffolded = (itemEvents(first.id).drop(1) + itemEvents(second.id)).map {
+            TranslationChapterEvent(it.id, it.pubKey, it.createdAt, it.tags, it.content, it.sig)
+        }
+        assertEquals(chapters.map { it.id }, scaffolded.map { it.chapterId() })
+        assertEquals(chapters.map { it.index }, scaffolded.map { it.index() })
+        assertTrue(scaffolded.all { it.translationArtifactVersionId() == translation.id })
+    }
+
+    @Test
+    fun `one session is still refused a chapter too many`() = runBlocking {
+        openDevice()
+
+        // Refused rather than truncated: a batch that quietly dropped its last
+        // chapters would sign a translation the group believes covers the whole
+        // work while the end of it can never be translated. The screen splits
+        // before it gets here, so this is never what a member sees -- but the
+        // screen is not what enforces it.
         assertFailsWith<IllegalArgumentException> {
             proposeTranslation(sourceChapters(FrostSigningManager.MAX_BATCH_SIZE))
         }
