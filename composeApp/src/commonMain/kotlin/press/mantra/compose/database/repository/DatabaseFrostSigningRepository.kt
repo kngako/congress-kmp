@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import press.mantra.compose.database.MantraDatabase
@@ -56,7 +57,7 @@ class DatabaseFrostSigningRepository(
         kind: Kind,
         tags: Array<Array<String>>,
         content: String
-    ): FrostSigningSession? = try {
+    ): FrostSigningSession? = proposing(localChatRoom) {
         FrostSigningManager.proposeSigning(
             database = database,
             localChatRoom = localChatRoom,
@@ -65,10 +66,33 @@ class DatabaseFrostSigningRepository(
             tags = tags,
             content = content
         )
+    }
+
+    override suspend fun proposeSigningBatch(
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        events: List<EventTemplate<*>>
+    ): FrostSigningSession? = proposing(localChatRoom) {
+        FrostSigningManager.proposeSigningBatch(
+            database = database,
+            localChatRoom = localChatRoom,
+            userPublicKey = userPublicKey,
+            events = events
+        )
+    }
+
+    /**
+     * Proposing throws when the group has no key, when this device was not in the
+     * ceremony, or when a batch is empty or over the cap. All four are states the
+     * UI is supposed to have checked for, so they become a null the caller
+     * reports rather than a crash.
+     */
+    private inline fun proposing(
+        localChatRoom: LocalChatRoom,
+        propose: () -> FrostSigningSession
+    ): FrostSigningSession? = try {
+        propose()
     } catch (e: Throwable) {
-        // Proposing throws when the group has no key or this device was not in the
-        // ceremony. Both are states the UI is supposed to have checked for, so this
-        // is a null the caller reports rather than a crash.
         logger.e("Error proposing a signature in ${localChatRoom.chatRoom.id}", e)
         null
     }
