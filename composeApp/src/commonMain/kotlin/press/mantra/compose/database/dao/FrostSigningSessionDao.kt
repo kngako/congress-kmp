@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 
 @Dao
 interface FrostSigningSessionDao {
@@ -20,11 +21,17 @@ interface FrostSigningSessionDao {
     fun observeSessionById(sessionId: String): Flow<FrostSigningSession?>
 
     /**
-     * A room's signing sessions, newest first. Unlike a DKG a group signs
-     * repeatedly, so there is no single "current" one to observe.
+     * A room's signing sessions, newest first, each with the events it signs and
+     * the member who proposed it.
+     *
+     * Unlike a DKG a group signs repeatedly, so there is no single "current" one
+     * to observe -- and no single one to show, which is what the proposal list
+     * exists for. See [LocalFrostSigningSession] for why the items travel with
+     * the session rather than being fetched per row.
      */
+    @Transaction
     @Query("SELECT * FROM FrostSigningSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
-    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>>
+    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<LocalFrostSigningSession>>
 
     @Query("SELECT * FROM FrostSigningSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): FrostSigningSession?

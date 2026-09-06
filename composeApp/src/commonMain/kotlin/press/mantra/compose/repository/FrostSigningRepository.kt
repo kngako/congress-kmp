@@ -10,6 +10,7 @@ import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 
 /**
  * Reads, opens and answers FROST signing sessions.
@@ -21,8 +22,13 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 interface FrostSigningRepository {
     fun observeSessionById(sessionId: String): Flow<FrostSigningSession?>
 
-    /** Every session the room has run, newest first. Unlike a ceremony, signing recurs. */
-    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>>
+    /**
+     * Every session the room has run, newest first, each with what it signs.
+     *
+     * Unlike a ceremony, signing recurs -- and two sessions can be open at once,
+     * which is why the proposal list shows all of them rather than the latest.
+     */
+    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<LocalFrostSigningSession>>
 
     fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>>
 
@@ -137,7 +143,7 @@ interface FrostSigningRepository {
         val NO_OP_FROST_SIGNING_REPOSITORY: FrostSigningRepository = object : FrostSigningRepository {
             override fun observeSessionById(sessionId: String): Flow<FrostSigningSession?> = flowOf(null)
 
-            override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>> =
+            override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<LocalFrostSigningSession>> =
                 flowOf(emptyList())
 
             override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =

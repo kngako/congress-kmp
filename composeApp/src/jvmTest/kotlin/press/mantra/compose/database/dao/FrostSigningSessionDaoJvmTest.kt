@@ -3,6 +3,7 @@ package press.mantra.compose.database.dao
 import androidx.room3.Room
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
@@ -164,6 +165,32 @@ class FrostSigningSessionDaoJvmTest {
             db.frostSigningSessionDao().getSessionsForChatRoom(roomOne).map { it.id },
         )
         assertEquals("third", db.frostSigningSessionDao().getLatestSessionForChatRoom(roomOne)?.id)
+    }
+
+    /**
+     * What the proposal list reads. A room can have two sessions open at once, so the list has
+     * to carry every one of them with what it signs -- the events are what names a proposal,
+     * and a session row on its own says only how the signing is going.
+     */
+    @Test
+    fun `a rooms proposals arrive with their events and their proposer`() = runBlocking {
+        seedRooms()
+        session("first", createdAt = Instant.fromEpochSeconds(1_000), events = 3)
+        session("second", createdAt = Instant.fromEpochSeconds(2_000), events = 1)
+
+        val proposals = db.frostSigningSessionDao().observeSessionsForChatRoom(roomOne).first()
+
+        assertEquals(listOf("second", "first"), proposals.map { it.session.id })
+
+        // Room does not order a relation, so the batch order is the model's doing.
+        // It is protocol rather than presentation: two devices reading a batch in
+        // different orders aggregate against different messages.
+        val first = assertNotNull(proposals.firstOrNull { it.session.id == "first" })
+        assertEquals(listOf(0, 1, 2), first.items.map { it.itemIndex })
+
+        // Named, not keyed. A proposal is somebody asking the group for something,
+        // and a row that cannot say who is asking is worse than an ugly one.
+        assertEquals("user", first.proposer?.userName)
     }
 
     /**

@@ -12,6 +12,7 @@ import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.FrostSigningRepository
@@ -25,7 +26,7 @@ class DatabaseFrostSigningRepository(
     override fun observeSessionById(sessionId: String): Flow<FrostSigningSession?> =
         database.frostSigningSessionDao().observeSessionById(sessionId)
 
-    override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>> =
+    override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<LocalFrostSigningSession>> =
         database.frostSigningSessionDao().observeSessionsForChatRoom(chatRoomId)
 
     override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =

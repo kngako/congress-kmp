@@ -110,6 +110,7 @@ import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
@@ -121,6 +122,7 @@ import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.AddDialectScreen
 import press.mantra.compose.ui.composable.FrostSigningScreen
+import press.mantra.compose.ui.composable.ProposalListScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
@@ -887,6 +889,22 @@ fun MantraNavHost(
                 frostSigningRepository = databaseFrostSigningRepository,
                 onNavigateBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+        composable<ProposalListRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<ProposalListRoute>()
+
+            ProposalListScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                chatRoomId = route.chatRoomId,
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToRoute = { signingRoute ->
+                    navController.navigate(route = signingRoute)
                 }
             )
         }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schema
@@ -56,6 +57,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
@@ -363,6 +365,34 @@ fun ChatRoomDetailScreen(
                                     )
 
                                     Text("Shared Key")
+                                }
+                            }
+
+                            // Next to the key, because that is what they sign with.
+                            // The transcript carries a proposal past as it happens;
+                            // this is where a member goes to find one that has
+                            // scrolled away, or to see what the group has signed.
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ProposalListRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Draw,
+                                        contentDescription = "Proposals"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(10.dp)
+                                    )
+
+                                    Text("Proposals")
                                 }
                             }
                         }
