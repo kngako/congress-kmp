@@ -131,6 +131,9 @@ class SignedGroupKeyStateTest {
         suspend fun item(sessionId: String) = items(sessionId).single()
 
         suspend fun keyState() = db.groupKeyStateDao().getByChatRoomId(roomId)
+
+        /** Everything the group has signed here, as the group signed it. */
+        suspend fun signedEvents() = db.groupSignedEventDao().getByChatRoomId(roomId)
     }
 
     private suspend fun device(
@@ -501,6 +504,59 @@ class SignedGroupKeyStateTest {
                         pubKey = adminRoomId.hexToByteArray()
                     ),
                     "item ${item.itemIndex} must verify against the room it was signed in"
+                )
+            }
+        }
+    }
+
+    /**
+     * What the group signed, kept as the group signed it.
+     *
+     * Every other assertion in this file reads a session's own rows, which exist
+     * only on a device that ran the session and are swept away with it. This
+     * reads the record that outlives it -- and reads it back through
+     * `verifies()`, so a column that failed to round-trip fails here rather than
+     * years later when somebody tries to hand the batch on in an archive.
+     *
+     * The path is the part no device is told. Each resolves it from the room it
+     * is standing in, so both arriving at `m/9420/0/0` is two independent
+     * derivations agreeing rather than one value being copied about.
+     */
+    @Test
+    fun `a signed batch is kept as events, with the path it was signed at`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            val signed = device.signedEvents()
+
+            assertEquals(
+                device.items(session.id).map { it.eventId }.toSet(),
+                signed.map { it.id }.toSet(),
+                "every event the session signed should be on file as the group made it"
+            )
+
+            signed.forEach { event ->
+                assertEquals(adminRoomId, event.publicKey)
+                assertEquals(SharedKeyDerivation.formatPath(), event.derivationPath)
+                assertEquals(
+                    SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+                    event.pathIndices()
+                )
+                assertEquals(session.id, event.frostSigningSessionId)
+                assertTrue(
+                    event.verifies(),
+                    "${event.id} does not read back as something this room signed"
                 )
             }
         }

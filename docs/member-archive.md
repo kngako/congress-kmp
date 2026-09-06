@@ -293,6 +293,14 @@ keeps the decision about transcript lines next to the decision about triggers.
 
 ### Where the events come from
 
+> **Since the `GroupSignedEvent` table landed**, a signed event *is* stored as an
+> event -- `FrostSigningManager` files one per batch it completes, and
+> `ArchiveManager.applyPage` files one per payload it accepts, each with the
+> derivation path its author was reached at. Assembly still rebuilds from rows,
+> because a room whose work predates the table has nothing else to rebuild from.
+> The rest of this section is the reasoning as it stood then, and the round-trip
+> gate it describes is still what holds those rooms up.
+
 Signed events are not stored as events; they are stored as rows. So the archive
 is rebuilt from `Mantra*` rows via each entity's `toXEvent()`, which is exactly
 what the round-trip convention exists for: `toXEvent` emits tags in the same

@@ -21,6 +21,7 @@ import press.mantra.compose.database.dao.GiftWrapMessageDao
 import press.mantra.compose.database.dao.GiftWrapPayloadDao
 import press.mantra.compose.database.dao.GiftWrapSealDao
 import press.mantra.compose.database.dao.GroupKeyStateDao
+import press.mantra.compose.database.dao.GroupSignedEventDao
 import press.mantra.compose.database.dao.InReplyToRelationDao
 import press.mantra.compose.database.dao.MantraArtifactDao
 import press.mantra.compose.database.dao.MantraArtifactVersionDao
@@ -73,6 +74,7 @@ import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GiftWrapSeal
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.InReplyToRelation
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
@@ -137,6 +139,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         GroupKeyState::class,
+        GroupSignedEvent::class,
         InReplyToRelation::class,
         MantraArtifact::class,
         MantraArtifactVersion::class,
@@ -174,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 12,
+    version = 13,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -235,7 +238,15 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // null, meaning "never asked" -- true of all of them, and harmless: the
         // request only goes out for a room that holds no signed work, and a room
         // that holds some will not ask.
-        AutoMigration(from = 11, to = 12)
+        AutoMigration(from = 11, to = 12),
+        // v13 adds the GroupSignedEvent table and the nullable
+        // `groupSignedEventId` on every row a signed event turns into. A new
+        // table and nullable additions are both shapes Room migrates itself.
+        // Rows written before it read back null, meaning "this device does not
+        // hold the event behind this row" -- true of all of them, since nothing
+        // kept it. They are not backfilled: the events are gone, and inventing
+        // an id for one would point a row at a signature nobody can produce.
+        AutoMigration(from = 12, to = 13)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
@@ -258,6 +269,8 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun frostSigningSessionDao(): FrostSigningSessionDao
 
     abstract fun groupKeyStateDao(): GroupKeyStateDao
+
+    abstract fun groupSignedEventDao(): GroupSignedEventDao
 
     abstract fun connectionDao(): ConnectionDao
 

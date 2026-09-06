@@ -814,6 +814,14 @@ data class ChatMessage(
          * the envelope a member actually sent. Entity rows take their author
          * from [event], so the chat line says who added it and the row says who
          * wrote it.
+         *
+         * [groupSignedEventId] is the third way in, and the one with no
+         * envelope at all: a `GroupSignedEvent` the group put its own signature
+         * to, applied by `FrostSigningManager` when a session completes or by
+         * `ArchiveManager` when a page arrives. Both Marmot ids are null for
+         * those -- there is no group event and no inner event behind them --
+         * which is why they need an id of their own, and why every row this
+         * writes carries it.
          */
         internal suspend fun applyInnerEvent(
             database: MantraDatabase,
@@ -824,6 +832,7 @@ data class ChatMessage(
             senderPublicKey: HexKey,
             isUserMessage: Boolean,
             createdAt: Instant,
+            groupSignedEventId: HexKey? = null,
         ): ChatMessage? {
             return when (event.kind) {
                 ChatEvent.KIND -> {
@@ -856,6 +865,7 @@ data class ChatMessage(
                         database.mantraArtifactDao().upsert(
                             mantraArtifact.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -894,6 +904,7 @@ data class ChatMessage(
                         database.mantraArtifactVersionDao().upsert(
                             mantraArtifactVersion.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -926,6 +937,7 @@ data class ChatMessage(
                         database.mantraChapterDao().upsert(
                             mantraChapter.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -958,6 +970,7 @@ data class ChatMessage(
                         database.mantraChunkDao().upsert(
                             mantraChunk.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -980,6 +993,7 @@ data class ChatMessage(
                         database.mantraDialectDao().upsert(
                             mantraDialect.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -1012,6 +1026,7 @@ data class ChatMessage(
                         database.mantraTranslationArtifactVersionDao().upsert(
                             mantraTranslationArtifactVersion.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
 
@@ -1047,6 +1062,7 @@ data class ChatMessage(
                         database.mantraTranslationChapterDao().upsert(
                             mantraTranslationChapter.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
                         // TODO: translation chapter might be too noisy for chat updates
@@ -1098,6 +1114,7 @@ data class ChatMessage(
                             database.mantraTranslationChunkDao().upsert(
                                 mantraTranslationChunk.copy(
                                     marmotGroupEventId = marmotGroupEventId,
+                                    groupSignedEventId = groupSignedEventId,
                                 )
                             )
                         }
@@ -1123,6 +1140,7 @@ data class ChatMessage(
                         database.mantraTranslationDao().upsert(
                             mantraTranslation.copy(
                                 marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
                         )
                         ChatMessage(

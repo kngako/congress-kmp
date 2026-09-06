@@ -459,6 +459,48 @@ class ArchiveApplyJvmTest {
         }
     }
 
+    /**
+     * The member who was handed history can hand it on.
+     *
+     * Rows are a reading of what the group signed; the events are the thing
+     * itself, and until they are kept the recipient of an archive is a dead end
+     * -- holding the work, unable to prove any of it, and unable to build a page
+     * for the next member to arrive. The path is the room's, read from the key
+     * state when the recipient has one.
+     */
+    @Test
+    fun `the archive leaves the receiver holding the events, not only the rows`() = runBlocking {
+        seedSenderWork()
+        seedRoom(receiver, newMember)
+
+        senderArchive().forEach { deliver(it) }
+
+        val signed = receiver.groupSignedEventDao().getByChatRoomId(chatRoomId)
+
+        assertEquals(
+            senderArchive()
+                .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+                .map { it.id }
+                .toSet(),
+            signed.map { it.id }.toSet(),
+            "every payload that applied should be on file as the group signed it"
+        )
+        assertTrue(signed.isNotEmpty())
+
+        signed.forEach { event ->
+            assertEquals(chatRoomId, event.publicKey, "${event.id} is not authored by the room")
+            assertTrue(event.verifies(), "${event.id} does not read back as the room's")
+            // Nothing on this device ran a session for any of it.
+            assertNull(event.frostSigningSessionId)
+        }
+
+        // The rows the payloads became point back at them, which is the only
+        // provenance a group-signed row has: no group event, no inner event.
+        val dialects = receiver.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
+        assertTrue(dialects.isNotEmpty())
+        dialects.forEach { assertEquals(it.id, it.groupSignedEventId) }
+    }
+
     @Test
     fun `an archive files no chat lines`() = runBlocking {
         seedSenderWork()
@@ -581,6 +623,14 @@ class ArchiveApplyJvmTest {
         val dialects = receiver.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)
         assertEquals(1, dialects.size, "exactly the honest one")
         assertEquals(honest.id, dialects.single().id)
+
+        // And nothing forged was kept as an event either. The record is what a
+        // later archive is built from, so a forgery filed here would be one this
+        // member goes on to hand to everybody else.
+        assertEquals(
+            listOf(honest.id),
+            receiver.groupSignedEventDao().getByChatRoomId(chatRoomId).map { it.id }
+        )
     }
 
     @Test

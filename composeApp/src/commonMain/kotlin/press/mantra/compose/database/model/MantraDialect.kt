@@ -45,6 +45,9 @@ data class MantraDialect(
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
 
+    /** The [GroupSignedEvent] this row was made from, when the group signed it. */
+    val groupSignedEventId: HexKey? = null,
+
     /**
      * Related nostrEventId if this is not a rumor...
      */

@@ -27,6 +27,7 @@ import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -873,6 +874,14 @@ object FrostSigningManager {
 
         update(database, session) { it.copy(stage = FrostSigningStage.COMPLETE) }
 
+        // The group's own statement, filed before anything is derived from it.
+        // What the batch is applied *into* is a reading of these events -- an
+        // artifact keeps some of its fields, a contributor list keeps none --
+        // and the reading is the part that can be wrong or, for a kind this
+        // build has no arm for, missing entirely. So the events are kept as
+        // signed, and the rows made from them point back at these.
+        val recorded = recordSignedEvents(database, session, signedEvents)
+
         // A signature exists to be used. Every device has the event and the
         // signature by now, so each applies the result itself rather than
         // waiting to be sent something it can already build -- the same
@@ -880,7 +889,7 @@ object FrostSigningManager {
         // wire: a signed event authored by the threshold key cannot travel as
         // an inner event anyway, because the outbound pipeline re-authors
         // rumors as their sender and would strip the group's signature off.
-        signedEvents.forEach { applySignedEvent(database, session, it) }
+        signedEvents.forEach { applySignedEvent(database, session, it, recorded) }
 
         announce(
             database = database,
@@ -895,12 +904,52 @@ object FrostSigningManager {
     }
 
     /**
+     * Files the batch as [GroupSignedEvent] rows, and says whether it landed.
+     *
+     * One write for the batch, because that is how it was signed: a session's
+     * events are one decision by one quorum, and half of them on file is a state
+     * no reader should have to reason about. The path comes from the session
+     * rather than from the events, since it is the session that resolved it from
+     * the room -- see [signingPath], and note that a null there means the
+     * untweaked threshold key rather than an unknown path.
+     *
+     * A failure is logged and swallowed, like [applySignedEvent]'s: the
+     * signature is made and valid either way, and a ceremony that succeeded must
+     * not be reported as failed because this device could not write it down.
+     * What the caller loses is the id to point the derived rows at, which is why
+     * this returns a boolean rather than nothing.
+     */
+    private suspend fun recordSignedEvents(
+        database: MantraDatabase,
+        session: FrostSigningSession,
+        signedEvents: List<Event>
+    ): Boolean = try {
+        database.groupSignedEventDao().recordAll(
+            signedEvents.map { signedEvent ->
+                GroupSignedEvent.fromEvent(
+                    event = signedEvent,
+                    chatRoomId = session.chatRoomId,
+                    derivationPath = session.derivationPath,
+                    frostSigningSessionId = session.id,
+                )
+            }
+        )
+        true
+    } catch (e: Throwable) {
+        logger.e("Signed session ${session.id} but could not record its events", e)
+        false
+    }
+
+    /**
      * Turns the signed event into whatever it is: a dialect, an artifact, a
      * chapter.
      *
      * Reuses the inbound path's dispatch rather than repeating it, with no group
      * event and no inner event behind the row -- there is neither, and both
-     * columns are nullable for exactly this kind of locally-derived record.
+     * columns are nullable for exactly this kind of locally-derived record. What
+     * the row does get is the [GroupSignedEvent] it was made from, when
+     * [recorded] says one is on file; a row pointing at an event that is not
+     * there would be worse than one pointing at nothing.
      *
      * A failure here is not the session's: the signature is made and valid, and
      * saying otherwise would tell the group to abandon a ceremony that
@@ -909,7 +958,8 @@ object FrostSigningManager {
     private suspend fun applySignedEvent(
         database: MantraDatabase,
         session: FrostSigningSession,
-        signedEvent: Event
+        signedEvent: Event,
+        recorded: Boolean
     ) {
         try {
             ChatMessage.applyInnerEvent(
@@ -920,7 +970,8 @@ object FrostSigningManager {
                 marmotInnerEventId = null,
                 senderPublicKey = session.coordinatorPublicKey,
                 isUserMessage = session.isCoordinator(),
-                createdAt = Clock.System.now()
+                createdAt = Clock.System.now(),
+                groupSignedEventId = signedEvent.id.takeIf { recorded }
             )?.let { database.chatMessageDao().upsert(it) }
         } catch (e: Throwable) {
             logger.e("Signed ${signedEvent.id} but could not apply it locally", e)

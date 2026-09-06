@@ -10,6 +10,7 @@ import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.extensions.toHex
 import kotlin.time.Clock
@@ -28,13 +29,20 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  *
  * ### The rows are the archive
  *
- * Signed events are not stored as events. `FrostSigningManager.complete` applies
- * one and what survives is a `Mantra*` row, so every payload here is rebuilt with
- * `toXEvent()` and stands or falls on that rebuild being byte-identical to what
- * was signed. `ArchiveRoundTripTest` is what says it is, per kind, against a real
- * quorum -- and it found two faults in the artifact's rebuild the first time it
- * ran, both of which would have shipped payloads that every receiver drops as
- * forgeries without a word.
+ * Every payload here is rebuilt from a `Mantra*` row with `toXEvent()`, and
+ * stands or falls on that rebuild being byte-identical to what was signed.
+ * `ArchiveRoundTripTest` is what says it is, per kind, against a real quorum --
+ * and it found two faults in the artifact's rebuild the first time it ran, both
+ * of which would have shipped payloads that every receiver drops as forgeries
+ * without a word.
+ *
+ * That was once the only way: a signed event was applied and what survived was
+ * the row. `GroupSignedEvent` now keeps the event too, and [applyPage] files one
+ * for every payload it accepts -- which is what lets a member who was handed
+ * their history hand it on. Assembly still walks the rows, because a room whose
+ * work predates that table has no events on file and rebuilding is the only way
+ * to reach it. Reading assembled events from the table instead is worth doing
+ * once the fallback can be dropped.
  *
  * ### Nothing unverifiable leaves
  *
@@ -491,6 +499,14 @@ object ArchiveManager {
             return Outcome()
         }
 
+        // Read once for the page rather than per payload: every event in an
+        // archive was signed by the room it is arriving in, so they all share
+        // its path. Null when the recipient has no key state yet -- which is
+        // the normal case for the member an archive exists for, and why
+        // `GroupSignedEvent.derivationPath` is nullable and `record` fills it
+        // in later rather than overwriting it with null.
+        val derivationPath = GroupKeyStateManager.keyStateFor(database, chatRoomId)?.derivationPath
+
         var outcome = Outcome()
 
         ArchiveEvent.inApplyOrder(payloads).forEach { payload ->
@@ -518,6 +534,21 @@ object ArchiveManager {
             }
 
             outcome += try {
+                // Kept as the group signed it, before it is turned into rows.
+                // The check above is what earns it that: a payload reaching here
+                // is one the room signed, which is the same standard
+                // `FrostSigningManager` records its own batches on. Without this
+                // a member who was handed their history would hold the rows and
+                // none of the events, and could never build an archive of their
+                // own to hand on.
+                database.groupSignedEventDao().record(
+                    GroupSignedEvent.fromEvent(
+                        event = payload,
+                        chatRoomId = chatRoomId,
+                        derivationPath = derivationPath,
+                    )
+                )
+
                 // The chat line this returns is deliberately dropped rather than
                 // filed. ChatMessage has an autoGenerate primary key, so there is
                 // no id to dedupe on and every applied payload would mint a new
@@ -534,6 +565,7 @@ object ArchiveManager {
                     senderPublicKey = payload.pubKey,
                     isUserMessage = false,
                     createdAt = stored.createdAt,
+                    groupSignedEventId = payload.id,
                 )
                 Outcome(applied = 1)
             } catch (error: Throwable) {
