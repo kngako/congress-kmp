@@ -179,6 +179,14 @@ fun ChatRoomMessagingScreen(
                                             )
                                         }
                                     )
+                                },
+                                onOpenProposals = {
+                                    onNavigateToRoute.invoke(
+                                        ProposalListRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            chatRoomId = chatRoomId
+                                        )
+                                    )
                                 }
                             )
                         }
