@@ -423,14 +423,28 @@ sharing costs is the secret share, to anyone who sees both partial signatures.
 It is the cheapest possible guard against the one mistake in this document that
 loses the key, and it catches an index bug nothing else here would.
 
-Then, still to write:
+Then two on the inbound path, driven by handing the manager a hand-built inner
+event rather than one the other device queued — which is the only way to be a
+faulty or dishonest member in this harness:
 
-- a wrong-length payload is dropped rather than truncated;
-- a second proposal under the same session id with a changed item is ignored;
-- a `k = 3` batch in
-  [FrostSigningRoundTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/managers/FrostSigningRoundTest.kt),
-  against real FROST and no database, for the same reason that file exists at
-  all: the library calls are checked without a database in the way.
+- **a wrong-length payload is left out, not truncated.** The length check is all
+  that stands between a batch and a signer whose contribution lines up against
+  the wrong messages. Assert that a one-value nonce for a three-item batch does
+  not count towards the threshold — and then that the real nonce replaces it and
+  the batch finishes, so it is a stall rather than damage.
+- **a second proposal under the same id changes nothing.** Every item's seed is
+  already committed to that item's message; a different batch under the same id
+  would have those seeds produce a second partial signature over a second
+  message.
+
+And three in
+[FrostSigningRoundTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/managers/FrostSigningRoundTest.kt),
+against real FROST with no database, for the same reason that file exists at
+all — the library calls are checked with nothing in the way: a `k = 3` batch
+from one signer set where all three verify, an item's signature refusing to
+verify against its neighbour, and both halves of the no-shared-nonce property
+(one seed under two messages gives two nonces, *and* the seeds differ anyway —
+either alone is enough to be relied on by accident).
 
 ---
 

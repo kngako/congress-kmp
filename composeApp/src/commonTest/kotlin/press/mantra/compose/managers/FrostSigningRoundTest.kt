@@ -161,6 +161,105 @@ class FrostSigningRoundTest {
     }
 
     @Test
+    fun `one signer set signs a batch of three, and every signature verifies`() {
+        // The manager's batch, with the database taken out of the way: one signer
+        // set and one tweak cache shared, and a nonce, a Session and a signature
+        // per event. If any of that is wired up wrongly the aggregate simply
+        // fails to verify, which is the whole reason this file exists.
+        val ids = listOf("first", "second", "third").map(::eventId)
+        val messages = ids.map { ByteVector(it.hexToByteArray()) }
+
+        val signerIds = listOf(0, 1)
+
+        // A seed per signer per item. The manager mints these independently; here
+        // they only have to differ, which is the property under test.
+        val nonces = signerIds.map { signerId ->
+            messages.mapIndexed { index, message ->
+                nonceOf(signerId, message, "f".repeat(62) + "$index${signerId + 1}")
+            }
+        }
+
+        val signatures = messages.mapIndexed { index, message ->
+            val session = sessionFor(signerIds, nonces.map { it[index].second }, message)
+
+            val partials = signerIds.mapIndexed { position, signerId ->
+                session.sign(
+                    nonces[position][index].first,
+                    keyMaterial.secretShares[signerId],
+                    signerId.toUInt()
+                ).right!!
+            }
+
+            session.aggregateSigs(partials).right!!
+        }
+
+        ids.forEachIndexed { index, id ->
+            assertTrue(
+                Nip01Crypto.verify(
+                    signature = signatures[index].toByteArray(),
+                    hash = id.hexToByteArray(),
+                    pubKey = groupPubKey.hexToByteArray()
+                ),
+                "item $index of the batch must verify against the room's own key"
+            )
+        }
+    }
+
+    @Test
+    fun `a batch signature does not carry to another item of the same batch`() {
+        // What keeps a batch k independent signatures rather than one loose one.
+        // Signing three events in lockstep must not make any of them
+        // interchangeable.
+        val ids = listOf("first", "second").map(::eventId)
+        val messages = ids.map { ByteVector(it.hexToByteArray()) }
+        val signerIds = listOf(0, 1)
+
+        val nonces = signerIds.map { signerId ->
+            messages.mapIndexed { index, message ->
+                nonceOf(signerId, message, "9".repeat(62) + "$index${signerId + 1}")
+            }
+        }
+
+        val session = sessionFor(signerIds, nonces.map { it[0].second }, messages[0])
+        val partials = signerIds.mapIndexed { position, signerId ->
+            session.sign(
+                nonces[position][0].first,
+                keyMaterial.secretShares[signerId],
+                signerId.toUInt()
+            ).right!!
+        }
+        val first = session.aggregateSigs(partials).right!!
+
+        assertFalse(
+            Nip01Crypto.verify(
+                signature = first.toByteArray(),
+                hash = ids[1].hexToByteArray(),
+                pubKey = groupPubKey.hexToByteArray()
+            ),
+            "item 0's signature must not verify against item 1"
+        )
+    }
+
+    @Test
+    fun `two items of a batch never share a nonce`() {
+        // The one mistake in this whole design that loses the key, asserted at the
+        // level where it would be made. `SecretNonce.generate` mixes the message
+        // in, so two items of a batch cannot collide even given the same seed --
+        // but the manager gives them distinct seeds as well, and both halves are
+        // checked here because either alone is enough to be relied on by accident.
+        val messages = listOf("first", "second").map { ByteVector(eventId(it).hexToByteArray()) }
+
+        val sameSeed = messages.map { nonceOf(0, it, "7".repeat(64)).second.data.toHex() }
+        assertEquals(2, sameSeed.toSet().size, "one seed under two messages must give two nonces")
+
+        val distinctSeeds = messages.mapIndexed { index, message ->
+            nonceOf(0, message, "8".repeat(63) + "$index").second.data.toHex()
+        }
+        assertEquals(2, distinctSeeds.toSet().size)
+        assertEquals(emptySet(), sameSeed.toSet().intersect(distinctSeeds.toSet()))
+    }
+
+    @Test
     fun `a signature over one event does not verify against another`() {
         val id = eventId("the group agrees")
         val message = ByteVector(id.hexToByteArray())

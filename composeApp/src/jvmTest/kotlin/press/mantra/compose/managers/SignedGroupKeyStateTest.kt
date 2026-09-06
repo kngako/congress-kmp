@@ -646,6 +646,118 @@ class SignedGroupKeyStateTest {
         Unit
     }
 
+    /**
+     * A payload that is not the batch's length is left out, not truncated -- and
+     * leaving it out stalls the session rather than poisoning it.
+     *
+     * The length check is the only thing standing between a batch and a signer
+     * whose contribution lines up against the wrong messages. Truncating a long
+     * payload or padding a short one would produce partial signatures aggregated
+     * against events nobody agreed to.
+     */
+    @Test
+    fun `a nonce payload of the wrong length is left out rather than truncated`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+
+        // One nonce offered for a batch of three, from a member the coordinator
+        // would otherwise have picked.
+        FrostSigningManager.processSigningPayload(
+            database = creator.db,
+            localChatRoom = creator.room,
+            innerEvent = Event(
+                id = "1".repeat(64),
+                pubKey = other.publicKey,
+                createdAt = 1,
+                kind = FrostSigningEvents.NONCE,
+                tags = FrostSigningEvents.assembleTags(session.id),
+                content = "aa".repeat(66),
+                sig = ""
+            ),
+            userPublicKey = creator.publicKey
+        )
+
+        assertNull(
+            creator.session(session.id)?.signerIds,
+            "a payload of the wrong length must not count towards the threshold"
+        )
+
+        // And it is a stall, not damage: the real nonce replaces it and the batch
+        // finishes. That is the composite key on FrostSignerMessage doing its job.
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        assertEquals(FrostSigningStage.COMPLETE, creator.session(session.id)?.stage)
+        assertEquals(3, creator.items(session.id).count { it.signature != null })
+    }
+
+    /**
+     * A second proposal under a session's own id cannot change what it signs.
+     *
+     * The rule the whole design rests on. Every item's nonce seed is already
+     * committed to that item's message; giving the session a different batch
+     * would have those seeds produce a second partial signature over a second
+     * message, which is how a secret share is extracted.
+     */
+    @Test
+    fun `a second proposal under the same id cannot change what a session signs`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+
+        val before = other.items(session.id)
+
+        val substitute = DialectEvent.build(name = "Xitsonga", country = "ZA", language = "tso")
+        FrostSigningManager.processSigningPayload(
+            database = other.db,
+            localChatRoom = other.room,
+            innerEvent = Event(
+                id = "2".repeat(64),
+                pubKey = creator.publicKey,
+                createdAt = 1,
+                kind = FrostSigningEvents.PROPOSAL,
+                tags = FrostSigningEvents.assembleTags(session.id, dkgSessionId = ceremonyId),
+                content = FrostSigningEvents.encodeProposal(
+                    listOf(
+                        Event(
+                            id = "3".repeat(64),
+                            pubKey = adminRoomId,
+                            createdAt = substitute.createdAt,
+                            kind = substitute.kind,
+                            tags = substitute.tags,
+                            content = substitute.content,
+                            sig = ""
+                        )
+                    )
+                ),
+                sig = ""
+            ),
+            userPublicKey = other.publicKey
+        )
+
+        assertEquals(
+            before.map { it.eventId },
+            other.items(session.id).map { it.eventId },
+            "a re-proposal must be ignored, not applied"
+        )
+        assertEquals(before.map { it.nonceRandom }, other.items(session.id).map { it.nonceRandom })
+    }
+
     /** Three dialects, distinct enough that an order bug shows up as a wrong name. */
     private fun dialects() = listOf(
         Triple("Sepedi", "ZA", "nso"),
