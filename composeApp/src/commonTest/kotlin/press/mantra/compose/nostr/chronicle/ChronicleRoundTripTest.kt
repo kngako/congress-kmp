@@ -1,4 +1,4 @@
-package press.mantra.compose.nostr.archive
+package press.mantra.compose.nostr.chronicle
 
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
@@ -39,24 +39,32 @@ import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
- * The assumption the whole archive rests on: a row can be turned back into the
- * event the group signed.
+ * The assumption the chronicle's *fallback* rests on: a row can be turned back
+ * into the event the group signed.
  *
- * Signed events are not stored as events. `FrostSigningManager.complete` applies
- * them and what survives is a `Mantra*` row, so an archive has to rebuild each
- * one with `toXEvent()` and hope it comes out byte-identical. If it does not,
- * the id changes, the signature no longer covers it, and every receiver drops
- * the payload as a forgery -- silently, one kind at a time.
+ * Signed events used to be stored only as rows. `FrostSigningManager.complete`
+ * applied one and what survived was a `Mantra*` row, so a chronicle had to
+ * rebuild each payload with `toXEvent()` and hope it came out byte-identical --
+ * and if it did not, the id changed, the signature no longer covered it, and
+ * every receiver dropped the payload as a forgery, silently, one kind at a time.
  *
  * That is what the round-trip note on each `toXEvent` claims and what nothing
- * asserted until now. Every kind in `ArchiveEvent.ARCHIVABLE_KINDS` is checked
- * here against a real FROST quorum, because a signature that verifies is the
- * only evidence that the rebuild is faithful -- comparing fields would only
+ * asserted until this ran. Every kind in `ChronicleEvent.CHRONICLABLE_KINDS` is
+ * checked here against a real FROST quorum, because a signature that verifies is
+ * the only evidence that the rebuild is faithful -- comparing fields would only
  * prove the test and the code agree about which fields matter.
  *
- * A kind that fails here cannot be archived at all, whatever the allowlist says.
+ * ### Deprecated, along with what it guards
+ *
+ * `GroupSignedEvent` keeps the events now, and `ChronicleManager.assemble` reads
+ * them; the rebuild survives only for work signed before that table existed, and
+ * so does this. Nothing else covers the `toXEvent()` methods, so **this whole
+ * file goes when they do** -- see "Retiring the rebuild" in
+ * docs/member-chronicle.md. Until then a kind that fails here cannot be chronicled
+ * *from a row*, whatever the allowlist says, which for a pre-v13 room is the
+ * same thing as not at all.
  */
-class ArchiveRoundTripTest {
+class ChronicleRoundTripTest {
     private val participants = 3
     private val threshold = 2
 
@@ -267,7 +275,7 @@ class ArchiveRoundTripTest {
     @Test
     fun `an artifact version survives the trip through a row`() {
         // The second fault of the same shape, found the moment this kind became
-        // archivable: `toArtifactVersionEvent` emitted [artifactId, alt] where
+        // chroniclable: `toArtifactVersionEvent` emitted [artifactId, alt] where
         // `build` emits [alt, artifactId]. It had been that way for as long as
         // nothing called it, which is what makes an unused rebuild dangerous
         // rather than merely dead -- the claim in its comment was never checked.
@@ -300,7 +308,7 @@ class ArchiveRoundTripTest {
 
     @Test
     fun `a translated chunk survives the trip through a row`() {
-        // The translated text. Archivable only because the app stopped saving it
+        // The translated text. Chroniclable only because the app stopped saving it
         // as its author's rumor and started asking the group to sign it -- until
         // then a new member got the whole structure and none of the prose.
         assertRoundTrips(
@@ -401,14 +409,14 @@ class ArchiveRoundTripTest {
     }
 
     @Test
-    fun `every archivable kind has a round-trip test above`() {
+    fun `every chroniclable kind has a round-trip test above`() {
         // The list and this file have to move together. A kind added to the
         // allowlist without a case here is one nobody has checked can be rebuilt,
         // and the failure is silent: the receiver drops it as a forgery.
         assertEquals(
             8,
-            ArchiveEvent.ARCHIVABLE_KINDS.size,
-            "an archivable kind was added or removed; add or remove its round-trip case"
+            ChronicleEvent.CHRONICLABLE_KINDS.size,
+            "a chroniclable kind was added or removed; add or remove its round-trip case"
         )
     }
 }

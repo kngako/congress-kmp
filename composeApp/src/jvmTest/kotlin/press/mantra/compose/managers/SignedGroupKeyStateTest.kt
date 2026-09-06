@@ -516,7 +516,7 @@ class SignedGroupKeyStateTest {
      * only on a device that ran the session and are swept away with it. This
      * reads the record that outlives it -- and reads it back through
      * `verifies()`, so a column that failed to round-trip fails here rather than
-     * years later when somebody tries to hand the batch on in an archive.
+     * years later when somebody tries to hand the batch on in a chronicle.
      *
      * The path is the part no device is told. Each resolves it from the room it
      * is standing in, so both arriving at `m/9420/0/0` is two independent

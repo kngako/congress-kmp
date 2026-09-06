@@ -3,7 +3,7 @@ package press.mantra.compose.database.dao
 import androidx.room3.Dao
 import androidx.room3.Transaction
 import press.mantra.compose.database.MantraDatabase
-import press.mantra.compose.managers.ArchiveManager
+import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.database.model.BroadcastNostrEventRequest
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
@@ -527,7 +527,7 @@ abstract class MarmotOutboundDao(
                 // Nothing else will ever show it to them: MLS gives a joiner no
                 // history, and a group-signed event never travels -- every device
                 // derives it from a session it took part in, or does without. See
-                // docs/member-archive.md.
+                // docs/member-chronicle.md.
                 //
                 // **Queued behind the Welcome is not delivered after it.** These
                 // are different transports -- a relay-borne gift wrap and a
@@ -536,14 +536,14 @@ abstract class MarmotOutboundDao(
                 // an epoch ahead of theirs and is dropped outright rather than
                 // deferred. So this is a latency optimisation and not the
                 // mechanism: what recovers it is the invitee asking for
-                // themselves once they are in, which `ArchiveManager.requestIfEmpty`
+                // themselves once they are in, which `ChronicleManager.requestIfEmpty`
                 // does on their first open of the room.
                 //
                 // A push that does not land is therefore the ordinary case rather
                 // than an error, and nothing here reports one to the inviter. It
                 // is inside this function's catch for that reason, alongside the
                 // Welcome it rides behind.
-                ArchiveManager.sendTo(
+                ChronicleManager.sendTo(
                     database = database,
                     chatRoomId = nostrGroupId,
                     userPublicKey = userPublicKey,

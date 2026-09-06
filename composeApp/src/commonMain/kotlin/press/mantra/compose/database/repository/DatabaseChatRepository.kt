@@ -2,7 +2,7 @@ package press.mantra.compose.database.repository
 
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.MantraDatabase
-import press.mantra.compose.managers.ArchiveManager
+import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -55,7 +55,7 @@ class DatabaseChatRepository(
     override suspend fun requestGroupHistoryIfMissing(
         chatRoomId: String,
         userPublicKey: HexKey
-    ): Boolean = ArchiveManager.requestIfEmpty(
+    ): Boolean = ChronicleManager.requestIfEmpty(
         database = database,
         chatRoomId = chatRoomId,
         userPublicKey = userPublicKey,

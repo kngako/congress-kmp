@@ -520,7 +520,7 @@ class GroupKeyStateTest {
     // `isSignedByGroup` is the caller that knows a threshold key and a path.
     // `isSignedByRoom` is the same three checks with the walk already done, and
     // it is what a member holding neither has to work from -- see
-    // docs/member-archive.md. What these pin down is that a room id alone is
+    // docs/member-chronicle.md. What these pin down is that a room id alone is
     // enough, and that it is enough for any kind rather than only a key state.
 
     /** An event of [kind] authored and signed by [author]'s room at [path]. */
@@ -575,11 +575,11 @@ class GroupKeyStateTest {
 
     @Test
     fun `the verifier does not care what kind it is looking at`() {
-        // The point of splitting it out: an archive carries documents rather than
+        // The point of splitting it out: a chronicle carries documents rather than
         // key states, and none of the three checks knows the difference.
         //
         // Note the last one. A GroupKeyStateEvent signed by the room passes here
-        // exactly as a dialect does, which is why the archive needs an allowlist
+        // exactly as a dialect does, which is why the chronicle needs an allowlist
         // of kinds on top of this and cannot treat "the group signed it" as
         // permission to apply it.
         listOf(
@@ -629,7 +629,7 @@ class GroupKeyStateTest {
 
     @Test
     fun `claiming the room as author proves nothing without the signature`() {
-        // The forgery an archive would otherwise carry: write the room's id into
+        // The forgery a chronicle would otherwise carry: write the room's id into
         // pubKey -- every member knows it, it is in the h tag of every kind:445
         // the group has ever sent -- and put anything at all in sig. The author
         // check and the id check both pass. The signature is the whole feature.
@@ -677,7 +677,7 @@ class GroupKeyStateTest {
 
     @Test
     fun `malformed input is a no rather than a throw`() {
-        // Everything here arrives off the wire inside somebody else's archive, so
+        // Everything here arrives off the wire inside somebody else's chronicle, so
         // the failure mode has to be a verdict. A throw would take down the whole
         // inbound transaction the page is being applied in.
         val signed = signedByRoom()

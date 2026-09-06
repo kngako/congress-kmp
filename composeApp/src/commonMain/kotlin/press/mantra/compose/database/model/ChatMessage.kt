@@ -10,7 +10,7 @@ import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.traits.UserViewableEntity
 import press.mantra.compose.exceptions.MarmotUnprocessableInnerEventException
-import press.mantra.compose.managers.ArchiveManager
+import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
@@ -26,8 +26,8 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
-import press.mantra.compose.nostr.archive.ArchiveEvent
-import press.mantra.compose.nostr.archive.ArchiveRequestEvent
+import press.mantra.compose.nostr.chronicle.ChronicleEvent
+import press.mantra.compose.nostr.chronicle.ChronicleRequestEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
@@ -325,11 +325,11 @@ data class ChatMessage(
         /**
          * Handing a member the group's signed record, as lines in the chat.
          *
-         * One line per archive rather than per page. A member who joins a working
+         * One line per chronicle rather than per page. A member who joins a working
          * group has a room that fills itself in without explanation, and the
          * alternative to saying so once is either silence -- which looks like a
          * group that has done nothing -- or a line per applied payload, which is
-         * the transcript the archive deliberately does not write.
+         * the transcript the chronicle deliberately does not write.
          *
          * Content is self-contained: these are not predicates for a name to be
          * read in front of, so they stay out of the AUTHORED sets. A recipient's
@@ -337,24 +337,24 @@ data class ChatMessage(
          * which does not follow a rename and is the accepted cost for a line
          * about a thing that happened once.
          *
-         * The received line names no sender on purpose. An archive can be
+         * The received line names no sender on purpose. A chronicle can be
          * assembled out of pages from more than one member, so attributing the
          * catch-up to one of them would be a guess dressed as a fact.
          */
-        const val TYPE_ARCHIVE_REQUESTED = "archiveRequested"
-        const val TYPE_ARCHIVE_SENT = "archiveSent"
-        const val TYPE_ARCHIVE_RECEIVED = "archiveReceived"
+        const val TYPE_CHRONICLE_REQUESTED = "chronicleRequested"
+        const val TYPE_CHRONICLE_SENT = "chronicleSent"
+        const val TYPE_CHRONICLE_RECEIVED = "chronicleReceived"
 
         /**
-         * Every archive line, for the one check the transcript dispatches on.
+         * Every chronicle line, for the one check the transcript dispatches on.
          *
          * A type missing from here renders as a chat bubble -- silently, and
          * looking exactly like a member having said "Caught up on 12 items".
          */
-        val ARCHIVE_TYPES = setOf(
-            TYPE_ARCHIVE_REQUESTED,
-            TYPE_ARCHIVE_SENT,
-            TYPE_ARCHIVE_RECEIVED,
+        val CHRONICLE_TYPES = setOf(
+            TYPE_CHRONICLE_REQUESTED,
+            TYPE_CHRONICLE_SENT,
+            TYPE_CHRONICLE_RECEIVED,
         )
 
         const val TYPE_UNDECRYPTABLE_OUTER_LAYER = "undecryptableOuterLayer"
@@ -651,14 +651,14 @@ data class ChatMessage(
                         )
                     }
 
-                    // An archive is neither a document nor a submission: it is a
+                    // A chronicle is neither a document nor a submission: it is a
                     // bundle of documents addressed to one member who is missing
                     // them. Intercepted here rather than in applyInnerEvent for
                     // the same reason the gift wrap above is -- deciding whether
                     // to act needs the active key, which applyInnerEvent has no
                     // business knowing.
-                    if (event.kind == ArchiveEvent.KIND) {
-                        ArchiveManager.receive(
+                    if (event.kind == ChronicleEvent.KIND) {
+                        ChronicleManager.receive(
                             database = database,
                             chatRoomId = groupEventResult.groupId,
                             userPublicKey = activeKeyPair.pubKey.toHex(),
@@ -666,8 +666,8 @@ data class ChatMessage(
                         )
 
                         // No chat line, and not for want of one worth writing.
-                        // One line per archive is right; one per page is not, and
-                        // the pages of an archive are not distinguishable from
+                        // One line per chronicle is right; one per page is not, and
+                        // the pages of a chronicle are not distinguishable from
                         // each other here. That is Phase 7's, and until then a
                         // silent catch-up beats a transcript full of envelopes.
                         return null
@@ -679,8 +679,8 @@ data class ChatMessage(
                     // pages are idempotent and everyone but the recipient ignores
                     // them. A member with nothing signed answers nothing, which
                     // is the honest reply from one still catching up themselves.
-                    if (event.kind == ArchiveRequestEvent.KIND) {
-                        ArchiveManager.sendTo(
+                    if (event.kind == ChronicleRequestEvent.KIND) {
+                        ChronicleManager.sendTo(
                             database = database,
                             chatRoomId = groupEventResult.groupId,
                             userPublicKey = activeKeyPair.pubKey.toHex(),
@@ -818,7 +818,7 @@ data class ChatMessage(
          * [groupSignedEventId] is the third way in, and the one with no
          * envelope at all: a `GroupSignedEvent` the group put its own signature
          * to, applied by `FrostSigningManager` when a session completes or by
-         * `ArchiveManager` when a page arrives. Both Marmot ids are null for
+         * `ChronicleManager` when a page arrives. Both Marmot ids are null for
          * those -- there is no group event and no inner event behind them --
          * which is why they need an id of their own, and why every row this
          * writes carries it.

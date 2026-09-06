@@ -2,7 +2,7 @@
 
 A member added after the work was done sees none of it, and no amount of waiting
 fixes that. This is how to send them the group's signed record, why the sending
-member cannot be trusted and does not need to be, and the one thing an archive
+member cannot be trusted and does not need to be, and the one thing a chronicle
 cannot give them.
 
 Read [shared-key-derivation.md](./shared-key-derivation.md) first. The property
@@ -17,7 +17,7 @@ times worth reading:
 
 | what the plan said | what it turned out to be |
 |---|---|
-| nine archivable kinds | six at first, eight now. The three that were unsigned were fixed in the app rather than worked around here -- see [Phase 3](#what-is-actually-archivable) |
+| nine chroniclable kinds | six at first, eight now. The three that were unsigned were fixed in the app rather than worked around here -- see [Phase 3](#what-is-actually-chroniclable) |
 | `MAX_PAGE_EVENTS = 256` | 128. At 256 the byte cap always binds first and the count cap can never fire |
 | "assemble, order, pack and queue" | assemble only; queueing moved to Phase 5, next to the thing that decides when |
 | "re-read the room between the invite and the assembly" | unnecessary; that rule is about the MLS snapshot a commit is built on |
@@ -52,10 +52,10 @@ not follow from the first and is not fixed by fixing it: even a member who could
 decrypt the entire back-transcript would still hold nothing an artifact, chapter
 or chunk could be built from.
 
-Which makes an archive not a convenience but the only path, and fixes the line
+Which makes a chronicle not a convenience but the only path, and fixes the line
 the design has to hold:
 
-> **An archive carries what the group signed. Never the chat.**
+> **A chronicle carries what the group signed. Never the chat.**
 
 Two reasons, and the second is the load-bearing one. Restoring the chat would
 undo forward secrecy on purpose. And a signed event is the only thing a new
@@ -93,17 +93,17 @@ what follows:
 
 | question | answer, and why |
 |---|---|
-| Who may send an archive? | Anyone in the room. The receiver checks every payload, so a hostile sender can inject nothing. |
+| Who may send a chronicle? | Anyone in the room. The receiver checks every payload, so a hostile sender can inject nothing. |
 | Does it need encrypting to the recipient? | No. It is the group's own history going back to the group. |
 | Does the new member need the key state first? | No. That was the ordering problem this removes. |
-| What can a hostile archive do? | Omit. Not forge. See [What this does not do](#what-this-does-not-do). |
+| What can a hostile chronicle do? | Omit. Not forge. See [What this does not do](#what-this-does-not-do). |
 
 ### The guard that is not optional
 
 Nothing on the inbound nip30303 path verifies a signature today.
 `ChatMessage.applyInnerEvent` parses and upserts, and that is *correct* as things
 stand: rumors carry `sig = ""` and are authenticated by the MLS frame, so nothing
-on the wire has ever claimed group authorship. An archive is the first thing that
+on the wire has ever claimed group authorship. A chronicle is the first thing that
 does.
 
 So `isSignedByRoom` is not hardening. It is the feature's entire security, and
@@ -118,10 +118,10 @@ signature. That makes **every kind the group has ever signed replayable by any
 member at any time**, which is a larger door than it first looks.
 
 `GroupKeyStateEvent` (30326) is group-signed and would pass `isSignedByRoom`
-perfectly. An archive carrying an old one is a validly signed statement about
+perfectly. A chronicle carrying an old one is a validly signed statement about
 which key the room signs with, replayed by whoever kept a copy.
 
-> **An archive carries an allowlist of document kinds, never everything that
+> **A chronicle carries an allowlist of document kinds, never everything that
 > verifies.** The list is the nip30303 kinds `applyInnerEvent` dispatches, and
 > the rule is checked on the way out *and independently on the way in*.
 
@@ -132,10 +132,10 @@ boundary.
 
 ## Push and pull
 
-The obvious trigger is the invite: send the archive right after the Welcome. That
+The obvious trigger is the invite: send the chronicle right after the Welcome. That
 works, and on its own it is unreliable in the way
 [marmot-membership.md](./marmot-membership.md#why-this-fails-silently) describes.
-An archive is an application message in the epoch the add created. If it reaches
+A chronicle is an application message in the epoch the add created. If it reaches
 the invitee before their Welcome does -- different transports, no ordering
 guarantee -- it is **dropped, not deferred**, and the sender sees nothing wrong.
 
@@ -144,9 +144,9 @@ The fix is not to make the push more careful. It is to let the joiner ask:
 - A request is proof of arrival. A device that can send an application message in
   the room has processed its Welcome; the race has nothing left to lose.
 - It covers what a push never can. A reinstall, a second device, a member whose
-  inviter has since left, an archive that was lost -- none of those has an invite
+  inviter has since left, a chronicle that was lost -- none of those has an invite
   to hang off.
-- It converges. Requests repeat, archives are idempotent, and any member can
+- It converges. Requests repeat, chronicles are idempotent, and any member can
   answer.
 
 So both, on the same two events: **the pull is the mechanism and the push is a
@@ -168,7 +168,7 @@ split the existing check in two and keep the existing one as a caller:
  *
  * The room's id is the group's signing key -- see shared-key-derivation.md --
  * so this needs nothing but an id the caller already has. That is what makes
- * an archive checkable by a member who holds no key state and no share.
+ * a chronicle checkable by a member who holds no key state and no share.
  */
 fun isSignedByRoom(event: Event, chatRoomId: HexKey): Boolean = runCatching {
     if (!event.pubKey.equals(chatRoomId, ignoreCase = true)) return false
@@ -197,12 +197,12 @@ is even reached.
 
 **A day.**
 
-A new package, `press.mantra.compose.nostr.archive`, with `ArchiveEvents.kt`
+A new package, `press.mantra.compose.nostr.chronicle`, with `ChronicleEvents.kt`
 holding the kinds -- mirroring `FrostSigningEvents`.
 
 ```
- holder    --[ 30327 archive         ]-> one member   a page of signed events
- joiner    --[ 30328 archive request ]-> everyone     "I have none of this"
+ holder    --[ 30327 chronicle         ]-> one member   a page of signed events
+ joiner    --[ 30328 chronicle request ]-> everyone     "I have none of this"
 ```
 
 **Why 3032x and not 30313.** The nip30303 family runs 30300 to `SubmissionEvent`
@@ -213,7 +213,7 @@ rather than a decision, and the next family added should not rely on it." This i
 that next family, so it does not. 30327 and 30328 sit past `GroupKeyStateEvent`
 at 30326 and clash with nothing on either transport.
 
-It is also the right neighbourhood on the merits. An archive is not a document
+It is also the right neighbourhood on the merits. A chronicle is not a document
 kind; it is a statement about the record, which is what `GroupKeyStateEvent` is
 too.
 
@@ -224,11 +224,11 @@ id, author and signature", and its header even names the case. It is still the
 wrong kind here, for three reasons:
 
 - **A submission is an act** -- *this member is putting this event in front of
-  this group*. An archive asserts nothing; it re-delivers what the group already
+  this group*. A chronicle asserts nothing; it re-delivers what the group already
   agreed. On one kind, a 400-event backfill is indistinguishable from 400 new
   submissions, and every device has to guess which it is looking at.
 - **N submissions are N inner events and N kind:445s.** A page is one.
-- **The submission arm files a `ChatMessage` per payload.** An archive must not
+- **The submission arm files a `ChatMessage` per payload.** A chronicle must not
   -- see Phase 4.
 
 ### Shape
@@ -242,8 +242,8 @@ Tags, one value each, per the house convention:
 
 | tag | holds | why |
 |---|---|---|
-| `ArchiveIdTag` | 32-byte hex | Ties pages of one archive together, so two members answering the same request do not interleave into one nonsense sequence. |
-| `ArchivePageTag` | index, total | The receiver can say whether it holds a whole archive. |
+| `ChronicleIdTag` | 32-byte hex | Ties pages of one chronicle together, so two members answering the same request do not interleave into one nonsense sequence. |
+| `ChroniclePageTag` | index, total | The receiver can say whether it holds a whole chronicle. |
 | `p` | recipient pubkey | **A hint, not access control** -- see Phase 4. |
 
 ### Two caps, both enforced on receive
@@ -268,7 +268,7 @@ exactly the cap still decodes, which is the assertion that fails when somebody
 raises one number without the other.
 
 Both are checked independently on the way in, for the reason the batch cap is:
-an archive is the second place in this protocol where a remote party decides how
+a chronicle is the second place in this protocol where a remote party decides how
 much work everyone else does. Measure the 64 KB against a finished kind:445
 rather than trusting it -- MLS framing and NIP-44 expansion both sit outside it.
 
@@ -277,11 +277,11 @@ array containing a non-event is refused whole.
 
 ---
 
-## Phase 3 -- assembling an archive
+## Phase 3 -- assembling a chronicle
 
 **A day.**
 
-`ArchiveManager.assemble(database, chatRoomId, recipient): List<EventTemplate<*>>`
+`ChronicleManager.assemble(database, chatRoomId, recipient): List<EventTemplate<*>>`
 
 Read every group-signed event this device holds for the room, order it, and pack
 it into pages.
@@ -295,7 +295,7 @@ keeps the decision about transcript lines next to the decision about triggers.
 
 > **Since the `GroupSignedEvent` table landed**, a signed event *is* stored as an
 > event -- `FrostSigningManager` files one per batch it completes, and
-> `ArchiveManager.applyPage` files one per payload it accepts, each with the
+> `ChronicleManager.applyPage` files one per payload it accepts, each with the
 > derivation path its author was reached at. `assemble` reads that table first
 > and rebuilds only what it does not hold, which is work signed before the table
 > existed. So the rest of this section describes the *fallback*: the round-trip
@@ -307,14 +307,14 @@ keeps the decision about transcript lines next to the decision about triggers.
 > - **The allowlist now does real work on the way out.** The rebuild could only
 >   ever produce document kinds; the table holds everything the group has signed,
 >   and every room signs a `GroupKeyStateEvent` as its first act. `assemble`
->   filters on `ArchiveEvent.isArchivable` before anything else -- without it
->   `ArchiveEvent.build` refuses the page and a room's whole archive fails on the
+>   filters on `ChronicleEvent.isChroniclable` before anything else -- without it
+>   `ChronicleEvent.build` refuses the page and a room's whole chronicle fails on the
 >   one event every room has.
-> - **An artifact whose initial version row is missing now archives.** The
+> - **An artifact whose initial version row is missing now chronicles.** The
 >   rebuild has to recover the version label from that row and logs and gives up
 >   without it; on file as an event, the label never left.
 
-Signed events are not stored as events; they are stored as rows. So the archive
+Signed events are not stored as events; they are stored as rows. So the chronicle
 is rebuilt from `Mantra*` rows via each entity's `toXEvent()`, which is exactly
 what the round-trip convention exists for: `toXEvent` emits tags in the same
 order as `build`, so the id round-trips, and the row carries `signature` and
@@ -322,7 +322,7 @@ order as `build`, so the id round-trips, and the row carries `signature` and
 
 **This is the assumption to test first, before writing anything else in this
 phase.** If any entity's `toXEvent` does not round-trip to an id whose signature
-still verifies, that entity cannot be archived at all, and it is better to find
+still verifies, that entity cannot be chronicled at all, and it is better to find
 out in an afternoon than in Phase 8. A round-trip test per kind, over rows
 produced by a real signing session, is the gate on the rest of this work.
 
@@ -342,14 +342,14 @@ Neither fault would have shown up as an error. Both produce a well-formed
 artifact whose id no longer matches its fields, which every receiver drops as a
 forgery, silently, one kind at a time.
 
-### What is actually archivable
+### What is actually chroniclable
 
-An archive can only carry what its receiver can check, so the list is exactly the
+A chronicle can only carry what its receiver can check, so the list is exactly the
 kinds a signing session produces. Eight of the thirteen nip30303 kinds do.
 
 | kind | | why |
 |---|---|---|
-| 30304 Dialect, 30300 Artifact, 30301 ArtifactVersion, 30302 Chapter, 30303 Chunk, 30306 TranslationArtifactVersion, 30308 TranslationChapter, 30309 TranslationChunk | archivable | proposed through `proposeSigning` / `proposeSigningBatch` |
+| 30304 Dialect, 30300 Artifact, 30301 ArtifactVersion, 30302 Chapter, 30303 Chunk, 30306 TranslationArtifactVersion, 30308 TranslationChapter, 30309 TranslationChunk | chroniclable | proposed through `proposeSigning` / `proposeSigningBatch` |
 | 30311 Translation | no | nothing builds one; the inbound arm exists and no producer does |
 | 30305, 30307, 30310 contributor lists | no | `applyInnerEvent` has no arm that writes a row for any of them |
 
@@ -358,7 +358,7 @@ that mattered.** An artifact version was derived from the signed artifact on
 arrival -- a row naming the group as its author with no signature to show for it
 -- and a translated chunk was submitted as its author's rumor by
 `MantraDao.saveTranslation`. Neither could be put in front of somebody with no
-way to check it, so an archive restored everything a translation hangs on and not
+way to check it, so a chronicle restored everything a translation hangs on and not
 the translation.
 
 Both were fixed in the app rather than worked around here, in parallel with this
@@ -373,9 +373,9 @@ end: a version sits between its artifact and the chapters hanging off it, and a
 translated chunk hangs off both a source chunk and a translation chapter, so it
 really is last.
 
-**A retranslated passage archives once, and that stopped being free.** The arm
+**A retranslated passage chronicles once, and that stopped being free.** The arm
 that applies a translation chunk drops the row it supersedes -- newest by the
-timestamp the group signed at, id breaking a tie -- so while the archive was
+timestamp the group signed at, id breaking a tie -- so while the chronicle was
 rebuilt from rows, a sender simply had nothing but the group's current answer to
 each passage and that is what travelled.
 
@@ -383,12 +383,12 @@ Reading from `GroupSignedEvent` changed it. The record keeps every event the
 group ever signed, deliberately: a signature is the group's statement and
 discarding one is not that table's business. So a passage translated three times
 leaves one row and three events, and an unfiltered read would put every draft a
-group ever signed into every archive it ever sends, for as long as the room
+group ever signed into every chronicle it ever sends, for as long as the room
 exists.
 
-`ArchiveManager.currentTranslationsOnly` is what holds the original property up.
-It restates the applying arm's rule rather than approximating it -- newest by
-signed timestamp, id breaking a tie -- because an archive that shipped one
+`ChronicleManager.currentTranslationsOnly` is what holds the original property
+up. It restates the applying arm's rule rather than approximating it -- newest by
+signed timestamp, id breaking a tie -- because a chronicle that shipped one
 translation as current while the recipient settled on another would have both
 validly signed and nothing downstream to notice the disagreement. Dropping the
 drafts is safe precisely *because* the recipient applies the same rule: it is not
@@ -397,7 +397,7 @@ on arrival.
 
 ### Ordering
 
-Room enforces the shape, so an archive out of order is a foreign key violation
+Room enforces the shape, so a chronicle out of order is a foreign key violation
 rather than a wrong answer. The rank:
 
 | # | kind | event | depends on |
@@ -424,15 +424,15 @@ kind 30309; they have identical dependencies, so one rank covers both, and
 The same rule the batch signing work landed on -- *the thing being referenced is
 signed first* -- and the same reason.
 
-**Pages preserve the rank across the whole archive**, not within each page. Page
+**Pages preserve the rank across the whole chronicle**, not within each page. Page
 boundaries fall wherever the byte cap lands.
 
 ### Packing
 
 Greedy: serialise, accumulate, cut when the next event would cross either cap.
-An event that alone exceeds `MAX_PAGE_BYTES` cannot be archived; log it by id and
-carry on rather than failing the archive. That is a real hole and should be
-visible -- but a chapter nobody can archive is better than a member who gets
+An event that alone exceeds `MAX_PAGE_BYTES` cannot be chronicled; log it by id and
+carry on rather than failing the chronicle. That is a real hole and should be
+visible -- but a chapter nobody can chronicle is better than a member who gets
 nothing.
 
 ---
@@ -446,7 +446,7 @@ nothing.
 A page names its recipient in a `p` tag, and **a device that is not the named
 recipient stores the inner event and does nothing else.** It already holds the
 work; re-applying would rewrite `marmotGroupEventId` on every one of its rows to
-point at an archive page rather than at the event that actually introduced it,
+point at a chronicle page rather than at the event that actually introduced it,
 which is provenance loss for no gain.
 
 So the `p` tag is an addressing hint and not a secret. Say so where it is
@@ -456,7 +456,7 @@ history. What the tag decides is who *acts*.
 ### Applying
 
 ```kotlin
-ArchiveManager.apply(database, chatRoomId, page: MarmotInnerEvent)
+ChronicleManager.apply(database, chatRoomId, page: MarmotInnerEvent)
 ```
 
 1. Parse the content array. A page that will not parse is dropped whole.
@@ -474,8 +474,8 @@ transaction and one bad event should not take the room down with it.
 
 **Discard the chat lines.** `ChatMessage` has an `autoGenerate` primary key, so
 every applied payload mints a *new* row -- there is no id to dedupe on. An
-archive that filed them would give the new member a synthetic transcript dated
-now, and give them a second one on every re-run of the sweep. The archive
+chronicle that filed them would give the new member a synthetic transcript dated
+now, and give them a second one on every re-run of the sweep. The chronicle
 restores the work; the conversation is forward secret and stays gone.
 
 `applyInnerEvent` already does its entity upserts internally and merely *returns*
@@ -495,12 +495,12 @@ shape:
 
 ```kotlin
 database.marmotInnerEventDao()
-    .getByChatRoomAndKinds(chatRoomId, listOf(ArchiveEvents.ARCHIVE))
+    .getByChatRoomAndKinds(chatRoomId, listOf(ChronicleEvents.CHRONICLE))
 ```
 
 Re-apply every stored page for the room, oldest first, after each new page
 arrives. Everything in it is an `upsert` keyed on the event id, so a re-run is
-free and a converged archive costs one no-op pass.
+free and a converged chronicle costs one no-op pass.
 
 **Progress is falling failures, not rows written.** "Repeat while a pass applies
 something new" is the obvious loop condition and it does not terminate: an upsert
@@ -512,12 +512,12 @@ last one learned something; a pass that does not is as far as these pages get.
 payload once per pass it survived and reports failures that a later pass went on
 to fix, so `failed > 0` stops meaning "still missing" -- which is exactly the
 question the caller is asking. Found by asserting that the page completing an
-out-of-order archive leaves nothing behind, which failed against the sum.
+out-of-order chronicle leaves nothing behind, which failed against the sum.
 
 Only the recipient sweeps, which is what bounds it: the members who skip apply
 never build the list.
 
-**Test:** an archive delivered in reverse page order converges to the same rows
+**Test:** a chronicle delivered in reverse page order converges to the same rows
 as one delivered in order; a page whose payloads are all already applied changes
 nothing; a page containing one forged payload applies the rest.
 
@@ -527,7 +527,7 @@ nothing; a page containing one forged payload applies the rest.
 
 **A day, including one schema change.**
 
-`ArchiveRequestEvent` (30328), sent into the room, content empty.
+`ChronicleRequestEvent` (30328), sent into the room, content empty.
 
 **When a device sends one.** On entering a room it holds no signed work for --
 no `MantraArtifact` and no `MantraDialect` rows -- having processed its Welcome.
@@ -537,7 +537,7 @@ because all three look identical from inside the database, which is the point.
 **Who answers.** Any member holding the work. Answering costs bandwidth and
 nothing else -- pages are idempotent and non-recipients skip them -- so a
 duplicate answer is waste, not damage. A random 0-30 s stand-down, skipped if
-another member's archive for that request id is already on the wire, is worth
+another member's chronicle for that request id is already on the wire, is worth
 adding and is worth adding *last*: it is an optimisation, and shipping it with
 the correctness would make it look like part of it.
 
@@ -546,7 +546,7 @@ the correctness would make it look like part of it.
 One nullable column, so Room generates it:
 
 ```kotlin
-val archiveRequestedAt: Instant? = null   // on ChatRoom
+val chronicleRequestedAt: Instant? = null   // on ChatRoom
 AutoMigration(from = 11, to = 12)
 ```
 
@@ -555,7 +555,7 @@ Rooms written before it read back null, meaning "never asked" -- true of all of
 them, and harmless: the request is only sent for a room with no work in it, and
 a room that has work will not ask.
 
-Clear it when an archive for the room applies anything, so a partial answer is
+Clear it when a chronicle for the room applies anything, so a partial answer is
 followed by another request rather than by silence.
 
 ---
@@ -569,7 +569,7 @@ written as one.
 
 `MarmotOutboundDao.deliveryWelcome` is the seam -- both branches of
 `inviteMember` reach it, the immediate one and the ack-triggered one in
-`DatabaseNostrRepository`. Assemble an archive for the invitee there and queue
+`DatabaseNostrRepository`. Assemble a chronicle for the invitee there and queue
 its pages behind the Welcome.
 
 One thing to be honest about at that call site, in a comment: **queued behind the
@@ -591,7 +591,7 @@ land is not an error; it is the ordinary case the pull exists for. It sits insid
 
 **One call, two occasions.** Answering a request and pushing behind a Welcome are
 the same operation and differ only in who decided, so they are one function named
-for what it does -- `ArchiveManager.sendTo` -- rather than two named for their
+for what it does -- `ChronicleManager.sendTo` -- rather than two named for their
 occasions.
 
 ---
@@ -600,22 +600,22 @@ occasions.
 
 **A day.**
 
-**The transcript gets one line per archive**, not one per event. Three types --
-`TYPE_ARCHIVE_REQUESTED`, `TYPE_ARCHIVE_SENT`, `TYPE_ARCHIVE_RECEIVED` -- in
-`ARCHIVE_TYPES`, with an arm in the transcript that renders them as notices. A
+**The transcript gets one line per chronicle**, not one per event. Three types --
+`TYPE_CHRONICLE_REQUESTED`, `TYPE_CHRONICLE_SENT`, `TYPE_CHRONICLE_RECEIVED` -- in
+`CHRONICLE_TYPES`, with an arm in the transcript that renders them as notices. A
 type missing from that set renders as a chat bubble, silently, looking exactly
 like a member having said *"Caught up on 12 items"*.
 
 Three decisions inside that:
 
 - **The received line is written when the request stamp is cleared**, which is as
-  close to one-per-archive as this can get: an archive's pages are not
+  close to one-per-chronicle as this can get: a chronicle's pages are not
   distinguishable from each other at apply time, and clearing the stamp is
   exactly the moment a catch-up stops being pending.
 - **A push behind a Welcome writes no line at all**, because the room was never
   asked. It lands before the member has opened the room, and *"caught up on work
   you have not seen yet"* is a line about nothing.
-- **The received line names no sender.** An archive can be assembled from pages
+- **The received line names no sender.** A chronicle can be assembled from pages
   sent by more than one member, so attributing the catch-up to one of them would
   be a guess dressed as a fact.
 
@@ -632,7 +632,7 @@ left out rather than written blind:
   and it wants a screen to live on.
 
 **Say what the new member cannot do.** Still unwritten, and now down to one
-thing rather than two: an archive hands its recipient the group's whole signed
+thing rather than two: a chronicle hands its recipient the group's whole signed
 record, prose included, and does not make them able to *sign* anything. That is
 the sentence a member wants the first time they open a room they were added to
 late, and the first thing this will be reported as a bug for.
@@ -648,21 +648,21 @@ batch-signing note's did, so this section is the index rather than the work.
 Every claim below is asserted somewhere; what is here is which claim and where.
 
 **The whole thing, end to end** --
-[ArchiveApplyJvmTest](../composeApp/src/jvmTest/kotlin/press/mantra/compose/managers/ArchiveApplyJvmTest.kt),
+[ChronicleApplyJvmTest](../composeApp/src/jvmTest/kotlin/press/mantra/compose/managers/ChronicleApplyJvmTest.kt),
 over two real databases with the pages carried by hand. The sender's room is
-seeded through `ChatMessage.applyInnerEvent` itself, so what is archived is what
+seeded through `ChatMessage.applyInnerEvent` itself, so what is chronicled is what
 a member's device really holds rather than rows built to suit the test. The
 receiver holds no share, no `DkgSession`, no `FrostSigningSession` and no
 `GroupKeyState`, and ends with the sender's rows.
 
 Compared as `(id, author, signature)` per row rather than by count, and then
-asserted that every archived row is authored by the room and carries a signature.
+asserted that every chronicled row is authored by the room and carries a signature.
 Counting is not the claim: two databases can hold the same number of artifacts
 and disagree about all of them, and a rebuild that lost the group's signature --
 or re-authored a row as whoever sent it -- would pass a count and fail the only
 thing this is for. The artifact version is the one exception and has to be:
 nobody signs it, it is derived from the signed artifact on arrival, which is why
-it is not archived and why a chapter's foreign key survives anyway.
+it is not chronicled and why a chapter's foreign key survives anyway.
 
 **The negative one that matters** -- four ways to be a dishonest member in one
 page beside one honest dialect: the room's id as author with a made-up signature,
@@ -675,17 +675,17 @@ this does.
 **The replay that must not work** -- a genuine, still-verifying
 `GroupKeyStateEvent` in a hand-rolled page. It passes every signature check there
 is; the allowlist is the only thing that stops it, and the page has to be
-hand-rolled because `ArchiveEvent.build` refuses the kind, which is the outbound
+hand-rolled because `ChronicleEvent.build` refuses the kind, which is the outbound
 half of the same rule.
 
-**The `toXEvent` round trip per archived kind** --
-[ArchiveRoundTripTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/nostr/archive/ArchiveRoundTripTest.kt),
+**The `toXEvent` round trip per chronicled kind** --
+[ChronicleRoundTripTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/nostr/chronicle/ChronicleRoundTripTest.kt),
 against real FROST with no database. This is the one that earned its place: it
 found that `MantraArtifact.toArtifactEvent` had the alt tag in the wrong position
 *and* omitted the version metadata entirely, either of which produces payloads
 every receiver silently drops as forgeries. It also holds the negative -- a
 rebuild with the wrong version label fails as a forgery rather than as a mistake
--- and a guard that the case list and `ARCHIVABLE_KINDS` move together.
+-- and a guard that the case list and `CHRONICLABLE_KINDS` move together.
 
 **And three that were not in the first draft**, each written because a test
 passed for the wrong reason or a bound could not fire:
@@ -694,9 +694,9 @@ passed for the wrong reason or a bound could not fire:
   page-over-the-cap test passes while the count cap is unreachable behind the
   byte cap, which is how it was first written.
 - *Pages delivered backwards really did fail first.* Otherwise "out of order
-  converges" would pass on an archive that was never out of order, and the sweep
+  converges" would pass on a chronicle that was never out of order, and the sweep
   -- the only reason it converges -- would be untested.
-- *The page that completes an archive leaves nothing behind.* This is what caught
+- *The page that completes a chronicle leaves nothing behind.* This is what caught
   the sweep returning the sum of its passes rather than the settled one, which
   made `failed > 0` stop meaning "still missing".
 
@@ -707,18 +707,18 @@ passed for the wrong reason or a bound could not fire:
 **No code, and one constraint that is sharper than the first draft said.**
 
 The receiving half is safe to ship on its own, and phases 1-4 are exactly that:
-nothing sends an archive until Phase 5 asks for one. That is the half to have in
+nothing sends a chronicle until Phase 5 asks for one. That is the half to have in
 the field first.
 
 **Sending into a group with an old build is not free.** The first draft said an
 old build "files it as unsupported, exactly as it does today for anything it does
 not know", which is true and reads better than it lives. The unsupported row's
 content is `event.toJson()`, and it renders as an ordinary chat bubble -- so
-every member on an old build sees each archive page as a raw-JSON bubble of up to
+every member on an old build sees each chronicle page as a raw-JSON bubble of up to
 `MAX_PAGE_BYTES`, in a transcript, once per page.
 
 Nothing breaks and nothing is lost. But a group mid-upgrade gets a genuinely
-unpleasant transcript, and that is worth knowing before the first archive goes
+unpleasant transcript, and that is worth knowing before the first chronicle goes
 out rather than after. The rule:
 
 > Confirm every member is on a build that understands kind 30327 before any
@@ -730,7 +730,103 @@ The mitigation, if that ever proves unacceptable, is the one the appendix reject
 for other reasons: carrying pages as Marmot direct messages, where an old build
 sees a gift wrap it cannot open and renders *"sent a private message"* with no
 content. It buys graceful degradation and costs everything listed under
-[Carrying the archive as a Marmot direct message](#appendix--what-was-considered-and-rejected).
+[Carrying the chronicle as a Marmot direct message](#appendix--what-was-considered-and-rejected).
+
+---
+
+## Retiring the rebuild
+
+`assemble` reads `GroupSignedEvent` and rebuilds from `Mantra*` rows only what
+that table does not hold, which by now is work signed before the table existed.
+Everything on the rebuild side is marked `@Deprecated` so the compiler names it
+at every call site, and it comes out in one piece rather than a method at a time
+-- a half-removed rebuild is a rebuild that covers some kinds and silently drops
+others.
+
+### The one precondition
+
+**No install still holds work signed before schema v13.** Nothing in the app can
+check this, and no query answers it: a device that upgraded is indistinguishable
+from one that never had pre-v13 work, and the rows that need rebuilding are on
+*other people's* devices. It is a judgement about the installed base, not a
+condition to test for. What can be checked, on any given device, is that the
+rebuild is contributing nothing:
+
+```
+Chronicling <room>: N event(s) as the group signed them, M rebuilt from rows that predate the record
+```
+
+`ChronicleManager.signedEventsOf` logs that line only when `M > 0`. Silence across
+the fleet is the evidence; it is not proof.
+
+A member whose device still needs it and does not get it is not broken loudly.
+They keep their own rows and read the room normally. What they lose is the
+ability to *answer* a chronicle request with the older half of the group's work,
+so a newer member asks, is answered, and receives a chronicle that is quietly
+short. That is the failure mode to weigh -- it looks like success on both ends.
+
+### What goes
+
+| what | where |
+|---|---|
+| `rebuiltEventsOf` | [ChronicleManager.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/managers/ChronicleManager.kt) -- the tree walk, and the version-label recovery inside it |
+| the union in `signedEventsOf` | same file -- it collapses to the `GroupSignedEvent` read plus the `isChroniclable` filter, which **stays**: see below |
+| `MantraDialect.toDialectEvent` | [MantraDialect.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraDialect.kt) |
+| `MantraArtifact.toArtifactEvent` | [MantraArtifact.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraArtifact.kt) -- and with it the `versionLabel` parameter that exists only because the label is not on the row |
+| `MantraArtifactVersion.toArtifactVersionEvent` | [MantraArtifactVersion.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraArtifactVersion.kt) |
+| `MantraChapter.toChapterEvent` | [MantraChapter.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChapter.kt) |
+| `MantraChunk.toChunkEvent` | [MantraChunk.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChunk.kt) |
+| `MantraTranslationArtifactVersion.toTranslationArtifactVersionEvent` | [MantraTranslationArtifactVersion.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationArtifactVersion.kt) |
+| `MantraTranslationChapter.toTranslationChapterEvent` | [MantraTranslationChapter.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationChapter.kt) |
+| `MantraTranslationChunk.toTranslationChunkEvent` | [MantraTranslationChunk.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationChunk.kt) |
+| `ChronicleRoundTripTest`, all ten cases | [ChronicleRoundTripTest.kt](../composeApp/src/commonTest/kotlin/press/mantra/compose/nostr/chronicle/ChronicleRoundTripTest.kt) -- it exists to hold the rebuild up and covers nothing else |
+| the "Where the events come from" reasoning above | this file |
+
+**Two already-dead cousins to sweep at the same time**, neither of which is part
+of the rebuild and both of which will look like it to whoever does the removal:
+`MantraTranslation.toTranslationEvent` (nothing has ever called it -- 30311 is
+not chroniclable and nothing builds one) and
+`MantraTranslationChunkProposal.toTranslationChunkEvent` (on a model that is not
+even a `@Database` entity). See [dead-code.md](./dead-code.md) for the house
+style on writing those down rather than deleting them blind.
+
+**The tests that seed without recording go too**, or they go on proving a path
+that no longer exists. In `ChronicleAssemblyJvmTest` the `apply`-only seeding is
+the rebuild path and `recordEverythingApplied` is the real one; the cases named
+*work held both ways travels exactly once* and *an artifact the rebuild has to
+leave out still chronicles from the record* are about the union specifically and
+have no meaning without it. `ChronicleApplyJvmTest` seeds the sender the same way,
+so it needs the recording call added rather than removed -- it is testing
+delivery, not assembly, and would otherwise start asserting against an empty
+chronicle.
+
+### What only looks like it goes
+
+**The `isChroniclable` filter in `signedEventsOf` stays, and becomes the only
+thing standing.** It is not part of the rebuild; it is there *because* of the
+record. The rebuild could only ever produce document kinds, so nothing needed
+filtering while it was the source. The table holds every kind the group has
+signed, and every room signs a `GroupKeyStateEvent` as its first act -- so
+removing that filter along with the walk turns every room's chronicle into an
+`IllegalArgumentException` from `ChronicleEvent.build`. Two cases in
+`ChronicleAssemblyJvmTest` fail with exactly that if it is dropped, which is the
+guard against removing it by association.
+
+**The verify filter in `assemble` stays.** With the rebuild gone it is checking
+events that were verified before they were recorded, so it can never fail in
+practice -- which is an argument for keeping it, not for dropping it. It is one
+signature check standing between a corrupted row and a payload every receiver
+reads as a forgery, and "cannot happen" is the state it is meant to preserve.
+
+**`Mantra*.signature` and `Mantra*.publicKey` are not obviously removable, and
+are a separate decision.** They were what made a row rebuildable, but they are
+also what `SignedArtifactTest`, `SignedChapterTest`, `SignedGroupKeyStateTest`
+and `ChronicleApplyJvmTest.rowFingerprints` assert on, and
+`MantraTranslationContributor` builds a contributor list out of one. Since v13,
+`groupSignedEventId` says whether the group signed a row and points at the proof,
+so the columns are arguably redundant -- but that is a schema migration across
+twelve tables with its own tests to rewrite, and it should not ride along with
+this.
 
 ---
 
@@ -738,7 +834,7 @@ content. It buys graceful degradation and costs everything listed under
 
 Each of these will be reported as a bug. None of them is.
 
-**A new member still cannot sign, and an archive cannot change that.** This is
+**A new member still cannot sign, and a chronicle cannot change that.** This is
 the big one. `proposeSigningBatch` resolves a `DkgSession` with a non-null
 `secretShare` and then `signerIdOf`, or throws *"This device is not a participant
 in ceremony ..."*. `GroupKeyState` states it plainly: *"A member can be in the
@@ -747,7 +843,7 @@ reinstalled -- and the state is still worth keeping: it says what the room signs
 with, which is what tells them they cannot."*
 
 Re-running the ceremony is not an escape either: *"a group that re-runs its
-ceremony derives a different room rather than re-keying this one."* A post-archive
+ceremony derives a different room rather than re-keying this one."* A post-chronicle
 member can read everything and can still submit what needs no quorum --
 `saveTranslation` and `addArtifactVersion` go through `MantraDao.submitToGroup`
 with no share -- but cannot add a dialect, artifact, chapter or translation
@@ -758,7 +854,7 @@ share to a new participant without changing the public key it derives from.
 It is a real protocol, it is a great deal more work than this document, and it is
 the thing to build after this one.
 
-**An archive can omit.** Verification stops forgery and does nothing about
+**A chronicle can omit.** Verification stops forgery and does nothing about
 silence: a sender can leave things out, and the receiver has no way to know. Any
 member can send one and they merge idempotently, so asking a second member is the
 practical answer, and a group that suspects one member is not the threat model
@@ -768,35 +864,35 @@ general answer for the reason
 [frost-batch-signing.md](./frost-batch-signing.md#appendix--what-was-considered-and-rejected)
 gives for manifests. Worth revisiting once anything depends on completeness.
 
-**Nothing unsigned is archived, and that is the whole list.** For a while it read
+**Nothing unsigned is chronicled, and that is the whole list.** For a while it read
 larger: the translated text was its author's rumor and an artifact's first
 version was derived rather than signed, so neither could travel and a new member
 got the structure and none of the prose. Both are signed now. What is left out is
 `TranslationEvent`, which nothing builds, and the contributor lists, which
 nothing applies -- so the rule and the list have stopped diverging, and the thing
 to watch is that they do not drift apart again. The guard is
-`ArchiveRoundTripTest`, which fails when a kind is added to the allowlist without
+`ChronicleRoundTripTest`, which fails when a kind is added to the allowlist without
 a case proving it can be rebuilt.
 
 **The chat is gone and stays gone.** By design, restated here because it is the
-first thing a new member will notice and the archive is what makes them expect
+first thing a new member will notice and the chronicle is what makes them expect
 otherwise.
 
-**A room with no shared key gets an empty archive.** An ordinary Marmot room's id
+**A room with no shared key gets an empty chronicle.** An ordinary Marmot room's id
 is `RandomInstance.bytes(32)`, not a derived key, so nothing can be signed by it
-and there is nothing to archive. Correct, and worth a log line rather than a
+and there is nothing to chronicle. Correct, and worth a log line rather than a
 silent empty result.
 
-**An oversized single event cannot be archived.** A chapter whose text exceeds
+**An oversized single event cannot be chronicled.** A chapter whose text exceeds
 `MAX_PAGE_BYTES` on its own is skipped with a log. Splitting a page mid-event
 means a reassembly protocol, and that is not worth building before something hits
 the limit.
 
-**Nothing expires.** An archive grows with the group forever, and a member
+**Nothing expires.** A chronicle grows with the group forever, and a member
 joining a five-year-old room downloads five years. A cursor -- *everything since
 event X* -- is the obvious next thing and is deliberately not in v1, because
 "since" is a partial order over a dependency graph, not a timestamp, and getting
-it wrong means an archive that references rows the receiver does not have.
+it wrong means a chronicle that references rows the receiver does not have.
 
 ---
 
@@ -817,10 +913,10 @@ id is in the `h` tag of every kind:445 the group has ever sent. A separate,
 deliberate publication step for work a group *chooses* to publish is a good
 feature; making it the backfill mechanism is a leak.
 
-**One `SubmissionEvent` per archived event.** Covered in Phase 2. The envelope
+**One `SubmissionEvent` per chronicled event.** Covered in Phase 2. The envelope
 fits and the meaning does not.
 
-**Carrying the archive as a Marmot direct message.** The natural reading of "send
+**Carrying the chronicle as a Marmot direct message.** The natural reading of "send
 it to the new member" -- an NIP-59 wrap inside the group, per
 [marmot-direct-messages.md](./marmot-direct-messages.md). Rejected: it encrypts
 the group's own history to one member, which protects nothing; it costs a *"sent
@@ -829,7 +925,7 @@ are not forward secret, so it would be the weakest-protected copy of the group's
 record on any device holding it. The `p` tag as a hint gets the addressing
 without any of that.
 
-**A dedicated table for unapplied archive payloads.** Phase 4's sweep reads
+**A dedicated table for unapplied chronicle payloads.** Phase 4's sweep reads
 `MarmotInnerEvent`, which already holds every page. A second copy is a second
 thing that can disagree with the first.
 

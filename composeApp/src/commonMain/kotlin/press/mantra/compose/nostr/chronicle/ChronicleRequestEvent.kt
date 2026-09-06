@@ -1,4 +1,4 @@
-package press.mantra.compose.nostr.archive
+package press.mantra.compose.nostr.chronicle
 
 import androidx.compose.runtime.Immutable
 import com.vitorpamplona.quartz.nip01Core.core.Event
@@ -16,7 +16,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
  * "I hold none of this group's work. Send it."
  *
  * The reliable half of handing a new member the group's history, and the reason
- * [ArchiveEvent] is not simply pushed at them when they are invited.
+ * [ChronicleEvent] is not simply pushed at them when they are invited.
  *
  * A push from the inviter is an application message in the epoch the add
  * created. If it reaches the invitee before their Welcome does -- different
@@ -35,7 +35,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
  *
  *  - a reinstall, whose rows are gone and whose invite is long past;
  *  - a second device, which was never invited at all;
- *  - an archive that was sent and lost.
+ *  - a chronicle that was sent and lost.
  *
  * Carries nothing. The room is the envelope, the asker is the MLS sender, and
  * what they are missing is "all of it" -- a cursor would have to be a position
@@ -43,7 +43,7 @@ import com.vitorpamplona.quartz.utils.TimeUtils
  * the first version.
  */
 @Immutable
-class ArchiveRequestEvent(
+class ChronicleRequestEvent(
     id: HexKey,
     pubKey: HexKey,
     createdAt: Long,
@@ -53,15 +53,15 @@ class ArchiveRequestEvent(
 ) : Event(id, pubKey, createdAt, KIND, tags, content, sig) {
 
     companion object {
-        /** Beside [ArchiveEvent] at 30327 -- see the note on its own kind. */
+        /** Beside [ChronicleEvent] at 30327 -- see the note on its own kind. */
         const val KIND: Kind = 30328
 
-        const val ALT_DESCRIPTION = "Group archive request"
+        const val ALT_DESCRIPTION = "Group chronicle request"
 
         fun build(
             createdAt: Long = TimeUtils.now(),
-            initializer: TagArrayBuilder<ArchiveRequestEvent>.() -> Unit = {},
-        ): EventTemplate<ArchiveRequestEvent> =
+            initializer: TagArrayBuilder<ChronicleRequestEvent>.() -> Unit = {},
+        ): EventTemplate<ChronicleRequestEvent> =
             eventTemplate(KIND, "", createdAt) {
                 alt(ALT_DESCRIPTION)
                 initializer()

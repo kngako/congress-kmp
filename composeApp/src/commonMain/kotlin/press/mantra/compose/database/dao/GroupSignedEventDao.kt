@@ -42,9 +42,9 @@ abstract class GroupSignedEventDao {
      * Files a signed event, keeping what is already known about it.
      *
      * The same event reaches a device more than once by design: it is applied
-     * when the session that made it completes, and again from any archive page
+     * when the session that made it completes, and again from any chronicle page
      * carrying it. A plain upsert would let the second arrival overwrite the
-     * first, and the second arrival is the poorer one -- an archive knows no
+     * first, and the second arrival is the poorer one -- a chronicle knows no
      * session and, on a member who joined after the ceremony, no derivation
      * path. So the incoming row fills gaps and never empties them.
      *

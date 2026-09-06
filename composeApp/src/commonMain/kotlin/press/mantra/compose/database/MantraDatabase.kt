@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 13,
+    version = 14,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -232,12 +232,13 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // a room that could only propose one thing at a time cannot have written
         // two sessions' lines into the same stretch of transcript.
         AutoMigration(from = 10, to = 11),
-        // v12 adds the nullable ChatRoom.archiveRequestedAt, which stops a device
-        // with no signed work in a room asking the group for its history on every
-        // launch while an answer is in flight. Rooms written before it read back
-        // null, meaning "never asked" -- true of all of them, and harmless: the
-        // request only goes out for a room that holds no signed work, and a room
-        // that holds some will not ask.
+        // v12 adds the nullable ChatRoom.archiveRequestedAt -- renamed to
+        // chronicleRequestedAt in v14 -- which stops a device with no signed work
+        // in a room asking the group for its history on every launch while an
+        // answer is in flight. Rooms written before it read back null, meaning
+        // "never asked" -- true of all of them, and harmless: the request only
+        // goes out for a room that holds no signed work, and a room that holds
+        // some will not ask.
         AutoMigration(from = 11, to = 12),
         // v13 adds the GroupSignedEvent table and the nullable
         // `groupSignedEventId` on every row a signed event turns into. A new
@@ -246,7 +247,14 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // hold the event behind this row" -- true of all of them, since nothing
         // kept it. They are not backfilled: the events are gone, and inventing
         // an id for one would point a row at a signature nobody can produce.
-        AutoMigration(from = 12, to = 13)
+        AutoMigration(from = 12, to = 13),
+        // v14 changes one column name and three stored strings, all of which say
+        // "archive" about the group's signed record. The word was wanted back for
+        // the ordinary thing a user does to a chat, and a column called
+        // `archiveRequestedAt` sitting on ChatRoom is exactly where the two
+        // meanings would have met. Room can rename a column and cannot rewrite the
+        // rows in the same breath, so this is a manual migration passed to the
+        // builder rather than an entry here. See MIGRATION_13_14.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

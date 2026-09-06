@@ -83,16 +83,16 @@ data class ChatRoom(
      * When this device last asked the group for its signed history, or null if
      * it never has or the answer has since arrived.
      *
-     * A device with no signed work in a room asks for an archive -- see
-     * `ArchiveManager.requestIfEmpty` and docs/member-archive.md. This is the
+     * A device with no signed work in a room asks for a chronicle -- see
+     * `ChronicleManager.requestIfEmpty` and docs/member-chronicle.md. This is the
      * only thing stopping it asking again on every launch while an answer is in
-     * flight, and it is cleared as soon as an archive applies anything, so a
+     * flight, and it is cleared as soon as a chronicle applies anything, so a
      * partial answer is followed by another request rather than by silence.
      *
      * Not a claim that anybody replied. Nothing acknowledges a request, and the
      * room having work in it is the only evidence that ever arrives.
      */
-    val archiveRequestedAt: Instant? = null,
+    val chronicleRequestedAt: Instant? = null,
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,

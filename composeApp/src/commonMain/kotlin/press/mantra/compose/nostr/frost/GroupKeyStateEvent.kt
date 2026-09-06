@@ -144,7 +144,7 @@ object GroupKeyStateEvent {
      * That is what makes a group's signature checkable by a member holding
      * nothing else. No `GroupKeyState` row, no threshold key, no derivation path,
      * no ceremony -- which is exactly the position a member added after the
-     * ceremony is in, and the reason `docs/member-archive.md` can hand them
+     * ceremony is in, and the reason `docs/member-chronicle.md` can hand them
      * history without asking them to trust whoever sent it.
      *
      * Everything is caught, because every input is off the wire: a pubkey that

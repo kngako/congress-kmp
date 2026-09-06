@@ -32,7 +32,7 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
  * as itself -- the outbound pipeline re-authors rumors as their sender and would
  * strip the signature off -- so it is not a `NostrEvent`, and it is not a
  * `MarmotInnerEvent` either, since no member sent it. Every device derives it
- * from a signing session it took part in, or is handed it in an archive. The
+ * from a signing session it took part in, or is handed it in a chronicle. The
  * columns are `NostrEvent`'s so that what is stored is an event rather than a
  * summary of one, which is what makes [verifies] answerable from the row alone.
  *
@@ -96,9 +96,9 @@ data class GroupSignedEvent(
      * The session that produced the signature, when this device ran it.
      *
      * Not a foreign key, and null on a device that was handed the event rather
-     * than signing it -- an archive recipient holds the group's work without
+     * than signing it -- a chronicle recipient holds the group's work without
      * ever having held a session for it, which is the whole point of
-     * `docs/member-archive.md`. A session is also allowed to be swept away
+     * `docs/member-chronicle.md`. A session is also allowed to be swept away
      * without taking the group's signed work with it.
      */
     val frostSigningSessionId: String? = null,
@@ -139,7 +139,7 @@ data class GroupSignedEvent(
      * documents -- signs as the bare threshold key rather than as its own id, so
      * a perfectly good event in such a room fails here and cannot be made to
      * pass: the key it would have to be checked against is not on the row and
-     * cannot be walked back to from one. Those rooms get an empty archive for
+     * cannot be walked back to from one. Those rooms get an empty chronicle for
      * the same reason, which is a limit of the derivation rather than of this
      * check.
      */
@@ -150,7 +150,7 @@ data class GroupSignedEvent(
          * The row for a signed [event], as the group made it.
          *
          * Not verified here. Both callers have already checked the signature --
-         * `FrostSigningManager` before it applies a batch, `ArchiveManager`
+         * `FrostSigningManager` before it applies a batch, `ChronicleManager`
          * before it applies a payload -- and a check that runs twice tends to
          * become a check nobody performs. [verifies] is for readers.
          */
