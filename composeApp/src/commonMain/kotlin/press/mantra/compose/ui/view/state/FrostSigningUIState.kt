@@ -1,6 +1,7 @@
 package press.mantra.compose.ui.view.state
 
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
@@ -10,6 +11,12 @@ sealed interface FrostSigningUIState {
 
         /** Null on the first emission, before the session has been collected. */
         val session: FrostSigningSession? = null,
+
+        /**
+         * The events the session signs, in the order its proposal fixed. Empty
+         * on the first emission, and for a session whose proposal has not landed.
+         */
+        val items: List<FrostSigningItem> = emptyList(),
 
         /** Who has offered a nonce, so the screen can name who it is waiting on. */
         val offeredNonce: Set<HexKey> = emptySet(),

@@ -72,6 +72,12 @@ object GroupKeyStateManager {
      * [key] is handed to the signing session rather than looked up from the
      * room, because the room has no key state yet and looking one up is exactly
      * what this session exists to make possible.
+     *
+     * A session of one, always, and never batched with anything else. A batch is
+     * all-or-nothing, so it is only as available as its worst item -- and this is
+     * the statement every other session in the room is opened against. Bundling
+     * it with a dialect would make the room's ability to sign at all depend on
+     * that dialect's aggregation succeeding.
      */
     suspend fun propose(
         database: MantraDatabase,

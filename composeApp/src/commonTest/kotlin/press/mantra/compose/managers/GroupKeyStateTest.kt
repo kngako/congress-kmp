@@ -19,7 +19,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
-import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
@@ -281,21 +281,14 @@ class GroupKeyStateTest {
         val unsigned = unsignedKeyState(content, tags, createdAt, author)
 
         return FrostSigningManager.signedEvent(
-            session = sessionOver(unsigned),
+            item = itemOver(unsigned),
             signature = groupSignature(signer, unsigned.id)
         )
     }
 
-    private fun sessionOver(unsignedEvent: Event) = FrostSigningSession(
-        id = "s".repeat(64),
-        chatRoomId = chatRoomId,
-        coordinatorPublicKey = "c00rd1na70r",
-        userPublicKey = "c00rd1na70r",
-        dkgSessionId = "ceremony-1",
-        threshold = threshold,
-        participantCount = participants,
-        signerId = 0,
-        derivationPath = SharedKeyDerivation.formatPath(path),
+    private fun itemOver(unsignedEvent: Event) = FrostSigningItem(
+        sessionId = "s".repeat(64),
+        itemIndex = 0,
         unsignedEventJson = unsignedEvent.toJson(),
         eventId = unsignedEvent.id,
         nonceRandom = "f".repeat(64)

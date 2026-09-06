@@ -20,6 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.extensions.toHex
@@ -160,6 +161,105 @@ class FrostSigningRoundTest {
     }
 
     @Test
+    fun `one signer set signs a batch of three, and every signature verifies`() {
+        // The manager's batch, with the database taken out of the way: one signer
+        // set and one tweak cache shared, and a nonce, a Session and a signature
+        // per event. If any of that is wired up wrongly the aggregate simply
+        // fails to verify, which is the whole reason this file exists.
+        val ids = listOf("first", "second", "third").map(::eventId)
+        val messages = ids.map { ByteVector(it.hexToByteArray()) }
+
+        val signerIds = listOf(0, 1)
+
+        // A seed per signer per item. The manager mints these independently; here
+        // they only have to differ, which is the property under test.
+        val nonces = signerIds.map { signerId ->
+            messages.mapIndexed { index, message ->
+                nonceOf(signerId, message, "f".repeat(62) + "$index${signerId + 1}")
+            }
+        }
+
+        val signatures = messages.mapIndexed { index, message ->
+            val session = sessionFor(signerIds, nonces.map { it[index].second }, message)
+
+            val partials = signerIds.mapIndexed { position, signerId ->
+                session.sign(
+                    nonces[position][index].first,
+                    keyMaterial.secretShares[signerId],
+                    signerId.toUInt()
+                ).right!!
+            }
+
+            session.aggregateSigs(partials).right!!
+        }
+
+        ids.forEachIndexed { index, id ->
+            assertTrue(
+                Nip01Crypto.verify(
+                    signature = signatures[index].toByteArray(),
+                    hash = id.hexToByteArray(),
+                    pubKey = groupPubKey.hexToByteArray()
+                ),
+                "item $index of the batch must verify against the room's own key"
+            )
+        }
+    }
+
+    @Test
+    fun `a batch signature does not carry to another item of the same batch`() {
+        // What keeps a batch k independent signatures rather than one loose one.
+        // Signing three events in lockstep must not make any of them
+        // interchangeable.
+        val ids = listOf("first", "second").map(::eventId)
+        val messages = ids.map { ByteVector(it.hexToByteArray()) }
+        val signerIds = listOf(0, 1)
+
+        val nonces = signerIds.map { signerId ->
+            messages.mapIndexed { index, message ->
+                nonceOf(signerId, message, "9".repeat(62) + "$index${signerId + 1}")
+            }
+        }
+
+        val session = sessionFor(signerIds, nonces.map { it[0].second }, messages[0])
+        val partials = signerIds.mapIndexed { position, signerId ->
+            session.sign(
+                nonces[position][0].first,
+                keyMaterial.secretShares[signerId],
+                signerId.toUInt()
+            ).right!!
+        }
+        val first = session.aggregateSigs(partials).right!!
+
+        assertFalse(
+            Nip01Crypto.verify(
+                signature = first.toByteArray(),
+                hash = ids[1].hexToByteArray(),
+                pubKey = groupPubKey.hexToByteArray()
+            ),
+            "item 0's signature must not verify against item 1"
+        )
+    }
+
+    @Test
+    fun `two items of a batch never share a nonce`() {
+        // The one mistake in this whole design that loses the key, asserted at the
+        // level where it would be made. `SecretNonce.generate` mixes the message
+        // in, so two items of a batch cannot collide even given the same seed --
+        // but the manager gives them distinct seeds as well, and both halves are
+        // checked here because either alone is enough to be relied on by accident.
+        val messages = listOf("first", "second").map { ByteVector(eventId(it).hexToByteArray()) }
+
+        val sameSeed = messages.map { nonceOf(0, it, "7".repeat(64)).second.data.toHex() }
+        assertEquals(2, sameSeed.toSet().size, "one seed under two messages must give two nonces")
+
+        val distinctSeeds = messages.mapIndexed { index, message ->
+            nonceOf(0, message, "8".repeat(63) + "$index").second.data.toHex()
+        }
+        assertEquals(2, distinctSeeds.toSet().size)
+        assertEquals(emptySet(), sameSeed.toSet().intersect(distinctSeeds.toSet()))
+    }
+
+    @Test
     fun `a signature over one event does not verify against another`() {
         val id = eventId("the group agrees")
         val message = ByteVector(id.hexToByteArray())
@@ -227,20 +327,30 @@ class FrostSigningSessionTest {
         threshold = 2,
         participantCount = 3,
         signerId = signerId,
-        unsignedEventJson = "{}",
-        eventId = "e".repeat(64),
-        nonceRandom = "f".repeat(64),
         signerIds = signerIds
+    )
+
+    /** The one event such a session signs, signed or not. */
+    private fun items(signature: String? = null) = listOf(
+        FrostSigningItem(
+            sessionId = "s".repeat(64),
+            itemIndex = 0,
+            unsignedEventJson = "{}",
+            eventId = "e".repeat(64),
+            nonceRandom = "f".repeat(64),
+            signature = signature
+        )
     )
 
     @Test
     fun `a session waits on its owner until they answer`() {
         val open = session(signerId = 2, signerIds = null)
 
-        assertTrue(FrostSigningManager.isAwaitingApproval(open))
+        assertTrue(FrostSigningManager.isAwaitingApproval(open, items()))
         assertFalse(
             FrostSigningManager.isAwaitingApproval(
-                open.copy(signApprovedAt = Instant.fromEpochSeconds(1))
+                open.copy(signApprovedAt = Instant.fromEpochSeconds(1)),
+                items()
             )
         )
     }
@@ -249,8 +359,12 @@ class FrostSigningSessionTest {
     fun `a session that has settled asks its owner nothing`() {
         val open = session(signerId = 2, signerIds = null)
 
-        assertFalse(FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.COMPLETE)))
-        assertFalse(FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.FAILED)))
+        assertFalse(
+            FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.COMPLETE), items())
+        )
+        assertFalse(
+            FrostSigningManager.isAwaitingApproval(open.copy(stage = FrostSigningStage.FAILED), items())
+        )
     }
 
     @Test
@@ -261,9 +375,10 @@ class FrostSigningSessionTest {
         // decision in that window offers two bad answers: a nonce nobody is
         // waiting for, or a refusal that abandons a signature that exists.
         val signedWithoutThem = session(signerId = 2, signerIds = "0,1")
-            .copy(signature = "a".repeat(128))
 
-        assertFalse(FrostSigningManager.isAwaitingApproval(signedWithoutThem))
+        assertFalse(
+            FrostSigningManager.isAwaitingApproval(signedWithoutThem, items("a".repeat(128)))
+        )
     }
 
     @Test
@@ -415,7 +530,7 @@ class FrostSigningCompletionTest {
      * never named them. Every column the completion path reads is here; the ones
      * it must not need are deliberately left null.
      */
-    private fun leftOutMemberSession(signature: String? = null) = FrostSigningSession(
+    private fun leftOutMemberSession() = FrostSigningSession(
         id = "s".repeat(64),
         chatRoomId = "room",
         coordinatorPublicKey = "c".repeat(64),
@@ -425,24 +540,30 @@ class FrostSigningCompletionTest {
         participantCount = 3,
         signerId = 2,
         derivationPath = SharedKeyDerivation.formatPath(),
+        signerIds = null,
+        signApprovedAt = null
+    )
+
+    /** The event that session signs: everything completing it needs, and nothing more. */
+    private fun leftOutMemberItem(signature: String? = null) = FrostSigningItem(
+        sessionId = "s".repeat(64),
+        itemIndex = 0,
         unsignedEventJson = unsignedEvent.toJson(),
         eventId = unsignedEvent.id,
         nonceRandom = "f".repeat(64),
         aggregatedNonce = null,
-        signerIds = null,
-        signature = signature,
-        signApprovedAt = null
+        signature = signature
     )
 
     @Test
     fun `a member who never took part can still check what the group signed`() {
-        val session = leftOutMemberSession(signature)
-        val signed = FrostSigningManager.signedEvent(session)!!
+        val item = leftOutMemberItem(signature)
+        val signed = FrostSigningManager.signedEvent(item)!!
 
         assertTrue(
             Nip01Crypto.verify(
                 signature = signed.sig.hexToByteArray(),
-                hash = session.eventId.hexToByteArray(),
+                hash = item.eventId.hexToByteArray(),
                 pubKey = signed.pubKey.hexToByteArray()
             ),
             "completing must need only the row: the event, its id and the signature"
@@ -454,7 +575,7 @@ class FrostSigningCompletionTest {
         // Not rebuilt and not rehashed: the id a session is pinned to is the id
         // the signature is over, so anything that changed here would produce an
         // event whose signature verifies against nothing.
-        val signed = FrostSigningManager.signedEvent(leftOutMemberSession(signature))!!
+        val signed = FrostSigningManager.signedEvent(leftOutMemberItem(signature))!!
 
         assertEquals(unsignedEvent.id, signed.id)
         assertEquals(unsignedEvent.pubKey, signed.pubKey)
@@ -466,15 +587,22 @@ class FrostSigningCompletionTest {
 
     @Test
     fun `there is no finished event until the signature arrives`() {
-        assertEquals(null, FrostSigningManager.signedEvent(leftOutMemberSession()))
+        assertEquals(null, FrostSigningManager.signedEvent(leftOutMemberItem()))
     }
 
     @Test
     fun `the arrived signature is what stops the session asking`() {
         // The pair that matters to the screen and the transcript: the same row,
         // before and after the group finished without this member.
-        assertTrue(FrostSigningManager.isAwaitingApproval(leftOutMemberSession()))
-        assertFalse(FrostSigningManager.isAwaitingApproval(leftOutMemberSession(signature)))
+        assertTrue(
+            FrostSigningManager.isAwaitingApproval(leftOutMemberSession(), listOf(leftOutMemberItem()))
+        )
+        assertFalse(
+            FrostSigningManager.isAwaitingApproval(
+                leftOutMemberSession(),
+                listOf(leftOutMemberItem(signature))
+            )
+        )
     }
 
     @Test
@@ -482,7 +610,7 @@ class FrostSigningCompletionTest {
         // What the check is for. A coordinator passing off something else must not
         // get it applied and announced as the group's, and the row is all there is
         // to catch it with.
-        val other = leftOutMemberSession(signature).copy(
+        val other = leftOutMemberItem(signature).copy(
             eventId = EventHasher.hashId(
                 pubKey = groupPubKey,
                 createdAt = 1_700_000_000L,

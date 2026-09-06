@@ -21,22 +21,40 @@ import press.mantra.compose.managers.SharedKeyDerivation
  * convenient here, it is forced -- `fr.acinq.bitcoin.crypto.frost.SecretNonce`
  * cannot be serialised and refuses to be used twice, by design.
  *
- * ### The nonce, and why one session means one message
+ * ### One session, several events
  *
- * [nonceRandom] is secret, and regenerating this device's nonce from it is safe
- * for exactly one reason: a session signs one message and can never be made to
- * sign another. `SecretNonce.generate` mixes the message in, so the same
- * randomness under a different message would be a different nonce -- but the
- * same randomness under the same message with two *different* aggregated nonces
- * would produce two partial signatures over one secret nonce, which is how a
- * secret share is extracted.
+ * A session signs a batch of one or more events, held as [FrostSigningItem]
+ * rows. What lives here is what the whole batch shares, and the split is not a
+ * matter of taste: an item's nonce, message and signature are the terms of
+ * `s = k + e·x` with `e = H(R‖P‖m)`, so sharing any of them across two messages
+ * is how a secret share is extracted. Everything on this row is outside that
+ * equation.
+ *
+ * | shared, and so here | per item, and so on [FrostSigningItem] |
+ * |---|---|
+ * | ceremony, threshold, participant count | the unsigned event and its id |
+ * | [signerIds] and the signer set | nonce seed, and the nonce from it |
+ * | [derivationPath] and its tweak cache | aggregated nonce |
+ * | [signApprovedAt] -- one decision | the signature |
+ *
+ * ### The nonce, and why one item means one message
+ *
+ * [FrostSigningItem.nonceRandom] is secret, and regenerating this device's nonce
+ * from it is safe for exactly one reason: an item signs one message and can
+ * never be made to sign another. `SecretNonce.generate` mixes the message in, so
+ * the same randomness under a different message would be a different nonce --
+ * but the same randomness under the same message with two *different* aggregated
+ * nonces would produce two partial signatures over one secret nonce, which is
+ * how a secret share is extracted.
  *
  * Two rules keep that impossible, and both are load-bearing:
  *
- *  - [eventId] is written when the session is created and a proposal that
- *    disagrees with it is rejected rather than applied.
- *  - [aggregatedNonce] and [signerIds] are written once. A second, different
- *    signer set for the same session is ignored, not honoured.
+ *  - [FrostSigningItem.eventId] is written when the session is created, and a
+ *    proposal that disagrees with the batch it already holds is rejected rather
+ *    than applied.
+ *  - [FrostSigningItem.aggregatedNonce] and [signerIds] are written once, and
+ *    written together. A second, different signer set for the same session is
+ *    ignored, not honoured.
  */
 @Entity(
     foreignKeys = [
@@ -92,37 +110,15 @@ data class FrostSigningSession(
      * it is running in. Null is the honest answer for a room that is not derived
      * from the key at all, and is what sessions predating this column read back
      * as -- both of which signed as the threshold key itself.
+     *
+     * Shared by the whole batch: every item of a session signs as the same room.
      */
     val derivationPath: String? = null,
 
     val stage: FrostSigningStage = FrostSigningStage.COLLECTING_NONCES,
 
-    /**
-     * The unsigned event, as JSON. Kept whole so a member can be shown what
-     * they are being asked to sign rather than a hash of it.
-     */
-    val unsignedEventJson: String,
-
-    /**
-     * The event id, which is the 32 bytes actually signed.
-     *
-     * Recomputed from the event's own fields on arrival, never taken from the
-     * proposal. It pins the session to one message -- see the class note on why
-     * that is what makes reusing [nonceRandom] safe.
-     */
-    val eventId: HexKey,
-
-    /** Secret. 32 bytes of fresh randomness, the seed for this device's nonce. */
-    val nonceRandom: HexKey,
-
-    /** The coordinator's `AggregatedNonce` once it arrives, hex. Written once. */
-    val aggregatedNonce: HexKey? = null,
-
     /** The chosen signers' FROST ids in aggregation order, comma separated. Written once. */
     val signerIds: String? = null,
-
-    /** Result: the finished 64-byte BIP-340 signature over [eventId], hex. */
-    val signature: HexKey? = null,
 
     val failureReason: String? = null,
 
@@ -131,10 +127,12 @@ data class FrostSigningSession(
      * session does on their behalf. Null until they do, and nothing of theirs
      * goes out before it is set.
      *
-     * One gate rather than the DKG's three. What a signer is consenting to is
-     * the event, and the event is fixed before they are asked: the second round
-     * puts no new question to them, so asking again would be asking the same
-     * question twice about a decision already made.
+     * One gate rather than the DKG's three, and one gate for the whole batch
+     * rather than one per item. What a signer is consenting to is the events,
+     * and the events are fixed before they are asked: the second round puts no
+     * new question to them, so asking again would be asking the same question
+     * twice about a decision already made. That holds for a batch only as long
+     * as the member can actually see every event in it before answering.
      */
     val signApprovedAt: Instant? = null,
 

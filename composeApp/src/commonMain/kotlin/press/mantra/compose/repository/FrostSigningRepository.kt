@@ -3,9 +3,11 @@ package press.mantra.compose.repository
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
@@ -23,6 +25,17 @@ interface FrostSigningRepository {
     fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>>
 
     fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>>
+
+    /**
+     * The events a session signs, in the order its proposal fixed.
+     *
+     * Separate from the session because a session signs a batch, and what
+     * separates one event of it from another is forced by FROST rather than
+     * chosen — see [FrostSigningItem].
+     */
+    fun observeItems(sessionId: String): Flow<List<FrostSigningItem>>
+
+    suspend fun getItems(sessionId: String): List<FrostSigningItem>
 
     suspend fun getSessionById(sessionId: String): FrostSigningSession?
 
@@ -52,14 +65,41 @@ interface FrostSigningRepository {
         content: String
     ): FrostSigningSession?
 
+    /**
+     * Opens one session over several events, so a group answers once instead of
+     * once per event.
+     *
+     * Four group events and one approval whatever the size, but k independent
+     * FROST instances underneath -- there is no such thing as one signature over
+     * k messages, and no way to share a nonce between two of them. See
+     * [FrostSigningItem].
+     *
+     * Two things a caller has to decide before reaching for this.
+     *
+     * **A batch is only as available as its worst item.** It is all-or-nothing:
+     * if any event cannot be aggregated the session fails and none of them are
+     * applied. Events that do not belong together should not travel together.
+     *
+     * **A retry is a new batch, never this one again.** Its items' nonce seeds
+     * have already been published against an aggregate, and reusing one would
+     * produce two partial signatures over a single secret nonce -- which is how
+     * a share is extracted. Propose afresh; the manager mints new seeds by
+     * construction.
+     */
+    suspend fun proposeSigningBatch(
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        events: List<EventTemplate<*>>
+    ): FrostSigningSession?
+
     /** Agrees to sign, letting the session publish this device's part and run on. */
     suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String)
 
     /** Refuses, and says so, since a t-of-n group can proceed without this member. */
     suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String)
 
-    /** The finished event, or null while the session is still running. */
-    fun signedEvent(session: FrostSigningSession): Event?
+    /** The finished events, or empty while any of them is still running. */
+    fun signedEvents(items: List<FrostSigningItem>): List<Event>
 
     companion object {
         val NO_OP_FROST_SIGNING_REPOSITORY: FrostSigningRepository = object : FrostSigningRepository {
@@ -70,6 +110,11 @@ interface FrostSigningRepository {
 
             override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =
                 flowOf(emptyList())
+
+            override fun observeItems(sessionId: String): Flow<List<FrostSigningItem>> =
+                flowOf(emptyList())
+
+            override suspend fun getItems(sessionId: String): List<FrostSigningItem> = emptyList()
 
             override suspend fun getSessionById(sessionId: String): FrostSigningSession? = null
 
@@ -85,11 +130,17 @@ interface FrostSigningRepository {
                 content: String
             ): FrostSigningSession? = null
 
+            override suspend fun proposeSigningBatch(
+                localChatRoom: LocalChatRoom,
+                userPublicKey: HexKey,
+                events: List<EventTemplate<*>>
+            ): FrostSigningSession? = null
+
             override suspend fun approve(localChatRoom: LocalChatRoom, sessionId: String) = Unit
 
             override suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String) = Unit
 
-            override fun signedEvent(session: FrostSigningSession): Event? = null
+            override fun signedEvents(items: List<FrostSigningItem>): List<Event> = emptyList()
         }
     }
 }
