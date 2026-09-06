@@ -129,9 +129,19 @@ data class GroupSignedEvent(
      *
      * Everything needed is on the row, which is the property worth having: the
      * author has to be the room, [id] has to be the hash of the fields sitting
-     * next to it, and [signature] has to verify. A row that fails is a row whose
-     * columns have drifted from the event they came from -- there is no
-     * ceremony, key state or derivation path to consult first.
+     * next to it, and [signature] has to verify -- no ceremony, key state or
+     * derivation path to consult first.
+     *
+     * **False does not always mean the row is corrupt.** The usual reading is
+     * that its columns have drifted from the event they came from, and that is
+     * the case worth acting on. But a room that was never derived from its
+     * group's key -- [derivationPath] null, the legacy shape `signingPath`
+     * documents -- signs as the bare threshold key rather than as its own id, so
+     * a perfectly good event in such a room fails here and cannot be made to
+     * pass: the key it would have to be checked against is not on the row and
+     * cannot be walked back to from one. Those rooms get an empty archive for
+     * the same reason, which is a limit of the derivation rather than of this
+     * check.
      */
     fun verifies(): Boolean = GroupKeyStateEvent.isSignedByRoom(toEvent(), chatRoomId)
 

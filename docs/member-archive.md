@@ -373,10 +373,27 @@ end: a version sits between its artifact and the chapters hanging off it, and a
 translated chunk hangs off both a source chunk and a translation chapter, so it
 really is last.
 
-**A retranslated passage archives once.** The arm that applies a translation
-chunk drops the one it supersedes -- newest by the timestamp the group signed at,
-id breaking a tie -- so a sender holds a group's current answer to each passage
-rather than its drafts, and that is what travels.
+**A retranslated passage archives once, and that stopped being free.** The arm
+that applies a translation chunk drops the row it supersedes -- newest by the
+timestamp the group signed at, id breaking a tie -- so while the archive was
+rebuilt from rows, a sender simply had nothing but the group's current answer to
+each passage and that is what travelled.
+
+Reading from `GroupSignedEvent` changed it. The record keeps every event the
+group ever signed, deliberately: a signature is the group's statement and
+discarding one is not that table's business. So a passage translated three times
+leaves one row and three events, and an unfiltered read would put every draft a
+group ever signed into every archive it ever sends, for as long as the room
+exists.
+
+`ArchiveManager.currentTranslationsOnly` is what holds the original property up.
+It restates the applying arm's rule rather than approximating it -- newest by
+signed timestamp, id breaking a tie -- because an archive that shipped one
+translation as current while the recipient settled on another would have both
+validly signed and nothing downstream to notice the disagreement. Dropping the
+drafts is safe precisely *because* the recipient applies the same rule: it is not
+what keeps them correct, only what stops them being sent work they would discard
+on arrival.
 
 ### Ordering
 

@@ -18,6 +18,7 @@ import kotlin.time.Instant
 import press.mantra.compose.nostr.archive.ArchiveEvent
 import press.mantra.compose.nostr.archive.ArchiveRequestEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * Building the group's signed record into pages a member who lacks it can apply.
@@ -640,7 +641,72 @@ object ArchiveManager {
             )
         }
 
-        return recorded + rebuilt
+        return currentTranslationsOnly(recorded + rebuilt)
+    }
+
+    /**
+     * Drops every translation of a passage but the one that stands.
+     *
+     * The record keeps every event the group ever signed, deliberately -- a
+     * signature is the group's statement and discarding one is not this table's
+     * business. The rows do not: `ChatMessage.applyInnerEvent` supersedes a
+     * translation chunk, deleting the one it replaces, so a passage translated
+     * three times leaves one row and three events.
+     *
+     * That difference reaches the archive the moment it is read from the record
+     * rather than rebuilt from rows, and it compounds: every draft a group ever
+     * signed would travel in every archive it ever sends, for as long as the room
+     * exists. An archive exists to catch a member up on where the group has got
+     * to, not to hand them its drafting history.
+     *
+     * **The rule is the applying arm's, restated rather than approximated**:
+     * newest by the timestamp the group signed at, id breaking a tie. It has to
+     * be, or the archive would ship one translation as current and the recipient
+     * would settle on another -- and since both are validly signed, nothing
+     * downstream would notice the disagreement.
+     *
+     * Dropping the drafts is safe precisely because the recipient applies the
+     * same rule: it is not what keeps them correct, only what stops them being
+     * sent work they would immediately discard.
+     *
+     * A translation naming no passage is left alone rather than grouped with
+     * others: it is unappliable either way, and letting one stand in for a whole
+     * passage would let a malformed event suppress a good one.
+     */
+    private fun currentTranslationsOnly(events: List<Event>): List<Event> {
+        val translations = events.filter { it.kind == TranslationChunkEvent.KIND }
+        if (translations.size < 2) return events
+
+        val current = translations
+            .groupBy { event ->
+                val translation = TranslationChunkEvent(
+                    id = event.id,
+                    pubKey = event.pubKey,
+                    createdAt = event.createdAt,
+                    tags = event.tags,
+                    content = event.content,
+                    sig = event.sig,
+                )
+
+                val chapterId = translation.translationChapterId()
+                val chunkId = translation.chunkId()
+
+                if (chapterId == null || chunkId == null) event.id else "$chapterId/$chunkId"
+            }
+            .values
+            .mapNotNull { candidates ->
+                candidates.maxWithOrNull(compareBy({ it.createdAt }, { it.id }))
+            }
+            .mapTo(mutableSetOf()) { it.id }
+
+        if (current.size != translations.size) {
+            logger.d(
+                "Leaving ${translations.size - current.size} superseded translation(s) " +
+                    "out of the archive"
+            )
+        }
+
+        return events.filter { it.kind != TranslationChunkEvent.KIND || it.id in current }
     }
 
     /**

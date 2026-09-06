@@ -608,4 +608,140 @@ class ArchiveAssemblyJvmTest {
                 idOf(ArchiveManager.assemble(db, chatRoomId, newMember).single())
         )
     }
+
+    // ---- Supersession ----------------------------------------------------
+    //
+    // The record keeps every event the group signed; the rows keep one
+    // translation per passage. Reading the archive from the record is what makes
+    // the difference visible, and these are what keep the two sides agreeing
+    // about which translation stands.
+
+    /** The passage the seed already translated, resolved back out of the rows. */
+    private suspend fun seededPassage(): Pair<String, String> {
+        val artifactId = db.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).single().id
+        val versionId = db.mantraArtifactVersionDao()
+            .getArtifactVersionsByArtifactId(artifactId).single().id
+        val chapterId = db.mantraChapterDao().getChaptersByArtifactVersionId(versionId).single().id
+        val chunkId = db.mantraChunkDao().getChunksByChapterId(chapterId).first().id
+        val translationChapterId = db.mantraTranslationChapterDao()
+            .getTranslationChaptersByTranslationArtifactVersionId(
+                db.mantraTranslationArtifactVersionDao()
+                    .getTranslationsByArtifactVersionId(versionId).single().id
+            ).single().id
+
+        return translationChapterId to chunkId
+    }
+
+    private suspend fun archivedTranslations(): List<Event> =
+        ArchiveManager.assemble(db, chatRoomId, newMember)
+            .flatMap { assertNotNull(ArchiveEvent.decodePage(it.content)) }
+            .filter { it.kind == TranslationChunkEvent.KIND }
+
+    @Test
+    fun `a retranslated passage archives once, not once per draft`() = runBlocking {
+        seedSignedWork()
+        val (translationChapterId, chunkId) = seededPassage()
+
+        val current = apply(
+            TranslationChunkEvent.build(
+                translationChapterId = translationChapterId,
+                chunkId = chunkId,
+                index = 0,
+                text = "A better rendering.",
+                createdAt = 1_700_000_070L
+            )
+        )
+        recordEverythingApplied()
+
+        // One row, because the applying arm superseded the first. Two events,
+        // because the record keeps what the group signed and does not pretend a
+        // signature was never made.
+        assertEquals(
+            1,
+            db.mantraTranslationChunkDao()
+                .getTranslationChunksByTranslationChapterId(translationChapterId).size
+        )
+        assertEquals(
+            2,
+            db.groupSignedEventDao().getByChatRoomIdAndKind(chatRoomId, TranslationChunkEvent.KIND).size
+        )
+
+        // And one payload. Otherwise every draft a group ever signed travels in
+        // every archive it ever sends, for as long as the room exists.
+        assertEquals(listOf(current.id), archivedTranslations().map { it.id })
+    }
+
+    @Test
+    fun `the archive picks the translation the recipient would keep`() = runBlocking {
+        seedSignedWork()
+        val (translationChapterId, chunkId) = seededPassage()
+
+        // Two translations signed in the same second, which the applying arm
+        // settles by id. The archive has to settle it the same way or it ships
+        // one as current while the recipient keeps the other -- and both being
+        // validly signed, nothing downstream would notice they disagree.
+        val sameSecond = 1_700_000_070L
+        val rivals = listOf("Rendering one.", "Rendering two.", "Rendering three.")
+            .map { text ->
+                apply(
+                    TranslationChunkEvent.build(
+                        translationChapterId = translationChapterId,
+                        chunkId = chunkId,
+                        index = 0,
+                        text = text,
+                        createdAt = sameSecond
+                    )
+                )
+            }
+        recordEverythingApplied()
+
+        val kept = db.mantraTranslationChunkDao()
+            .getTranslationChunksByTranslationChapterId(translationChapterId).single()
+
+        assertEquals(rivals.maxOf { it.id }, kept.id, "the row keeps the highest id of the second")
+        assertEquals(listOf(kept.id), archivedTranslations().map { it.id })
+    }
+
+    @Test
+    fun `two passages each keep their own current translation`() = runBlocking {
+        seedSignedWork()
+        val (translationChapterId, firstChunkId) = seededPassage()
+
+        val chapterId = db.mantraChapterDao()
+            .getChaptersByArtifactVersionId(
+                db.mantraArtifactVersionDao()
+                    .getArtifactVersionsByArtifactId(
+                        db.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).single().id
+                    ).single().id
+            ).single().id
+        val secondChunkId = db.mantraChunkDao().getChunksByChapterId(chapterId)
+            .first { it.id != firstChunkId }.id
+
+        // Grouping is per passage, so retranslating one must not take the other
+        // with it -- the bug a naive "newest translation wins" would have.
+        val retranslated = apply(
+            TranslationChunkEvent.build(
+                translationChapterId = translationChapterId,
+                chunkId = firstChunkId,
+                index = 0,
+                text = "A better rendering.",
+                createdAt = 1_700_000_070L
+            )
+        )
+        val other = apply(
+            TranslationChunkEvent.build(
+                translationChapterId = translationChapterId,
+                chunkId = secondChunkId,
+                index = 1,
+                text = "Wayenezinye eziningi.",
+                createdAt = 1_700_000_065L
+            )
+        )
+        recordEverythingApplied()
+
+        assertEquals(
+            setOf(retranslated.id, other.id),
+            archivedTranslations().map { it.id }.toSet()
+        )
+    }
 }
