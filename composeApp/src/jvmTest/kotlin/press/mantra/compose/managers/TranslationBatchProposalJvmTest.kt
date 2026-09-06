@@ -172,7 +172,11 @@ class TranslationBatchProposalJvmTest {
             userPublicKey = proposer,
             lead = translationTemplate,
             dependents = { translation ->
-                AddTranslationArtifactVersionViewModel.translationChaptersOf(translation, chapters)
+                TranslationScaffold.chaptersOf(
+                    translationArtifactVersionIds = listOf(translation.id),
+                    chapters = chapters.map(TranslationScaffold.SourceChapter::of),
+                    createdAt = translation.createdAt,
+                )
             }
         )
 

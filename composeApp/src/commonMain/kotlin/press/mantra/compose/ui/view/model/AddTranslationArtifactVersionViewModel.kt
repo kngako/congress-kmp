@@ -10,9 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -22,8 +20,8 @@ import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
-import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
@@ -140,7 +138,13 @@ class AddTranslationArtifactVersionViewModel(
                     // path -- neither of which this screen knows or should. The
                     // translation comes back built, and the chapters are laid
                     // out against it.
-                    dependents = { translation -> translationChaptersOf(translation, chapters) }
+                    dependents = { translation ->
+                        TranslationScaffold.chaptersOf(
+                            translationArtifactVersionIds = listOf(translation.id),
+                            chapters = chapters.map(TranslationScaffold.SourceChapter::of),
+                            createdAt = translation.createdAt,
+                        )
+                    }
                 )
             }.onFailure { error ->
                 logger.e("Failed to propose a translation for signing", error)
@@ -162,38 +166,6 @@ class AddTranslationArtifactVersionViewModel(
 
     companion object {
         private const val TAG = "AddTranslationViewModel"
-
-        /**
-         * A translation chapter for each of [chapters], ready to be signed with
-         * the translation they hang off.
-         *
-         * A translation and its chapters go to the group as one batch, so these
-         * are built from the translation *after* it has been authored under the
-         * group's key -- [translation] is the unsigned event the session will
-         * sign, which is where the id each chapter carries comes from. Laying
-         * them out anywhere else would mean naming a translation id before one
-         * exists.
-         *
-         * They take the translation's own timestamp, so the batch reads as one
-         * act rather than as events that happen to share a session.
-         *
-         * Empty when the artifact has no chapters, which is a translation with
-         * nothing yet to translate -- the chapters signed into the artifact
-         * afterwards do not reach a translation proposed before them.
-         */
-        fun translationChaptersOf(
-            translation: Event,
-            chapters: List<MantraChapter>,
-        ): List<EventTemplate<TranslationChapterEvent>> = chapters.map { chapter ->
-            TranslationChapterEvent.build(
-                translationArtifactVersionId = translation.id,
-                chapterId = chapter.id,
-                // The source chapter's own position, not this list's: the two
-                // agree today, and only one of them is what the group signed.
-                index = chapter.index,
-                createdAt = translation.createdAt,
-            )
-        }
 
         /**
          * The most chapters an artifact can be translated with in one session.
