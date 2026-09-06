@@ -39,6 +39,9 @@ class DatabaseMantraRepository(
     override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> =
         database.mantraChapterDao().getChaptersByArtifactId(artifactId)
 
+    override suspend fun getChaptersForArtifactVersion(artifactVersionId: String): List<MantraChapter> =
+        database.mantraChapterDao().getChaptersByArtifactVersionId(artifactVersionId)
+
     override suspend fun addTranslationArtifactVersion(
         artifactId: String,
         dialectId: String,
@@ -92,22 +95,6 @@ class DatabaseMantraRepository(
 
     override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> =
         database.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(translationChapterId)
-
-    override suspend fun addChapter(
-        artifactId: String,
-        name: String,
-        originalText: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraChapter? {
-        return database.mantraDao().addChapter(
-            artifactId = artifactId,
-            name = name,
-            originalText = originalText,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey
-        )
-    }
 
     override suspend fun getDialects(chatRoomId: String): List<MantraDialect> =
         database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId)

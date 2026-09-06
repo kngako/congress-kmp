@@ -16,7 +16,13 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.MantraArtifactVersion
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.text.Markdown
 import press.mantra.compose.ui.view.state.AddChapterUIState
 
 class AddChapterViewModel(
@@ -26,6 +32,8 @@ class AddChapterViewModel(
     val relayHint: String?,
     initialAddChapterUIState: AddChapterUIState,
     val mantraRepository: MantraRepository,
+    val chatRepository: ChatRepository,
+    val frostSigningRepository: FrostSigningRepository,
 ): ViewModel() {
 
     var addChapterUIState: AddChapterUIState by mutableStateOf(initialAddChapterUIState)
@@ -38,27 +46,52 @@ class AddChapterViewModel(
     fun initiateAddChapter() {
         viewModelScope.launch(Dispatchers.IO) {
             val artifact = mantraRepository.getArtifact(artifactId)
-            addChapterUIState = if (artifact == null) {
-                AddChapterUIState.Error("Couldn't find the artifact")
-            } else {
-                AddChapterUIState.Loaded(artifact = artifact)
+            val localChatRoom = chatRepository.getChatRoomByIdentifier(chatRoomId)
+
+            addChapterUIState = when {
+                artifact == null -> AddChapterUIState.Error("Couldn't find the artifact")
+                localChatRoom == null -> AddChapterUIState.Error("Couldn't find the chat room")
+                else -> AddChapterUIState.Loaded(
+                    localChatRoom = localChatRoom,
+                    artifact = artifact,
+                    // Chapters attach to an artifact version; use the latest one.
+                    artifactVersion = mantraRepository.getArtifactVersions(artifactId).firstOrNull(),
+                    canSign = frostSigningRepository.canSign(chatRoomId),
+                )
             }
         }
     }
 
+    /**
+     * Asks the group to sign a chapter into the artifact.
+     *
+     * The chapter is not created here and does not exist yet. What goes out is a
+     * proposal to sign it, and the chapter -- with the chunks it splits into --
+     * appears on every member's device at once, authored by this room's own key
+     * rather than by whoever pasted the text, when enough members have signed.
+     * That author is the room's id: signing runs at the path the room was
+     * derived at, so a chapter says which group's artifact it belongs to simply
+     * by being signed.
+     *
+     * That is the difference from submitting one. A submission says "I am
+     * putting this in front of the group" and the group's only recourse
+     * afterwards is social. A signature is the group saying it, and it takes a
+     * quorum to say. The text everyone will translate from is the group's, so
+     * the second is the honest one.
+     */
     fun addChapter(
+        localChatRoom: LocalChatRoom,
+        artifactVersion: MantraArtifactVersion,
         nameField: TextFieldState,
         originalTextField: TextFieldState,
-        onSuccess: () -> Unit,
+        onSuccess: (sessionId: String) -> Unit,
         onFailure: () -> Unit
     ) {
         val name = nameField.text.toString()
         val originalText = originalTextField.text.toString()
 
         if (name.isBlank() || originalText.isBlank()) {
-            viewModelScope.launch(Dispatchers.Main) {
-                onFailure.invoke()
-            }
+            onFailure.invoke()
             return
         }
 
@@ -67,23 +100,42 @@ class AddChapterViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val chapter = runCatching {
-                mantraRepository.addChapter(
-                    artifactId = artifactId,
-                    name = name,
-                    originalText = originalText,
-                    chatRoomId = chatRoomId,
+            // The chunks are not proposed. They are split out of the chapter's
+            // own text when the signed chapter is applied (see
+            // MantraChunk.chunksOf), so one quorum buys the whole chapter rather
+            // than one per paragraph, and every device splits the same text the
+            // same way.
+            val chapterEventTemplate = ChapterEvent.build(
+                artifactVersionId = artifactVersion.id,
+                name = name,
+                originalText = originalText,
+                // Where this chapter sits in the version, read now rather than
+                // derived on arrival: the index is signed into the event, and a
+                // device applying it cannot recount from a version other members
+                // may have added to in a different order.
+                index = mantraRepository.getChaptersForArtifactVersion(artifactVersion.id).size,
+                wordCount = Markdown.wordCount(originalText),
+                characterCount = Markdown.characterCount(originalText),
+            )
+
+            val session = runCatching {
+                frostSigningRepository.proposeSigning(
+                    localChatRoom = localChatRoom,
                     userPublicKey = activeUserPublicKey,
+                    kind = chapterEventTemplate.kind,
+                    tags = chapterEventTemplate.tags,
+                    content = chapterEventTemplate.content,
                 )
             }.onFailure { error ->
-                logger.e("Failed to add chapter", error)
+                logger.e("Failed to propose a chapter for signing", error)
             }.getOrNull()
 
-            if (chapter != null) {
+            if (session != null) {
                 nameField.clearText()
                 originalTextField.clearText()
+
                 viewModelScope.launch(Dispatchers.Main) {
-                    onSuccess.invoke()
+                    onSuccess.invoke(session.id)
                 }
             } else {
                 viewModelScope.launch(Dispatchers.Main) {
@@ -105,6 +157,8 @@ class AddChapterViewModel(
             relayHint: String?,
             initialAddChapterUIState: AddChapterUIState = AddChapterUIState.Loading,
             mantraRepository: MantraRepository,
+            chatRepository: ChatRepository,
+            frostSigningRepository: FrostSigningRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 AddChapterViewModel(
@@ -114,6 +168,8 @@ class AddChapterViewModel(
                     relayHint = relayHint,
                     initialAddChapterUIState = initialAddChapterUIState,
                     mantraRepository = mantraRepository,
+                    chatRepository = chatRepository,
+                    frostSigningRepository = frostSigningRepository,
                 )
             }
         }

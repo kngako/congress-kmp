@@ -29,6 +29,17 @@ class ChapterEvent(
     fun artifactVersionId() = artifactVersionIdReference()?.eventId
 
     fun name() = tags.firstNotNullOfOrNull(NameTag::parse)?.name
+
+    /**
+     * The markdown the chapter is, and the only place its chunks come from.
+     *
+     * Carried on the chapter rather than in an event per paragraph because the
+     * group signs the chapter and nothing else. Chunks proposed separately would
+     * need a quorum each, and ids invented locally differ on every device
+     * holding the same chapter -- so they are split back out of this text when
+     * the signed chapter is applied (see MantraChunk.chunksOf), which gives
+     * every device the same rows from the same bytes.
+     */
     fun originalText() = tags.firstNotNullOfOrNull(OriginalTextTag::parse)?.originalText
 
     fun index() = tags.firstNotNullOfOrNull(IndexTag::parse)?.index

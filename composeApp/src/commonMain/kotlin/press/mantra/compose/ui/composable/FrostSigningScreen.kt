@@ -56,6 +56,7 @@ import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.text.Markdown
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.FrostSigningViewModel
@@ -319,7 +320,20 @@ private fun WhatIsBeingSigned(event: Event?) {
 
         ChapterEvent.KIND -> "New chapter" to ChapterEvent(
             event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).name().orEmpty()
+        ).let { chapter ->
+            // The text is the substance of a chapter -- signing one is putting
+            // the group's name to what everybody will translate from -- but it
+            // is a whole chapter, so its size stands in for it here. The chunk
+            // count is what the text will actually split into, counted the same
+            // way the split itself counts (see MantraChunk.chunksOf).
+            val chunkCount = chapter.originalText()?.let { Markdown.splitParagraphs(it).size }
+
+            listOfNotNull(
+                chapter.name(),
+                chapter.wordCount()?.let { "$it words" },
+                chunkCount?.let { "$it ${if (it == 1) "chunk" else "chunks"}" }
+            ).joinToString(" · ")
+        }
 
         // The one thing a group signs that is about the group rather than about
         // its work, and the only one a member sees before the room has done

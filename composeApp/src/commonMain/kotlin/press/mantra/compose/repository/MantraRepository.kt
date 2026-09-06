@@ -22,6 +22,13 @@ interface MantraRepository {
 
     suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter>
 
+    /**
+     * The chapters of one version of an artifact, in reading order. A chapter
+     * hangs off a version rather than off the artifact, so this is what a new
+     * chapter's index counts.
+     */
+    suspend fun getChaptersForArtifactVersion(artifactVersionId: String): List<MantraChapter>
+
     suspend fun getChapter(id: String): MantraChapter?
 
     suspend fun getChunksForChapter(chapterId: String): List<MantraChunk>
@@ -66,20 +73,6 @@ interface MantraRepository {
         userPublicKey: HexKey,
     ): MantraTranslationArtifactVersion?
 
-    /**
-     * Add a chapter (markdown [originalText]) to the artifact's latest version.
-     * Word/character counts are derived from the text, and the chapter is split
-     * by paragraph into associated chunks. Returns null when the artifact has no
-     * version to attach to.
-     */
-    suspend fun addChapter(
-        artifactId: String,
-        name: String,
-        originalText: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraChapter?
-
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
 
     suspend fun getDialect(id: String): MantraDialect?
@@ -114,6 +107,8 @@ interface MantraRepository {
 
             override suspend fun getChaptersForArtifact(artifactId: String): List<MantraChapter> = emptyList()
 
+            override suspend fun getChaptersForArtifactVersion(artifactVersionId: String): List<MantraChapter> = emptyList()
+
             override suspend fun getChapter(id: String): MantraChapter? = null
 
             override suspend fun getChunksForChapter(chapterId: String): List<MantraChunk> = emptyList()
@@ -144,14 +139,6 @@ interface MantraRepository {
                 chatRoomId: String,
                 userPublicKey: HexKey,
             ): MantraTranslationArtifactVersion? = null
-
-            override suspend fun addChapter(
-                artifactId: String,
-                name: String,
-                originalText: String,
-                chatRoomId: String,
-                userPublicKey: HexKey,
-            ): MantraChapter? = null
 
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 

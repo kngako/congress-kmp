@@ -1017,14 +1017,21 @@ fun MantraNavHost(
                 chatRoomId = route.chatRoomId,
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
-                onNavigateToRoute = { actionRoute ->
-                    // Replace both this add screen and the stale artifact detail
-                    // beneath it so we land on a freshly-loaded detail screen.
-                    navController.navigate(route = actionRoute) {
-                        popUpTo<ArtifactDetailRoute> {
+                chatRepository = databaseChatRepository,
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                    // Replace this add screen so back returns to the artifact
+                    // rather than to a form whose proposal has already gone out.
+                    navController.navigate(route = signingRoute) {
+                        popUpTo<AddChapterRoute> {
                             inclusive = true
                         }
                     }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
                 },
                 onNavigateBack = {
                     navController.popBackStack()
