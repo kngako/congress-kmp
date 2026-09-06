@@ -543,6 +543,7 @@ fun MantraNavHost(
                 activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                 nostrRepository = databaseNostrRepository,
                 chatRepository = databaseChatRepository,
+                dkgRepository = databaseDkgRepository,
                 onNavigateToRoute = { chatRoomResultRoute ->
                     navController.navigate(
                         chatRoomResultRoute

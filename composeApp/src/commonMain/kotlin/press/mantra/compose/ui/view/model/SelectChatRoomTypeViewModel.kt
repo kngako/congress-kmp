@@ -15,6 +15,7 @@ import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
@@ -59,6 +60,7 @@ class SelectChatRoomTypeViewModel(
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
+    val dkgRepository: DkgRepository,
 ): ViewModel() {
 
     var selectChatRoomTypeUIState: SelectChatRoomTypeUIState by mutableStateOf(initialSelectChatRoomTypeUIState)
@@ -80,6 +82,15 @@ class SelectChatRoomTypeViewModel(
 
     /** Members the group was created without, because no key package ever showed up. */
     val membersNotAdded = mutableStateListOf<HexKey>()
+
+    /**
+     * Set when a [ChatRoomType.ROBUST] room was made but its key ceremony was not.
+     *
+     * The room is real and usable either way -- only the shared key is missing, and
+     * it can be started again from the group's details. Worth saying rather than
+     * navigating on, because the key is the whole of what robust means.
+     */
+    val keyCeremonyNotStarted: MutableState<Boolean> = mutableStateOf(false)
 
     /**
      * Everyone who administers the group under [ChatRoomType.ROBUST]: the picked
@@ -188,13 +199,16 @@ class SelectChatRoomTypeViewModel(
 
         isActionPending.value = true
 
+        val nostrPrivateKeyBytes = nostrPrivateKey.value.toByteArray()
         val keyPair = KeyPair(
-            privKey = nostrPrivateKey.value.toByteArray()
+            privKey = nostrPrivateKeyBytes
         )
 
         when (selectedChatRoomType.value) {
             ChatRoomType.CONVENIENT -> createMarmotChatRoom(keyPair, onNavigateToRoute)
-            ChatRoomType.ROBUST -> createNip17ChatRoom(keyPair, onNavigateToRoute)
+            // The ceremony needs the secret itself, not the pair: the ChillDKG host
+            // key is derived from it rather than being it.
+            ChatRoomType.ROBUST -> createNip17ChatRoom(keyPair, nostrPrivateKeyBytes, onNavigateToRoute)
         }
     }
 
@@ -287,13 +301,23 @@ class SelectChatRoomTypeViewModel(
      * invite anyone to and no key package to wait on — everybody picked is in the room
      * the moment it exists, and learns about it from the first message.
      *
-     * TODO: the quorum the user picked has nowhere to live here. NIP-17 has no group
-     *  state to change and so nothing to approve — the member set is whatever a message
-     *  is addressed to, and a different set is simply a different room. Enforcing t-of-n
-     *  needs a governance layer this protocol does not have.
+     * That first message is the key ceremony, opened here rather than left for somebody
+     * to find a button for.
+     *
+     * NIP-17 itself has nothing for the quorum to govern — no group state to change, and
+     * a different member set is simply a different room — so the only thing that can
+     * carry it is a key the group generates together and can only sign with t of n of
+     * them present. Everything that ceremony needs is settled by the time the room
+     * exists: who is in it, and how many of them have to agree. Waiting would mean
+     * handing the user the room they asked for minus the thing that makes it robust.
+     *
+     * Opening it is also how the rest of the group hears of the room at all. Standing up
+     * a NIP-17 room sends nothing to anybody; the proposal is the first event out, and
+     * the inbound path builds the same room on the other side from its p-tags.
      */
     private fun createNip17ChatRoom(
         keyPair: KeyPair,
+        nostrPrivateKey: ByteArray,
         onNavigateToRoute: (Route) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -304,17 +328,42 @@ class SelectChatRoomTypeViewModel(
                 description = description
             )
 
-            withContext(Dispatchers.Main) {
-                isActionPending.value = false
-
-                if (localChatRoom == null) {
+            if (localChatRoom == null) {
+                withContext(Dispatchers.Main) {
+                    isActionPending.value = false
                     onNavigateToRoute.invoke(
                         ImplementationPendingRoute("Something went wrong")
                     )
+                }
+                return@launch
+            }
+
+            createdChatRoomId.value = localChatRoom.chatRoom.id
+
+            // The room's membership is the set this screen was opened for, so the
+            // quorum picked against [adminCount] is the same t-of-n the ceremony is
+            // asked for. A room that already has a ceremony -- the id is derived from
+            // its members, so making the same group twice returns the same room --
+            // hands that one back instead of opening a second.
+            val session = dkgRepository.proposeRitual(
+                localChatRoom = localChatRoom,
+                userPublicKey = keyPair.pubKey.toHexKey(),
+                nostrPrivateKey = nostrPrivateKey,
+                threshold = quorum.value
+            )
+
+            withContext(Dispatchers.Main) {
+                isActionPending.value = false
+
+                if (session == null) {
+                    // Nothing is rolled back: the room works, the group can talk in it,
+                    // and the ceremony can be opened again from the group's details.
+                    // Said here rather than navigated past, because a robust group
+                    // without a shared key is not what the user asked for.
+                    logger.e("Created ${localChatRoom.chatRoom.id} without a key ceremony")
+                    keyCeremonyNotStarted.value = true
                     return@withContext
                 }
-
-                createdChatRoomId.value = localChatRoom.chatRoom.id
 
                 onNavigateToRoute.invoke(
                     ChatRoomMessagingRoute(
@@ -393,7 +442,8 @@ class SelectChatRoomTypeViewModel(
             initialSelectChatRoomTypeUIState: SelectChatRoomTypeUIState = SelectChatRoomTypeUIState.Loading,
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
             nostrRepository: NostrRepository,
-            chatRepository: ChatRepository
+            chatRepository: ChatRepository,
+            dkgRepository: DkgRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SelectChatRoomTypeViewModel(
@@ -404,7 +454,8 @@ class SelectChatRoomTypeViewModel(
                     initialSelectChatRoomTypeUIState = initialSelectChatRoomTypeUIState,
                     activeWalletStateFlow = activeWalletStateFlow,
                     nostrRepository = nostrRepository,
-                    chatRepository = chatRepository
+                    chatRepository = chatRepository,
+                    dkgRepository = dkgRepository
                 )
             }
         }

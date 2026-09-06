@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -70,6 +71,7 @@ fun SelectChatRoomTypeScreen(
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
+    dkgRepository: DkgRepository,
     onNavigateToRoute: (Route) -> Unit,
 ) {
     val selectChatRoomTypeViewModel: SelectChatRoomTypeViewModel = viewModel(
@@ -81,7 +83,8 @@ fun SelectChatRoomTypeScreen(
             initialSelectChatRoomTypeUIState = initialSelectChatRoomTypeUIState,
             activeWalletStateFlow = activeWalletStateFlow,
             nostrRepository = nostrRepository,
-            chatRepository = chatRepository
+            chatRepository = chatRepository,
+            dkgRepository = dkgRepository
         )
     )
 
@@ -104,6 +107,7 @@ fun SelectChatRoomTypeScreen(
             val isActionPending = selectChatRoomTypeViewModel.isActionPending.value
             val selectedChatRoomType = selectChatRoomTypeViewModel.selectedChatRoomType.value
             val membersNotAdded = selectChatRoomTypeViewModel.membersNotAdded
+            val keyCeremonyNotStarted = selectChatRoomTypeViewModel.keyCeremonyNotStarted.value
             val adminCount = selectChatRoomTypeViewModel.adminCount
             val isRobustAvailable = selectChatRoomTypeViewModel.isRobustAvailable
             val isRobustSelected = selectedChatRoomType == ChatRoomType.ROBUST
@@ -188,6 +192,22 @@ fun SelectChatRoomTypeScreen(
                         }
                     }
 
+                    if (keyCeremonyNotStarted) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(15.dp),
+                                text = "$name was created, but its shared key ceremony couldn't be started. Open the chat and start it from the group's details — until then the group has no key of its own.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
                     Text(
                         text = "This decides who can change the group later. You can't switch afterwards.",
                         style = MaterialTheme.typography.labelMedium,
@@ -216,7 +236,11 @@ fun SelectChatRoomTypeScreen(
                         } else {
                             "Everyone administers the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of the admins before it takes effect."
                         },
-                        footnote = "No single admin can change the group alone, and the group outlives any one of you.",
+                        // Says what tapping create actually does, because it is the one
+                        // thing here that asks something of everybody else: the group's
+                        // first act is a ceremony each member has to approve their way
+                        // through before there is a key.
+                        footnote = "No single admin can change the group alone, and the group outlives any one of you. Creating the group starts a key ceremony every member takes part in.",
                         isSelected = isRobustSelected,
                         isEnabled = isRobustAvailable,
                         disabledReason = selectChatRoomTypeViewModel.robustUnavailableReason,
@@ -447,6 +471,7 @@ private fun SelectChatRoomTypeScreenPreview() {
                 activeWalletStateFlow = MutableStateFlow(null),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
                 onNavigateToRoute = {}
             )
         }
