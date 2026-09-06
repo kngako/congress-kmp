@@ -20,6 +20,6 @@ Start with the ceremony if you are new to this area; the Marmot notes all assume
 Read the skipped-keys note before debugging any "the other device never got it"
 report — it is silent, and it looks like every other kind of delivery failure. The
 sync note stands alone, and the dead-code inventory reads as a follow-up to it. The
-batch-signing note is a plan rather than a description of what is there: read it
-after the derivation note, whose one rule is the same one it is built around. The
+batch-signing note is a phased plan that has been built: read it after the
+derivation note, whose one rule is the same one it is built around. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.

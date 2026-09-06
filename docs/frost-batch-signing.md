@@ -4,6 +4,14 @@ How to have a group sign several events in one ceremony instead of one at a
 time, phased, with the cryptographic constraint that shapes every phase stated
 first.
 
+**Built.** All seven phases are in, one commit each, and the phases below are
+kept as written -- they are the reasoning, and the code is easier to read
+against the argument it came from than against a summary of itself. Where the
+implementation chose differently from the first draft the section says so.
+`FrostSigningManager.proposeSigningBatch` and
+`FrostSigningRepository.proposeSigningBatch` are the entry points; nothing in
+the app calls them yet, which is Phase 7's point.
+
 The headline: **there is no such thing as one FROST signature over many
 messages, and no way to reuse a nonce across them.** What can be batched is the
 ceremony — the rounds, the group events, and the approval a human is asked for.
@@ -452,17 +460,32 @@ either alone is enough to be relied on by accident).
 
 **No code.**
 
-Nothing here needs a feature flag. `k = 1` is the entire behaviour of the app
-after Phase 4, byte-identical on the wire to the app before Phase 1, and no
-caller batches anything until one is written to. Phases 1 and 2 are shippable on
-their own and worth shipping on their own — they are a schema move and a
-refactor, and landing them apart from the wire change means a bisect over a
-signing bug lands on one or the other rather than on all of it.
+Nothing here needs a feature flag. `k = 1` is the entire behaviour of the app as
+shipped — no caller batches anything yet — and at `k = 1` every message is
+byte-identical to the app before Phase 1:
+
+| message | at `k = 1` |
+|---|---|
+| proposal | `encodeProposal` returns the bare event object (asserted in `FrostProposalCodecTest`) |
+| nonce, signer set, partial, signature | `joinPayload` of one value is that value |
+| chat transcript | every line's plural branch is only taken above 1 |
+
+Phases 1 and 2 are shippable on their own and were worth landing on their own —
+a schema move and a refactor — because a bisect over a signing bug then lands on
+one or the other rather than on all of it.
 
 Before the first caller batches, confirm the group is on a build that
 understands array proposals. There is no negotiation for this and adding one is
-not worth it; the failure mode is a batch that never reaches threshold and is
+not worth it: the failure mode is a batch that never reaches threshold and is
 abandoned, which is visible in the transcript and costs nothing but a retry.
+
+### What is left, when a caller wants it
+
+Nothing in the protocol. The remaining work is deciding *what* to batch, which
+is a product question this document deliberately does not answer — beyond the
+one rule that a batch is only as available as its worst item, so events that do
+not belong together should not travel together, and the one prohibition that
+`GroupKeyStateManager.propose` must never batch.
 
 ---
 
