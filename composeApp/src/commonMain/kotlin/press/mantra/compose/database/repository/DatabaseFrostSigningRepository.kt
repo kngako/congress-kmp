@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.FrostSigningStage
@@ -28,6 +29,12 @@ class DatabaseFrostSigningRepository(
 
     override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =
         database.frostSigningSessionDao().observeMessages(sessionId)
+
+    override fun observeItems(sessionId: String): Flow<List<FrostSigningItem>> =
+        database.frostSigningSessionDao().observeItems(sessionId)
+
+    override suspend fun getItems(sessionId: String): List<FrostSigningItem> =
+        database.frostSigningSessionDao().getItems(sessionId)
 
     override suspend fun getSessionById(sessionId: String): FrostSigningSession? =
         database.frostSigningSessionDao().getSessionById(sessionId)
@@ -92,8 +99,8 @@ class DatabaseFrostSigningRepository(
         }
     }
 
-    override fun signedEvent(session: FrostSigningSession): Event? =
-        FrostSigningManager.signedEvent(session)
+    override fun signedEvents(items: List<FrostSigningItem>): List<Event> =
+        FrostSigningManager.signedEvents(items)
 
     companion object {
         private const val TAG = "DatabaseFrostSigningRepository"

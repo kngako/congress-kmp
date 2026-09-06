@@ -106,6 +106,7 @@ import press.mantra.compose.database.model.RecentSearch
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.Relay
 import press.mantra.compose.database.model.RepostedRelation
@@ -130,6 +131,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         DkgParticipantMessage::class,
         DkgSession::class,
         FrostSignerMessage::class,
+        FrostSigningItem::class,
         FrostSigningSession::class,
         GiftWrapMessage::class,
         GiftWrapSeal::class,
@@ -172,7 +174,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 9,
+    version = 10,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -215,6 +217,11 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // is what they were signing as, so one caught mid-flight finishes the way
         // it began rather than switching keys between two of its own rounds.
         AutoMigration(from = 8, to = 9)
+        // v10 moves FrostSigningSession's five per-event columns onto the new
+        // FrostSigningItem table, so one session can sign a batch. It copies
+        // before it drops, which no AutoMigration can express -- see
+        // MIGRATION_9_10, and the note there on why an in-flight session losing
+        // its nonce seed would be worse than losing the session.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

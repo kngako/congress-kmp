@@ -2,11 +2,13 @@ package press.mantra.compose.database.dao
 
 import androidx.room3.Dao
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 
 @Dao
@@ -35,6 +37,46 @@ interface FrostSigningSessionDao {
 
     @Upsert
     suspend fun upsert(frostSignerMessage: FrostSignerMessage)
+
+    /**
+     * A session's events, in the order the batch fixed at proposal.
+     *
+     * Every join of nonces and partial signatures is positional, so this
+     * ordering is part of the protocol rather than a presentation choice —
+     * two devices reading a batch in different orders aggregate against
+     * different messages.
+     */
+    @Query("SELECT * FROM FrostSigningItem WHERE sessionId = :sessionId ORDER BY itemIndex ASC")
+    suspend fun getItems(sessionId: String): List<FrostSigningItem>
+
+    @Query("SELECT * FROM FrostSigningItem WHERE sessionId = :sessionId ORDER BY itemIndex ASC")
+    fun observeItems(sessionId: String): Flow<List<FrostSigningItem>>
+
+    @Query("SELECT * FROM FrostSigningItem WHERE sessionId = :sessionId AND itemIndex = :itemIndex")
+    suspend fun getItem(sessionId: String, itemIndex: Int): FrostSigningItem?
+
+    @Upsert
+    suspend fun upsert(frostSigningItem: FrostSigningItem)
+
+    /**
+     * Writes a whole batch's worth of items at once.
+     *
+     * A transaction rather than a loop because the coordinator's two broadcasts
+     * each settle every item together: a half-written aggregate would leave the
+     * session gated on `signerIds` while some items had no nonce to aggregate
+     * against, which is a stall no message can clear.
+     */
+    @Transaction
+    @Upsert
+    suspend fun upsertItems(items: List<FrostSigningItem>)
+
+    /** How many events this session signs. Derived rather than stored — see [FrostSigningItem]. */
+    @Query("SELECT COUNT(*) FROM FrostSigningItem WHERE sessionId = :sessionId")
+    suspend fun countItems(sessionId: String): Int
+
+    /** How many of them the group has finished. Equal to [countItems] once it is done. */
+    @Query("SELECT COUNT(*) FROM FrostSigningItem WHERE sessionId = :sessionId AND signature IS NOT NULL")
+    suspend fun countSignedItems(sessionId: String): Int
 
     @Query("SELECT * FROM FrostSignerMessage WHERE sessionId = :sessionId AND kind = :kind ORDER BY createdAt ASC")
     suspend fun getMessagesByKind(sessionId: String, kind: Kind): List<FrostSignerMessage>

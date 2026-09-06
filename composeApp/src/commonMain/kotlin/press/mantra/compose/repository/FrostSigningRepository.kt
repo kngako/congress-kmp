@@ -6,6 +6,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
@@ -23,6 +24,17 @@ interface FrostSigningRepository {
     fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<FrostSigningSession>>
 
     fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>>
+
+    /**
+     * The events a session signs, in the order its proposal fixed.
+     *
+     * Separate from the session because a session signs a batch, and what
+     * separates one event of it from another is forced by FROST rather than
+     * chosen — see [FrostSigningItem].
+     */
+    fun observeItems(sessionId: String): Flow<List<FrostSigningItem>>
+
+    suspend fun getItems(sessionId: String): List<FrostSigningItem>
 
     suspend fun getSessionById(sessionId: String): FrostSigningSession?
 
@@ -58,8 +70,8 @@ interface FrostSigningRepository {
     /** Refuses, and says so, since a t-of-n group can proceed without this member. */
     suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String)
 
-    /** The finished event, or null while the session is still running. */
-    fun signedEvent(session: FrostSigningSession): Event?
+    /** The finished events, or empty while any of them is still running. */
+    fun signedEvents(items: List<FrostSigningItem>): List<Event>
 
     companion object {
         val NO_OP_FROST_SIGNING_REPOSITORY: FrostSigningRepository = object : FrostSigningRepository {
@@ -70,6 +82,11 @@ interface FrostSigningRepository {
 
             override fun observeMessages(sessionId: String): Flow<List<FrostSignerMessage>> =
                 flowOf(emptyList())
+
+            override fun observeItems(sessionId: String): Flow<List<FrostSigningItem>> =
+                flowOf(emptyList())
+
+            override suspend fun getItems(sessionId: String): List<FrostSigningItem> = emptyList()
 
             override suspend fun getSessionById(sessionId: String): FrostSigningSession? = null
 
@@ -89,7 +106,7 @@ interface FrostSigningRepository {
 
             override suspend fun decline(localChatRoom: LocalChatRoom, sessionId: String) = Unit
 
-            override fun signedEvent(session: FrostSigningSession): Event? = null
+            override fun signedEvents(items: List<FrostSigningItem>): List<Event> = emptyList()
         }
     }
 }

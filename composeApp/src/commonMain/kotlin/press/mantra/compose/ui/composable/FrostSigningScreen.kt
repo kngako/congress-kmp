@@ -146,7 +146,7 @@ fun FrostSigningScreen(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    WhatIsBeingSigned(frostSigningViewModel.proposedEvent(session))
+                    WhatIsBeingSigned(frostSigningViewModel.proposedEvents(state.items).firstOrNull())
 
                     HorizontalDivider()
 
@@ -229,7 +229,7 @@ fun FrostSigningScreen(
                     // Asked rather than re-derived: the manager owns when a session
                     // is still waiting on its owner, and a second copy of that rule
                     // here is a second copy to keep in step.
-                    if (FrostSigningManager.isAwaitingApproval(session)) {
+                    if (FrostSigningManager.isAwaitingApproval(session, state.items)) {
                         HorizontalDivider()
 
                         Text(

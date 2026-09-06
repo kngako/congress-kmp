@@ -8,6 +8,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -81,6 +82,7 @@ class FrostSigningSessionDaoJvmTest {
         createdAt: Instant = Instant.fromEpochSeconds(1_000),
         stage: FrostSigningStage = FrostSigningStage.COLLECTING_NONCES,
         signature: String? = null,
+        events: Int = 1,
     ): FrostSigningSession = FrostSigningSession(
         id = id,
         chatRoomId = chatRoomId,
@@ -91,12 +93,33 @@ class FrostSigningSessionDaoJvmTest {
         participantCount = 3,
         signerId = 1,
         stage = stage,
-        unsignedEventJson = "{}",
-        eventId = "ff".repeat(32),
-        nonceRandom = "aa".repeat(32),
-        signature = signature,
         createdAt = createdAt,
-    ).also { db.frostSigningSessionDao().upsert(it) }
+    ).also {
+        db.frostSigningSessionDao().upsert(it)
+        db.frostSigningSessionDao().upsertItems(
+            (0 until events).map { index -> item(id, index, signature) }
+        )
+    }
+
+    /**
+     * One event of a session's batch. Distinct ids and seeds per index, because
+     * that is what the manager writes and what every ordering assertion here
+     * would otherwise be blind to.
+     */
+    private fun item(
+        sessionId: String,
+        itemIndex: Int = 0,
+        signature: String? = null,
+        aggregatedNonce: String? = null,
+    ) = FrostSigningItem(
+        sessionId = sessionId,
+        itemIndex = itemIndex,
+        unsignedEventJson = """{"index":$itemIndex}""",
+        eventId = "f$itemIndex".repeat(32),
+        nonceRandom = "a$itemIndex".repeat(32),
+        aggregatedNonce = aggregatedNonce,
+        signature = signature,
+    )
 
     private suspend fun message(
         sessionId: String,
@@ -242,6 +265,88 @@ class FrostSigningSessionDaoJvmTest {
         val found = assertNotNull(db.frostSigningSessionDao().getSessionById("s1"))
 
         assertEquals(FrostSigningStage.COMPLETE, found.stage)
-        assertEquals("ab".repeat(32), found.signature)
+        assertEquals("ab".repeat(32), db.frostSigningSessionDao().getItems("s1").single().signature)
+    }
+
+    /**
+     * A batch's items come back in the order the proposal fixed, whatever order
+     * they went in.
+     *
+     * Not a presentation detail. Nonces and partial signatures are joined
+     * positionally against this list, so a device reading a batch in a different
+     * order aggregates item 2's partial signature against item 0's message and
+     * produces a signature nobody can verify.
+     */
+    @Test
+    fun `a batch's items read back in index order`() = runBlocking {
+        seedRooms()
+        session("s1")
+
+        db.frostSigningSessionDao().upsertItems(
+            listOf(item("s1", itemIndex = 3), item("s1", itemIndex = 1), item("s1", itemIndex = 2))
+        )
+
+        val items = db.frostSigningSessionDao().getItems("s1")
+
+        assertEquals(listOf(0, 1, 2, 3), items.map { it.itemIndex })
+        assertEquals(4, db.frostSigningSessionDao().countItems("s1"))
+    }
+
+    /**
+     * A redelivered item overwrites rather than accumulates, which is what the
+     * composite key buys — the same property the signer messages rely on, and for
+     * the same reason: a second row would make the batch the wrong length, and
+     * the length is what every payload is checked against.
+     */
+    @Test
+    fun `a second write of one item replaces it`() = runBlocking {
+        seedRooms()
+        session("s1")
+
+        db.frostSigningSessionDao().upsert(item("s1", signature = "cd".repeat(32)))
+
+        val items = db.frostSigningSessionDao().getItems("s1")
+
+        assertEquals(1, items.size)
+        assertEquals("cd".repeat(32), items.single().signature)
+    }
+
+    /** Counted rather than flagged, so "the group has finished" cannot disagree with the rows. */
+    @Test
+    fun `signed items are counted apart from the rest`() = runBlocking {
+        seedRooms()
+        session("s1", events = 3)
+
+        assertEquals(3, db.frostSigningSessionDao().countItems("s1"))
+        assertEquals(0, db.frostSigningSessionDao().countSignedItems("s1"))
+
+        db.frostSigningSessionDao().upsertItems(
+            listOf(item("s1", 0, signature = "ab".repeat(32)), item("s1", 1, signature = "cd".repeat(32)))
+        )
+
+        assertEquals(2, db.frostSigningSessionDao().countSignedItems("s1"))
+    }
+
+    /** Items belong to their session and go with it, like the signer messages do. */
+    @Test
+    fun `deleting a room takes its sessions' items with it`() = runBlocking {
+        seedRooms()
+        session("s1", chatRoomId = roomOne, events = 2)
+        session("s2", chatRoomId = roomTwo, events = 2)
+
+        db.chatRoomDao().delete(assertNotNull(db.chatRoomDao().findChatRoomById(roomOne)).chatRoom)
+
+        assertEquals(emptyList(), db.frostSigningSessionDao().getItems("s1"))
+        assertEquals(2, db.frostSigningSessionDao().getItems("s2").size)
+    }
+
+    /** The single-item read the manager uses to pick one event out of a batch. */
+    @Test
+    fun `an item can be read by its index`() = runBlocking {
+        seedRooms()
+        session("s1", events = 3)
+
+        assertEquals("f2".repeat(32), db.frostSigningSessionDao().getItem("s1", 2)?.eventId)
+        assertNull(db.frostSigningSessionDao().getItem("s1", 3))
     }
 }

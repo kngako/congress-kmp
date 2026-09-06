@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.repository.ChatRepository
@@ -66,12 +67,14 @@ class FrostSigningViewModel(
 
             combine(
                 frostSigningRepository.observeSessionById(id),
-                frostSigningRepository.observeMessages(id)
-            ) { session, messages -> session to messages }
-                .collect { (session, messages) ->
+                frostSigningRepository.observeMessages(id),
+                frostSigningRepository.observeItems(id)
+            ) { session, messages, items -> Triple(session, messages, items) }
+                .collect { (session, messages, items) ->
                     frostSigningUIState = FrostSigningUIState.Loaded(
                         localChatRoom = localChatRoom,
                         session = session,
+                        items = items,
                         offeredNonce = messages
                             .filter { it.kind == FrostSigningEvents.NONCE }
                             .map { it.signerPublicKey }
@@ -85,12 +88,12 @@ class FrostSigningViewModel(
         }
     }
 
-    /** The event the group is being asked to sign, for showing it before they agree. */
-    fun proposedEvent(session: FrostSigningSession): Event? =
-        Event.fromJsonOrNull(session.unsignedEventJson)
+    /** The events the group is being asked to sign, for showing them before they agree. */
+    fun proposedEvents(items: List<FrostSigningItem>): List<Event> =
+        items.mapNotNull { Event.fromJsonOrNull(it.unsignedEventJson) }
 
-    fun signedEvent(session: FrostSigningSession): Event? =
-        frostSigningRepository.signedEvent(session)
+    fun signedEvents(items: List<FrostSigningItem>): List<Event> =
+        frostSigningRepository.signedEvents(items)
 
     fun approve(onDone: () -> Unit) {
         val state = frostSigningUIState as? FrostSigningUIState.Loaded ?: return

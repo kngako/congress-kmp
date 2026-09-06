@@ -121,6 +121,13 @@ class SignedGroupKeyStateTest {
         suspend fun session(sessionId: String): FrostSigningSession? =
             db.frostSigningSessionDao().getSessionById(sessionId)
 
+        /** The events a session signs, in the order its proposal fixed. */
+        suspend fun items(sessionId: String) =
+            db.frostSigningSessionDao().getItems(sessionId)
+
+        /** The one event a session of one signs. */
+        suspend fun item(sessionId: String) = items(sessionId).single()
+
         suspend fun keyState() = db.groupKeyStateDao().getByChatRoomId(roomId)
     }
 
@@ -275,7 +282,7 @@ class SignedGroupKeyStateTest {
         val payload = Event.fromJson(proposal.content)
         assertEquals(GroupKeyStateEvent.KIND, payload.kind)
         assertEquals(thresholdPublicKey, payload.content)
-        assertEquals(session.eventId, payload.id)
+        assertEquals(creator.item(session.id).eventId, payload.id)
     }
 
     @Test
@@ -289,7 +296,7 @@ class SignedGroupKeyStateTest {
             key = ceremonyOn(creator)
         )
 
-        val payload = Event.fromJson(session.unsignedEventJson)
+        val payload = Event.fromJson(creator.item(session.id).unsignedEventJson)
 
         // Signing runs at the room's derivation path, so the key the group signs
         // as is the room's own id. Not the group's root key, which is what an
@@ -320,7 +327,7 @@ class SignedGroupKeyStateTest {
         // Rebuilt from the event's own fields under this device's own reading of
         // the room. Agreeing on the id is agreeing on every byte that is signed,
         // the author included.
-        assertEquals(session.eventId, received.eventId)
+        assertEquals(creator.item(session.id).eventId, other.item(session.id).eventId)
         assertEquals(session.derivationPath, received.derivationPath)
     }
 
@@ -337,7 +344,12 @@ class SignedGroupKeyStateTest {
         )
         pump(creator, other)
 
-        assertTrue(FrostSigningManager.isAwaitingApproval(other.session(session.id)!!))
+        assertTrue(
+            FrostSigningManager.isAwaitingApproval(
+                other.session(session.id)!!,
+                other.items(session.id)
+            )
+        )
         assertTrue(
             outbox(other).isEmpty(),
             "a device that has not been asked yet must publish nothing"
@@ -394,7 +406,7 @@ class SignedGroupKeyStateTest {
         FrostSigningManager.approve(other.db, other.room, session.id)
         pump(creator, other)
 
-        val signed = FrostSigningManager.signedEvent(creator.session(session.id)!!)
+        val signed = FrostSigningManager.signedEvent(creator.item(session.id))
         assertNotNull(signed, "a completed session must carry a signed event")
 
         assertEquals(adminRoomId, signed.pubKey)
@@ -467,7 +479,7 @@ class SignedGroupKeyStateTest {
         pump(creator, other)
 
         listOf(creator, other).forEach { device ->
-            val dialect = device.db.mantraDialectDao().getDialectById(session.eventId)
+            val dialect = device.db.mantraDialectDao().getDialectById(device.item(session.id).eventId)
             assertNotNull(dialect, "a signed dialect should exist on every signer's device")
             assertEquals("Sepedi", dialect.name)
             // The ask this whole change serves: the group's work is authored by
@@ -601,7 +613,7 @@ class SignedGroupKeyStateTest {
         )
 
         assertEquals(SharedKeyDerivation.formatPath(sibling), session.derivationPath)
-        assertEquals(siblingRoomId, Event.fromJson(session.unsignedEventJson).pubKey)
+        assertEquals(siblingRoomId, Event.fromJson(creator.item(session.id).unsignedEventJson).pubKey)
 
         pump(creator, other)
         FrostSigningManager.approve(other.db, other.room, session.id)
@@ -640,6 +652,6 @@ class SignedGroupKeyStateTest {
 
         assertNull(session.derivationPath, "no path reaches a room that was not derived")
         assertEquals(emptyList(), session.pathIndices())
-        assertEquals(rootPublicKey, Event.fromJson(session.unsignedEventJson).pubKey)
+        assertEquals(rootPublicKey, Event.fromJson(creator.item(session.id).unsignedEventJson).pubKey)
     }
 }

@@ -23,6 +23,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -145,15 +146,11 @@ object FrostSigningManager {
             participantCount = ceremony.participantCount,
             signerId = signerId,
             derivationPath = path?.let(SharedKeyDerivation::formatPath),
-            unsignedEventJson = unsignedEvent.toJson(),
-            eventId = unsignedEvent.id,
-            // Fresh per session, and never reused: this is the seed the device's
-            // secret nonce is regenerated from for the life of the session.
-            nonceRandom = RandomInstance.bytes(32).toHex(),
             // Proposing a signature is already the act of agreeing to it.
             signApprovedAt = Clock.System.now()
         )
         database.frostSigningSessionDao().upsert(session)
+        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, listOf(unsignedEvent)))
         announceStarted(database, session)
 
         logger.i("Proposing signature $sessionId over event ${unsignedEvent.id} with key ${ceremony.id}")
@@ -163,7 +160,7 @@ object FrostSigningManager {
             localChatRoom = localChatRoom,
             session = session,
             kind = FrostSigningEvents.PROPOSAL,
-            content = session.unsignedEventJson,
+            content = unsignedEvent.toJson(),
             includeKey = true
         )
 
@@ -236,15 +233,16 @@ object FrostSigningManager {
         userPublicKey: HexKey
     ): FrostSigningSession? {
         database.frostSigningSessionDao().getSessionById(sessionId)?.let { existing ->
-            // The message a session signs is fixed at creation. A second proposal
-            // under the same id carrying a different event is either a mistake or
-            // an attempt to get two signatures out of one secret nonce, which is
-            // how a share is extracted -- so it is refused, not applied.
+            // The events a session signs are fixed at creation. A second proposal
+            // under the same id carrying different ones is either a mistake or an
+            // attempt to get two signatures out of one secret nonce, which is how
+            // a share is extracted -- so it is refused, not applied.
             val proposed = Event.fromJsonOrNull(innerEvent.content)
-            if (proposed != null && proposed.id != existing.eventId) {
+            val signing = database.frostSigningSessionDao().getItems(sessionId).map { it.eventId }
+            if (proposed != null && signing != listOf(proposed.id)) {
                 logger.w(
                     "Session $sessionId re-proposed with event ${proposed.id}, " +
-                        "but it is already signing ${existing.eventId}; ignoring"
+                        "but it is already signing ${signing.joinToString()}; ignoring"
                 )
             }
             return existing
@@ -312,12 +310,10 @@ object FrostSigningManager {
             threshold = key.threshold,
             participantCount = key.participantCount,
             signerId = signerId,
-            derivationPath = path?.let(SharedKeyDerivation::formatPath),
-            unsignedEventJson = unsignedEvent.toJson(),
-            eventId = unsignedEvent.id,
-            nonceRandom = RandomInstance.bytes(32).toHex()
+            derivationPath = path?.let(SharedKeyDerivation::formatPath)
         )
         database.frostSigningSessionDao().upsert(session)
+        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, listOf(unsignedEvent)))
         announceStarted(database, session)
 
         logger.i("Recorded signing session $sessionId over ${unsignedEvent.id}; awaiting approval")
@@ -406,26 +402,19 @@ object FrostSigningManager {
                     return true
                 }
 
-                val known = current(database, session).aggregatedNonce != null
-
                 // Write-once, and this is the load-bearing one. Signing the same
                 // message twice under one secret nonce against two different
                 // aggregated nonces is exactly how a secret share is extracted, so
                 // a coordinator that sends a second, different signer set is
                 // ignored rather than obeyed. The session stalls; the share does
                 // not leak.
-                update(database, session) { current ->
-                    if (current.aggregatedNonce == null) {
-                        current.copy(
-                            aggregatedNonce = innerEvent.content,
-                            signerIds = signerIds.joinToString(",")
-                        )
-                    } else {
-                        current
-                    }
-                }
+                //
+                // `signerIds` is the gate for the whole batch: it and every item's
+                // aggregated nonce are written together, so a session holding one
+                // holds all of them.
+                if (current(database, session).signerIds != null) return true
 
-                if (!known) {
+                if (applyAggregate(database, session, signerIds, listOf(innerEvent.content))) {
                     announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
@@ -433,17 +422,12 @@ object FrostSigningManager {
             FrostSigningEvents.SIGNATURE -> {
                 if (!isFromCoordinator(session, innerEvent)) return true
 
-                val known = current(database, session).signature != null
+                // Write-once as a unit, for the same reason the aggregate is: a
+                // batch that had some of its signatures would be one the group
+                // could neither finish nor safely retry.
+                if (isSigned(database, session)) return true
 
-                update(database, session) { current ->
-                    if (current.signature == null) {
-                        current.copy(signature = innerEvent.content)
-                    } else {
-                        current
-                    }
-                }
-
-                if (!known) {
+                if (applySignatures(database, session, listOf(innerEvent.content))) {
                     announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
@@ -504,7 +488,7 @@ object FrostSigningManager {
             // there -- while going on to ask would be asking for a decision that
             // can no longer change anything, and would let a late "don't sign"
             // abandon a signature that exists.
-            if (session.signature != null) {
+            if (isSigned(database, session)) {
                 complete(database, session)
                 return
             }
@@ -526,14 +510,19 @@ object FrostSigningManager {
             val tweakCache = SharedKeyDerivation
                 .derive(thresholdPublicKey, session.pathIndices())
                 .cache
-            val message = ByteVector(session.eventId.hexToByteArray())
             val publicShares = key.publicShareList()
 
+            // The events this session signs, in the order the proposal fixed. Every
+            // join below is positional against it.
+            val items = database.frostSigningSessionDao().getItems(sessionId)
+            val item = items.firstOrNull() ?: return
+            val message = ByteVector(item.eventId.hexToByteArray())
+
             // Regenerated rather than stored -- SecretNonce refuses both. Safe
-            // because the session's message can never change; see the notes on
+            // because an item's message can never change; see the notes on
             // FrostSigningSession.
             val (secretNonce, publicNonce) = SecretNonce.generate(
-                sessionRandom = ByteVector32(session.nonceRandom),
+                sessionRandom = ByteVector32(item.nonceRandom),
                 secretShare = secretShare,
                 publicShare = publicShares?.getOrNull(session.signerId),
                 tweakedThresholdPublicKey = tweakCache.tweakedPublicKey,
@@ -551,26 +540,26 @@ object FrostSigningManager {
                 )
             }
 
-            if (session.isCoordinator() && session.aggregatedNonce == null) {
+            if (session.isCoordinator() && session.signerIds == null) {
                 val offered = orderedNonces(database, session) ?: return
                 val chosen = offered.take(session.threshold)
 
                 val aggregated = IndividualNonce.aggregate(chosen.map { it.second })
                     .orThrow("aggregating nonces")
 
-                session = update(database, session) {
-                    it.copy(
-                        aggregatedNonce = aggregated.toByteArray().toHex(),
-                        signerIds = chosen.joinToString(",") { (id, _) -> id.toString() }
-                    )
+                val chosenIds = chosen.map { (id, _) -> id }
+                if (!applyAggregate(database, session, chosenIds, listOf(aggregated.toByteArray().toHex()))) {
+                    return
                 }
+                session = current(database, session)
+
                 broadcast(
                     database = database,
                     localChatRoom = localChatRoom,
                     session = session,
                     kind = FrostSigningEvents.SIGNER_SET,
                     content = aggregated.toByteArray().toHex(),
-                    signerIds = chosen.map { (id, _) -> id }
+                    signerIds = chosenIds
                 )
                 announceStep(
                     database,
@@ -580,8 +569,9 @@ object FrostSigningManager {
                 )
             }
 
-            val aggregatedNonce = session.aggregatedNonce ?: return
             val signerIds = session.signerIdList() ?: return
+            val aggregatedNonce = database.frostSigningSessionDao()
+                .getItem(sessionId, item.itemIndex)?.aggregatedNonce ?: return
             session = moveTo(database, session, FrostSigningStage.COLLECTING_PARTIAL_SIGNATURES)
 
             val signingSession = Session.create(
@@ -613,7 +603,7 @@ object FrostSigningManager {
                 )
             }
 
-            if (session.isCoordinator() && session.signature == null) {
+            if (session.isCoordinator() && !isSigned(database, session)) {
                 val partials = orderedPartialSignatures(database, session, signerIds) ?: return
 
                 val signature = signingSession
@@ -621,7 +611,9 @@ object FrostSigningManager {
                     .orThrow("aggregating partial signatures")
                     .toHex()
 
-                session = update(database, session) { it.copy(signature = signature) }
+                if (!applySignatures(database, session, listOf(signature))) return
+                session = current(database, session)
+
                 broadcast(
                     database = database,
                     localChatRoom = localChatRoom,
@@ -662,16 +654,25 @@ object FrostSigningManager {
      * like every other line in the transcript.
      */
     private suspend fun complete(database: MantraDatabase, session: FrostSigningSession) {
-        val signature = session.signature ?: return
+        val items = database.frostSigningSessionDao().getItems(session.id)
+        if (items.isEmpty() || items.any { !it.isSigned() }) return
 
-        val signedEvent = signedEvent(session, signature)
-        val verified = Nip01Crypto.verify(
-            signature = signature.hexToByteArray(),
-            hash = session.eventId.hexToByteArray(),
-            pubKey = signedEvent.pubKey.hexToByteArray()
-        )
-        if (!verified) {
-            throw IllegalStateException("The aggregated signature does not verify against ${session.eventId}")
+        // Every signature is checked before any event is applied. A batch is
+        // all-or-nothing, so a bad one anywhere has to fail the session rather
+        // than leave some of its events already filed.
+        val signedEvents = items.map { item ->
+            val signedEvent = signedEvent(item, item.signature!!)
+            val verified = Nip01Crypto.verify(
+                signature = item.signature.hexToByteArray(),
+                hash = item.eventId.hexToByteArray(),
+                pubKey = signedEvent.pubKey.hexToByteArray()
+            )
+            if (!verified) {
+                throw IllegalStateException(
+                    "The aggregated signature does not verify against ${item.eventId}"
+                )
+            }
+            signedEvent
         }
 
         update(database, session) { it.copy(stage = FrostSigningStage.COMPLETE) }
@@ -683,14 +684,14 @@ object FrostSigningManager {
         // wire: a signed event authored by the threshold key cannot travel as
         // an inner event anyway, because the outbound pipeline re-authors
         // rumors as their sender and would strip the group's signature off.
-        applySignedEvent(database, session, signedEvent)
+        signedEvents.forEach { applySignedEvent(database, session, it) }
 
         announce(
             database = database,
             session = session,
             messageType = ChatMessage.TYPE_FROST_COMPLETE,
-            content = "The group signed the event. It took ${session.threshold} of " +
-                "${session.participantCount} members.",
+            content = "The group signed ${describe(signedEvents.size)}. It took " +
+                "${session.threshold} of ${session.participantCount} members.",
             actor = session.coordinatorPublicKey
         )
 
@@ -736,8 +737,8 @@ object FrostSigningManager {
      * Public so a caller can take the finished event and do whatever it was
      * signing it for — the session's job ends at a valid signature.
      */
-    fun signedEvent(session: FrostSigningSession, signature: HexKey): Event {
-        val unsigned = Event.fromJson(session.unsignedEventJson)
+    fun signedEvent(item: FrostSigningItem, signature: HexKey): Event {
+        val unsigned = Event.fromJson(item.unsignedEventJson)
 
         return Event(
             id = unsigned.id,
@@ -750,9 +751,115 @@ object FrostSigningManager {
         )
     }
 
-    /** The finished event, or null while the session is still running. */
-    fun signedEvent(session: FrostSigningSession): Event? =
-        session.signature?.let { signedEvent(session, it) }
+    /** The finished event, or null while this item is still running. */
+    fun signedEvent(item: FrostSigningItem): Event? =
+        item.signature?.let { signedEvent(item, it) }
+
+    /** Every finished event of a batch, empty while any of them is still running. */
+    fun signedEvents(items: List<FrostSigningItem>): List<Event> =
+        items.map { it.signature ?: return emptyList() }
+            .mapIndexed { index, signature -> signedEvent(items[index], signature) }
+
+    /**
+     * The items a session signs: one per event, each with its own nonce seed.
+     *
+     * Independent seeds rather than one derived per index, which would work and
+     * save nothing worth having. Independence means an off-by-one anywhere in
+     * the index handling produces a session that fails to aggregate, instead of
+     * one that signs two messages under a single nonce.
+     */
+    private fun itemsOver(sessionId: String, events: List<Event>): List<FrostSigningItem> =
+        events.mapIndexed { index, event ->
+            FrostSigningItem(
+                sessionId = sessionId,
+                itemIndex = index,
+                unsignedEventJson = event.toJson(),
+                eventId = event.id,
+                nonceRandom = RandomInstance.bytes(32).toHex()
+            )
+        }
+
+    /**
+     * Records the coordinator's signer set and the aggregated nonce each item is
+     * signed against, as one write. Returns false when the message does not fit
+     * the batch, so the caller neither announces nor acts on it.
+     *
+     * The two belong together. [FrostSigningSession.signerIds] is what the rest
+     * of the session gates on, so a session holding it while an item still had no
+     * aggregate would stall on a message that has already been delivered — and
+     * the write that cleared the stall would be a second aggregate for an item
+     * that had one, which is the case the write-once rule exists to prevent.
+     * Items first, in one transaction, then the session: the gate is only ever
+     * set on a batch that is entirely ready.
+     */
+    private suspend fun applyAggregate(
+        database: MantraDatabase,
+        session: FrostSigningSession,
+        signerIds: List<Int>,
+        aggregatedNonces: List<HexKey>
+    ): Boolean {
+        val items = database.frostSigningSessionDao().getItems(session.id)
+        if (items.isEmpty() || items.size != aggregatedNonces.size) {
+            logger.w(
+                "Session ${session.id}: signer set carries ${aggregatedNonces.size} " +
+                    "aggregated nonce(s) for ${items.size} item(s); ignoring"
+            )
+            return false
+        }
+
+        database.frostSigningSessionDao().upsertItems(
+            items.mapIndexed { index, item -> item.copy(aggregatedNonce = aggregatedNonces[index]) }
+        )
+        update(database, session) { it.copy(signerIds = signerIds.joinToString(",")) }
+
+        return true
+    }
+
+    /**
+     * Records the group's finished signatures, all of them or none. Returns false
+     * when the message does not fit the batch.
+     *
+     * Settled as a unit for the same reason the aggregate is: a batch holding
+     * some of its signatures is one the group can neither finish nor safely
+     * retry, since a retry means fresh nonces for events that already have a
+     * signature against the old ones.
+     */
+    private suspend fun applySignatures(
+        database: MantraDatabase,
+        session: FrostSigningSession,
+        signatures: List<HexKey>
+    ): Boolean {
+        val items = database.frostSigningSessionDao().getItems(session.id)
+        if (items.isEmpty() || items.size != signatures.size) {
+            logger.w(
+                "Session ${session.id}: ${signatures.size} signature(s) for " +
+                    "${items.size} item(s); ignoring"
+            )
+            return false
+        }
+
+        database.frostSigningSessionDao().upsertItems(
+            items.mapIndexed { index, item -> item.copy(signature = signatures[index]) }
+        )
+
+        return true
+    }
+
+    /**
+     * Whether the group has produced every signature this session was opened for.
+     *
+     * Counted rather than flagged, so it cannot disagree with the rows it
+     * describes. A session with no items is not signed — it is one whose proposal
+     * has not landed yet.
+     */
+    private suspend fun isSigned(database: MantraDatabase, session: FrostSigningSession): Boolean {
+        val total = database.frostSigningSessionDao().countItems(session.id)
+
+        return total > 0 && database.frostSigningSessionDao().countSignedItems(session.id) == total
+    }
+
+    /** "the event" or "3 events", for a transcript line that reads the same at either size. */
+    private fun describe(count: Int): String = if (count == 1) "the event" else "$count events"
 
     /**
      * The nonces on offer, as (signer id, nonce), ordered by signer id — or null
@@ -1091,7 +1198,10 @@ object FrostSigningManager {
      * it. The two must agree, or the screen offers an approval that does nothing,
      * or none while the session sits still.
      */
-    fun isAwaitingApproval(session: FrostSigningSession): Boolean {
+    fun isAwaitingApproval(
+        session: FrostSigningSession,
+        items: List<FrostSigningItem>
+    ): Boolean {
         if (session.stage == FrostSigningStage.COMPLETE || session.stage == FrostSigningStage.FAILED) {
             return false
         }
@@ -1100,7 +1210,7 @@ object FrostSigningManager {
         // the session on its next pass without asking them anything. Offering the
         // decision anyway would be offering two bad answers: a nonce nobody is
         // waiting for, or a refusal that abandons a signature already made.
-        if (session.signature != null) return false
+        if (items.isNotEmpty() && items.all { it.isSigned() }) return false
 
         return session.signApprovedAt == null
     }
@@ -1118,8 +1228,9 @@ object FrostSigningManager {
         sessionId: String
     ) {
         val session = database.frostSigningSessionDao().getSessionById(sessionId) ?: return
+        val items = database.frostSigningSessionDao().getItems(sessionId)
 
-        if (!isAwaitingApproval(session)) {
+        if (!isAwaitingApproval(session, items)) {
             logger.i("Session $sessionId is not waiting on an approval; ignoring it")
             return
         }
@@ -1145,8 +1256,9 @@ object FrostSigningManager {
         sessionId: String
     ) {
         val session = database.frostSigningSessionDao().getSessionById(sessionId) ?: return
+        val items = database.frostSigningSessionDao().getItems(sessionId)
 
-        if (!isAwaitingApproval(session)) return
+        if (!isAwaitingApproval(session, items)) return
 
         fail(
             database = database,

@@ -170,9 +170,6 @@ class SharedKeyDerivationTest {
         threshold = 2,
         participantCount = 3,
         signerId = 0,
-        derivationPath = derivationPath,
-        unsignedEventJson = "{}",
-        eventId = "e".repeat(64),
-        nonceRandom = "f".repeat(64)
+        derivationPath = derivationPath
     )
 }
