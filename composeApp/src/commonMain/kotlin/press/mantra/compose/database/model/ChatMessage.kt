@@ -10,6 +10,7 @@ import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.traits.UserViewableEntity
 import press.mantra.compose.exceptions.MarmotUnprocessableInnerEventException
+import press.mantra.compose.managers.ArchiveManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
@@ -25,6 +26,7 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.archive.ArchiveEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
@@ -611,6 +613,28 @@ data class ChatMessage(
                             wrap = event,
                             senderIdentity = senderIdentity
                         )
+                    }
+
+                    // An archive is neither a document nor a submission: it is a
+                    // bundle of documents addressed to one member who is missing
+                    // them. Intercepted here rather than in applyInnerEvent for
+                    // the same reason the gift wrap above is -- deciding whether
+                    // to act needs the active key, which applyInnerEvent has no
+                    // business knowing.
+                    if (event.kind == ArchiveEvent.KIND) {
+                        ArchiveManager.receive(
+                            database = database,
+                            chatRoomId = groupEventResult.groupId,
+                            userPublicKey = activeKeyPair.pubKey.toHex(),
+                            page = event,
+                        )
+
+                        // No chat line, and not for want of one worth writing.
+                        // One line per archive is right; one per page is not, and
+                        // the pages of an archive are not distinguishable from
+                        // each other here. That is Phase 7's, and until then a
+                        // silent catch-up beats a transcript full of envelopes.
+                        return null
                     }
 
                     // A submission whose payload will not parse, or which carries

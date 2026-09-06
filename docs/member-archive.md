@@ -429,9 +429,20 @@ database.marmotInnerEventDao()
 ```
 
 Re-apply every stored page for the room, oldest first, after each new page
-arrives; repeat while a pass applies something it did not apply before; stop when
-a pass applies nothing. Everything in it is an `upsert` keyed on the event id, so
-a re-run is free and a converged archive costs one no-op pass.
+arrives. Everything in it is an `upsert` keyed on the event id, so a re-run is
+free and a converged archive costs one no-op pass.
+
+**Progress is falling failures, not rows written.** "Repeat while a pass applies
+something new" is the obvious loop condition and it does not terminate: an upsert
+succeeds every time, so every pass applies something forever. What strictly
+decreases is the number of payloads that threw. A pass that fails fewer than the
+last one learned something; a pass that does not is as far as these pages get.
+
+**And the answer is the last pass, not the sum of them.** Accumulating counts a
+payload once per pass it survived and reports failures that a later pass went on
+to fix, so `failed > 0` stops meaning "still missing" -- which is exactly the
+question the caller is asking. Found by asserting that the page completing an
+out-of-order archive leaves nothing behind, which failed against the sum.
 
 Only the recipient sweeps, which is what bounds it: the members who skip apply
 never build the list.

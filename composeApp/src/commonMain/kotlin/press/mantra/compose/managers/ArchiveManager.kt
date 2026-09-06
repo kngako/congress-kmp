@@ -7,6 +7,8 @@ import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.utils.RandomInstance
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.archive.ArchiveEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
@@ -96,6 +98,226 @@ object ArchiveManager {
                 createdAt = createdAt,
             )
         }
+    }
+
+    // ---- Receiving ------------------------------------------------------
+
+    /**
+     * What one pass over a room's stored pages did.
+     *
+     * [skipped] and [failed] are kept apart because only one of them is worth
+     * trying again. A payload the allowlist or the signature refused will be
+     * refused identically forever; a payload that threw was probably missing a
+     * row it depends on, and the next page may bring it.
+     */
+    data class Outcome(
+        val applied: Int = 0,
+        val skipped: Int = 0,
+        val failed: Int = 0,
+    ) {
+        operator fun plus(other: Outcome) = Outcome(
+            applied = applied + other.applied,
+            skipped = skipped + other.skipped,
+            failed = failed + other.failed,
+        )
+    }
+
+    /**
+     * Take delivery of an archive page for [userPublicKey].
+     *
+     * The page is already on disk by the time this runs -- the inbound path
+     * stores every inner event it decrypts before dispatching on kind -- so this
+     * does not apply the arriving page as such. It sweeps every page the room
+     * has, which covers the new one and any that arrived before the rows they
+     * depend on.
+     *
+     * **A device that is not the named recipient does nothing.** The page is an
+     * ordinary group message and it can read it; it has no reason to. It already
+     * holds the work, and re-applying would rewrite every one of its rows to
+     * point at an archive page rather than at the event that introduced it. That
+     * is also what keeps the sweep bounded: only the member being caught up ever
+     * builds the list.
+     */
+    suspend fun receive(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        page: Event,
+    ): Outcome {
+        val recipient = ArchiveEvent(
+            id = page.id,
+            pubKey = page.pubKey,
+            createdAt = page.createdAt,
+            tags = page.tags,
+            content = page.content,
+            sig = page.sig,
+        ).recipient()
+
+        if (!recipient.equals(userPublicKey, ignoreCase = true)) {
+            logger.d("Archive page ${page.id.take(8)} is for ${recipient?.take(8)}; not applying")
+            return Outcome()
+        }
+
+        return sweep(database, chatRoomId, userPublicKey)
+    }
+
+    /**
+     * Apply every archive page this room holds for [userPublicKey], repeatedly,
+     * until a pass stops making progress.
+     *
+     * Pages arrive over relays in no order, so page 3 can land before page 2 and
+     * its chunks have no chapter to hang off yet. Those payloads throw a foreign
+     * key violation and would be lost -- unless something runs them again.
+     *
+     * **No table is needed for that**, because the inbound path already stores
+     * every inner event it decrypts. This is the same shape
+     * `FrostSigningManager.replayStoredMessages` has, and for the same reason:
+     * nothing was actually lost, it just had nowhere to go at the time.
+     *
+     * **Progress is measured by failures falling, not by rows written.** Every
+     * write here is an upsert keyed on the event id, so "applied something" is
+     * true on every pass forever and would not terminate. A pass that fails fewer
+     * payloads than the last one learned something; a pass that does not is as
+     * far as this archive gets, and the rest is a hole to be filled by another
+     * page or another archive.
+     *
+     * **The answer is the last pass, not the sum of them.** Accumulating would
+     * count a payload once per pass it survived and report failures the next pass
+     * went on to fix, so `failed > 0` would stop meaning "still missing". The
+     * final pass is the settled state: what these pages can apply, what they will
+     * never apply, and what is still waiting on something that has not arrived.
+     */
+    suspend fun sweep(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey,
+    ): Outcome {
+        val pages = database.marmotInnerEventDao()
+            .getByChatRoomAndKinds(chatRoomId, listOf(ArchiveEvent.KIND))
+            .filter { addressedTo(it, userPublicKey) }
+
+        if (pages.isEmpty()) return Outcome()
+
+        var pass = Outcome()
+        var previousFailures = Int.MAX_VALUE
+
+        while (true) {
+            pass = Outcome()
+            pages.forEach { pass += applyPage(database, chatRoomId, it) }
+
+            if (pass.failed == 0 || pass.failed >= previousFailures) {
+                if (pass.failed > 0) {
+                    logger.w(
+                        "Stopped sweeping $chatRoomId with ${pass.failed} payload(s) still " +
+                            "unapplied: nothing in the pages it holds satisfies them"
+                    )
+                }
+                break
+            }
+
+            previousFailures = pass.failed
+        }
+
+        logger.i(
+            "Swept ${pages.size} archive page(s) for $chatRoomId: " +
+                "${pass.applied} applied, ${pass.skipped} skipped, ${pass.failed} left"
+        )
+
+        return pass
+    }
+
+    private fun addressedTo(stored: MarmotInnerEvent, userPublicKey: HexKey): Boolean =
+        ArchiveEvent(
+            id = stored.id,
+            pubKey = stored.publicKey,
+            createdAt = stored.createdAt.epochSeconds,
+            tags = stored.tags,
+            content = stored.content,
+            sig = "",
+        ).recipient().equals(userPublicKey, ignoreCase = true)
+
+    /**
+     * One page, checked payload by payload and applied in dependency order.
+     *
+     * **Per payload, not per page.** A forged payload sitting beside honest ones
+     * costs itself and nothing else -- the same rule `MarmotInboundManager` uses
+     * for a forged direct message, and for the same reason: this runs inside the
+     * inbound transaction, and one bad event must not take the room down with it.
+     * Refusing the whole page would also let a single forgery deny an entire
+     * archive.
+     *
+     * The page's own framing is still all-or-nothing; see
+     * [ArchiveEvent.decodePage] for why those two are not in tension.
+     */
+    private suspend fun applyPage(
+        database: MantraDatabase,
+        chatRoomId: String,
+        stored: MarmotInnerEvent,
+    ): Outcome {
+        val payloads = ArchiveEvent.decodePage(stored.content)
+        if (payloads == null) {
+            logger.w("Archive page ${stored.id.take(8)} does not read as a page; dropping it")
+            return Outcome()
+        }
+
+        var outcome = Outcome()
+
+        ArchiveEvent.inApplyOrder(payloads).forEach { payload ->
+            // The allowlist first, and it is not a formality. Verification admits
+            // an event to the apply path on the strength of the group's
+            // signature, which makes every kind the group has ever signed
+            // replayable by any member at any time -- a GroupKeyStateEvent from
+            // an earlier epoch passes the signature check perfectly.
+            if (!ArchiveEvent.isArchivable(payload.kind)) {
+                logger.w(
+                    "Archive page ${stored.id.take(8)} carries kind ${payload.kind}, " +
+                        "which an archive may not deliver; dropping ${payload.id.take(8)}"
+                )
+                outcome += Outcome(skipped = 1)
+                return@forEach
+            }
+
+            if (!GroupKeyStateEvent.isSignedByRoom(payload, chatRoomId)) {
+                logger.w(
+                    "Archive page ${stored.id.take(8)} carries ${payload.id.take(8)}, " +
+                        "which room $chatRoomId did not sign; dropping it"
+                )
+                outcome += Outcome(skipped = 1)
+                return@forEach
+            }
+
+            outcome += try {
+                // The chat line this returns is deliberately dropped rather than
+                // filed. ChatMessage has an autoGenerate primary key, so there is
+                // no id to dedupe on and every applied payload would mint a new
+                // row -- giving the recipient a synthetic transcript dated now,
+                // and another one on every pass of the sweep. The archive
+                // restores the work; the conversation is forward secret and stays
+                // gone.
+                ChatMessage.applyInnerEvent(
+                    database = database,
+                    groupId = chatRoomId,
+                    event = payload,
+                    marmotGroupEventId = stored.marmotGroupEventId,
+                    marmotInnerEventId = stored.id,
+                    senderPublicKey = payload.pubKey,
+                    isUserMessage = false,
+                    createdAt = stored.createdAt,
+                )
+                Outcome(applied = 1)
+            } catch (error: Throwable) {
+                // Almost always a foreign key: this payload names a row that is
+                // in a page which has not arrived yet. Retryable, which is what
+                // the sweep is for, so it is counted rather than logged loudly.
+                logger.d(
+                    "Could not apply ${payload.id.take(8)} from archive page " +
+                        "${stored.id.take(8)} yet: ${error.message}"
+                )
+                Outcome(failed = 1)
+            }
+        }
+
+        return outcome
     }
 
     /**
