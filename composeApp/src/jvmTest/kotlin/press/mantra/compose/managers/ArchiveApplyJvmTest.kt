@@ -20,6 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
@@ -27,6 +28,7 @@ import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.MarmotInnerEvent
+import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.toHex
@@ -35,6 +37,7 @@ import press.mantra.compose.nostr.archive.ArchiveRequestEvent
 import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
 import press.mantra.compose.nostr.archive.tags.ArchivePageTag
 import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
+import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -651,7 +654,7 @@ class ArchiveApplyJvmTest {
     fun `answering a request queues the archive for whoever asked`() = runBlocking {
         seedSenderWork()
 
-        val pages = ArchiveManager.answer(sender, chatRoomId, oldMember, requester = newMember)
+        val pages = ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
 
         assertEquals(1, pages)
 
@@ -677,7 +680,7 @@ class ArchiveApplyJvmTest {
     fun `a member with nothing signed answers nothing rather than an empty archive`() = runBlocking {
         seedRoom(receiver, newMember)
 
-        assertEquals(0, ArchiveManager.answer(receiver, chatRoomId, newMember, requester = oldMember))
+        assertEquals(0, ArchiveManager.sendTo(receiver, chatRoomId, newMember, recipient = oldMember))
         assertEquals(0, queued(receiver, ArchiveEvent.KIND).size)
     }
 
@@ -685,7 +688,7 @@ class ArchiveApplyJvmTest {
     fun `a member does not answer their own request`() = runBlocking {
         seedSenderWork()
 
-        assertEquals(0, ArchiveManager.answer(sender, chatRoomId, oldMember, requester = oldMember))
+        assertEquals(0, ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = oldMember))
         assertEquals(0, queued(sender, ArchiveEvent.KIND).size)
     }
 
@@ -698,7 +701,7 @@ class ArchiveApplyJvmTest {
         assertTrue(ArchiveManager.requestIfEmpty(receiver, chatRoomId, newMember))
 
         // A member holding the work answers it, addressed to whoever asked.
-        ArchiveManager.answer(sender, chatRoomId, oldMember, requester = newMember)
+        ArchiveManager.sendTo(sender, chatRoomId, oldMember, recipient = newMember)
 
         // The pages reach the joiner, who applies them.
         queued(sender, ArchiveEvent.KIND).forEach { queuedPage ->
@@ -714,5 +717,92 @@ class ArchiveApplyJvmTest {
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
         assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.archiveRequestedAt)
+    }
+
+    // ---- The push behind a Welcome ---------------------------------------
+
+    /**
+     * The invitee's key package, which is how `deliveryWelcome` learns who it is
+     * addressing. The bytes are never decoded on this path.
+     */
+    private suspend fun seedInviteeKeyPackage(): String {
+        val keyPackageId = "1".repeat(64)
+        val nostrEventId = "2".repeat(64)
+
+        sender.nostrEventDao().upsert(
+            NostrEvent(
+                id = nostrEventId,
+                pubKey = newMember,
+                kind = 0,
+                tags = emptyArray(),
+                content = "{}",
+                sig = "0".repeat(128),
+            )
+        )
+        sender.profileDao().upsert(
+            Profile(publicKey = newMember, userName = "invitee", nostrEventId = nostrEventId)
+        )
+        sender.marmotKeyPackageDao().upsert(
+            MarmotKeyPackage(
+                id = keyPackageId,
+                publicKey = newMember,
+                tlsEncodedMarmotKeyPackage = ByteArray(0),
+            )
+        )
+
+        return keyPackageId
+    }
+
+    @Test
+    fun `inviting a member offers them the group's work alongside the welcome`() = runBlocking {
+        seedSenderWork()
+
+        sender.marmotOutboundDao().deliveryWelcome(
+            nostrGroupId = chatRoomId,
+            userPublicKey = oldMember,
+            welcomeBytes = ByteArray(8),
+            peerKeyPackageEventId = seedInviteeKeyPackage(),
+            relays = listOf("wss://relay.example.com"),
+            createdAt = Clock.System.now(),
+        )
+
+        val page = queued(sender, ArchiveEvent.KIND).single()
+
+        assertEquals(
+            newMember,
+            ArchiveEvent(
+                id = page.id,
+                pubKey = page.publicKey,
+                createdAt = page.createdAt.epochSeconds,
+                tags = page.tags,
+                content = page.content,
+                sig = "",
+            ).recipient()
+        )
+    }
+
+    @Test
+    fun `inviting into a room with nothing signed offers nothing, and still invites`() = runBlocking {
+        seedRoom(sender, oldMember)
+
+        sender.marmotOutboundDao().deliveryWelcome(
+            nostrGroupId = chatRoomId,
+            userPublicKey = oldMember,
+            welcomeBytes = ByteArray(8),
+            peerKeyPackageEventId = seedInviteeKeyPackage(),
+            relays = listOf("wss://relay.example.com"),
+            createdAt = Clock.System.now(),
+        )
+
+        assertEquals(0, queued(sender, ArchiveEvent.KIND).size)
+        // The Welcome itself still went out. A push that has nothing to say is
+        // not a failed invite, and nothing about the archive may report one:
+        // the invitee asks for themselves on their first open regardless.
+        assertEquals(
+            1,
+            sender.giftWrapPayloadDao()
+                .getByChatRoomAndKinds(chatRoomId, listOf(WelcomeEvent.KIND))
+                .size
+        )
     }
 }

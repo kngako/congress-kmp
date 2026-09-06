@@ -502,18 +502,27 @@ written as one.
 `DatabaseNostrRepository`. Assemble an archive for the invitee there and queue
 its pages behind the Welcome.
 
-Two things to be honest about at that call site, in a comment:
+One thing to be honest about at that call site, in a comment: **queued behind the
+Welcome is not delivered after it.** They are different transports -- a
+relay-borne gift wrap and a kind:445 -- and a page that arrives before the
+invitee has processed their Welcome is from an epoch ahead of theirs, so it is
+dropped outright rather than deferred. The request is what recovers that, and
+this push is worth having only because it usually wins.
 
-- **Queued behind the Welcome is not delivered after it.** They are different
-  transports -- a relay-borne gift wrap and a kind:445 -- and pages that arrive
-  first are dropped for good. The request is what recovers that, and this push is
-  worth having only because it usually wins.
-- **The room must be re-read between the invite and the assembly**, for the same
-  reason sequential invites re-read it: a snapshot taken before the commit
-  describes an epoch the group has left.
+The first draft of this section also said the room must be re-read between the
+invite and the assembly, for the same reason sequential invites re-read it. It
+does not: that rule is about the MLS snapshot a commit is built on, and
+`deliveryWelcome` is downstream of the commit and reads `Mantra*` rows, which no
+commit touches.
 
 Nothing here is allowed to report failure to the inviter. A push that does not
-land is not an error; it is the ordinary case the pull exists for.
+land is not an error; it is the ordinary case the pull exists for. It sits inside
+`deliveryWelcome`'s own catch for that reason.
+
+**One call, two occasions.** Answering a request and pushing behind a Welcome are
+the same operation and differ only in who decided, so they are one function named
+for what it does -- `ArchiveManager.sendTo` -- rather than two named for their
+occasions.
 
 ---
 

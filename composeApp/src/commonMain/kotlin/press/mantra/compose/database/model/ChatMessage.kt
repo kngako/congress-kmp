@@ -645,14 +645,14 @@ data class ChatMessage(
                     // them. A member with nothing signed answers nothing, which
                     // is the honest reply from one still catching up themselves.
                     if (event.kind == ArchiveRequestEvent.KIND) {
-                        ArchiveManager.answer(
+                        ArchiveManager.sendTo(
                             database = database,
                             chatRoomId = groupEventResult.groupId,
                             userPublicKey = activeKeyPair.pubKey.toHex(),
                             // The MLS frame is the authenticated source. For these
                             // kinds MIP-03 already forces the two to agree, so the
                             // fallback is for a result that carries no leaf index.
-                            requester = senderIdentity ?: event.pubKey,
+                            recipient = senderIdentity ?: event.pubKey,
                         )
 
                         return null

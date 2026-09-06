@@ -159,29 +159,33 @@ object ArchiveManager {
     }
 
     /**
-     * Answer [requester]'s request with everything this device can prove.
+     * Send [recipient] everything this device can prove about [chatRoomId].
      *
-     * Any member may answer and none is elected to. A duplicate answer costs
-     * bandwidth and nothing else -- pages are idempotent and every member who is
-     * not the recipient ignores them -- so this is waste rather than damage, and
-     * the stand-down that would avoid it is an optimisation to add on top rather
-     * than a correctness gap to close first.
+     * Both ways an archive goes out are this one call: answering a request, and
+     * the push behind a Welcome. Named for what it does rather than for either
+     * occasion, because the two differ only in who decided.
      *
-     * A device with nothing signed answers nothing. Silence is the honest reply
+     * Any member may send one and none is elected to. A duplicate costs bandwidth
+     * and nothing else -- pages are idempotent and every member who is not the
+     * recipient ignores them -- so it is waste rather than damage, and the
+     * stand-down that would avoid it is an optimisation to add on top rather than
+     * a correctness gap to close first.
+     *
+     * A device with nothing signed sends nothing. Silence is the honest reply
      * from a member who is themselves still catching up, and an empty archive
      * would look like an answer.
      */
-    suspend fun answer(
+    suspend fun sendTo(
         database: MantraDatabase,
         chatRoomId: String,
         userPublicKey: HexKey,
-        requester: HexKey,
+        recipient: HexKey,
     ): Int {
-        if (requester.equals(userPublicKey, ignoreCase = true)) return 0
+        if (recipient.equals(userPublicKey, ignoreCase = true)) return 0
 
-        val pages = assemble(database, chatRoomId, requester)
+        val pages = assemble(database, chatRoomId, recipient)
         if (pages.isEmpty()) {
-            logger.i("Cannot answer ${requester.take(8)}'s request for $chatRoomId: nothing signed here")
+            logger.i("Nothing signed here to send ${recipient.take(8)} for $chatRoomId")
             return 0
         }
 
@@ -197,7 +201,7 @@ object ArchiveManager {
             )
         }
 
-        logger.i("Answering ${requester.take(8)} with ${pages.size} archive page(s) for $chatRoomId")
+        logger.i("Sending ${recipient.take(8)} ${pages.size} archive page(s) for $chatRoomId")
 
         return pages.size
     }
