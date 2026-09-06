@@ -14,11 +14,13 @@ import fr.acinq.bitcoin.crypto.frost.KeyMaterial
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgParticipantMessage
@@ -456,6 +458,201 @@ class SignedGroupKeyStateTest {
             "a member the quorum did not need still learns what the room signs with"
         )
         assertEquals(adminRoomId, absent.keyState()?.announcedBy)
+    }
+
+    // ---- Signing several events in one session -----------------------------
+
+    /**
+     * The batch, end to end, between two devices over two databases: three
+     * events, one signer set, one approval, and three signatures that verify
+     * against the room.
+     *
+     * Everything about batching that could be wrong and still compile is wrong
+     * here or nowhere -- a shared nonce, a mismatched order, a payload split the
+     * wrong way. A signature that verifies is the only evidence any of it is
+     * wired up correctly, and there are three of them to disagree.
+     */
+    @Test
+    fun `a batch of three is signed in one session`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            val items = device.items(session.id)
+
+            assertEquals(3, items.size, "every device signs the whole batch")
+            assertEquals(FrostSigningStage.COMPLETE, device.session(session.id)?.stage)
+
+            items.forEach { item ->
+                assertTrue(
+                    Nip01Crypto.verify(
+                        signature = assertNotNull(item.signature).hexToByteArray(),
+                        hash = item.eventId.hexToByteArray(),
+                        pubKey = adminRoomId.hexToByteArray()
+                    ),
+                    "item ${item.itemIndex} must verify against the room it was signed in"
+                )
+            }
+        }
+    }
+
+    /**
+     * The one that catches the mistake this whole design exists to prevent.
+     *
+     * Every positive test above still passes if two items share a nonce -- the
+     * signatures verify perfectly well. What sharing costs is the secret share,
+     * to anyone who sees both partial signatures. So the aggregates and the seeds
+     * are asserted pairwise distinct, which is cheap and is the only assertion
+     * here that an index bug cannot slip past.
+     */
+    @Test
+    fun `no two events in a batch share a nonce`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            val items = device.items(session.id)
+
+            assertEquals(3, items.mapNotNull { it.aggregatedNonce }.toSet().size)
+            assertEquals(3, items.map { it.nonceRandom }.toSet().size)
+            assertEquals(3, items.map { it.eventId }.toSet().size)
+        }
+
+        // A seed is this device's own, so the two devices must not have arrived
+        // at the same ones either.
+        assertEquals(
+            emptySet(),
+            creator.items(session.id).map { it.nonceRandom }.toSet()
+                .intersect(other.items(session.id).map { it.nonceRandom }.toSet())
+        )
+    }
+
+    /** Four messages for three events, which is the whole point of batching. */
+    @Test
+    fun `a batch costs one round of messages, not one per event`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        // Proposal, nonce, signer set, partial signature, signature.
+        assertEquals(
+            listOf(
+                FrostSigningEvents.PROPOSAL,
+                FrostSigningEvents.NONCE,
+                FrostSigningEvents.SIGNER_SET,
+                FrostSigningEvents.PARTIAL_SIGNATURE,
+                FrostSigningEvents.SIGNATURE,
+            ),
+            outbox(creator).map { it.kind }
+        )
+
+        // The other member is a signer and not the coordinator: one nonce and one
+        // partial signature, each carrying all three values.
+        assertEquals(
+            listOf(FrostSigningEvents.NONCE, FrostSigningEvents.PARTIAL_SIGNATURE),
+            outbox(other).map { it.kind }
+        )
+        outbox(other).forEach { queued ->
+            assertEquals(3, queued.content.split(",").size, "kind ${queued.kind} must carry three values")
+        }
+
+        // And one question put to the member, not three.
+        assertEquals(
+            1,
+            other.db.chatMessageDao().getChatMessagesByChatRoomId(other.roomId)
+                .count { it.chatMessage.messageType == ChatMessage.TYPE_FROST_APPROVAL_NEEDED }
+        )
+    }
+
+    /** Every event of a batch is applied, not just the first. */
+    @Test
+    fun `every dialect in a batch lands on every device`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects()
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            val names = device.items(session.id).map { item ->
+                assertNotNull(
+                    device.db.mantraDialectDao().getDialectById(item.eventId),
+                    "item ${item.itemIndex} should have been applied"
+                ).name
+            }
+
+            assertEquals(listOf("Sepedi", "isiZulu", "Setswana"), names)
+        }
+    }
+
+    /**
+     * A proposal is the one place a remote party decides how much work everybody
+     * else does, so the size cap is checked on arrival and not only when
+     * proposing.
+     */
+    @Test
+    fun `a batch larger than the cap is refused when proposed`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+
+        val tooMany = (0..FrostSigningManager.MAX_BATCH_SIZE).map { index ->
+            DialectEvent.build(name = "d$index", country = "ZA", language = "l$index")
+        }
+
+        assertFailsWith<IllegalArgumentException> {
+            FrostSigningManager.proposeSigningBatch(
+                database = creator.db,
+                localChatRoom = creator.room,
+                userPublicKey = creator.publicKey,
+                events = tooMany
+            )
+        }
+
+        Unit
+    }
+
+    /** Three dialects, distinct enough that an order bug shows up as a wrong name. */
+    private fun dialects() = listOf(
+        Triple("Sepedi", "ZA", "nso"),
+        Triple("isiZulu", "ZA", "zul"),
+        Triple("Setswana", "ZA", "tsn"),
+    ).map { (name, country, language) ->
+        DialectEvent.build(name = name, country = country, language = language)
     }
 
     // ---- What a room signs as, once it has a key state ---------------------

@@ -286,7 +286,20 @@ does, and it is currently bounded only by never having more than one item.
 Size it against the MLS group event limit rather than picking a round number:
 each signer's nonce message is `k × 133` bytes of hex-and-commas, the partial
 message `k × 65`, and the proposal itself carries `k` whole events, which is the
-term that actually binds.
+term that actually binds. 64 to start.
+
+### `proposeSigningBatch` on the manager, here
+
+The public API on the manager lands in this phase rather than the next one, for
+a plain reason: there is no other way to produce a `k > 1` session, so without it
+everything above ships untested. `proposeSigning` becomes its one-event form and
+keeps its signature, so no caller moves. Phase 4 is then the repository, the call
+sites and the failure policy.
+
+That also makes this the phase where the batch is proved end to end — a `k = 3`
+session between two devices over two databases, plus the negative test that no
+two items share a nonce. Both are described under Phase 6 and are worth reading
+there; they simply run here, because this is where the thing they test exists.
 
 ---
 
@@ -294,14 +307,16 @@ term that actually binds.
 
 **A day.**
 
+*(`FrostSigningManager.proposeSigningBatch` itself landed in Phase 3 — see
+above. This phase is what surrounds it.)*
+
 ```kotlin
 suspend fun proposeSigningBatch(
     database: MantraDatabase,
     localChatRoom: LocalChatRoom,
     userPublicKey: HexKey,
-    events: List<EventTemplate>,   // kind, tags, content
+    events: List<EventTemplate<*>>,   // each carries its own createdAt
     key: DkgSession? = null,
-    createdAt: Long = Clock.System.now().epochSeconds
 ): FrostSigningSession
 ```
 
@@ -390,24 +405,32 @@ if missed from `FROST_TYPES`.
 
 **A day, and do not skip it.**
 
+*(The first two ran in Phase 3, where the batch first existed. Kept here because
+this is the section anybody adding to these tests will read.)*
+
 Extend
 [SignedGroupKeyStateTest](../composeApp/src/jvmTest/kotlin/press/mantra/compose/managers/SignedGroupKeyStateTest.kt),
 which already runs a real signing session between two devices over two
 databases, with a `k = 3` batch: both devices reach `COMPLETE`, all three
-signatures verify against their own event ids under the room's key, and all
-three events are applied locally on both.
+signatures verify against their own event ids under the room's key, all three
+events are applied locally on both, and the whole thing costs five messages from
+the coordinator and two from the other signer rather than one round per event.
 
-Then in
-[FrostSigningRoundTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/managers/FrostSigningRoundTest.kt),
-against real FROST and no database:
+**The negative one that matters**: assert the three aggregated nonces are
+pairwise distinct, and that the three seeds are. Every positive test above still
+passes if two items share a nonce — the signatures verify perfectly well; what
+sharing costs is the secret share, to anyone who sees both partial signatures.
+It is the cheapest possible guard against the one mistake in this document that
+loses the key, and it catches an index bug nothing else here would.
 
-- a `k = 3` batch producing three signatures nostr accepts, from one signer set;
-- **the negative one that matters** — assert the three aggregated nonces are
-  pairwise distinct, and that the three seeds are. It is the cheapest possible
-  guard against the one mistake in this document that loses the key, and it will
-  catch an index bug that every positive test still passes;
+Then, still to write:
+
 - a wrong-length payload is dropped rather than truncated;
-- a second proposal under the same session id with a changed item is ignored.
+- a second proposal under the same session id with a changed item is ignored;
+- a `k = 3` batch in
+  [FrostSigningRoundTest](../composeApp/src/commonTest/kotlin/press/mantra/compose/managers/FrostSigningRoundTest.kt),
+  against real FROST and no database, for the same reason that file exists at
+  all: the library calls are checked without a database in the way.
 
 ---
 

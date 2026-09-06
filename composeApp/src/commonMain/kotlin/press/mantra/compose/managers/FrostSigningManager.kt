@@ -7,6 +7,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
+import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
@@ -114,6 +115,23 @@ object FrostSigningManager {
     private val logger = Logger.withTag(TAG)
 
     /**
+     * The most events one session will sign.
+     *
+     * Enforced when proposing, and again -- independently -- when a proposal
+     * arrives. The second check is the one that matters. A proposal is the only
+     * place in this protocol where a remote party decides how much work everybody
+     * else does: k native key generations, k signatures, and a group event
+     * carrying k payloads, all from a single message. Until batching that was
+     * bounded by never being more than one.
+     *
+     * Sized against what a group event will carry rather than picked round. A
+     * signer's nonce message is k * 133 bytes of hex and commas and their partial
+     * message k * 65, neither of which binds; the proposal carries k whole
+     * events, which does.
+     */
+    const val MAX_BATCH_SIZE: Int = 64
+
+    /**
      * Opens a signing session, making this device the coordinator.
      *
      * The event is signed as it stands apart from its `pubkey`, which is
@@ -140,7 +158,46 @@ object FrostSigningManager {
         content: String,
         key: DkgSession? = null,
         createdAt: Long = Clock.System.now().epochSeconds
+    ): FrostSigningSession = proposeSigningBatch(
+        database = database,
+        localChatRoom = localChatRoom,
+        userPublicKey = userPublicKey,
+        events = listOf(EventTemplate<Event>(createdAt, kind, tags, content)),
+        key = key
+    )
+
+    /**
+     * Opens a session over several events at once, making this device the
+     * coordinator.
+     *
+     * One ceremony, one signer set, one approval and four group events, whatever
+     * the size -- but k independent FROST instances underneath, because that is
+     * the only thing a batch can be. See [FrostSigningItem] for why.
+     *
+     * A batch is all-or-nothing: if any item cannot be aggregated the session
+     * fails and none of its events are applied. That makes a batch **only as
+     * available as its worst item**, so events that do not belong together
+     * should not be proposed together.
+     *
+     * A failed batch is retried by proposing a *new* one, never by re-proposing
+     * this session. Its items' nonce seeds have already been published against an
+     * aggregate; reusing any of them for a second attempt would produce two
+     * partial signatures over one secret nonce, which is how a share is
+     * extracted. [itemsOver] mints fresh seeds precisely so that a retry is a new
+     * session by construction.
+     */
+    suspend fun proposeSigningBatch(
+        database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        events: List<EventTemplate<*>>,
+        key: DkgSession? = null
     ): FrostSigningSession {
+        require(events.isNotEmpty()) { "A signing session must be given something to sign" }
+        require(events.size <= MAX_BATCH_SIZE) {
+            "A signing session will sign at most $MAX_BATCH_SIZE events, not ${events.size}"
+        }
+
         val ceremony = key?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
             ?: completedKey(database, localChatRoom.chatRoom.id)
             ?: throw IllegalStateException("This group has no shared key to sign with")
@@ -149,7 +206,16 @@ object FrostSigningManager {
             ?: throw IllegalStateException("This device is not a participant in ceremony ${ceremony.id}")
 
         val path = signingPath(database, localChatRoom, ceremony)
-        val unsignedEvent = unsignedEventOf(ceremony, path, kind, tags, content, createdAt)
+        val unsignedEvents = events.map { template ->
+            unsignedEventOf(
+                key = ceremony,
+                path = path,
+                kind = template.kind,
+                tags = template.tags,
+                content = template.content,
+                createdAt = template.createdAt
+            )
+        }
         val sessionId = RandomInstance.bytes(32).toHex()
 
         val session = FrostSigningSession(
@@ -166,17 +232,20 @@ object FrostSigningManager {
             signApprovedAt = Clock.System.now()
         )
         database.frostSigningSessionDao().upsert(session)
-        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, listOf(unsignedEvent)))
+        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, unsignedEvents))
         announceStarted(database, session)
 
-        logger.i("Proposing signature $sessionId over event ${unsignedEvent.id} with key ${ceremony.id}")
+        logger.i(
+            "Proposing signature $sessionId over ${describe(unsignedEvents.size)} " +
+                "(${unsignedEvents.joinToString { it.id.take(8) }}) with key ${ceremony.id}"
+        )
 
         broadcast(
             database = database,
             localChatRoom = localChatRoom,
             session = session,
             kind = FrostSigningEvents.PROPOSAL,
-            content = unsignedEvent.toJson(),
+            content = FrostSigningEvents.encodeProposal(unsignedEvents),
             includeKey = true
         )
 
@@ -253,12 +322,13 @@ object FrostSigningManager {
             // under the same id carrying different ones is either a mistake or an
             // attempt to get two signatures out of one secret nonce, which is how
             // a share is extracted -- so it is refused, not applied.
-            val proposed = Event.fromJsonOrNull(innerEvent.content)
+            val proposed = FrostSigningEvents.decodeProposal(innerEvent.content)
             val signing = database.frostSigningSessionDao().getItems(sessionId).map { it.eventId }
-            if (proposed != null && signing != listOf(proposed.id)) {
+            if (proposed != null && signing != proposed.map { it.id }) {
                 logger.w(
-                    "Session $sessionId re-proposed with event ${proposed.id}, " +
-                        "but it is already signing ${signing.joinToString()}; ignoring"
+                    "Session $sessionId re-proposed with ${describe(proposed.size)} " +
+                        "(${proposed.joinToString { it.id.take(8) }}), but it is already signing " +
+                        "${signing.joinToString { it.take(8) }}; ignoring"
                 )
             }
             return existing
@@ -282,9 +352,19 @@ object FrostSigningManager {
             return null
         }
 
-        val proposed = Event.fromJsonOrNull(innerEvent.content)
+        val proposed = FrostSigningEvents.decodeProposal(innerEvent.content)
         if (proposed == null) {
-            logger.w("Signing proposal $sessionId does not carry an event; dropping")
+            logger.w("Signing proposal $sessionId does not carry any events; dropping")
+            return null
+        }
+
+        // Checked here as well as when proposing, because this is where a remote
+        // party gets to decide how much work this device does. See [MAX_BATCH_SIZE].
+        if (proposed.size > MAX_BATCH_SIZE) {
+            logger.w(
+                "Signing proposal $sessionId asks for ${proposed.size} events, " +
+                    "more than the $MAX_BATCH_SIZE this device will sign at once; dropping"
+            )
             return null
         }
 
@@ -298,20 +378,29 @@ object FrostSigningManager {
         // could choose the key the group signs as, and every signer would put
         // their share behind an author none of them checked.
         val path = signingPath(database, localChatRoom, key)
-        val unsignedEvent = unsignedEventOf(
-            key = key,
-            path = path,
-            kind = proposed.kind,
-            tags = proposed.tags,
-            content = proposed.content,
-            createdAt = proposed.createdAt
-        )
-        if (unsignedEvent.id != proposed.id) {
-            logger.w(
-                "Signing proposal $sessionId carries id ${proposed.id} but its fields hash " +
-                    "to ${unsignedEvent.id}; dropping"
+        val unsignedEvents = proposed.map { event ->
+            unsignedEventOf(
+                key = key,
+                path = path,
+                kind = event.kind,
+                tags = event.tags,
+                content = event.content,
+                createdAt = event.createdAt
             )
-            return null
+        }
+
+        // All of them or none. A batch's length is what every later payload is
+        // checked against, so quietly dropping one bad event would leave a session
+        // that rejects every signer's contribution for being the wrong size --
+        // a stall with nothing to blame it on.
+        unsignedEvents.forEachIndexed { index, rebuilt ->
+            if (rebuilt.id != proposed[index].id) {
+                logger.w(
+                    "Signing proposal $sessionId carries id ${proposed[index].id} at $index " +
+                        "but its fields hash to ${rebuilt.id}; dropping"
+                )
+                return null
+            }
         }
 
         val session = FrostSigningSession(
@@ -329,10 +418,13 @@ object FrostSigningManager {
             derivationPath = path?.let(SharedKeyDerivation::formatPath)
         )
         database.frostSigningSessionDao().upsert(session)
-        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, listOf(unsignedEvent)))
+        database.frostSigningSessionDao().upsertItems(itemsOver(sessionId, unsignedEvents))
         announceStarted(database, session)
 
-        logger.i("Recorded signing session $sessionId over ${unsignedEvent.id}; awaiting approval")
+        logger.i(
+            "Recorded signing session $sessionId over ${describe(unsignedEvents.size)} " +
+                "(${unsignedEvents.joinToString { it.id.take(8) }}); awaiting approval"
+        )
 
         announceApprovalNeeded(database, session)
         replayStoredMessages(database, session)

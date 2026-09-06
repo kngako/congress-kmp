@@ -1,6 +1,9 @@
 package press.mantra.compose.nostr.frost
 
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import kotlinx.serialization.json.jsonArray
+import press.mantra.compose.network.serialization.CommonJson
 import press.mantra.compose.nostr.frost.tags.FrostKeyTag
 import press.mantra.compose.nostr.frost.tags.FrostSessionIdTag
 import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
@@ -47,8 +50,9 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
  */
 object FrostSigningEvents {
     /**
-     * Opens a session. Content is the unsigned nostr event, as JSON; the key to
-     * sign with is named in [FrostKeyTag].
+     * Opens a session. Content is the unsigned nostr event -- or, for a batch,
+     * the array of them -- as JSON; the key to sign with is named in [FrostKeyTag].
+     * See [encodeProposal] for why the two forms are not one.
      */
     val PROPOSAL: Kind = 30320
 
@@ -104,4 +108,45 @@ object FrostSigningEvents {
 
     fun parseSignerIds(tags: Array<Array<String>>): List<Int>? =
         tags.firstNotNullOfOrNull(FrostSignerIdsTag::parse)?.signerIds
+
+    /**
+     * The unsigned events of a proposal, as its content.
+     *
+     * A batch of one serialises as the bare event object it always did, and only
+     * a genuine batch becomes an array. That is not tidiness. A build predating
+     * batching reads an array with `Event.fromJsonOrNull`, gets null, and drops
+     * the proposal -- so an old device refuses a batch outright rather than
+     * signing part of one, while single signing keeps working right through a
+     * mixed-version rollout. Emitting an array unconditionally would break every
+     * one-event session for those devices and buy nothing.
+     *
+     * An empty list has no honest encoding and is not one, so callers do not
+     * produce it and [decodeProposal] does not accept it.
+     */
+    fun encodeProposal(events: List<Event>): String =
+        events.singleOrNull()?.toJson()
+            ?: events.joinToString(separator = ",", prefix = "[", postfix = "]") { it.toJson() }
+
+    /**
+     * The other half. Both forms are accepted, permanently: proposals in the old
+     * shape do not stop arriving just because this build stopped writing them.
+     *
+     * All-or-nothing. An array with one unreadable element is refused rather than
+     * silently shortened, because the batch's length is what every later payload
+     * is checked against -- a proposal that quietly lost an event would have every
+     * signer's contribution rejected for being the wrong size, which is a stall
+     * with no message to blame.
+     */
+    fun decodeProposal(content: String): List<Event>? {
+        if (!content.trimStart().startsWith("[")) {
+            return Event.fromJsonOrNull(content)?.let { listOf(it) }
+        }
+
+        val elements = runCatching { CommonJson.parseToJsonElement(content).jsonArray }
+            .getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+            ?: return null
+
+        return elements.map { element -> Event.fromJsonOrNull(element.toString()) ?: return null }
+    }
 }
