@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 14,
+    version = 15,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -255,6 +255,14 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // meanings would have met. Room can rename a column and cannot rewrite the
         // rows in the same breath, so this is a manual migration passed to the
         // builder rather than an entry here. See MIGRATION_13_14.
+        //
+        // v15 adds the nullable ChatRoom.joinedGroupAt, which says when this
+        // device became a member and so which of the group's messages were never
+        // its to read. Adding a nullable column is a shape Room migrates itself;
+        // deleting the placeholder chat lines already written for those messages
+        // is not, and a member who joined a busy room is looking at a screenful of
+        // them. Manual for that half, so it too is passed to the builder rather
+        // than listed here. See MIGRATION_14_15.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

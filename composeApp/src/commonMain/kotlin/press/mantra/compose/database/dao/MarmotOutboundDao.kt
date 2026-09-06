@@ -82,12 +82,19 @@ abstract class MarmotOutboundDao(
         )
 
         // Save Chat Room
+        //
+        // Member since the group existed, because this device is what created it:
+        // there is no epoch of this group that predates us, and so nothing in it
+        // for ChatRoom.predatesMembership to hold back.
+        val createdAt = Clock.System.now()
         val chatRoom = ChatRoom(
             id = nostrGroupId,
             userPublicKey = userPublicKey,
             mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             subject = name,
-            description = description
+            description = description,
+            joinedGroupAt = createdAt,
+            createdAt = createdAt,
         )
         database.chatRoomDao().upsert(
             chatRoom
