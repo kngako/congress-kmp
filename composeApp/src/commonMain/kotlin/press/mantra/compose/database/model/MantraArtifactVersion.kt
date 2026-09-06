@@ -68,12 +68,16 @@ data class MantraArtifactVersion(
             id = id,
             pubKey = publicKey,
             createdAt = createdAt.epochSeconds,
+            // Tag order matches ArtifactVersionEvent.initialVersionOf, which puts
+            // the alt first because `build` does, or the event id does not
+            // round-trip. It was the other way round here for as long as nothing
+            // called this -- see ArchiveRoundTripTest, which is what calls it now.
             tags = TagArrayBuilder<ArtifactVersionEvent>()
                 .addUnique(
-                    ArtifactIdTag.assemble(artifactId)
+                    AltTag.assemble(ArtifactVersionEvent.ALT_DESCRIPTION)
                 )
                 .addUnique(
-                    AltTag.assemble(ArtifactVersionEvent.ALT_DESCRIPTION)
+                    ArtifactIdTag.assemble(artifactId)
                 )
                 .build(),
             content = versionLabel,

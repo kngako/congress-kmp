@@ -19,20 +19,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import press.mantra.compose.database.model.MantraArtifact
+import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
+import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * The assumption the whole archive rests on: a row can be turned back into the
@@ -79,6 +83,8 @@ class ArchiveRoundTripTest {
     private val artifactVersionId = "c".repeat(64)
     private val chapterId = "d".repeat(64)
     private val translationArtifactVersionId = "e".repeat(64)
+    private val translationChapterId = "f".repeat(64)
+    private val chunkId = "a".repeat(64)
 
     /** Exactly what `FrostSigningManager.unsignedEventOf` does. */
     private fun unsignedEventOf(template: EventTemplate<*>) = Event(
@@ -259,6 +265,63 @@ class ArchiveRoundTripTest {
     }
 
     @Test
+    fun `an artifact version survives the trip through a row`() {
+        // The second fault of the same shape, found the moment this kind became
+        // archivable: `toArtifactVersionEvent` emitted [artifactId, alt] where
+        // `build` emits [alt, artifactId]. It had been that way for as long as
+        // nothing called it, which is what makes an unused rebuild dangerous
+        // rather than merely dead -- the claim in its comment was never checked.
+        //
+        // Built through `initialVersionOf` rather than by hand, because that is
+        // what the signing batch actually proposes.
+        val artifact = signed(
+            ArtifactEvent.build(
+                name = "In Detention",
+                url = "https://example.com/in-detention",
+                visibility = "private",
+                license = "cc",
+                dialectId = dialectId,
+                versionLabel = "1.0",
+                createdAt = 1_700_000_000L
+            )
+        )
+
+        assertRoundTrips(
+            ArtifactVersionEvent.initialVersionOf(artifact).single()
+        ) { event ->
+            MantraArtifactVersion.fromArtifactVersionEvent(
+                ArtifactVersionEvent(
+                    event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+                ),
+                chatRoomId
+            )?.toArtifactVersionEvent()
+        }
+    }
+
+    @Test
+    fun `a translated chunk survives the trip through a row`() {
+        // The translated text. Archivable only because the app stopped saving it
+        // as its author's rumor and started asking the group to sign it -- until
+        // then a new member got the whole structure and none of the prose.
+        assertRoundTrips(
+            TranslationChunkEvent.build(
+                translationChapterId = translationChapterId,
+                chunkId = chunkId,
+                index = 0,
+                text = "Wayeyindoda enezingxenye.",
+                createdAt = 1_700_000_000L
+            )
+        ) { event ->
+            MantraTranslationChunk.fromTranslationChunkEvent(
+                TranslationChunkEvent(
+                    event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+                ),
+                chatRoomId
+            )?.toTranslationChunkEvent()
+        }
+    }
+
+    @Test
     fun `a chapter survives the trip through a row`() {
         assertRoundTrips(
             ChapterEvent.build(
@@ -343,7 +406,7 @@ class ArchiveRoundTripTest {
         // allowlist without a case here is one nobody has checked can be rebuilt,
         // and the failure is silent: the receiver drops it as a forgery.
         assertEquals(
-            6,
+            8,
             ArchiveEvent.ARCHIVABLE_KINDS.size,
             "an archivable kind was added or removed; add or remove its round-trip case"
         )

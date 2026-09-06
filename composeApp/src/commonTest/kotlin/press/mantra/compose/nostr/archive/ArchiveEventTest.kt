@@ -183,33 +183,37 @@ class ArchiveEventTest {
         listOf(
             DialectEvent.KIND,
             ArtifactEvent.KIND,
+            ArtifactVersionEvent.KIND,
             ChapterEvent.KIND,
             ChunkEvent.KIND,
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
+            TranslationChunkEvent.KIND,
         ).forEach { assertTrue(ArchiveEvent.isArchivable(it), "kind $it should be archivable") }
 
-        assertEquals(6, ArchiveEvent.ARCHIVABLE_KINDS.size)
+        assertEquals(8, ArchiveEvent.ARCHIVABLE_KINDS.size)
     }
 
     @Test
-    fun `the kinds nobody signs are left out, translations included`() {
-        // The limit worth knowing about before reading anything else here. An
-        // archive can only carry what the receiver can check, and six of the
-        // thirteen nip30303 kinds reach a signing session. The rest travel as
-        // rumors -- empty signature, member author -- vouched for by the MLS
-        // frame they arrived in and by nothing that survives leaving it.
+    fun `the translated text is archivable, now that the group signs it`() {
+        // Worth its own case because it was the feature's headline limitation for
+        // as long as `saveTranslation` wrote the row and queued the member's own
+        // rumor. An archive can only carry what the receiver can check, so a
+        // translation nobody signed could not travel, and a new member got the
+        // whole structure and none of the prose.
+        assertTrue(ArchiveEvent.isArchivable(TranslationChunkEvent.KIND))
 
-        // The translated text. MantraDao.saveTranslation submits it as the
-        // member's own rumor, so an archive restores everything a translation
-        // hangs on and not the translation.
-        assertFalse(ArchiveEvent.isArchivable(TranslationChunkEvent.KIND))
+        // Same shape, same fix: the version an artifact starts life with used to
+        // be derived on arrival, so it was authored by the group with no
+        // signature to show for it. It is the second item of the artifact's batch
+        // now.
+        assertTrue(ArchiveEvent.isArchivable(ArtifactVersionEvent.KIND))
+    }
 
-        // Never signed either: derived from the signed artifact on arrival, which
-        // is what keeps a chapter's foreign key satisfied without archiving it.
-        assertFalse(ArchiveEvent.isArchivable(ArtifactVersionEvent.KIND))
-
-        // Nothing builds one of these at all.
+    @Test
+    fun `the kinds nobody signs are still left out`() {
+        // Nothing builds one of these at all; the inbound arm exists and no
+        // producer does.
         assertFalse(ArchiveEvent.isArchivable(TranslationEvent.KIND))
     }
 
@@ -253,18 +257,18 @@ class ArchiveEventTest {
         // Every one of these is a foreign key in Room, so an archive applied the
         // other way round is a constraint violation rather than a wrong answer.
         assertTrue(rank(DialectEvent.KIND) < rank(ArtifactEvent.KIND))
+        assertTrue(rank(ArtifactEvent.KIND) < rank(ArtifactVersionEvent.KIND))
+        assertTrue(rank(ArtifactVersionEvent.KIND) < rank(ChapterEvent.KIND))
         assertTrue(rank(ChapterEvent.KIND) < rank(ChunkEvent.KIND))
+        assertTrue(rank(ArtifactVersionEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
+        assertTrue(rank(DialectEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
         assertTrue(rank(TranslationArtifactVersionEvent.KIND) < rank(TranslationChapterEvent.KIND))
         assertTrue(rank(ChapterEvent.KIND) < rank(TranslationChapterEvent.KIND))
-        assertTrue(rank(DialectEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
 
-        // A chapter and a translation artifact version both hang off an artifact
-        // *version*, which is not archived: it is derived from the signed
-        // artifact by the artifact's own arm in applyInnerEvent. So the artifact
-        // has to land before either of them, and the dependency runs through a
-        // kind that is not in this list at all.
-        assertTrue(rank(ArtifactEvent.KIND) < rank(ChapterEvent.KIND))
-        assertTrue(rank(ArtifactEvent.KIND) < rank(TranslationArtifactVersionEvent.KIND))
+        // A translated chunk hangs off both sides at once -- the source chunk it
+        // translates and the translation chapter it sits in -- so it is last.
+        assertTrue(rank(ChunkEvent.KIND) < rank(TranslationChunkEvent.KIND))
+        assertTrue(rank(TranslationChapterEvent.KIND) < rank(TranslationChunkEvent.KIND))
 
         // And the numbers really do disagree with the order, which is why this is
         // a list rather than a sortedBy { kind }.
@@ -275,11 +279,13 @@ class ArchiveEventTest {
     @Test
     fun `sorting a page puts what is referenced before what refers to it`() {
         val jumbled = listOf(
+            payload(TranslationChunkEvent.KIND),
             payload(TranslationChapterEvent.KIND),
             payload(ChunkEvent.KIND),
             payload(DialectEvent.KIND),
             payload(TranslationArtifactVersionEvent.KIND),
             payload(ChapterEvent.KIND),
+            payload(ArtifactVersionEvent.KIND),
             payload(ArtifactEvent.KIND),
         )
 
@@ -287,10 +293,12 @@ class ArchiveEventTest {
             listOf(
                 DialectEvent.KIND,
                 ArtifactEvent.KIND,
+                ArtifactVersionEvent.KIND,
                 ChapterEvent.KIND,
                 ChunkEvent.KIND,
                 TranslationArtifactVersionEvent.KIND,
                 TranslationChapterEvent.KIND,
+                TranslationChunkEvent.KIND,
             ),
             ArchiveEvent.inApplyOrder(jumbled).map { it.kind }
         )

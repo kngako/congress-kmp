@@ -40,11 +40,13 @@ import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * Two devices, two databases: one that did the work and one that arrived after
@@ -229,9 +231,10 @@ class ArchiveApplyJvmTest {
             )
         ).also { apply(sender, it) }
 
-        val version = assertNotNull(
-            sender.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(artifact.id).firstOrNull()
-        )
+        // The second item of the artifact's own signing batch, not a row derived
+        // on arrival -- which is what makes it archivable at all.
+        val version = signed(ArtifactVersionEvent.initialVersionOf(artifact).single())
+            .also { apply(sender, it) }
 
         val chapter = signed(
             ChapterEvent.build(
@@ -245,19 +248,16 @@ class ArchiveApplyJvmTest {
             )
         ).also { apply(sender, it) }
 
-        apply(
-            sender,
-            signed(
-                ChunkEvent.build(
-                    chapterId = chapter.id,
-                    text = "He was a man of parts.",
-                    index = 0,
-                    wordCount = 6,
-                    characterCount = 22,
-                    createdAt = 1_700_000_030L
-                )
+        val chunk = signed(
+            ChunkEvent.build(
+                chapterId = chapter.id,
+                text = "He was a man of parts.",
+                index = 0,
+                wordCount = 6,
+                characterCount = 22,
+                createdAt = 1_700_000_030L
             )
-        )
+        ).also { apply(sender, it) }
         apply(
             sender,
             signed(
@@ -283,14 +283,27 @@ class ArchiveApplyJvmTest {
             )
         ).also { apply(sender, it) }
 
+        val translationChapter = signed(
+            TranslationChapterEvent.build(
+                translationArtifactVersionId = translationVersion.id,
+                chapterId = chapter.id,
+                index = 0,
+                createdAt = 1_700_000_050L
+            )
+        ).also { apply(sender, it) }
+
+        // The translated text. Group-signed now, so it can travel and be checked
+        // -- until it was, an archive handed a new member the whole structure and
+        // none of the prose.
         apply(
             sender,
             signed(
-                TranslationChapterEvent.build(
-                    translationArtifactVersionId = translationVersion.id,
-                    chapterId = chapter.id,
+                TranslationChunkEvent.build(
+                    translationChapterId = translationChapter.id,
+                    chunkId = chunk.id,
                     index = 0,
-                    createdAt = 1_700_000_050L
+                    text = "Wayeyindoda enezingxenye.",
+                    createdAt = 1_700_000_060L
                 )
             )
         )
@@ -356,6 +369,9 @@ class ArchiveApplyJvmTest {
             db.mantraTranslationChapterDao()
                 .getTranslationChaptersByTranslationArtifactVersionId(it.id)
         }
+        val translationChunks = translationChapters.flatMap {
+            db.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(it.id)
+        }
 
         return mapOf(
             "dialects" to dialects.size,
@@ -365,6 +381,7 @@ class ArchiveApplyJvmTest {
             "chunks" to chunks.size,
             "translationVersions" to translationVersions.size,
             "translationChapters" to translationChapters.size,
+            "translationChunks" to translationChunks.size,
         )
     }
 
@@ -395,11 +412,13 @@ class ArchiveApplyJvmTest {
             chapters.flatMap { db.mantraChunkDao().getChunksByChapterId(it.id) }
                 .forEach { add(Triple(it.id, it.publicKey, it.signature)) }
             translationVersions.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
-            translationVersions
-                .flatMap {
-                    db.mantraTranslationChapterDao()
-                        .getTranslationChaptersByTranslationArtifactVersionId(it.id)
-                }
+            val translationChapters = translationVersions.flatMap {
+                db.mantraTranslationChapterDao()
+                    .getTranslationChaptersByTranslationArtifactVersionId(it.id)
+            }
+            translationChapters.forEach { add(Triple(it.id, it.publicKey, it.signature)) }
+            translationChapters
+                .flatMap { db.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(it.id) }
                 .forEach { add(Triple(it.id, it.publicKey, it.signature)) }
         }.sortedBy { it.first }
     }
@@ -413,6 +432,7 @@ class ArchiveApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
+                "translationChunks" to 0,
             ),
             rowCounts(receiver),
             "the new member starts with nothing, which is the whole problem"
@@ -429,16 +449,11 @@ class ArchiveApplyJvmTest {
         val fingerprints = rowFingerprints(receiver)
         assertEquals(rowFingerprints(sender), fingerprints)
 
-        // And every one of them is the room's own work rather than anybody's.
-        // The artifact version is the exception and has to be: nobody signs it,
-        // it is derived from the signed artifact on arrival, which is exactly why
-        // it is not archived and why a chapter's foreign key survives anyway.
-        val versionIds = receiver.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId)
-            .flatMap { receiver.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(it.id) }
-            .map { it.id }
-            .toSet()
-
-        fingerprints.filterNot { it.first in versionIds }.forEach { (id, author, signature) ->
+        // And every one of them is the room's own work, with no exception left.
+        // The artifact version used to be one -- derived on arrival, so authored
+        // by the group and carrying no signature to show for it -- and is signed
+        // in the artifact's own batch now, which is what let it into the archive.
+        fingerprints.forEach { (id, author, signature) ->
             assertEquals(chatRoomId, author, "row $id is not authored by the room")
             assertTrue(signature.isNotBlank(), "row $id came across without a signature")
         }
@@ -625,6 +640,7 @@ class ArchiveApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
+                "translationChunks" to 0,
             ),
             rowCounts(receiver),
             "a bystander already holds the work; re-applying would only rewrite its provenance"

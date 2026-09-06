@@ -15,11 +15,13 @@ import press.mantra.compose.nostr.archive.tags.ArchiveIdTag
 import press.mantra.compose.nostr.archive.tags.ArchivePageTag
 import press.mantra.compose.nostr.archive.tags.ArchiveRecipientTag
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * 30327
@@ -170,35 +172,32 @@ class ArchiveEvent(
          * rumors -- empty signature, member author, vouched for by the MLS frame
          * they arrived in and by nothing that survives leaving it.
          *
-         * Left out for that reason, and this is a real limit rather than an
-         * oversight:
+         * Left out for that reason:
          *
-         *  - `ArtifactVersionEvent` (30301). Never signed. The version an
-         *    artifact starts life with is *derived* from the signed artifact by
-         *    `MantraArtifactVersion.initialVersionOf`, which the artifact's own
-         *    arm in `applyInnerEvent` runs -- so archiving the artifact brings its
-         *    version along and the chapters hanging off it keep their foreign
-         *    key. Later versions go through `MantraDao.addArtifactVersion` as
-         *    rumors, and no screen calls it today.
-         *  - `TranslationChunkEvent` (30309) -- **the translated text itself**.
-         *    `MantraDao.saveTranslation` submits it as a member's rumor, because
-         *    a translation is one member's work rather than a group decision.
-         *    So an archive restores everything a translation hangs on and not the
-         *    translation. See docs/member-archive.md for what closing that would
-         *    take; it is not a line in this list.
          *  - `TranslationEvent` (30311). Nothing builds one; the inbound arm
          *    exists and no producer does.
          *  - The contributor lists (30305, 30307, 30310). `applyInnerEvent` has
          *    no arm that writes a row for any of them, so archiving them would
          *    cost bytes and restore nothing.
+         *
+         * Two kinds were on that list and are not any more, because the app
+         * stopped leaving them unsigned. `ArtifactVersionEvent` (30301) used to be
+         * derived from the signed artifact on arrival, and is now the second item
+         * of the batch that carries it. `TranslationChunkEvent` (30309) -- the
+         * translated text itself -- used to be submitted as its author's rumor,
+         * and is now proposed to the group like everything else. Both are
+         * therefore checkable, and an archive that left them out would hand a new
+         * member the whole structure and none of the prose.
          */
         private val APPLY_ORDER: List<Kind> = listOf(
             DialectEvent.KIND,
             ArtifactEvent.KIND,
+            ArtifactVersionEvent.KIND,
             ChapterEvent.KIND,
             ChunkEvent.KIND,
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
+            TranslationChunkEvent.KIND,
         )
 
         /** Every kind an archive may carry. */

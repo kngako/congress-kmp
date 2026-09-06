@@ -31,11 +31,13 @@ import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.archive.ArchiveEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * Assembling a room's archive out of the rows a device actually holds.
@@ -195,12 +197,10 @@ class ArchiveAssemblyJvmTest {
             )
         )
 
-        // Derived from the artifact rather than signed, which is exactly why it
-        // is not archived and why its label has to be read back off this row.
-        val version = assertNotNull(
-            db.mantraArtifactVersionDao().getArtifactVersionsByArtifactId(artifact.id).firstOrNull(),
-            "applying the artifact should have derived its first version"
-        )
+        // The second item of the artifact's own batch, built the way the batch
+        // builds it. It used to be derived on arrival, which is why the archive
+        // once could not carry it: a derived row has no signature to check.
+        val version = apply(ArtifactVersionEvent.initialVersionOf(artifact).single())
 
         val chapter = apply(
             ChapterEvent.build(
@@ -214,7 +214,7 @@ class ArchiveAssemblyJvmTest {
             )
         )
 
-        apply(
+        val chunk = apply(
             ChunkEvent.build(
                 chapterId = chapter.id,
                 text = "He was a man of parts.",
@@ -246,12 +246,24 @@ class ArchiveAssemblyJvmTest {
             )
         )
 
-        apply(
+        val translationChapter = apply(
             TranslationChapterEvent.build(
                 translationArtifactVersionId = translationVersion.id,
                 chapterId = chapter.id,
                 index = 0,
                 createdAt = 1_700_000_050L
+            )
+        )
+
+        // The translated text, which the group signs now rather than each member
+        // saving their own.
+        apply(
+            TranslationChunkEvent.build(
+                translationChapterId = translationChapter.id,
+                chunkId = chunk.id,
+                index = 0,
+                text = "Wayeyindoda enezingxenye.",
+                createdAt = 1_700_000_060L
             )
         )
     }
@@ -283,10 +295,12 @@ class ArchiveAssemblyJvmTest {
 
         assertEquals(1, byKind[DialectEvent.KIND]?.size)
         assertEquals(1, byKind[ArtifactEvent.KIND]?.size)
+        assertEquals(1, byKind[ArtifactVersionEvent.KIND]?.size)
         assertEquals(1, byKind[ChapterEvent.KIND]?.size)
         assertEquals(2, byKind[ChunkEvent.KIND]?.size)
         assertEquals(1, byKind[TranslationArtifactVersionEvent.KIND]?.size)
         assertEquals(1, byKind[TranslationChapterEvent.KIND]?.size)
+        assertEquals(1, byKind[TranslationChunkEvent.KIND]?.size)
 
         assertEquals(ArchiveEvent.ARCHIVABLE_KINDS, byKind.keys)
     }

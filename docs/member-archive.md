@@ -17,7 +17,7 @@ times worth reading:
 
 | what the plan said | what it turned out to be |
 |---|---|
-| nine archivable kinds | six. Only six ever reach a signing session, and one of the three that do not is the translated text -- see [Phase 3](#what-is-actually-archivable-which-is-less-than-it-looks) |
+| nine archivable kinds | six at first, eight now. The three that were unsigned were fixed in the app rather than worked around here -- see [Phase 3](#what-is-actually-archivable) |
 | `MAX_PAGE_EVENTS = 256` | 128. At 256 the byte cap always binds first and the count cap can never fire |
 | "assemble, order, pack and queue" | assemble only; queueing moved to Phase 5, next to the thing that decides when |
 | "re-read the room between the invite and the assembly" | unnecessary; that rule is about the MLS snapshot a commit is built on |
@@ -321,27 +321,41 @@ Neither fault would have shown up as an error. Both produce a well-formed
 artifact whose id no longer matches its fields, which every receiver drops as a
 forgery, silently, one kind at a time.
 
-### What is actually archivable, which is less than it looks
+### What is actually archivable
 
-Only six of the thirteen nip30303 kinds ever reach a signing session. The rest
-travel as rumors -- empty signature, member author, vouched for by the MLS frame
-they arrived in and by nothing that survives leaving it -- so they cannot be put
-in front of somebody who has no way to check them.
+An archive can only carry what its receiver can check, so the list is exactly the
+kinds a signing session produces. Eight of the thirteen nip30303 kinds do.
 
 | kind | | why |
 |---|---|---|
-| 30304 Dialect, 30300 Artifact, 30302 Chapter, 30303 Chunk, 30306 TranslationArtifactVersion, 30308 TranslationChapter | archivable | proposed through `proposeSigning`/`proposeSigningBatch` |
-| 30301 ArtifactVersion | no | never signed; derived from the signed artifact on arrival, which is what keeps a chapter's foreign key satisfied without archiving it |
-| 30309 TranslationChunk | no | **the translated text itself.** `MantraDao.saveTranslation` submits it as the member's own rumor |
+| 30304 Dialect, 30300 Artifact, 30301 ArtifactVersion, 30302 Chapter, 30303 Chunk, 30306 TranslationArtifactVersion, 30308 TranslationChapter, 30309 TranslationChunk | archivable | proposed through `proposeSigning` / `proposeSigningBatch` |
 | 30311 Translation | no | nothing builds one; the inbound arm exists and no producer does |
 | 30305, 30307, 30310 contributor lists | no | `applyInnerEvent` has no arm that writes a row for any of them |
 
-The second row of "no" is the one that matters and it is not a detail: **an
-archive restores everything a translation hangs on and not the translation.** A
-new member gets the dialects, the artifacts, the chapters, the source chunks,
-which translations exist and their chapter scaffolding -- the whole structure,
-enough to start translating -- and none of the translated text. See
-[What this does not do](#what-this-does-not-do).
+**It was six when this was written, and the two that were missing were the two
+that mattered.** An artifact version was derived from the signed artifact on
+arrival -- a row naming the group as its author with no signature to show for it
+-- and a translated chunk was submitted as its author's rumor by
+`MantraDao.saveTranslation`. Neither could be put in front of somebody with no
+way to check it, so an archive restored everything a translation hangs on and not
+the translation.
+
+Both were fixed in the app rather than worked around here, in parallel with this
+work and for their own reasons: `feat: sign an artifact's first version with it,
+not derive it after` makes the version the second item of the artifact's batch,
+and `feat: ask the group to sign a chunk's translation, not just save it` puts a
+quorum behind the prose. Once each of them carried a signature there was nothing
+left to argue about -- the allowlist grew by two and the caveat went away.
+
+The order is forced by the foreign keys, and 30301 and 30309 do not go on the
+end: a version sits between its artifact and the chapters hanging off it, and a
+translated chunk hangs off both a source chunk and a translation chapter, so it
+really is last.
+
+**A retranslated passage archives once.** The arm that applies a translation
+chunk drops the one it supersedes -- newest by the timestamp the group signed at,
+id breaking a tie -- so a sender holds a group's current answer to each passage
+rather than its drafts, and that is what travels.
 
 ### Ordering
 
@@ -579,10 +593,11 @@ left out rather than written blind:
   both real paths are automatic, so this is for the case the automation misses,
   and it wants a screen to live on.
 
-**Say what the new member cannot do.** Still unwritten, and still the part of
-this most likely to be reported as a bug: an archive does not make its recipient
-able to sign, and it does not carry the translated text. Both belong in front of
-a member the first time they open a room they were added to late.
+**Say what the new member cannot do.** Still unwritten, and now down to one
+thing rather than two: an archive hands its recipient the group's whole signed
+record, prose included, and does not make them able to *sign* anything. That is
+the sentence a member wants the first time they open a room they were added to
+late, and the first thing this will be reported as a bug for.
 
 ---
 
@@ -715,28 +730,15 @@ general answer for the reason
 [frost-batch-signing.md](./frost-batch-signing.md#appendix--what-was-considered-and-rejected)
 gives for manifests. Worth revisiting once anything depends on completeness.
 
-**The translated text is not archived.** The largest gap, and it follows from the
-same rule everything else here follows from. A translation chunk is submitted by
-`MantraDao.saveTranslation` as the member's own rumor, because a translation is
-one member's work rather than a group decision -- so it carries no signature, and
-an archive carrying it would be asking its recipient to believe whoever sent it.
-A new member therefore receives the entire structure and none of the prose.
-
-Three ways out, in increasing order of how much they cost:
-
- - **Send them anyway, marked unverified**, and let the reader see which rows
-   came with a group signature and which came on one member's word. Cheap, and it
-   gives up the property that makes the rest of this safe, so it needs its own
-   screen language rather than a quiet inclusion.
- - **Corroborate.** Every member's archive is an independent copy, so a
-   translation two members' archives agree on is a claim two devices make. That
-   is a real strengthening and it needs a second archive to compare against,
-   which the request path already makes ordinary.
- - **Sign them.** The group already puts a quorum behind a chapter and its
-   chunks; putting one behind a translation would make it archivable like
-   everything else. It is also a product decision about whether translating is an
-   act of the group or of a member, which is not a decision this document gets to
-   make.
+**Nothing unsigned is archived, and that is the whole list.** For a while it read
+larger: the translated text was its author's rumor and an artifact's first
+version was derived rather than signed, so neither could travel and a new member
+got the structure and none of the prose. Both are signed now. What is left out is
+`TranslationEvent`, which nothing builds, and the contributor lists, which
+nothing applies -- so the rule and the list have stopped diverging, and the thing
+to watch is that they do not drift apart again. The guard is
+`ArchiveRoundTripTest`, which fails when a kind is added to the allowlist without
+a case proving it can be rebuilt.
 
 **The chat is gone and stays gone.** By design, restated here because it is the
 first thing a new member will notice and the archive is what makes them expect

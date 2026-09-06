@@ -577,10 +577,12 @@ object ArchiveManager {
                 .getArtifactVersionsByArtifactId(artifact.id)
 
             // The version an artifact starts life with carries the label the
-            // artifact was signed with, and `initialVersionOf` gives it the
-            // artifact's own timestamp. A row with none of those is an artifact
-            // this device cannot rebuild, which is a gap in the archive rather
-            // than a reason to abandon it.
+            // artifact was signed with, and `ArtifactVersionEvent.initialVersionOf`
+            // gives it the artifact's own timestamp. The label is still not on the
+            // artifact row -- `fromArtifactEvent` drops it -- so this is where it
+            // comes back from. An artifact with no such version is one this device
+            // cannot rebuild, which is a gap in the archive rather than a reason to
+            // abandon it.
             val versionLabel = versions
                 .firstOrNull { it.createdAt == artifact.createdAt }
                 ?.versionLabel
@@ -592,6 +594,8 @@ object ArchiveManager {
             }
 
             versions.forEach { version ->
+                add(version.toArtifactVersionEvent())
+
                 database.mantraChapterDao()
                     .getChaptersByArtifactVersionId(version.id)
                     .forEach { chapter ->
@@ -609,7 +613,20 @@ object ArchiveManager {
 
                         database.mantraTranslationChapterDao()
                             .getTranslationChaptersByTranslationArtifactVersionId(translationVersion.id)
-                            .forEach { add(it.toTranslationChapterEvent()) }
+                            .forEach { translationChapter ->
+                                add(translationChapter.toTranslationChapterEvent())
+
+                                // Only the translation that survived supersession
+                                // is here to be found: retranslating a passage
+                                // changes the text and so the event id, and the
+                                // arm that applies one drops what it replaces. So
+                                // an archive carries a group's current answer to
+                                // each passage rather than its drafts, which is
+                                // the same thing every other member holds.
+                                database.mantraTranslationChunkDao()
+                                    .getTranslationChunksByTranslationChapterId(translationChapter.id)
+                                    .forEach { add(it.toTranslationChunkEvent()) }
+                            }
                     }
             }
         }
