@@ -54,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -62,7 +63,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.repository.MantraRepository
-import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.view.model.AddArtifactViewModel
 import press.mantra.compose.ui.view.state.AddArtifactUIState
@@ -77,6 +78,7 @@ fun AddArtifactScreen(
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     mantraRepository: MantraRepository,
+    frostSigningRepository: FrostSigningRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
@@ -88,7 +90,8 @@ fun AddArtifactScreen(
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
             activeUserPublicKey = activeUserPublicKey,
-            mantraRepository = mantraRepository
+            mantraRepository = mantraRepository,
+            frostSigningRepository = frostSigningRepository
         )
     )
 
@@ -115,11 +118,12 @@ fun AddArtifactScreen(
             // one is picked; dialects are defined from the group detail screen.
             var selectedDialectId: String? by remember { mutableStateOf(null) }
 
-            // Of the required fields this is the only one the screen cannot ask
-            // for again: a dialect has to already exist, and nothing here can
-            // create one. So an unpicked dialect is a dead end rather than
-            // something to submit and be told about, and the button says so.
-            val canAddArtifact = selectedDialectId != null
+            // The two things the form cannot ask for again. A dialect has to
+            // already exist and nothing here can create one; a shared key has to
+            // have been ceremonied and this is not where that happens. Either
+            // missing is a dead end rather than something to propose and be told
+            // about afterwards, and the button says so.
+            val canAddArtifact = selectedDialectId != null && addArtifactUIState.canSign
 
             // M3 gives a FAB no `enabled`, so borrow the disabled colours every
             // other button in the app uses rather than inventing a shade here.
@@ -168,15 +172,18 @@ fun AddArtifactScreen(
                                         urlField = urlFieldState,
                                         versionLabelField = versionLabelFieldState,
                                         dialectId = selectedDialectId,
-                                        onSuccess = { artifactId ->
-                                            // Open the newly created artifact, removing this
-                                            // add screen from the back stack.
+                                        onSuccess = { sessionId ->
+                                            // Onto the session rather than to the
+                                            // artifact. Nothing has been created yet
+                                            // -- the artifact appears when enough
+                                            // members sign -- so a detail screen for
+                                            // a row that does not exist would read as
+                                            // a failure.
                                             onNavigateToRouteAndPopUpInclusive.invoke(
-                                                ArtifactDetailRoute(
+                                                FrostSigningRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
-                                                    artifactId = artifactId,
                                                     chatRoomId = chatRoomId,
-                                                    relayHint = relayHint
+                                                    sessionId = sessionId
                                                 )
                                             )
                                         },
@@ -191,9 +198,9 @@ fun AddArtifactScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Add,
-                                    contentDescription = "Add artifact"
+                                    contentDescription = "Propose artifact"
                                 )
-                                Text("Add Artifact")
+                                Text("Propose Artifact")
                             }
                         }
                     )
@@ -209,6 +216,16 @@ fun AddArtifactScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Add Artifact to the group library")
+
+                        if (!addArtifactUIState.canSign) {
+                            Text(
+                                text = "This group has no shared key, so it cannot sign an " +
+                                    "artifact into its library. Run a shared key ceremony first.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+
                         OutlinedTextField(
                             modifier = Modifier.fillMaxWidth()
                                 .background(BottomAppBarDefaults.containerColor),
@@ -385,6 +402,7 @@ private fun AddArtifactScreenPreview() {
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {}
             )

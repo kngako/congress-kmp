@@ -143,6 +143,26 @@ interface NostrEventDao {
         now: Instant = Clock.System.now(),
     ): List<MarmotGroupEvent>
 
+    /**
+     * Every kind:445 held locally that mentions [chatRoomId], oldest first.
+     *
+     * The `LIKE` is a prefilter over the serialised tags, not the test: it can match
+     * a group id that happens to appear in some other tag, so callers must confirm
+     * the event's own `h` tag before treating it as this room's. Ordered ascending
+     * because a replay has to apply commits in the order they were sent.
+     *
+     * Deliberately not a join on `MarmotGroupEvent`: an event whose indexing failed
+     * part way may have been stored without ever reaching that table, and those are
+     * exactly the ones worth replaying.
+     */
+    @Transaction
+    @Query(
+        "SELECT * FROM NostrEvent WHERE kind = ${GroupEvent.KIND} " +
+            "AND tags LIKE '%' || :chatRoomId || '%' " +
+            "ORDER BY createdAt ASC"
+    )
+    suspend fun getMarmotGroupNostrEventsByChatRoomId(chatRoomId: HexKey): List<NostrEvent>
+
     @Transaction
     @Query("SELECT * FROM NostrEvent WHERE kind in (:kinds) AND pubKey in (:authors)  AND createdAt > :since ORDER BY createdAt ASC LIMIT :limit")
     suspend fun  getAuthoredNostrEvents(

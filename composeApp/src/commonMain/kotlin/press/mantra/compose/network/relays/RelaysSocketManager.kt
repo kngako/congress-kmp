@@ -33,7 +33,7 @@ class RelaysSocketManager(
     private val nostrSocketClientFactory: press.mantra.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: press.mantra.compose.repository.CachingImportRepository,
     private val relayRepository: press.mantra.compose.repository.RelayRepository,
-) {
+) : LiveSubscriptionTransport {
     val logger = Logger.withTag("RelaysSocketManager")
     private val scope = CoroutineScope(Dispatchers.IO)
     private val relayPoolsMutex = Mutex()
@@ -126,6 +126,8 @@ class RelaysSocketManager(
         )
     }
 
+    override suspend fun reconnectAll() = relayPool.reconnectAll()
+
     fun tryConnectingToAllRelays() {
         relayPool.relays.forEach {
             scope.launch {
@@ -143,6 +145,27 @@ class RelaysSocketManager(
         )
     }
 
+
+    override suspend fun openLiveSubscription(reqCommand: ReqCmd, relayUrl: String): Flow<press.mantra.compose.network.sockets.NostrIncomingMessage> {
+        return relayPool.openLiveSubscription(
+            reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    override suspend fun updateLiveSubscription(reqCommand: ReqCmd, relayUrl: String) {
+        return relayPool.updateLiveSubscription(
+            reqCommand = reqCommand,
+            relayUrl = relayUrl
+        )
+    }
+
+    override suspend fun closeLiveSubscription(subId: String, relayUrl: String) {
+        return relayPool.closeLiveSubscription(
+            subId = subId,
+            relayUrl = relayUrl
+        )
+    }
 
     suspend fun closeQuery(closeCmd: CloseCmd, relayUrl: String) {
         return relayPool.closeQuery(

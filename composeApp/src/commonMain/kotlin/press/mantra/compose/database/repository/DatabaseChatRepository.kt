@@ -10,9 +10,11 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.MarmotReindexReport
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -173,24 +175,58 @@ class DatabaseChatRepository(
     override suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
-        messageType: Kind
+        messageType: Kind,
+        directMessageRecipientPublicKey: HexKey?
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")
         val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
 
         if (mlsGroup != null) {
-            // Create ChatRumor...
-            val createdAt = Clock.System.now().epochSeconds
-            val marmotInnerEventKind = if (messageType == ChatMessageEvent.KIND) {
-                ChatEvent.KIND // nip-17 chatMessageEvent.kind is in MLS chatMessage.kind
-            } else {
-                messageType
+            // Resolved before anything is written. A recipient outside the room cannot be
+            // sent to -- the wrap would be undecryptable by every member including them,
+            // while the group still saw that a private message had gone somewhere -- and
+            // the room is also where the relay hint for the `p` tag comes from.
+            val directMessageRecipient = directMessageRecipientPublicKey?.let { recipient ->
+                require(recipient != localChatRoom.chatRoom.userPublicKey) {
+                    "Cannot send a direct message to yourself: the wrap's throwaway key means it could never be read back"
+                }
+
+                localChatRoom.localParticipants
+                    .map { it.participant }
+                    .firstOrNull { it.participantPublicKey == recipient }
+                    ?: throw IllegalArgumentException(
+                        "Cannot send a direct message to $recipient: not a member of ${localChatRoom.chatRoom.id}"
+                    )
             }
 
+            // Create ChatRumor...
+            val createdAt = Clock.System.now().epochSeconds
+            val marmotInnerEventKind = when {
+                // A direct message is a NIP-17 chat message that happens to travel inside
+                // the group, so it keeps kind:14 instead of being mapped down to the
+                // group's kind:9. That is also what tells the two apart on the way back in.
+                directMessageRecipient != null -> ChatMessageEvent.KIND
+                messageType == ChatMessageEvent.KIND -> ChatEvent.KIND // nip-17 chatMessageEvent.kind is in MLS chatMessage.kind
+                else -> messageType
+            }
+
+            val marmotInnerEventTags = directMessageRecipient?.let { recipient ->
+                arrayOf(
+                    PTag.assemble(
+                        recipient.participantPublicKey,
+                        recipient.relayHint?.let { NormalizedRelayUrl(it) }
+                    )
+                )
+            } ?: emptyArray()
+
+            // For a direct message the queued row IS the rumor the wrap will carry, so
+            // this id is the one the recipient arrives at after unwrapping -- and, on the
+            // way out, the one the notary uses to find this chat message again. The wrap
+            // built around it has its own id, which is why that lookup keys on the row.
             val marmotInnerEventId = EventHasher.hashId(
                 pubKey = localChatRoom.chatRoom.userPublicKey,
                 createdAt = createdAt,
-                tags = emptyArray(),
+                tags = marmotInnerEventTags,
                 content = text,
                 kind = marmotInnerEventKind
             )
@@ -200,10 +236,11 @@ class DatabaseChatRepository(
                     id = marmotInnerEventId,
                     publicKey = localChatRoom.chatRoom.userPublicKey,
                     createdAt = Instant.fromEpochSeconds(createdAt),
-                    tags = emptyArray(),
+                    tags = marmotInnerEventTags,
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
-                    kind = marmotInnerEventKind
+                    kind = marmotInnerEventKind,
+                    directMessageRecipientPublicKey = directMessageRecipient?.participantPublicKey
                 )
             )
 
@@ -216,6 +253,15 @@ class DatabaseChatRepository(
                     giftWrapPayloadId = null,
                     marmotGroupEventId = null,
                     marmotInnerEventId = marmotInnerEventId,
+                    // The sender's only copy: the wrap is sealed with a key that is
+                    // discarded, so nothing can reconstruct these words from the
+                    // transcript later, on this device or any other.
+                    messageType = if (directMessageRecipient != null) {
+                        ChatMessage.TYPE_DIRECT_MESSAGE
+                    } else {
+                        "message"
+                    },
+                    directMessageRecipientPublicKey = directMessageRecipient?.participantPublicKey
                 )
             )
         } else {
@@ -280,6 +326,32 @@ class DatabaseChatRepository(
         giftWrapPayload: GiftWrapPayload,
         nostrSignerSync: NostrSignerSync
     ) {
+        // An MLS room must never produce a NIP-17 gift wrap of its *contents*. Its messages
+        // already travel inside kind:445, and its direct messages are real, correctly signed
+        // NIP-59 wraps -- indistinguishable from something this path would be right to
+        // publish. The only thing keeping one off a relay is that it never becomes a
+        // GiftWrapPayload, so refuse here too rather than trusting every future caller to
+        // know that. See docs/marmot-direct-messages.md.
+        //
+        // The Welcome is the one thing an MLS room is *supposed* to publish this way, and
+        // the reason it reaches this path at all. MIP-02 addresses kind:444 to a joiner who
+        // holds no group state yet: they cannot read a kind:445, so a relay-borne gift wrap
+        // is the only way to reach them, and `MarmotOutboundDao.deliveryWelcome` queues one
+        // here deliberately. Every Welcome carries its room's nostrGroupId, so a refusal
+        // keyed on `mlsGroupState` alone catches all of them and no invite is ever
+        // delivered -- and because the unsealed queue is a single-row flow, the refused
+        // Welcome sits at its head and blocks every payload behind it too.
+        if (giftWrapPayload.kind != WelcomeEvent.KIND) {
+            val chatRoom = database.chatRoomDao().findChatRoomById(giftWrapPayload.chatRoomId)
+            if (chatRoom?.chatRoom?.mlsGroupState != null) {
+                logger.e(
+                    "Refusing to seal payload ${giftWrapPayload.id}: ${giftWrapPayload.chatRoomId} is an MLS room, " +
+                        "and sealing would broadcast it to relays"
+                )
+                return
+            }
+        }
+
         database.participantDao().findParticipantsByChatRoomId(giftWrapPayload.chatRoomId).forEach { participant ->
             if (giftWrapPayload.kind == WelcomeEvent.KIND) {
                 logger.i("Only giftWrap welcomeEvent payload (${giftWrapPayload.id}) to the participant who published the related keyPackage")
@@ -406,6 +478,22 @@ class DatabaseChatRepository(
 
         onCompletion.invoke()
     }
+
+    /**
+     * Only the public key is needed: reading a group event is done with the MLS
+     * group's own secrets, held in the room's stored state, and the identity is
+     * used for nothing but deciding whether this device is a member and whether a
+     * line is its own. So a read-only [KeyPair] is enough, and the nostr private
+     * key stays where it is.
+     */
+    override suspend fun reindexMarmotGroupEvents(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): MarmotReindexReport =
+        database.nostrDao().reindexMarmotGroupEvents(
+            chatRoomId = chatRoomId,
+            activeKeyPair = KeyPair(pubKey = userPublicKey.hexToByteArray()),
+        )
 
     companion object {
         const val TAG = "DatabaseChatRepository"

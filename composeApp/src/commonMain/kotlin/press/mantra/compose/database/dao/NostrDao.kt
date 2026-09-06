@@ -19,6 +19,7 @@ import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Post
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.MarmotReindexReport
 import press.mantra.compose.database.model.types.SynchronizationFilter
 import press.mantra.compose.exceptions.GiftWrapImpersonationException
 import press.mantra.compose.exceptions.GiftWrapSealDecryptionException
@@ -32,15 +33,20 @@ import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MlsGroupCache
 import press.mantra.compose.managers.MarmotInboundManager
+import press.mantra.compose.managers.MarmotReindexSweep
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageRelayListEvent
 import com.vitorpamplona.quartz.marmot.mip02Welcome.WelcomeEvent
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.CommitOrdering
+import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.marmot.mls.codec.TlsReader
 import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
@@ -386,114 +392,11 @@ abstract class NostrDao(
             logger.d("groupEvent: ${groupEvent.toJson()}")
 
             groupEvent.groupId()?.let { chatRoomId ->
-                val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
-
-                if (localChatRoom != null) {
-                    // Through the cache rather than rebuilt here, so the secret
-                    // tree's skipped-generation keys survive from one message to
-                    // the next. Two events published in the same instant arrive in
-                    // whatever order the relay feels like, and rebuilding between
-                    // them loses the earlier one for good -- see MlsGroupCache.
-                    val handled = MlsGroupCache.withGroup(
-                        chatRoomId = chatRoomId,
-                        storedStateHex = localChatRoom.chatRoom.mlsGroupState,
-                        build = { localChatRoom.chatRoom.toMlsGroup() },
-                        save = { stateHex ->
-                            database.chatRoomDao().upsert(
-                                localChatRoom.chatRoom.copy(mlsGroupState = stateHex)
-                            )
-                        }
-                    ) { mlsGroup ->
-                        val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
-
-                            val pubkey = when (val cred = leafNode.credential) {
-                                is Credential.Basic -> cred.identity.toHexKey()
-                                else -> null
-                            }
-
-                            logger.d("leafIndex=$leafIndex pubKey=$pubkey")
-                            pubkey
-                        }
-
-                        if (memberPubkeys.contains(activeKeyPair.pubKey.toHex())) {
-                            database.marmotGroupEventDao().upsert(
-                                MarmotGroupEvent(
-                                    id = groupEvent.id,
-                                    userPublicKey = activeKeyPair.pubKey.toHex(),
-                                    publicKey = groupEvent.pubKey,
-                                    encryptedContent = groupEvent.encryptedContent(),
-                                    chatRoomId = chatRoomId,
-                                    createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
-                                    expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
-                                    signature = groupEvent.sig
-                                )
-                            )
-                            MarmotInboundManager.processGroupEvent(
-                                database = database,
-                                activeKeyPair = activeKeyPair,
-                                localChatRoom = localChatRoom,
-                                mlsGroup = mlsGroup,
-                                groupEvent = groupEvent
-                            )?.let { groupEventResult ->
-                                logger.d("groupEventResult: $groupEventResult")
-
-                                when(groupEventResult) {
-                                    is GroupEventResult.CommitProcessed -> {
-                                        MarmotInboundManager.processGroupMembershipChanges(
-                                            database = database,
-                                            mlsGroup = mlsGroup,
-                                            localChatRoom = localChatRoom
-                                        )
-                                    }
-                                    else -> {
-                                        logger.i("No app logic to handle: $groupEventResult")
-                                    }
-                                }
-
-                                ChatMessage.fromGroupEventResult(
-                                    database = database,
-                                    activeKeyPair = activeKeyPair,
-                                    groupEvent = groupEvent,
-                                    groupEventResult = groupEventResult,
-                                )?.let { chatMessage ->
-                                    logger.d("chatMessage: $chatMessage")
-                                    database.chatMessageDao().upsert(
-                                        chatMessage
-                                    )
-                                }
-
-                                // A FROST signing message for this group. Driven from
-                                // here rather than from ChatMessage because the
-                                // manager needs the room to publish its own replies
-                                // into, and because it writes its transcript lines
-                                // itself. The manager is idempotent, so a redelivered
-                                // message re-runs a step it has already taken.
-                                if (groupEventResult is GroupEventResult.ApplicationMessage) {
-                                    Event.fromJsonOrNull(groupEventResult.innerEventJson)
-                                        ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
-                                        ?.let { innerEvent ->
-                                            FrostSigningManager.processSigningPayload(
-                                                database = database,
-                                                localChatRoom = localChatRoom,
-                                                innerEvent = innerEvent,
-                                                userPublicKey = activeKeyPair.pubKey.toHex()
-                                            )
-                                        }
-                                }
-                            }
-                        } else {
-                            throw MarmotNotMemberOfChatGroupException("We are not a member of the chat room ${localChatRoom.chatRoom.id}")
-                        }
-                    }
-
-                    // Null means the room has no usable group state, which is what
-                    // a failed toMlsGroup() meant before the cache existed.
-                    if (handled == null) {
-                        throw MarmotMissingNostrGroupDataExtension("Couldn't find chatRoom for $nostrEvent")
-                    }
-                } else {
-                    throw MarmotMissingChatGroupException("Couldn't find chatRoom for $nostrEvent")
-                }
+                indexMarmotGroupEvent(
+                    groupEvent = groupEvent,
+                    chatRoomId = chatRoomId,
+                    activeKeyPair = activeKeyPair,
+                )
             }
         }
 
@@ -533,6 +436,15 @@ abstract class NostrDao(
             database.giftWrapMessageDao().upsert(
                 giftWrapMessage
             )
+
+            if (!giftWrapMessage.isAddressedTo(activeKeyPair)) {
+                // Undecryptable by design rather than by failure, so keep the event and
+                // the wrap we just stored and stop here. Throwing would roll the whole
+                // transaction back and lose both.
+                logger.d("GiftWrap ${nostrEvent.id} is addressed to ${giftWrapMessage.receiverPublicKey}, nothing to index")
+
+                return@let
+            }
 
             giftWrapMessage.decryptGiftWrapSeal(
                 activeKeyPair
@@ -672,41 +584,14 @@ abstract class NostrDao(
                                                         }
                                                     }
 
-                                            if (chatMessageRelayListEvent != null) {
-                                                // Sync messages from this relay that were sent by us
-                                                val synchronizationFilter =
-                                                    SynchronizationFilter(
-                                                        kinds = arrayOf(
-                                                            GiftWrapEvent.KIND,
-                                                        ),
-                                                        authors = arrayOf(
-                                                            userPublicKey
-                                                        ),
-                                                        tags = mapOf(
-                                                            Pair(
-                                                                "p",
-                                                                listOf(participant.participantPublicKey)
-                                                            )
-                                                        ),
-                                                        limit = 50
-                                                    )
-                                                database.negentropySynchronizeRequestDao()
-                                                    .insert(
-                                                        chatMessageRelayListEvent.relays()
-                                                            .map { normalizedRelayUrl ->
-                                                                NegentropySynchronizeRequest(
-                                                                    id = NegentropySynchronizeRequest.computeId(
-                                                                        relayURL = normalizedRelayUrl.url,
-                                                                        synchronizationFilter = synchronizationFilter
-                                                                    ),
-                                                                    purpose = "sent-messages",
-                                                                    synchronizationFilter = synchronizationFilter,
-                                                                    relayURL = normalizedRelayUrl.url,
-                                                                    level = 0
-                                                                )
-                                                            }
-                                                    )
-                                            } else {
+                                            // Nothing to sync when we do have the relay list: a gift
+                                            // wrap is authored by a throwaway key, so authors=us matched
+                                            // nothing and this request was always empty. Our own inbox is
+                                            // synced by p-tag instead — by the live gift wrap
+                                            // subscription, which also picks up the copy we wrap to
+                                            // ourselves (createNip17ChatRoom puts us in our own
+                                            // participant list), on every device.
+                                            if (chatMessageRelayListEvent == null) {
                                                 logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                                 // Sync ChatMessageRelayListEvent publicKey...
@@ -908,35 +793,9 @@ abstract class NostrDao(
                                             }
                                         }
 
-                                        if (chatMessageRelayListEvent != null) {
-                                            // Sync messages from this relay that were sent by us
-                                            val synchronizationFilter = SynchronizationFilter(
-                                                kinds = arrayOf(
-                                                    GiftWrapEvent.KIND,
-                                                ),
-                                                authors = arrayOf(
-                                                    userPublicKey
-                                                ),
-                                                tags = mapOf(
-                                                    Pair("p", listOf(participant.participantPublicKey))
-                                                ),
-                                                limit = 50
-                                            )
-                                            database.negentropySynchronizeRequestDao().insert(
-                                                chatMessageRelayListEvent.relays().map { normalizedRelayUrl ->
-                                                    NegentropySynchronizeRequest(
-                                                        id = NegentropySynchronizeRequest.computeId(
-                                                            relayURL = normalizedRelayUrl.url,
-                                                            synchronizationFilter = synchronizationFilter
-                                                        ),
-                                                        purpose = "sent-messages",
-                                                        synchronizationFilter = synchronizationFilter,
-                                                        relayURL = normalizedRelayUrl.url,
-                                                        level = 0
-                                                    )
-                                                }
-                                            )
-                                        } else {
+                                        // See the identical block above: authors=us never matches a
+                                        // gift wrap, so only the missing-relay-list case has work to do.
+                                        if (chatMessageRelayListEvent == null) {
                                             logger.w("We don't have a chatMessageRelayListEvent for the pubkey $publicKey")
 
                                             // Sync ChatMessageRelayListEvent publicKey...
@@ -1279,6 +1138,256 @@ abstract class NostrDao(
         }
     }
 
+    /**
+     * Reads one kind:445 against the room's MLS group and files whatever it turns
+     * out to be: a message, a commit that advances the group, an entity for the
+     * library, or a placeholder saying it could not be read yet.
+     *
+     * Its own function so a replay can run exactly what a first delivery ran --
+     * see [reindexMarmotGroupEvents]. Throws for a room this device cannot process
+     * the event against at all, which the caller decides what to do about: a first
+     * delivery lets it roll back its transaction, a replay logs it and moves on.
+     */
+    private suspend fun indexMarmotGroupEvent(
+        groupEvent: GroupEvent,
+        chatRoomId: String,
+        activeKeyPair: KeyPair,
+    ) {
+        val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
+            ?: throw MarmotMissingChatGroupException("Couldn't find chatRoom for ${groupEvent.id}")
+
+        // Through the cache rather than rebuilt here, so the secret
+        // tree's skipped-generation keys survive from one message to
+        // the next. Two events published in the same instant arrive in
+        // whatever order the relay feels like, and rebuilding between
+        // them loses the earlier one for good -- see MlsGroupCache.
+        val handled = MlsGroupCache.withGroup(
+            chatRoomId = chatRoomId,
+            storedStateHex = localChatRoom.chatRoom.mlsGroupState,
+            build = { localChatRoom.chatRoom.toMlsGroup() },
+            save = { stateHex ->
+                database.chatRoomDao().upsert(
+                    localChatRoom.chatRoom.copy(mlsGroupState = stateHex)
+                )
+            }
+        ) { mlsGroup ->
+            val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
+
+                val pubkey = when (val cred = leafNode.credential) {
+                    is Credential.Basic -> cred.identity.toHexKey()
+                    else -> null
+                }
+
+                logger.d("leafIndex=$leafIndex pubKey=$pubkey")
+                pubkey
+            }
+
+            if (memberPubkeys.contains(activeKeyPair.pubKey.toHex())) {
+                database.marmotGroupEventDao().upsert(
+                    MarmotGroupEvent(
+                        id = groupEvent.id,
+                        userPublicKey = activeKeyPair.pubKey.toHex(),
+                        publicKey = groupEvent.pubKey,
+                        encryptedContent = groupEvent.encryptedContent(),
+                        chatRoomId = chatRoomId,
+                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
+                        expiresAt = groupEvent.expiration()?.let { Instant.fromEpochSeconds(it) },
+                        signature = groupEvent.sig
+                    )
+                )
+                MarmotInboundManager.processGroupEvent(
+                    database = database,
+                    activeKeyPair = activeKeyPair,
+                    localChatRoom = localChatRoom,
+                    mlsGroup = mlsGroup,
+                    groupEvent = groupEvent
+                )?.let { groupEventResult ->
+                    logger.d("groupEventResult: $groupEventResult")
+
+                    when(groupEventResult) {
+                        is GroupEventResult.CommitProcessed -> {
+                            MarmotInboundManager.processGroupMembershipChanges(
+                                database = database,
+                                mlsGroup = mlsGroup,
+                                localChatRoom = localChatRoom
+                            )
+                        }
+                        else -> {
+                            logger.i("No app logic to handle: $groupEventResult")
+                        }
+                    }
+
+                    ChatMessage.fromGroupEventResult(
+                        database = database,
+                        activeKeyPair = activeKeyPair,
+                        groupEvent = groupEvent,
+                        groupEventResult = groupEventResult,
+                        // Who sent it comes from the MLS frame, not the
+                        // payload. Resolved here because this is where the
+                        // group is; the leaf index is on the result, and the
+                        // tree has not moved -- an application message
+                        // advances no epoch.
+                        senderIdentity = (groupEventResult as? GroupEventResult.ApplicationMessage)
+                            ?.let { mlsGroup.memberIdentityHex(it.senderLeafIndex) },
+                    )?.let { chatMessage ->
+                        logger.d("chatMessage: $chatMessage")
+                        persistMarmotChatMessage(chatMessage)
+                    }
+
+                    // A FROST signing message for this group. Driven from
+                    // here rather than from ChatMessage because the
+                    // manager needs the room to publish its own replies
+                    // into, and because it writes its transcript lines
+                    // itself. The manager is idempotent, so a redelivered
+                    // message re-runs a step it has already taken.
+                    if (groupEventResult is GroupEventResult.ApplicationMessage) {
+                        Event.fromJsonOrNull(groupEventResult.innerEventJson)?.let { innerEvent ->
+                            when {
+                                FrostSigningEvents.isFrostSigningKind(innerEvent.kind) ->
+                                    FrostSigningManager.processSigningPayload(
+                                        database = database,
+                                        localChatRoom = localChatRoom,
+                                        innerEvent = innerEvent,
+                                        userPublicKey = activeKeyPair.pubKey.toHex()
+                                    )
+
+                                // What key this room signs with. Filed
+                                // rather than acted on, and only after
+                                // the room rederives from the key it
+                                // names -- the manager drops anything
+                                // that does not, whoever sent it.
+                                GroupKeyStateEvent.isGroupKeyStateKind(innerEvent.kind) ->
+                                    GroupKeyStateManager.record(
+                                        database = database,
+                                        chatRoomId = localChatRoom.chatRoom.id,
+                                        innerEvent = innerEvent
+                                    )
+                            }
+                        }
+                    }
+                }
+            } else {
+                throw MarmotNotMemberOfChatGroupException("We are not a member of the chat room ${localChatRoom.chatRoom.id}")
+            }
+        }
+
+        // Null means the room has no usable group state, which is what
+        // a failed toMlsGroup() meant before the cache existed.
+        if (handled == null) {
+            throw MarmotMissingNostrGroupDataExtension("Couldn't find chatRoom for ${groupEvent.id}")
+        }
+    }
+
+    /**
+     * Files the chat line a kind:445 produced, replacing the line that event
+     * already has rather than adding a second one. The rule for which of the two
+     * wins is [ChatMessage.reconcileMarmotLine].
+     */
+    private suspend fun persistMarmotChatMessage(chatMessage: ChatMessage) {
+        val existing = chatMessage.marmotGroupEventId?.let {
+            database.chatMessageDao().getChatMessagesByMarmotGroupEventId(it)
+        }
+
+        val row = ChatMessage.reconcileMarmotLine(fresh = chatMessage, existing = existing)
+
+        if (row == null) {
+            logger.d("Keeping ${existing?.messageType} line for ${chatMessage.marmotGroupEventId}")
+            return
+        }
+
+        database.chatMessageDao().upsert(row)
+    }
+
+    /**
+     * Reads a room's stored kind:445 events again, oldest first.
+     *
+     * Relays impose no ordering, so a group event can arrive before the group is
+     * able to read it: an application message encrypted under an epoch whose commit
+     * has not landed yet, or a commit for an epoch ahead of the local one. Both are
+     * stored and then dropped -- `MarmotInboundManager` refuses to apply an
+     * out-of-epoch commit precisely so it does not half-mutate the group -- and
+     * nothing revisits them once the missing event fills the gap. This is the
+     * revisit, driven from the group's detail screen.
+     *
+     * Only events with nothing to show for them are replayed: no chat line at all,
+     * or one of [ChatMessage.UNRESOLVED_MARMOT_TYPES]. Everything already read is
+     * left untouched, which is what keeps the replay from disturbing a room where
+     * there was nothing wrong. Within that set a replay is safe to repeat: the ids
+     * of every row it writes are derived from the events themselves, commits that
+     * are behind the current epoch are rejected as duplicates before they can touch
+     * the group, and the one row with a generated id is reconciled by
+     * [persistMarmotChatMessage].
+     *
+     * Passes repeat while a pass recovers something -- see [MarmotReindexSweep] --
+     * because created_at order is not necessarily epoch order, and a commit
+     * recovered by one pass can be what lets the next read the messages that were
+     * waiting on it.
+     *
+     * What this cannot do is recover a message whose key is gone: an application
+     * message the ratchet has already advanced past, or one from an epoch that
+     * predates this device joining. Those stay unreadable however often they are
+     * replayed.
+     */
+    open suspend fun reindexMarmotGroupEvents(
+        chatRoomId: String,
+        activeKeyPair: KeyPair,
+    ): MarmotReindexReport {
+        val userPublicKey = activeKeyPair.pubKey.toHex()
+
+        // The query's LIKE only narrows; the h tag is what decides the room. Sorted
+        // by CommitOrdering's own comparator rather than left in createdAt order, so
+        // that where two commits compete for an epoch the first one replayed is the
+        // one every other member also picked.
+        val groupEvents = database.nostrEventDao()
+            .getMarmotGroupNostrEventsByChatRoomId(chatRoomId)
+            .mapNotNull { storedNostrEvent ->
+                storedNostrEvent
+                    .toGroupEvent(userPublicKey = userPublicKey)
+                    ?.takeIf { it.groupId() == chatRoomId }
+            }
+            .sortedWith(CommitOrdering.comparator)
+
+        logger.i("Reindex $chatRoomId: ${groupEvents.size} stored group event(s)")
+
+        // Held commits are what a replay is most often for, and they are only ever
+        // cleared by one applying -- see MarmotInboundManager.forgetPendingCommits.
+        MarmotInboundManager.forgetPendingCommits(chatRoomId)
+
+        val resolved = database.chatMessageDao().getResolvedMarmotGroupEventIds(
+            chatRoomId = chatRoomId,
+            unresolvedTypes = ChatMessage.UNRESOLVED_MARMOT_TYPES,
+        ).toSet()
+
+        return MarmotReindexSweep.run(
+            stored = groupEvents.size,
+            unresolved = groupEvents.filterNot { it.id in resolved },
+            replay = { groupEvent ->
+                indexMarmotGroupEvent(
+                    groupEvent = groupEvent,
+                    chatRoomId = chatRoomId,
+                    activeKeyPair = activeKeyPair,
+                )
+            },
+            isUnresolved = { groupEvent -> isUnresolvedMarmotGroupEvent(groupEvent.id) },
+        ).also {
+            logger.i("Reindex $chatRoomId: $it")
+        }
+    }
+
+    /**
+     * Whether one group event still has nothing to show for it, asked again after
+     * a replay to see whether that replay achieved anything.
+     *
+     * Some events can never leave this state and will be swept every time: a commit
+     * rejected as a duplicate writes no line, and neither does a commit this device
+     * sent, whose line was written against the send rather than the event. Both cost
+     * one refused decrypt per sweep, which is cheaper than a bookkeeping column that
+     * would have to be migrated in.
+     */
+    private suspend fun isUnresolvedMarmotGroupEvent(groupEventId: String): Boolean {
+        val chatMessage = database.chatMessageDao().getChatMessagesByMarmotGroupEventId(groupEventId)
+        return chatMessage == null || chatMessage.messageType in ChatMessage.UNRESOLVED_MARMOT_TYPES
+    }
 
     /**
      * Files an arriving NIP-17 chat message so it shows up in the room's feed.
@@ -1425,4 +1534,5 @@ abstract class NostrDao(
             }
         }
     }
+
 }

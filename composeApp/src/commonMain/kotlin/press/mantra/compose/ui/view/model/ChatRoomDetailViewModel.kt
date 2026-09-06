@@ -18,9 +18,11 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.types.MarmotReindexReport
 
 class ChatRoomDetailViewModel(
     val chatRoomId: String,
@@ -34,6 +36,26 @@ class ChatRoomDetailViewModel(
 
     var chatRoomDetailUIState: ChatRoomDetailUIState by mutableStateOf(initialChatRoomDetailUIState)
         private set
+
+    /**
+     * Where the room's replay has got to, for the button that started it.
+     *
+     * Held here rather than in [ChatRoomDetailUIState] because a replay does not
+     * change what the screen is showing -- the message list is observed elsewhere
+     * and updates itself -- it only changes what the button has to say for itself.
+     */
+    var reindexState: ReindexState by mutableStateOf(ReindexState.Idle)
+        private set
+
+    sealed interface ReindexState {
+        data object Idle : ReindexState
+
+        data object Running : ReindexState
+
+        data class Done(val report: MarmotReindexReport) : ReindexState
+
+        data class Failed(val message: String) : ReindexState
+    }
 
 
 
@@ -78,6 +100,39 @@ class ChatRoomDetailViewModel(
                     }
                 }
             )
+        }
+    }
+
+    /**
+     * Reads the room's stored marmot group events again.
+     *
+     * Nostr relays impose no ordering, so a group event can arrive before the group
+     * can read it -- a message from an epoch whose commit has not landed, a commit
+     * for an epoch ahead of the local one. Nothing revisits those once the gap
+     * fills, which is what this is for.
+     *
+     * Only events with nothing to show for them are replayed, so pressing this on a
+     * room where nothing went wrong changes nothing. The feed is observed, so
+     * anything recovered appears in the message list without a refresh.
+     */
+    fun reindexMarmotGroupEvents() {
+        if (reindexState is ReindexState.Running) return
+
+        reindexState = ReindexState.Running
+        viewModelScope.launch(Dispatchers.IO) {
+            reindexState = try {
+                ReindexState.Done(
+                    chatRepository.reindexMarmotGroupEvents(
+                        chatRoomId = chatRoomId,
+                        userPublicKey = activeUserPublicKey,
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.e("Failed to reindex $chatRoomId", e)
+                ReindexState.Failed(e.message ?: "Reindex failed")
+            }
         }
     }
 

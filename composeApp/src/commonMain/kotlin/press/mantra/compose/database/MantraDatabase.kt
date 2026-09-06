@@ -20,6 +20,7 @@ import press.mantra.compose.database.dao.FrostSigningSessionDao
 import press.mantra.compose.database.dao.GiftWrapMessageDao
 import press.mantra.compose.database.dao.GiftWrapPayloadDao
 import press.mantra.compose.database.dao.GiftWrapSealDao
+import press.mantra.compose.database.dao.GroupKeyStateDao
 import press.mantra.compose.database.dao.InReplyToRelationDao
 import press.mantra.compose.database.dao.MantraArtifactDao
 import press.mantra.compose.database.dao.MantraArtifactVersionDao
@@ -71,6 +72,7 @@ import press.mantra.compose.database.model.Connection
 import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GiftWrapSeal
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.InReplyToRelation
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
@@ -132,6 +134,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapMessage::class,
         GiftWrapSeal::class,
         GiftWrapPayload::class,
+        GroupKeyState::class,
         InReplyToRelation::class,
         MantraArtifact::class,
         MantraArtifactVersion::class,
@@ -169,7 +172,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 6,
+    version = 8,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -194,7 +197,18 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // both shapes Room can migrate itself. A ceremony that completed before
         // this reads back null, and signing falls back to not cross-checking
         // shares rather than refusing to run.
-        AutoMigration(from = 5, to = 6)
+        AutoMigration(from = 5, to = 6),
+        // v7 adds the GroupKeyState table, which records what shared key a room
+        // signs with instead of leaving it to be rederived. A new table is a
+        // shape Room migrates itself. Rooms created before this have no row and
+        // fall back to the rederivation scan in FrostSigningManager.completedKey,
+        // which is why that scan stays.
+        AutoMigration(from = 6, to = 7),
+        // v8 adds a nullable direct message recipient to MarmotInnerEvent and
+        // ChatMessage. Nullable additions need no default and drop no data, so Room
+        // generates this one. Rows written before it come back null, which reads as
+        // "not a direct message" -- the only answer that is true of all of them.
+        AutoMigration(from = 7, to = 8)
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
@@ -215,6 +229,8 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun dkgSessionDao(): DkgSessionDao
 
     abstract fun frostSigningSessionDao(): FrostSigningSessionDao
+
+    abstract fun groupKeyStateDao(): GroupKeyStateDao
 
     abstract fun connectionDao(): ConnectionDao
 

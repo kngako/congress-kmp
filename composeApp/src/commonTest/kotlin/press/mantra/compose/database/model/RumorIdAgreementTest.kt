@@ -66,7 +66,8 @@ class RumorIdAgreementTest {
             url = "example.com",
             visibility = "private",
             license = "cc",
-            dialectId = other
+            dialectId = other,
+            versionLabel = "1.0"
         )
 
         val entity = MantraArtifact.fromArtifactEventTemplate(

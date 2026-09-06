@@ -32,10 +32,12 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
+import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.types.SynchronizationFilter
+import press.mantra.compose.nostr.MarmotDirectMessage
 import press.mantra.compose.nostr.Relays
 import kotlin.time.Clock
 
@@ -60,6 +62,45 @@ object MarmotInboundManager {
     private val retainedEpochs = mutableMapOf<HexKey, MutableList<RetainedEpochSecrets>>()
 
     private val commitTracker = CommitOrdering.EpochCommitTracker()
+
+    /**
+     * Why an inner application event may not be accepted from this sender, or null.
+     *
+     * MIP-03: an inner event's `pubkey` MUST equal the MLS sender's credential identity,
+     * so a member cannot mint events claiming a different author.
+     *
+     * A gift wrap is exempt. Its pubkey is a throwaway key by construction -- see
+     * [MarmotDirectMessage] -- so there is no author field to compare and the check
+     * cannot be applied as written. The authorship claim moves inside, to the signed
+     * kind:13 seal, which [MarmotDirectMessage.classify] binds to this same identity
+     * before a word is rendered: a verified signature bound to an MLS leaf, rather than a
+     * plaintext field compared to one.
+     *
+     * The exemption is on kind:1059 alone. Widening it to any other kind, or dropping the
+     * kind guard, hands every member the ability to publish events as anybody.
+     *
+     * Other Marmot clients do not have this carve-out and drop these messages as
+     * impersonation. See docs/marmot-direct-messages.md.
+     *
+     * [senderIdentity] is required rather than merely compared: every sender-derived
+     * field downstream reads from it -- who a message is from, and whether it is ours --
+     * because a gift wrap payload carries no author of its own.
+     */
+    fun mip03Rejection(
+        innerEventKind: Int,
+        innerEventPubKey: HexKey,
+        senderIdentity: HexKey?,
+    ): String? {
+        if (senderIdentity == null) {
+            return "No MLS credential identity for the sender leaf"
+        }
+
+        if (innerEventKind != GiftWrapEvent.KIND && innerEventPubKey != senderIdentity) {
+            return "MIP-03: inner event pubkey ($innerEventPubKey) does not match MLS sender identity ($senderIdentity)"
+        }
+
+        return null
+    }
 
     suspend fun processGroupMembershipChanges(
         database: MantraDatabase,
@@ -267,11 +308,9 @@ object MarmotInboundManager {
 
                 if (innerEvent != null) {
                     val senderIdentity = mlsGroup.memberIdentityHex(decrypted.senderLeafIndex)
-                    if (senderIdentity == null || innerEvent.pubKey != senderIdentity) {
-                        return GroupEventResult.Error(
-                            groupId,
-                            "MIP-03: inner event pubkey (${innerEvent.pubKey}) does not match MLS sender identity ($senderIdentity)",
-                        )
+
+                    mip03Rejection(innerEvent.kind, innerEvent.pubKey, senderIdentity)?.let { reason ->
+                        return GroupEventResult.Error(groupId, reason)
                     }
                 }
 
@@ -411,6 +450,31 @@ object MarmotInboundManager {
         } else {
             GroupEventResult.CommitPending(nostrGroupId, currentEpoch)
         }
+    }
+
+    /**
+     * Forget the commits being held for [nostrGroupId], so a replay decides its
+     * epochs again from the events it is about to feed back in.
+     *
+     * [handleCommitEvent] holds a commit whenever a second one turns up for an
+     * epoch, and only [CommitOrdering.EpochCommitTracker.clearEpoch] on a
+     * successful apply ever empties that. Nothing applies while more than one is
+     * held, so the set is a dead end: replaying those commits without clearing
+     * first just adds them again and leaves every one of them pending, and the
+     * list grows with each attempt.
+     *
+     * Safe to drop because the tracker is a scratch pad, not a record -- the
+     * commits themselves are on disk, and a replay hands them back oldest first,
+     * which is the order [CommitOrdering.comparator] picks a winner in.
+     */
+    suspend fun forgetPendingCommits(nostrGroupId: HexKey) {
+        commitTracker
+            .pendingGroupEpochs()
+            .filter { it.groupId == nostrGroupId }
+            .forEach { pending ->
+                logger.d("Forgetting pending commits for $nostrGroupId epoch ${pending.epoch}")
+                commitTracker.clearEpoch(pending.groupId, pending.epoch)
+            }
     }
 
     private suspend fun applyCommit(

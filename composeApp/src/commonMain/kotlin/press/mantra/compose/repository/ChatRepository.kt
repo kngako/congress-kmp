@@ -6,6 +6,7 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.types.MarmotReindexReport
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -79,10 +80,20 @@ interface ChatRepository {
         peers: List<Pair<HexKey, MarmotKeyPackage>>,
     ): List<HexKey>
 
+    /**
+     * Sends [text] to the room, or -- when [directMessageRecipientPublicKey] is given --
+     * to that one member of it.
+     *
+     * A direct message still travels as one group event that every member receives and
+     * can see the shape of; only its contents are private. See
+     * docs/marmot-direct-messages.md. NIP-17 rooms do not support it: there is no group
+     * for the rest of to see it, so a private message there is just a message.
+     */
     suspend fun sendChatMessage(
         text: String,
         localChatRoom: LocalChatRoom,
-        messageType: Kind = ChatMessageEvent.KIND
+        messageType: Kind = ChatMessageEvent.KIND,
+        directMessageRecipientPublicKey: HexKey? = null
     )
 
     fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
@@ -105,6 +116,19 @@ interface ChatRepository {
         chatRoom: ChatRoom,
         onCompletion: () -> Unit
     )
+
+    /**
+     * Reads the room's stored marmot group events again, so ones the group could
+     * not make sense of when they arrived get another chance now that the events
+     * they were waiting on have landed.
+     *
+     * Only events with nothing to show for them are replayed, so a room where
+     * nothing went wrong is left exactly as it was.
+     */
+    suspend fun reindexMarmotGroupEvents(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): MarmotReindexReport
 
     companion object {
         val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
@@ -192,7 +216,8 @@ interface ChatRepository {
             override suspend fun sendChatMessage(
                 text: String,
                 localChatRoom: LocalChatRoom,
-                messageType: Kind
+                messageType: Kind,
+                directMessageRecipientPublicKey: HexKey?
             ) {
                 // TODO("Not yet implemented")
             }
@@ -232,6 +257,11 @@ interface ChatRepository {
             ) {
                 TODO("Not yet implemented")
             }
+
+            override suspend fun reindexMarmotGroupEvents(
+                chatRoomId: String,
+                userPublicKey: HexKey
+            ): MarmotReindexReport = MarmotReindexReport()
         }
     }
 }

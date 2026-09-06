@@ -121,6 +121,10 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest: the DAO, model and relay layers are all suspending, and there is no
+            // runBlocking in a common source set — so anything worth asserting about them
+            // needs a coroutine, and a scheduler, to assert it in.
+            implementation(libs.kotlinx.coroutinesTest)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)

@@ -92,17 +92,6 @@ interface MantraRepository {
         userPublicKey: HexKey,
     ): MantraDialect?
 
-    suspend fun addArtifact(
-        localChatRoom: LocalChatRoom,
-        name: String,
-        url: String,
-        versionLabel: String,
-        dialectId: HexKey,
-        userPublicKey: HexKey,
-        visibility: String = DEFAULT_VISIBILITY,
-        license: String = DEFAULT_LICENSE,
-    ): MantraArtifact?
-
     suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
         artifactId: HexKey,
@@ -175,17 +164,6 @@ interface MantraRepository {
                 language: String,
                 userPublicKey: HexKey,
             ): MantraDialect? = null
-
-            override suspend fun addArtifact(
-                localChatRoom: LocalChatRoom,
-                name: String,
-                url: String,
-                versionLabel: String,
-                dialectId: HexKey,
-                userPublicKey: HexKey,
-                visibility: String,
-                license: String,
-            ): MantraArtifact? = null
 
             override suspend fun addArtifactVersion(
                 localChatRoom: LocalChatRoom,

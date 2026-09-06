@@ -518,28 +518,55 @@ class DatabaseNostrRepository(
         synchronizationRelayURLs: List<String>,
         activeKeyPair: KeyPair
     ) {
-        logger.d("saveNostrEvent: $nostrEvent")
+        // Under the same lock as the other overloads. storeNostrEvent reads the event, then
+        // writes it and its indexes; two of those interleaving is a lost update. This path
+        // used to skip the lock, which was survivable only while a single queue was the one
+        // thing writing — a live subscription writing alongside a backfill is not that.
+        storeNostrEventMutex.withLock {
+            logger.d("saveNostrEvent: $nostrEvent")
 
-        try {
-            database.nostrDao().storeNostrEvent(
-                nostrEvent,
-                relayURL = negentropySynchronizeRequest.relayURL,
-                synchronizationRelayURLs = synchronizationRelayURLs,
-                level = negentropySynchronizeRequest.level,
-                activeKeyPair = activeKeyPair
-            )
-
-            database.negentropySynchronizeRequestDao().upsert(
-                negentropySynchronizeRequest.copy(
-                    status = "processed"
+            try {
+                database.nostrDao().storeNostrEvent(
+                    nostrEvent,
+                    relayURL = negentropySynchronizeRequest.relayURL,
+                    synchronizationRelayURLs = synchronizationRelayURLs,
+                    level = negentropySynchronizeRequest.level,
+                    activeKeyPair = activeKeyPair
                 )
-            )
-        } catch (e: Throwable) {
-            logger.e("Failed to save nostr event $nostrEvent.id", e)
+
+                database.negentropySynchronizeRequestDao().upsert(
+                    negentropySynchronizeRequest.copy(
+                        status = "processed"
+                    )
+                )
+            } catch (e: Throwable) {
+                logger.e("Failed to save nostr event ${nostrEvent.id}", e)
+            }
         }
+    }
 
+    override suspend fun saveNostrEvent(
+        nostrEvent: NostrEvent,
+        relayURL: String,
+        synchronizationRelayURLs: List<String>,
+        level: Int,
+        activeKeyPair: KeyPair
+    ) {
+        storeNostrEventMutex.withLock {
+            logger.d("saveNostrEvent (live): $nostrEvent")
 
-
+            try {
+                database.nostrDao().storeNostrEvent(
+                    nostrEvent,
+                    relayURL = relayURL,
+                    synchronizationRelayURLs = synchronizationRelayURLs,
+                    level = level,
+                    activeKeyPair = activeKeyPair
+                )
+            } catch (e: Throwable) {
+                logger.e("Failed to save nostr event ${nostrEvent.id}", e)
+            }
+        }
     }
 
     override suspend fun queueSynchronizeNostrEvent(

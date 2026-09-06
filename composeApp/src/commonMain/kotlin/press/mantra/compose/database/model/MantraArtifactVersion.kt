@@ -10,6 +10,7 @@ import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
@@ -83,6 +84,42 @@ data class MantraArtifactVersion(
     }
 
     companion object {
+        /**
+         * The version an artifact starts life with, derived from the artifact.
+         *
+         * The group signs an artifact; it does not sign this. So the first
+         * version cannot be an event proposed on its own -- that would cost a
+         * second quorum for one form -- and it cannot be invented by whichever
+         * device notices the artifact first, because an invented id differs on
+         * every device holding the same artifact and none of them would agree
+         * about which version a chapter hangs off. Deriving it from the signed
+         * artifact's own fields gives every device the same row from the same
+         * bytes, which is the only property that matters here.
+         *
+         * It is a rumor -- empty signature -- because nobody signed it. What the
+         * group signed is the artifact that declares it.
+         *
+         * Null when the artifact declares no version, which is every artifact
+         * written before it did.
+         */
+        fun initialVersionOf(
+            artifactEvent: ArtifactEvent,
+            chatRoomId: HexKey,
+        ): MantraArtifactVersion? {
+            val versionLabel = artifactEvent.versionLabel() ?: return null
+
+            return fromArtifactVersionEventTemplate(
+                artifactVersionEventTemplate = ArtifactVersionEvent.build(
+                    content = versionLabel,
+                    createdAt = artifactEvent.createdAt,
+                ) {
+                    addUnique(ArtifactIdTag.assemble(artifactEvent.id))
+                },
+                chatRoomId = chatRoomId,
+                userPublicKey = artifactEvent.pubKey,
+            )
+        }
+
         fun fromArtifactVersionEventTemplate(
             artifactVersionEventTemplate: EventTemplate<ArtifactVersionEvent>,
             chatRoomId: HexKey,

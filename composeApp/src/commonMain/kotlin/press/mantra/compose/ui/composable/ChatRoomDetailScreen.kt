@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Unsubscribe
 import androidx.compose.material.icons.filled.WaterfallChart
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -493,6 +496,22 @@ fun ChatRoomDetailScreen(
                                 Text("Delete Group")
                             }
                         }
+
+                        // Only MLS rooms have group events to read again. A NIP-17
+                        // room's messages are gift wraps, which carry no ordering
+                        // for anything to go wrong with.
+                        if (chatRoomDetailUIState.localChatRoom.chatRoom.mlsGroupState != null) {
+                            item {
+                                HorizontalDivider()
+                            }
+
+                            item {
+                                ReindexMarmotGroupEventsButton(
+                                    reindexState = chatRoomDetailViewModel.reindexState,
+                                    onReindex = chatRoomDetailViewModel::reindexMarmotGroupEvents
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -535,6 +554,77 @@ fun ChatRoomDetailScreen(
     LaunchedEffect(true) {
         if (initialChatRoomDetailUIState == ChatRoomDetailUIState.Loading) {
             chatRoomDetailViewModel.initiateChatRoomDetail()
+        }
+    }
+}
+
+/**
+ * Reads the room's stored marmot group events again.
+ *
+ * Sits at the very bottom, below leaving and deleting, because it is a repair
+ * rather than something anyone should need in the ordinary course of using the
+ * group. It says what it found afterwards -- a replay that recovered nothing
+ * looks identical to one that was never pressed, and the difference between
+ * "nothing was broken" and "nothing could be fixed" is worth telling.
+ */
+@Composable
+private fun ReindexMarmotGroupEventsButton(
+    reindexState: ChatRoomDetailViewModel.ReindexState,
+    onReindex: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        TextButton(
+            enabled = reindexState !is ChatRoomDetailViewModel.ReindexState.Running,
+            onClick = onReindex
+        ) {
+            if (reindexState is ChatRoomDetailViewModel.ReindexState.Running) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    Icons.Default.Autorenew,
+                    contentDescription = "Reindex group events"
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.width(10.dp)
+            )
+
+            Text("Reindex Events")
+        }
+
+        when (reindexState) {
+            is ChatRoomDetailViewModel.ReindexState.Done -> {
+                val report = reindexState.report
+                Text(
+                    text = when {
+                        report.isNoOp -> "Nothing to reindex · ${report.stored} event(s) all read"
+                        report.recovered > 0 && report.failed > 0 ->
+                            "Recovered ${report.recovered} of ${report.unresolved} · ${report.failed} still unreadable"
+                        report.recovered > 0 -> "Recovered ${report.recovered} of ${report.unresolved} event(s)"
+                        else -> "${report.failed} event(s) still unreadable"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            is ChatRoomDetailViewModel.ReindexState.Failed -> {
+                Text(
+                    text = reindexState.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            else -> Unit
         }
     }
 }

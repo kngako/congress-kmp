@@ -19,7 +19,25 @@ internal val defaultSocketsHttpClient by lazy {
 }
 
 
-object NostrSocketClientFactory {
+/**
+ * How [press.mantra.compose.network.relays.RelayPool] gets a socket for a relay.
+ *
+ * An interface rather than the object directly, so the pool's subscription bookkeeping — what
+ * it retains, when it replays, when it lets a socket stop reconnecting — can be exercised
+ * against a fake instead of against a real websocket.
+ */
+interface NostrSocketClientFactory {
+
+    fun create(
+        wssUrl: String,
+        incomingCompressionEnabled: Boolean = false,
+        onSocketConnectionOpened: SocketConnectionOpenedCallback? = null,
+        onSocketConnectionClosed: SocketConnectionClosedCallback? = null,
+        onSocketConnectionReopened: SocketConnectionReopenedCallback? = null,
+    ): NostrSocketClient
+}
+
+object DefaultNostrSocketClientFactory : NostrSocketClientFactory {
 
     fun create(
         wssUrl: String,
@@ -27,6 +45,7 @@ object NostrSocketClientFactory {
         incomingCompressionEnabled: Boolean = false,
         onSocketConnectionOpened: SocketConnectionOpenedCallback? = null,
         onSocketConnectionClosed: SocketConnectionClosedCallback? = null,
+        onSocketConnectionReopened: SocketConnectionReopenedCallback? = null,
     ): NostrSocketClient {
         return NostrSocketClientImpl(
             httpClient = httpClient,
@@ -34,19 +53,22 @@ object NostrSocketClientFactory {
             incomingCompressionEnabled = incomingCompressionEnabled,
             onSocketConnectionOpened = onSocketConnectionOpened,
             onSocketConnectionClosed = onSocketConnectionClosed,
+            onSocketConnectionReopened = onSocketConnectionReopened,
         )
     }
 
-    fun create(
+    override fun create(
         wssUrl: String,
-        incomingCompressionEnabled: Boolean = false,
-        onSocketConnectionOpened: SocketConnectionOpenedCallback? = null,
-        onSocketConnectionClosed: SocketConnectionClosedCallback? = null,
+        incomingCompressionEnabled: Boolean,
+        onSocketConnectionOpened: SocketConnectionOpenedCallback?,
+        onSocketConnectionClosed: SocketConnectionClosedCallback?,
+        onSocketConnectionReopened: SocketConnectionReopenedCallback?,
     ) = create(
         httpClient = defaultSocketsHttpClient,
         wssUrl = wssUrl,
         incomingCompressionEnabled = incomingCompressionEnabled,
         onSocketConnectionOpened = onSocketConnectionOpened,
         onSocketConnectionClosed = onSocketConnectionClosed,
+        onSocketConnectionReopened = onSocketConnectionReopened,
     )
 }
