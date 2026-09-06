@@ -23,6 +23,7 @@ import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 
 /**
  * An artifact the group signed, from proposal to rows, against real FROST.
@@ -227,21 +228,70 @@ class SignedArtifactTest {
         assertEquals(dialectId, artifact?.dialectId)
     }
 
+    /** The second item of the batch, through the same quorum as the first. */
+    private fun signedInitialVersionEvent(versionLabel: String = "1.0"): ArtifactVersionEvent {
+        // Built from the unsigned lead, which is what `proposeSigningBatch` hands
+        // to `dependents` -- the artifact's id is settled at proposal, not at
+        // signature, which is the only reason a version can name it at all.
+        val lead = unsignedEventOf(proposalTemplate(versionLabel))
+        val item = itemOver(unsignedEventOf(ArtifactVersionEvent.initialVersionOf(lead).single()))
+        val signed = FrostSigningManager.signedEvent(item, groupSignature(item))
+
+        return ArtifactVersionEvent(
+            signed.id, signed.pubKey, signed.createdAt, signed.tags, signed.content, signed.sig
+        )
+    }
+
     @Test
     fun `the artifact arrives with the first version hanging off it`() {
-        // Nothing sends this row: each device derives it from the artifact it
-        // just applied. A chapter attaches to a version rather than to an
-        // artifact, so an artifact that arrives without one is inert.
-        val signed = signedArtifactEvent(versionLabel = "First Edition")
-
-        val artifact = MantraArtifact.fromArtifactEvent(signed, chatRoomId)
-        val version = MantraArtifactVersion.initialVersionOf(signed, chatRoomId)
+        // A chapter attaches to a version rather than to an artifact, so an
+        // artifact that arrives without one is inert. Both come out of one
+        // batch, so neither can arrive without the other.
+        val artifact = MantraArtifact.fromArtifactEvent(
+            signedArtifactEvent(versionLabel = "First Edition"), chatRoomId
+        )
+        val version = MantraArtifactVersion.fromArtifactVersionEvent(
+            signedInitialVersionEvent(versionLabel = "First Edition"), chatRoomId
+        )
 
         assertNotNull(version)
         assertEquals(artifact?.id, version.artifactId)
         assertEquals("First Edition", version.versionLabel)
         assertEquals(groupPubKey, version.publicKey)
-        // Derived, not signed: the group signed the artifact that declares it.
-        assertEquals("", version.signature)
+    }
+
+    @Test
+    fun `the first version carries the group's signature over its own id`() {
+        // The point of signing it rather than deriving it. A derived version was
+        // authored by the group and signed by nobody -- indistinguishable, on the
+        // row, from one somebody made up, and the parent of every chapter in it.
+        val version = MantraArtifactVersion.fromArtifactVersionEvent(
+            signedInitialVersionEvent(), chatRoomId
+        )
+
+        assertNotNull(version)
+        assertNotEquals("", version.signature)
+        assertTrue(
+            Nip01Crypto.verify(
+                signature = version.signature.hexToByteArray(),
+                hash = version.id.hexToByteArray(),
+                pubKey = version.publicKey.hexToByteArray()
+            ),
+            "a first version should carry a signature the group's key made over its own id"
+        )
+    }
+
+    @Test
+    fun `the version is a second message, signed under its own nonce`() {
+        // Two items of a batch are two independent FROST instances: k signatures
+        // over k ids, never one signature stretched over both. A version whose
+        // signature verified against the artifact's id would mean a nonce had
+        // been reused, which is how a share is extracted rather than a cosmetic
+        // mix-up.
+        val artifact = signedArtifactEvent()
+        val version = signedInitialVersionEvent()
+
+        assertNotEquals(artifact.id, version.id)
+        assertNotEquals(artifact.sig, version.sig)
     }
 }

@@ -779,22 +779,12 @@ data class ChatMessage(
                             )
                         )
 
-                        // An artifact arrives with the version it starts life
-                        // with, derived here rather than sent, so that every
-                        // device holding the artifact holds the same first
-                        // version. Nothing else can hang off an artifact until
-                        // one exists -- a chapter attaches to a version, not to
-                        // an artifact -- so an artifact without one is inert.
-                        MantraArtifactVersion.initialVersionOf(
-                            artifactEvent = artifactEvent,
-                            chatRoomId = groupId,
-                        )?.let { initialVersion ->
-                            database.mantraArtifactVersionDao().upsert(
-                                initialVersion.copy(
-                                    marmotGroupEventId = marmotGroupEventId,
-                                )
-                            )
-                        }
+                        // The version the artifact starts life with is its own
+                        // event, signed in the same batch and applied after this
+                        // one -- see AddArtifactViewModel.addArtifact. It used to
+                        // be derived here instead; deriving it now as well would
+                        // stand a second, unsigned version row against the same
+                        // artifact, since the two hash differently.
 
                         ChatMessage(
                             giftWrapPayloadId = null,
@@ -827,18 +817,15 @@ data class ChatMessage(
                             )
                         )
 
-                        ChatMessage(
-                            giftWrapPayloadId = null,
-                            messageType = "artifactVersion",
-                            marmotGroupEventId = marmotGroupEventId,
-                            marmotInnerEventId = marmotInnerEventId,
-                            senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
-                            chatRoomId = groupId,
-                            createdAt = createdAt,
-                            content = "Added ${mantraArtifactVersion.versionLabel} to artifact versions" // TODO: Use artifact name...
-                        )
+                        // No line of its own. A version arrives as the second
+                        // item of the batch that carries its artifact, and the
+                        // artifact has already said so -- the same reason a
+                        // chunk writes no line beside its chapter. While the
+                        // version was derived here rather than signed it wrote
+                        // none either, so this is the transcript standing still
+                        // rather than losing something.
                     }
+                    null
                 }
                 ChapterEvent.KIND -> {
                     // The chunks the chapter splits into are their own events,

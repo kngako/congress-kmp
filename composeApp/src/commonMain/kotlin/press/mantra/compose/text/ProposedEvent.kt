@@ -4,6 +4,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
@@ -50,6 +51,15 @@ object ProposedEvent {
                 listOfNotNull(event.content, artifact.versionLabel(), artifact.url())
                     .joinToString(" · ")
             }
+        )
+
+        // Signed alongside the artifact it belongs to rather than on its own,
+        // so this is almost always read as the second line of a batch of two.
+        // Named after the artifact rather than the label, because the label is
+        // the whole of the content and would otherwise be said twice.
+        ArtifactVersionEvent.KIND -> Summary(
+            label = "Version of the artifact",
+            detail = event.content.ifBlank { "Unlabelled" }
         )
 
         ChapterEvent.KIND -> Summary(
