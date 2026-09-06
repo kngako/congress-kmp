@@ -995,14 +995,20 @@ fun MantraNavHost(
                 relayHint = route.relayHint,
                 mantraRepository = databaseMantraRepository,
                 chatRepository = databaseChatRepository,
-                onNavigateToRoute = { actionRoute ->
-                    // Replace this screen and the stale artifact detail beneath it
-                    // so we land on a freshly-loaded detail showing the new translation.
-                    navController.navigate(route = actionRoute) {
-                        popUpTo<ArtifactDetailRoute> {
+                frostSigningRepository = databaseFrostSigningRepository,
+                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                    // Replace this screen so back returns to the artifact rather
+                    // than to a form whose proposal has already gone out.
+                    navController.navigate(route = signingRoute) {
+                        popUpTo<AddTranslationRoute> {
                             inclusive = true
                         }
                     }
+                },
+                onNavigateToRoute = { actionRoute ->
+                    navController.navigate(
+                        route = actionRoute
+                    )
                 },
                 onNavigateBack = {
                     navController.popBackStack()

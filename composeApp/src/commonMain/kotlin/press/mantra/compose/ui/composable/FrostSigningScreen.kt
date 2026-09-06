@@ -54,6 +54,8 @@ import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.text.Markdown
@@ -401,6 +403,24 @@ private fun OneThingBeingSigned(event: Event) {
                 chapter.wordCount()?.let { "$it words" },
                 chunkCount?.let { "$it ${if (it == 1) "chunk" else "chunks"}" }
             ).joinToString(" · ")
+        }
+
+        TranslationArtifactVersionEvent.KIND -> "New translation" to TranslationArtifactVersionEvent(
+            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+        ).let { translation ->
+            // Named after the dialect it is into, which is the whole of what is
+            // being decided: everything else in the batch follows from it.
+            listOfNotNull(translation.name(), translation.visibility(), translation.license())
+                .joinToString(" · ")
+        }
+
+        TranslationChapterEvent.KIND -> "Chapter of the translation" to TranslationChapterEvent(
+            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+        ).let { chapter ->
+            // A translation chapter is a place for translated chunks to hang
+            // off, so there is nothing in it to read -- only where in the work
+            // it sits. Counted from one, the way the chapter list reads.
+            chapter.index()?.let { "Chapter ${it + 1}" } ?: "Position unknown"
         }
 
         // The one thing a group signs that is about the group rather than about

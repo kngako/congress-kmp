@@ -59,31 +59,9 @@ interface MantraRepository {
 
     suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk>
 
-    /**
-     * Start a translation of the artifact into the given dialect: creates a
-     * MantraTranslationArtifactVersion for the artifact's latest version, and
-     * scaffolds a MantraTranslationChapter for each existing chapter plus a
-     * MantraTranslationChunk (empty text) for each existing chunk. Returns null
-     * when the artifact has no version to translate.
-     */
-    suspend fun addTranslationArtifactVersion(
-        artifactId: String,
-        dialectId: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraTranslationArtifactVersion?
-
     suspend fun getDialects(chatRoomId: String): List<MantraDialect>
 
     suspend fun getDialect(id: String): MantraDialect?
-
-    suspend fun addDialect(
-        localChatRoom: LocalChatRoom,
-        name: String,
-        country: String,
-        language: String,
-        userPublicKey: HexKey,
-    ): MantraDialect?
 
     suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
@@ -133,24 +111,9 @@ interface MantraRepository {
 
             override suspend fun getTranslationChunks(translationChapterId: String): List<MantraTranslationChunk> = emptyList()
 
-            override suspend fun addTranslationArtifactVersion(
-                artifactId: String,
-                dialectId: String,
-                chatRoomId: String,
-                userPublicKey: HexKey,
-            ): MantraTranslationArtifactVersion? = null
-
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 
             override suspend fun getDialect(id: String): MantraDialect? = null
-
-            override suspend fun addDialect(
-                localChatRoom: LocalChatRoom,
-                name: String,
-                country: String,
-                language: String,
-                userPublicKey: HexKey,
-            ): MantraDialect? = null
 
             override suspend fun addArtifactVersion(
                 localChatRoom: LocalChatRoom,

@@ -42,20 +42,6 @@ class DatabaseMantraRepository(
     override suspend fun getChaptersForArtifactVersion(artifactVersionId: String): List<MantraChapter> =
         database.mantraChapterDao().getChaptersByArtifactVersionId(artifactVersionId)
 
-    override suspend fun addTranslationArtifactVersion(
-        artifactId: String,
-        dialectId: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraTranslationArtifactVersion? {
-        return database.mantraDao().addTranslationArtifactVersion(
-            artifactId = artifactId,
-            dialectId = dialectId,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey
-        )
-    }
-
     override suspend fun getChapter(id: String): MantraChapter? =
         database.mantraChapterDao().getChapterById(id)
 
@@ -101,22 +87,6 @@ class DatabaseMantraRepository(
 
     override suspend fun getDialect(id: String): MantraDialect? =
         database.mantraDialectDao().getDialectById(id)
-
-    override suspend fun addDialect(
-        localChatRoom: LocalChatRoom,
-        name: String,
-        country: String,
-        language: String,
-        userPublicKey: HexKey,
-    ): MantraDialect? {
-        return database.mantraDao().addDialect(
-            localChatRoom = localChatRoom,
-            name = name,
-            country = country,
-            language = language,
-            userPublicKey = userPublicKey
-        )
-    }
 
     override suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
