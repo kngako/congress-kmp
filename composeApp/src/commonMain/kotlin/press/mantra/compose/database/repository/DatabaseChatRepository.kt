@@ -328,7 +328,7 @@ class DatabaseChatRepository(
         return null
     }
 
-    override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?> {
+    override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<List<GiftWrapPayload>> {
         return database.giftWrapPayloadDao().observeUnsealedGiftWrapPayloads(publicKey)
     }
 
@@ -349,8 +349,10 @@ class DatabaseChatRepository(
         // is the only way to reach them, and `MarmotOutboundDao.deliveryWelcome` queues one
         // here deliberately. Every Welcome carries its room's nostrGroupId, so a refusal
         // keyed on `mlsGroupState` alone catches all of them and no invite is ever
-        // delivered -- and because the unsealed queue is a single-row flow, the refused
-        // Welcome sits at its head and blocks every payload behind it too.
+        // delivered. The refusal below no longer strands the rest of the queue behind it
+        // -- the notary is handed the whole backlog and refuses one payload at a time --
+        // but a refused Welcome is still an invite that never arrives, so the exception
+        // for it stays.
         if (giftWrapPayload.kind != WelcomeEvent.KIND) {
             val chatRoom = database.chatRoomDao().findChatRoomById(giftWrapPayload.chatRoomId)
             if (chatRoom?.chatRoom?.mlsGroupState != null) {

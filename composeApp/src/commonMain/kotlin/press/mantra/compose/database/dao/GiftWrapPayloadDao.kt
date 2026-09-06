@@ -13,8 +13,27 @@ interface GiftWrapPayloadDao {
     @Query("SELECT * FROM GiftWrapPayload")
     suspend fun  getAllGiftWrapUnsigned(): List<GiftWrapPayload>
 
-    @Query("SELECT * FROM GiftWrapPayload WHERE publicKey = :publicKey AND giftWrapSealId IS NULL")
-    fun observeUnsealedGiftWrapPayloads(publicKey: String): Flow<GiftWrapPayload?>
+    /**
+     * Everything this key has queued for sealing and not yet sealed, oldest first.
+     *
+     * A backlog, not a head, for the reason spelled out on
+     * `MarmotInnerEventDao.observeUnprocessedMarmotInnerEvents`: nothing takes a row off
+     * this queue but a successful seal, so one payload that cannot be sealed used to be
+     * the whole queue. That is not hypothetical here -- `sealGiftWrapPayload` refuses a
+     * payload belonging to an MLS room outright, and a Welcome whose joiner published no
+     * key package produces no wraps at all. Either one returns leaving `giftWrapSealId`
+     * null, and every payload behind it waited on a row that would never move.
+     *
+     * `id` breaks the tie because `createdAt` is stored to the second; there was no
+     * ordering here at all before, so which row was "the head" was whatever SQLite
+     * happened to return first.
+     */
+    @Query(
+        "SELECT * FROM GiftWrapPayload " +
+            "WHERE publicKey = :publicKey AND giftWrapSealId IS NULL " +
+            "ORDER BY createdAt ASC, id ASC"
+    )
+    fun observeUnsealedGiftWrapPayloads(publicKey: String): Flow<List<GiftWrapPayload>>
 
     /**
      * Every payload of the given kinds this device holds for a room, oldest first.

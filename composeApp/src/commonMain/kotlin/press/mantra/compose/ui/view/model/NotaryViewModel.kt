@@ -151,6 +151,16 @@ class NotaryViewModel(
     }
 
 
+    /**
+     * Seal everything queued for sealing, not just the oldest thing.
+     *
+     * Same shape as [observeUnprocessedMarmotInnerEvents] and a harder stop. A payload
+     * `sealGiftWrapPayload` declines to seal keeps `giftWrapSealId` null, so it came back
+     * as the head of the next emission -- and `GiftWrapPayload.equals` is a plain value
+     * comparison, so `distinctUntilChanged` read that as nothing having changed and
+     * dropped it. One refusal and nothing on this queue was collected again for the rest
+     * of the session, whatever was queued afterwards.
+     */
     private suspend fun observeUnsealedGiftWrapPayloads(
         keyPair: KeyPair
     ) {
@@ -160,8 +170,8 @@ class NotaryViewModel(
         logger.i { "observeUnsealedGiftWrapPayloads: ${keyPair.pubKey.toHexKey()}" }
         chatRepository.observeUnsealedGiftWrapPayloads(
             publicKey = keyPair.pubKey.toHexKey()
-        ).distinctUntilChanged().collect { giftWrapPayloadOrNull ->
-            giftWrapPayloadOrNull?.let { giftWrapPayload ->
+        ).collect { giftWrapPayloads ->
+            giftWrapPayloads.forEach { giftWrapPayload ->
                 guardNotarization("gift wrap payload ${giftWrapPayload.id}") {
                     logger.d("seal and deliver giftWrapPayload: $giftWrapPayload")
 
@@ -174,6 +184,28 @@ class NotaryViewModel(
         }
     }
 
+    /**
+     * Encrypt and send everything a marmot room has queued, not just the oldest thing.
+     *
+     * The queue used to arrive one row at a time and the row only left it by being sent,
+     * so a message that could never be encrypted was a stopper: it came back at the head
+     * of every later emission and everything behind it -- in every room this key belongs
+     * to -- waited on a send that was never going to happen. Those messages show in the
+     * chat as unsealed, and stay that way.
+     *
+     * `distinctUntilChanged` went with it. A queue re-emits because its table changed,
+     * which is the signal to look again; comparing that emission against the last one
+     * asks "is this new work?" when the question is "is there work left?". Here it
+     * happened to suppress nothing -- `MarmotInnerEvent.equals` compares an `@Ignore`d
+     * per-instance Logger, so no two reads of a row are ever equal -- which is not a
+     * property to leave a queue standing on. Next door, where the payload's equals is an
+     * honest value comparison, it dropped every emission after the first refusal.
+     *
+     * Serially, in the order the query gives them: each send ratchets its room's MLS
+     * state forward and writes it back, and `encryptAndSendMarmotInnerEvent` reads that
+     * state fresh per row. Two sends for one room in parallel would encrypt from the same
+     * generation and one of them would be undecryptable.
+     */
     private suspend fun observeUnprocessedMarmotInnerEvents(
         keyPair: KeyPair
     ) {
@@ -183,8 +215,12 @@ class NotaryViewModel(
         logger.i { "observeUnprocessedMarmotInnerEvents: ${keyPair.pubKey.toHexKey()}" }
         marmotRepository.observeUnprocessedMarmotInnerEvents(
             publicKey = keyPair.pubKey.toHexKey()
-        ).distinctUntilChanged().collect { marmotInnerEventOrNull ->
-            marmotInnerEventOrNull?.let { marmotInnerEvent ->
+        ).collect { marmotInnerEvents ->
+            marmotInnerEvents.forEach { marmotInnerEvent ->
+                // Per row, so one that cannot be encrypted costs only itself. It stays
+                // queued and is tried again on the next pass -- a room whose state has
+                // not caught up yet is worth retrying, and one that never will is at
+                // least no longer standing in front of anybody.
                 guardNotarization("marmot inner event ${marmotInnerEvent.id}") {
                     logger.d("encrypt and broadcast: $marmotInnerEvent")
 

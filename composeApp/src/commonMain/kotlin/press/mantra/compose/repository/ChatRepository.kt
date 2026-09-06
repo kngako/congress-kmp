@@ -108,7 +108,14 @@ interface ChatRepository {
 
     fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom?
 
-    suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?>
+    /**
+     * The whole unsealed backlog for [publicKey], oldest first.
+     *
+     * See `GiftWrapPayloadDao.observeUnsealedGiftWrapPayloads`: a payload that cannot be
+     * sealed used to be the entire queue. Callers work through it and a refusal costs
+     * only the payload it refuses.
+     */
+    suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<List<GiftWrapPayload>>
 
     suspend fun sealGiftWrapPayload(giftWrapPayload: GiftWrapPayload, nostrSignerSync: NostrSignerSync)
 
@@ -241,7 +248,7 @@ interface ChatRepository {
                 return null
             }
 
-            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<GiftWrapPayload?> {
+            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<List<GiftWrapPayload>> {
                 TODO("Not yet implemented")
             }
 

@@ -19,7 +19,14 @@ interface MarmotRepository {
 
     suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle>
 
-    suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?>
+    /**
+     * The whole outbound backlog for [publicKey], oldest first.
+     *
+     * See `MarmotInnerEventDao.observeUnprocessedMarmotInnerEvents` for why this is a
+     * list: a row that cannot be sent used to be the entire queue. Callers work
+     * through it in order, and a row that fails costs only itself.
+     */
+    suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<List<MarmotInnerEvent>>
 
     suspend fun observeActiveMarmotKeyPackageBundle(publicKey: HexKey): Flow<MarmotKeyPackageBundle?>
 
@@ -46,7 +53,7 @@ interface MarmotRepository {
                 return emptyList()
             }
 
-            override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?> {
+            override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<List<MarmotInnerEvent>> {
                 TODO("Not yet implemented")
             }
 

@@ -4,6 +4,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackageBundle
 import press.mantra.compose.database.model.UnsignedNostrEvent
+import press.mantra.compose.exceptions.MarmotMissingChatGroupException
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.MarmotRepository
@@ -120,7 +121,7 @@ class DatabaseMarmotRepository(
         return database.marmotKeyPackageBundleDao().getAllMarmotKeyPackageBundles(publicKey)
     }
 
-    override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<MarmotInnerEvent?> {
+    override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<List<MarmotInnerEvent>> {
         return database.marmotInnerEventDao().observeUnprocessedMarmotInnerEvents(publicKey)
     }
 
@@ -128,23 +129,36 @@ class DatabaseMarmotRepository(
         return database.marmotKeyPackageBundleDao().observeActiveMarmotKeyPackageBundle(publicKey)
     }
 
+    /**
+     * Both lookups used to be `?.let`, so a row for a room this device holds no MLS state
+     * for returned quietly, having done nothing. Nothing marks such a row, so it stayed
+     * queued and was handed back on the next pass, forever -- and while the queue was a
+     * single row, forever meant every message queued behind it too. Saying so is the same
+     * call `MarmotOutboundDao.inviteMemberToChatRoom` makes, for the same reason: there is
+     * no group to encrypt to, and reporting success is a lie the sender acts on.
+     */
     override suspend fun encryptAndSendMarmotInnerEvent(
         marmotInnerEvent: MarmotInnerEvent,
         nostrSignerSync: NostrSignerSync
     ) {
-        database.chatRoomDao().findChatRoomById(marmotInnerEvent.chatRoomId)?.let { localChatRoom ->
-            localChatRoom.chatRoom.toMlsGroup()?.let { mlsGroup ->
-                logger.d("mlsGroup: $mlsGroup")
+        val localChatRoom = database.chatRoomDao().findChatRoomById(marmotInnerEvent.chatRoomId)
+            ?: throw MarmotMissingChatGroupException(
+                "Cannot send ${marmotInnerEvent.id}: no chat room ${marmotInnerEvent.chatRoomId}"
+            )
 
-                database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
-                    localChatRoom = localChatRoom,
-                    mlsGroup = mlsGroup,
-                    marmotInnerEvent = marmotInnerEvent,
-                    nostrSignerSync = nostrSignerSync
-                )
-            }
+        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+            ?: throw MarmotMissingChatGroupException(
+                "Cannot send ${marmotInnerEvent.id}: ${marmotInnerEvent.chatRoomId} holds no MLS group state"
+            )
 
-        }
+        logger.d("mlsGroup: $mlsGroup")
+
+        database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
+            localChatRoom = localChatRoom,
+            mlsGroup = mlsGroup,
+            marmotInnerEvent = marmotInnerEvent,
+            nostrSignerSync = nostrSignerSync
+        )
     }
 
     private fun generateKeyPackage(
