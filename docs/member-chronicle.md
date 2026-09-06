@@ -717,6 +717,102 @@ content. It buys graceful degradation and costs everything listed under
 
 ---
 
+## Retiring the rebuild
+
+`assemble` reads `GroupSignedEvent` and rebuilds from `Mantra*` rows only what
+that table does not hold, which by now is work signed before the table existed.
+Everything on the rebuild side is marked `@Deprecated` so the compiler names it
+at every call site, and it comes out in one piece rather than a method at a time
+-- a half-removed rebuild is a rebuild that covers some kinds and silently drops
+others.
+
+### The one precondition
+
+**No install still holds work signed before schema v13.** Nothing in the app can
+check this, and no query answers it: a device that upgraded is indistinguishable
+from one that never had pre-v13 work, and the rows that need rebuilding are on
+*other people's* devices. It is a judgement about the installed base, not a
+condition to test for. What can be checked, on any given device, is that the
+rebuild is contributing nothing:
+
+```
+Chronicling <room>: N event(s) as the group signed them, M rebuilt from rows that predate the record
+```
+
+`ChronicleManager.signedEventsOf` logs that line only when `M > 0`. Silence across
+the fleet is the evidence; it is not proof.
+
+A member whose device still needs it and does not get it is not broken loudly.
+They keep their own rows and read the room normally. What they lose is the
+ability to *answer* a chronicle request with the older half of the group's work,
+so a newer member asks, is answered, and receives a chronicle that is quietly
+short. That is the failure mode to weigh -- it looks like success on both ends.
+
+### What goes
+
+| what | where |
+|---|---|
+| `rebuiltEventsOf` | [ChronicleManager.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/managers/ChronicleManager.kt) -- the tree walk, and the version-label recovery inside it |
+| the union in `signedEventsOf` | same file -- it collapses to the `GroupSignedEvent` read plus the `isChroniclable` filter, which **stays**: see below |
+| `MantraDialect.toDialectEvent` | [MantraDialect.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraDialect.kt) |
+| `MantraArtifact.toArtifactEvent` | [MantraArtifact.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraArtifact.kt) -- and with it the `versionLabel` parameter that exists only because the label is not on the row |
+| `MantraArtifactVersion.toArtifactVersionEvent` | [MantraArtifactVersion.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraArtifactVersion.kt) |
+| `MantraChapter.toChapterEvent` | [MantraChapter.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChapter.kt) |
+| `MantraChunk.toChunkEvent` | [MantraChunk.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraChunk.kt) |
+| `MantraTranslationArtifactVersion.toTranslationArtifactVersionEvent` | [MantraTranslationArtifactVersion.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationArtifactVersion.kt) |
+| `MantraTranslationChapter.toTranslationChapterEvent` | [MantraTranslationChapter.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationChapter.kt) |
+| `MantraTranslationChunk.toTranslationChunkEvent` | [MantraTranslationChunk.kt](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/MantraTranslationChunk.kt) |
+| `ChronicleRoundTripTest`, all ten cases | [ChronicleRoundTripTest.kt](../composeApp/src/commonTest/kotlin/press/mantra/compose/nostr/chronicle/ChronicleRoundTripTest.kt) -- it exists to hold the rebuild up and covers nothing else |
+| the "Where the events come from" reasoning above | this file |
+
+**Two already-dead cousins to sweep at the same time**, neither of which is part
+of the rebuild and both of which will look like it to whoever does the removal:
+`MantraTranslation.toTranslationEvent` (nothing has ever called it -- 30311 is
+not chroniclable and nothing builds one) and
+`MantraTranslationChunkProposal.toTranslationChunkEvent` (on a model that is not
+even a `@Database` entity). See [dead-code.md](./dead-code.md) for the house
+style on writing those down rather than deleting them blind.
+
+**The tests that seed without recording go too**, or they go on proving a path
+that no longer exists. In `ChronicleAssemblyJvmTest` the `apply`-only seeding is
+the rebuild path and `recordEverythingApplied` is the real one; the cases named
+*work held both ways travels exactly once* and *an artifact the rebuild has to
+leave out still chronicles from the record* are about the union specifically and
+have no meaning without it. `ChronicleApplyJvmTest` seeds the sender the same way,
+so it needs the recording call added rather than removed -- it is testing
+delivery, not assembly, and would otherwise start asserting against an empty
+chronicle.
+
+### What only looks like it goes
+
+**The `isChroniclable` filter in `signedEventsOf` stays, and becomes the only
+thing standing.** It is not part of the rebuild; it is there *because* of the
+record. The rebuild could only ever produce document kinds, so nothing needed
+filtering while it was the source. The table holds every kind the group has
+signed, and every room signs a `GroupKeyStateEvent` as its first act -- so
+removing that filter along with the walk turns every room's chronicle into an
+`IllegalArgumentException` from `ChronicleEvent.build`. Two cases in
+`ChronicleAssemblyJvmTest` fail with exactly that if it is dropped, which is the
+guard against removing it by association.
+
+**The verify filter in `assemble` stays.** With the rebuild gone it is checking
+events that were verified before they were recorded, so it can never fail in
+practice -- which is an argument for keeping it, not for dropping it. It is one
+signature check standing between a corrupted row and a payload every receiver
+reads as a forgery, and "cannot happen" is the state it is meant to preserve.
+
+**`Mantra*.signature` and `Mantra*.publicKey` are not obviously removable, and
+are a separate decision.** They were what made a row rebuildable, but they are
+also what `SignedArtifactTest`, `SignedChapterTest`, `SignedGroupKeyStateTest`
+and `ChronicleApplyJvmTest.rowFingerprints` assert on, and
+`MantraTranslationContributor` builds a contributor list out of one. Since v13,
+`groupSignedEventId` says whether the group signed a row and points at the proof,
+so the columns are arguably redundant -- but that is a schema migration across
+twelve tables with its own tests to rewrite, and it should not ride along with
+this.
+
+---
+
 ## What this does not do
 
 Each of these will be reported as a bug. None of them is.

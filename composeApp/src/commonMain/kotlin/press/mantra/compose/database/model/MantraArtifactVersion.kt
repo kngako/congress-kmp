@@ -66,6 +66,11 @@ data class MantraArtifactVersion(
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
 ): OptionalNostrEventEntity, TimestampedEntity {
+    @Deprecated(
+        "Chronicle fallback for work signed before the GroupSignedEvent table. Read the " +
+            "event off that table instead; this rebuild goes when the last pre-v13 install " +
+            "does -- see the removal checklist in docs/member-chronicle.md."
+    )
     fun toArtifactVersionEvent(): ArtifactVersionEvent {
         return ArtifactVersionEvent(
             id = id,
