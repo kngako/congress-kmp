@@ -14,7 +14,6 @@ import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
-import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.repository.MantraRepository
 
 class DatabaseMantraRepository(
@@ -50,22 +49,6 @@ class DatabaseMantraRepository(
 
     override suspend fun getChunk(id: String): MantraChunk? =
         database.mantraChunkDao().getChunkById(id)
-
-    override suspend fun saveTranslationChunk(
-        translationChapterId: String,
-        chunkId: String,
-        text: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraTranslationChunk? {
-        return database.mantraDao().saveTranslation(
-            translationChapterId = translationChapterId,
-            chunkId = chunkId,
-            text = text,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey
-        )
-    }
 
     override suspend fun getTranslationsForArtifact(artifactId: String): List<MantraTranslationArtifactVersion> =
         database.mantraTranslationArtifactVersionDao().getTranslationsByArtifactId(artifactId)

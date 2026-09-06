@@ -11,13 +11,11 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraDialect
-import press.mantra.compose.database.model.MantraTranslationChunk
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
-import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_LICENSE
 import press.mantra.compose.repository.MantraRepository.Companion.DEFAULT_VISIBILITY
@@ -190,60 +188,6 @@ abstract class MantraDao(
         )
 
         return mantraArtifactVersion
-    }
-
-    @Transaction
-    open suspend fun saveTranslation(
-        translationChapterId: String,
-        chunkId: String,
-        text: String,
-        chatRoomId: String,
-        userPublicKey: HexKey,
-    ): MantraTranslationChunk? {
-        // The translation chunk mirrors the source chunk's position.
-        val sourceChunk = database.mantraChunkDao().getChunkById(chunkId) ?: return null
-
-        val translationChunkTemplate = TranslationChunkEvent.build(
-            translationChapterId = translationChapterId,
-            chunkId = chunkId,
-            index = sourceChunk.index,
-            text = text,
-        )
-        val translationChunk = MantraTranslationChunk.fromTranslationChunkEventTemplate(
-            translationChunkEventTemplate = translationChunkTemplate,
-            chatRoomId = chatRoomId,
-            userPublicKey = userPublicKey,
-        ) ?: return null
-
-        return try {
-            // Replace any existing translation chunk for this source chunk. Its id
-            // is derived from the (now changed) content, so it becomes a new row —
-            // drop the old one (and the submission carrying it) to keep one per
-            // source chunk. The submission is found by what it carries, since its
-            // own id is the envelope's rather than the chunk's.
-            database.mantraTranslationChunkDao()
-                .getTranslationChunksByTranslationChapterId(translationChapterId)
-                .filter { it.chunkId == chunkId && it.id != translationChunk.id }
-                .forEach { stale ->
-                    database.mantraTranslationChunkDao().deleteById(stale.id)
-                    database.marmotInnerEventDao().deleteById(stale.id)
-                    database.marmotInnerEventDao().deleteByPayloadEventId(stale.id)
-                }
-
-            database.mantraTranslationChunkDao().upsert(translationChunk)
-
-            submitToGroup(
-                chatRoomId = chatRoomId,
-                submitterPublicKey = userPublicKey,
-                payload = rumorOf(translationChunkTemplate, userPublicKey),
-                text = "Translated chunk ${translationChunk.index}", // TODO: Use a portion of the translation and name the language
-            )
-
-            translationChunk
-        } catch (error: Throwable) {
-            logger.e("Failed to save translation for chunk $chunkId", error)
-            null
-        }
     }
 
     private suspend fun sendMarmotInnerEvent(

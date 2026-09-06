@@ -1,5 +1,6 @@
 package press.mantra.compose.ui.composable
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -188,15 +187,13 @@ private fun ChunkTranslationRow(
     val translated = pair.translationChunk?.text?.takeIf { it.isNotBlank() }
     TableRow(
         left = { Text(pair.originalChunk.text) },
+        // The whole translation cell opens the chunk translation editor. When
+        // there is no translation yet, the original text is shown greyed out as
+        // a placeholder. It stays plain text, laid out like the original cell
+        // beside it, rather than a button with its own shape and padding.
+        rightModifier = Modifier.clickable(onClick = onClick),
         right = {
-            // The translation cell is a button that opens the chunk translation
-            // editor. When there is no translation yet, the original text is
-            // shown greyed out as a placeholder.
-            TextButton(
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(0.dp)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     modifier = Modifier.weight(1f),
                     text = translated ?: pair.originalChunk.text,
@@ -220,13 +217,14 @@ private fun ChunkTranslationRow(
 private fun TableRow(
     left: @Composable () -> Unit,
     right: @Composable () -> Unit,
+    rightModifier: Modifier = Modifier,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
     ) {
         Box(modifier = Modifier.weight(1f).padding(12.dp)) { left() }
         VerticalDivider(modifier = Modifier.fillMaxHeight())
-        Box(modifier = Modifier.weight(1f).padding(12.dp)) { right() }
+        Box(modifier = Modifier.weight(1f).then(rightModifier).padding(12.dp)) { right() }
     }
 }
 

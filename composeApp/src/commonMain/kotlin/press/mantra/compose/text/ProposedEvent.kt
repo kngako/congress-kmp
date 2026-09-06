@@ -4,10 +4,12 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
+import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
 
 /**
  * An event a group is being asked to sign, said in words.
@@ -52,6 +54,15 @@ object ProposedEvent {
             }
         )
 
+        // Signed alongside the artifact it belongs to rather than on its own,
+        // so this is almost always read as the second line of a batch of two.
+        // Named after the artifact rather than the label, because the label is
+        // the whole of the content and would otherwise be said twice.
+        ArtifactVersionEvent.KIND -> Summary(
+            label = "Version of the artifact",
+            detail = event.content.ifBlank { "Unlabelled" }
+        )
+
         ChapterEvent.KIND -> Summary(
             label = "New chapter",
             detail = ChapterEvent(
@@ -93,6 +104,23 @@ object ProposedEvent {
                 // off, so there is nothing in it to read -- only where in the work
                 // it sits. Counted from one, the way the chapter list reads.
                 chapter.index()?.let { "Chapter ${it + 1}" } ?: "Position unknown"
+            }
+        )
+
+        TranslationChunkEvent.KIND -> Summary(
+            label = "Translated passage",
+            detail = TranslationChunkEvent(
+                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+            ).let { chunk ->
+                // The translation itself is the whole of what is being decided --
+                // a member signing this is agreeing that these words say what the
+                // original said -- so it is the detail rather than a count of it.
+                // Where in the chapter it sits comes first, since that is what
+                // says which passage to read it against.
+                listOfNotNull(
+                    chunk.index()?.let { "Passage ${it + 1}" },
+                    event.content
+                ).joinToString(" · ")
             }
         )
 

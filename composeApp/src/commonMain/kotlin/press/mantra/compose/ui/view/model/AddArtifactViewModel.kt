@@ -20,6 +20,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.view.state.AddArtifactUIState
@@ -75,6 +76,10 @@ class AddArtifactViewModel(
      * putting this in front of the group" and the group's only recourse
      * afterwards is social. A signature is the group saying it, and it takes a
      * quorum to say. A library is the group's, so the second is the honest one.
+     *
+     * Two events, one session: the artifact and the version it starts life with,
+     * which a chapter later hangs off. All-or-nothing, which is right here --
+     * an artifact with no version is inert, since nothing can attach to it.
      */
     fun addArtifact(
         localChatRoom: LocalChatRoom,
@@ -103,10 +108,12 @@ class AddArtifactViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            // The version label rides on the artifact rather than following it as
-            // a second event. The group signs the artifact; a first version
-            // proposed on its own would cost a second quorum for one form, and
-            // every device derives the same first version from what was signed.
+            // The label rides on the artifact and the version is signed beside
+            // it, in the same batch. A first version proposed on its own would
+            // cost a second quorum for one form, which is why it used to be
+            // derived on arrival instead; a batch costs one quorum, so the row a
+            // chapter hangs off can carry the group's signature rather than
+            // being rebuilt from the artifact by every device that holds it.
             val artifactEventTemplate = ArtifactEvent.build(
                 name = name,
                 url = url,
@@ -117,12 +124,15 @@ class AddArtifactViewModel(
             )
 
             val session = runCatching {
-                frostSigningRepository.proposeSigning(
+                frostSigningRepository.proposeSigningBatch(
                     localChatRoom = localChatRoom,
                     userPublicKey = activeUserPublicKey,
-                    kind = artifactEventTemplate.kind,
-                    tags = artifactEventTemplate.tags,
-                    content = artifactEventTemplate.content,
+                    lead = artifactEventTemplate,
+                    // The version names the artifact it is of, and that id is a
+                    // hash over the group's key at the room's path -- neither of
+                    // which this screen knows or should. The artifact comes back
+                    // built, and the version is read off the label it declares.
+                    dependents = ArtifactVersionEvent::initialVersionOf
                 )
             }.onFailure { error ->
                 logger.e("Failed to propose an artifact for signing", error)
