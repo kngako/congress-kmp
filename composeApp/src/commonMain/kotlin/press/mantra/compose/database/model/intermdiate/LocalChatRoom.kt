@@ -99,10 +99,11 @@ data class LocalChatRoom(
      *
      * Follows the transcript's own dispatch, for the same reasons it does:
      *
-     * - a ritual or chronicle line is nobody's words, and its content is written as a
-     *   predicate for an actor's name -- so the authored ones get that name in front and
-     *   the rest stand alone. Prefixing "a shared key ceremony started" with a member
-     *   would read as them having announced it.
+     * - a ritual, chronicle or membership line is nobody's words. The authored ones
+     *   have content written as a predicate for an actor's name, so they get that name
+     *   in front; the rest are whole sentences already and stand alone. Prefixing "a
+     *   shared key ceremony started" with a member would read as them having announced
+     *   it, and prefixing "Invited Bob to the group" with one reads as them saying it.
      * - a private message this device cannot open has no words to show. Saying that a
      *   private message was sent, and to whom, is all the group can learn from the line
      *   and all the preview should claim.
@@ -114,7 +115,8 @@ data class LocalChatRoom(
 
         if (lastChatMessage.messageType in ChatMessage.DKG_TYPES ||
             lastChatMessage.messageType in ChatMessage.FROST_TYPES ||
-            lastChatMessage.messageType in ChatMessage.CHRONICLE_TYPES
+            lastChatMessage.messageType in ChatMessage.CHRONICLE_TYPES ||
+            lastChatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES
         ) {
             val isAuthored = lastChatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES ||
                 lastChatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES

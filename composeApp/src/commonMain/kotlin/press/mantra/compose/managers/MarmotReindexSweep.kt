@@ -36,6 +36,11 @@ object MarmotReindexSweep {
 
     /**
      * @param stored how many group events the room holds in total, for the report.
+     * @param predatingMembership how many of [stored] the caller held back because
+     *  they were published before this device joined, for the report. Carried
+     *  through rather than worked out here for the same reason [stored] is: the
+     *  sweep decides how many times to go round, not what is worth going round
+     *  for.
      * @param unresolved those with nothing to show for them, in the order to replay
      *  them. Anything already read must be left out: a replay is only ever allowed
      *  to touch events it cannot make worse.
@@ -48,6 +53,7 @@ object MarmotReindexSweep {
      */
     suspend fun <T> run(
         stored: Int,
+        predatingMembership: Int = 0,
         unresolved: List<T>,
         maxPasses: Int = DEFAULT_MAX_PASSES,
         replay: suspend (T) -> Unit,
@@ -85,6 +91,7 @@ object MarmotReindexSweep {
 
         return MarmotReindexReport(
             stored = stored,
+            predatingMembership = predatingMembership,
             unresolved = unresolved.size,
             recovered = recovered,
             failed = remaining.size,

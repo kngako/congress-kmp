@@ -21,6 +21,7 @@ import press.mantra.compose.database.model.Participant
 import press.mantra.compose.exceptions.MarmotMissingChatGroupException
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.exporterSecret
+import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.MarmotInboundManager.EPOCH_RETENTION_WINDOW
 import press.mantra.compose.nostr.MarmotDelivery
@@ -81,12 +82,19 @@ abstract class MarmotOutboundDao(
         )
 
         // Save Chat Room
+        //
+        // Member since the group existed, because this device is what created it:
+        // there is no epoch of this group that predates us, and so nothing in it
+        // for ChatRoom.predatesMembership to hold back.
+        val createdAt = Clock.System.now()
         val chatRoom = ChatRoom(
             id = nostrGroupId,
             userPublicKey = userPublicKey,
             mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             subject = name,
-            description = description
+            description = description,
+            joinedGroupAt = createdAt,
+            createdAt = createdAt,
         )
         database.chatRoomDao().upsert(
             chatRoom
@@ -231,6 +239,12 @@ abstract class MarmotOutboundDao(
                 }.onFailure {
                     logger.e("Failed to invite $peerPublicKey to ${localChatRoom.chatRoom.id}", it)
                     notAdded.add(peerPublicKey)
+                    announceInviteFailed(
+                        chatRoomId = localChatRoom.chatRoom.id,
+                        userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                        peerPublicKey = peerPublicKey,
+                        reason = it.message,
+                    )
                 }
             }
 
@@ -287,9 +301,30 @@ abstract class MarmotOutboundDao(
             )
         )
 
+        // One line each, as `inviteMember` writes for the invites it makes -- this
+        // path does its own commit and never goes through it. Written before the
+        // Welcomes rather than after, so a delivery that fails has an invite to be
+        // read against instead of a failure on its own.
+        peers.forEach { (peerPublicKey, _) ->
+            announceMembership(
+                chatRoomId = localChatRoom.chatRoom.id,
+                userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                messageType = ChatMessage.TYPE_MEMBER_INVITED,
+                content = "Invited ${memberName(peerPublicKey)} to the group",
+            )
+        }
+
         val welcomeBytes = commitResult.welcomeBytes
         if (welcomeBytes == null) {
             logger.e("Batched commit for ${localChatRoom.chatRoom.id} produced no welcome")
+            peers.forEach { (peerPublicKey, _) ->
+                announceInviteFailed(
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    peerPublicKey = peerPublicKey,
+                    reason = "the group produced no invitation to send",
+                )
+            }
             return peers.map { it.first }
         }
 
@@ -300,22 +335,119 @@ abstract class MarmotOutboundDao(
         val notAdded = mutableListOf<HexKey>()
 
         peers.forEach { (peerPublicKey, peerKeyPackage) ->
-            runCatching {
-                deliveryWelcome(
-                    nostrGroupId = localChatRoom.chatRoom.id,
-                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
-                    welcomeBytes = welcomeBytes,
-                    peerKeyPackageEventId = peerKeyPackage.id,
-                    relays = relays,
-                    createdAt = Clock.System.now()
-                )
-            }.onFailure {
-                logger.e("Failed to deliver the welcome to $peerPublicKey", it)
+            // `deliveryWelcome` swallows what it catches and reports it as a
+            // transcript line instead, so its answer is what says whether this peer
+            // was reached -- a runCatching here would see nothing to catch.
+            val delivered = deliveryWelcome(
+                nostrGroupId = localChatRoom.chatRoom.id,
+                userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                welcomeBytes = welcomeBytes,
+                peerKeyPackageEventId = peerKeyPackage.id,
+                relays = relays,
+                createdAt = Clock.System.now()
+            )
+
+            if (!delivered) {
+                logger.e("Failed to deliver the welcome to $peerPublicKey")
                 notAdded.add(peerPublicKey)
             }
         }
 
         return notAdded
+    }
+
+    /**
+     * One line in the room's transcript, about a membership change.
+     *
+     * The same shape as `ChronicleManager.announce`, and for the same reason: this
+     * is the device saying what it just did, not an event anybody sent. Content is
+     * a whole sentence, so nothing prefixes a name to it -- see
+     * [ChatMessage.MEMBERSHIP_TYPES].
+     */
+    private suspend fun announceMembership(
+        chatRoomId: HexKey,
+        userPublicKey: HexKey,
+        messageType: String,
+        content: String,
+    ) {
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = content,
+                messageType = messageType,
+                chatRoomId = chatRoomId,
+                senderPublicKey = userPublicKey,
+                isUserMessage = true,
+                giftWrapPayloadId = null,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null,
+            )
+        )
+    }
+
+    /**
+     * What to call an invitee on a membership line.
+     *
+     * Written into the content rather than resolved at render time, because these
+     * lines are about something that happened once and the AUTHORED-set machinery
+     * that follows a rename is for lines with an actor. A member being invited has
+     * a Profile row by construction -- Participant.participantPublicKey is a
+     * foreign key onto it -- so the fallback is for the delivery path, which runs
+     * long after the invite and reads its peer back out of a key package.
+     */
+    private suspend fun memberName(publicKey: HexKey): String =
+        database.profileDao().getProfileByPublicKey(publicKey)?.humanReadableNameOrPubkey()
+            ?: publicKey.shortened()
+
+    /**
+     * The Welcome for an invite made earlier has gone out.
+     *
+     * Written by the deferred delivery site only -- `DatabaseNostrRepository`, once
+     * a relay has acknowledged the commit. An invite into a group that was still
+     * just its creator sends its Welcome in the same breath as the invite, so its
+     * [ChatMessage.TYPE_MEMBER_INVITED] line already says this and a second one
+     * would only be the same second told twice. See [ChatMessage.MEMBERSHIP_TYPES].
+     */
+    suspend fun announceInviteSent(
+        chatRoomId: HexKey,
+        userPublicKey: HexKey,
+        peerKeyPackageEventId: HexKey,
+    ) {
+        val peerPublicKey = database.marmotKeyPackageDao()
+            .getMarmotKeyPackageById(peerKeyPackageEventId)?.publicKey
+
+        announceMembership(
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+            messageType = ChatMessage.TYPE_MEMBER_INVITE_SENT,
+            content = peerPublicKey?.let { "Sent ${memberName(it)} their invitation" }
+                ?: "Sent the invitation",
+        )
+    }
+
+    /**
+     * An invite did not make it, and nothing else will say so.
+     *
+     * The reason is put in the line because it is the only copy the user gets: the
+     * screen that asked for the invite is gone by the time the Welcome is
+     * delivered, and the failures that happen before it closes take the whole
+     * transaction -- and the invite line inside it -- down with them. See
+     * `DatabaseChatRepository.inviteMember`.
+     */
+    suspend fun announceInviteFailed(
+        chatRoomId: HexKey,
+        userPublicKey: HexKey,
+        peerPublicKey: HexKey?,
+        reason: String?,
+    ) {
+        val who = peerPublicKey?.let { "${memberName(it)}'s invitation" } ?: "the invitation"
+        val why = reason?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+
+        announceMembership(
+            chatRoomId = chatRoomId,
+            userPublicKey = userPublicKey,
+            messageType = ChatMessage.TYPE_MEMBER_INVITE_FAILED,
+            content = "Couldn't send $who$why",
+        )
     }
 
     private suspend fun inviteMember(
@@ -356,6 +488,20 @@ abstract class MarmotOutboundDao(
         require(credential.identity.toHexKey() == peerPublicKey) {
             "KeyPackage credential identity does not match memberPubKey"
         }
+
+        // Say so now, not when the Welcome eventually goes out. On the deferred path
+        // that is a relay round trip away and may never happen at all, and until this
+        // line existed the room showed nothing whatsoever in the meantime -- an invite
+        // that was queued, one that failed to reach the wire and one that was never
+        // made all looked identical from the transcript. Inside the caller's
+        // transaction, so an invite that does not survive `addMember` leaves no claim
+        // that it did.
+        announceMembership(
+            chatRoomId = nostrGroupId,
+            userPublicKey = userPublicKey,
+            messageType = ChatMessage.TYPE_MEMBER_INVITED,
+            content = "Invited ${memberName(peerPublicKey)} to the group",
+        )
 
         val retainedBefore = mlsGroup.retainedSecrets()
         val commitResult = mlsGroup.addMember(
@@ -462,6 +608,16 @@ abstract class MarmotOutboundDao(
         }
     }
 
+    /**
+     * Put the invitee's Welcome on the outbound queue.
+     *
+     * Returns whether it got there. The caller cannot see that any other way -- the
+     * body swallows what it catches, deliberately, because on the deferred path this
+     * runs from a relay acknowledgement with no invite screen left to fail back to.
+     * What replaced reporting nothing at all is the [ChatMessage.TYPE_MEMBER_INVITE_FAILED]
+     * line written below, which outlives the screen and is the only account of a
+     * Welcome that never went out.
+     */
     suspend fun deliveryWelcome(
         nostrGroupId: HexKey,
         userPublicKey: HexKey,
@@ -469,7 +625,7 @@ abstract class MarmotOutboundDao(
         peerKeyPackageEventId: HexKey,
         relays: List<String>,
         createdAt: Instant
-    ) {
+    ): Boolean {
         try {
             val welcomeBase64 = Base64.encode(
                 source = welcomeBytes
@@ -507,22 +663,14 @@ abstract class MarmotOutboundDao(
                 )
             )
 
+            // The invite's own transcript line is not written here. It used to be, and
+            // that put nothing in the room for an invite into an established group --
+            // where this runs a relay round trip later, if at all, and never at all if
+            // the ack does not come. It also hung off the two lookups below, so a
+            // missing key package or profile cost the line and not just the name.
+            // `inviteMember` writes it when the invite is made instead; what this
+            // function still owes the room is the failure below.
             database.marmotKeyPackageDao().getMarmotKeyPackageById(peerKeyPackageEventId)?.let { marmotKeyPackage ->
-                database.profileDao().getProfileByPublicKey(marmotKeyPackage.publicKey)?.let { profile ->
-                    // Save chatMessage for the invite...
-                    database.chatMessageDao().upsert(
-                        ChatMessage(
-                            content = "Invited ${profile.humanReadableNameOrPubkey() ?: "participant"} to chat", // use profile.humanReadable...
-                            chatRoomId = nostrGroupId,
-                            senderPublicKey = userPublicKey,
-                            isUserMessage = true, // TODO: This is information message...
-                            giftWrapPayloadId = welcomeEventId,
-                            marmotGroupEventId = null,
-                            marmotInnerEventId = null
-                        )
-                    )
-                }
-
                 // The group's signed work, offered to the member being invited.
                 // Nothing else will ever show it to them: MLS gives a joiner no
                 // history, and a group-signed event never travels -- every device
@@ -550,8 +698,26 @@ abstract class MarmotOutboundDao(
                     recipient = marmotKeyPackage.publicKey,
                 )
             }
+
+            return true
         } catch (e: Throwable) {
             logger.e("Failed to deliver welcome:", e)
+
+            // The room's only account of this. Its own runCatching because the
+            // failure being reported may well be the database, and a throw from
+            // here would be one the callers on the immediate path do not expect --
+            // taking the invite's transaction down over a line about it.
+            runCatching {
+                announceInviteFailed(
+                    chatRoomId = nostrGroupId,
+                    userPublicKey = userPublicKey,
+                    peerPublicKey = database.marmotKeyPackageDao()
+                        .getMarmotKeyPackageById(peerKeyPackageEventId)?.publicKey,
+                    reason = e.message,
+                )
+            }.onFailure { logger.e("Failed to record the undelivered welcome:", it) }
+
+            return false
         }
     }
 

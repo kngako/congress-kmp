@@ -154,6 +154,25 @@ class ChatRoomLastMessagePreviewTest {
     }
 
     /**
+     * An invite is nobody's words either, and its content is a whole sentence with the
+     * invitee's name already in it. A prefix here reads as the inviter having said
+     * "Invited Bob to the group" out loud.
+     */
+    @Test
+    fun `a membership line stands alone`() {
+        ChatMessage.MEMBERSHIP_TYPES.forEach { messageType ->
+            assertEquals(
+                "Invited Bob to the group",
+                room(
+                    listOf(alice, bob),
+                    message(content = "Invited Bob to the group", messageType = messageType)
+                ).lastChatMessagePreviewText(),
+                "$messageType should not be attributed to its sender"
+            )
+        }
+    }
+
+    /**
      * The bystanders' copy of a private message has no content. An empty preview would
      * read as the sender having said nothing, so the line says what the group can in
      * fact see: that a private message was sent, and to whom.

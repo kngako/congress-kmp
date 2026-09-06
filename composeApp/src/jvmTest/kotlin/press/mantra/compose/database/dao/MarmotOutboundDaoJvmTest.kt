@@ -6,6 +6,7 @@ import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
+import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
@@ -51,25 +52,36 @@ class MarmotOutboundDaoJvmTest {
 
     private val user = KeyPair().pubKey.toHexKey()
     private val peer = KeyPair().pubKey.toHexKey()
+    private val secondPeer = KeyPair().pubKey.toHexKey()
     private val roomId = "b".repeat(64)
 
     /**
-     * A room with `mlsGroupState = null` -- exactly the shape a room restored from an inbound
-     * gift wrap has, which is the case the guard exists for.
+     * A member the database knows by name. Every invitee needs one --
+     * Participant.participantPublicKey is a foreign key onto Profile -- and the membership
+     * lines read the name back out of it.
      */
-    private suspend fun seedStatelessRoom(): LocalChatRoom {
-        val nostrEventId = "c".repeat(64)
+    private suspend fun seedProfile(publicKey: String, name: String, nostrEventId: String) {
         db.nostrEventDao().upsert(
             NostrEvent(
                 id = nostrEventId,
-                pubKey = user,
+                pubKey = publicKey,
                 kind = 0,
                 tags = emptyArray(),
                 content = "{}",
                 sig = "0".repeat(128),
             )
         )
-        db.profileDao().upsert(Profile(publicKey = user, userName = "user", nostrEventId = nostrEventId))
+        db.profileDao().upsert(
+            Profile(publicKey = publicKey, userName = name, nostrEventId = nostrEventId)
+        )
+    }
+
+    /**
+     * A room with `mlsGroupState = null` -- exactly the shape a room restored from an inbound
+     * gift wrap has, which is the case the guard exists for.
+     */
+    private suspend fun seedStatelessRoom(): LocalChatRoom {
+        seedProfile(user, "user", "c".repeat(64))
         val chatRoom = ChatRoom(
             id = roomId,
             userPublicKey = user,
@@ -100,18 +112,7 @@ class MarmotOutboundDaoJvmTest {
      */
     private suspend fun seedMlsRoom(): LocalChatRoom {
         val stateless = seedStatelessRoom()
-        val peerEventId = "e".repeat(64)
-        db.nostrEventDao().upsert(
-            NostrEvent(
-                id = peerEventId,
-                pubKey = peer,
-                kind = 0,
-                tags = emptyArray(),
-                content = "{}",
-                sig = "0".repeat(128),
-            )
-        )
-        db.profileDao().upsert(Profile(publicKey = peer, userName = "peer", nostrEventId = peerEventId))
+        seedProfile(peer, "peer", "e".repeat(64))
         val mlsGroup = MlsGroup.create(
             identity = user.hexToByteArray(),
             initialExtensions = listOf(
@@ -264,5 +265,111 @@ class MarmotOutboundDaoJvmTest {
             .getMarmotRetainedEpochSecretForChatRoomId(roomId)
         assertEquals(1, retained.size, "the pre-commit epoch was not retained")
         assertEquals(0L, retained.single().epoch, "a freshly created group is at epoch 0")
+    }
+
+    // ---- What the room is told about it -----------------------------------
+
+    private suspend fun transcript() = db.chatMessageDao().getChatMessagesByChatRoomId(roomId)
+        .map { it.chatMessage }
+
+    /**
+     * The invite has to reach the transcript, and as a membership line rather than a chat
+     * bubble. It used to be written by `deliveryWelcome` -- which meant it depended on the
+     * invitee's key package and profile both being found, and neither is here, so the room
+     * was told nothing at all about an invite that succeeded.
+     */
+    @Test
+    fun `inviting a member puts a line in the room`() = runBlocking {
+        val localChatRoom = seedMlsRoom()
+
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = localChatRoom,
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+
+        val line = transcript().singleOrNull { it.messageType == ChatMessage.TYPE_MEMBER_INVITED }
+        assertNotNull(line, "the invite left no line in the room")
+        assertTrue(line.content.contains("peer"), "the line does not name the invitee: ${line.content}")
+    }
+
+    /**
+     * The case the line exists for. A group that already has members defers its Welcome until
+     * a relay acknowledges the commit -- see docs/marmot-membership.md -- so an invite made
+     * here is on nothing but a promise, and until the line moved to invite time the room said
+     * nothing whatsoever in the meantime and nothing ever if the ack never came.
+     */
+    @Test
+    fun `an invite into an established group is in the room before its welcome goes out`() = runBlocking {
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = seedMlsRoom(),
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+        seedProfile(secondPeer, "second", "f".repeat(64))
+
+        // Re-read: the first invite advanced the epoch and persisted new state.
+        val established = assertNotNull(db.chatRoomDao().findChatRoomById(roomId))
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = established,
+            peerPublicKey = secondPeer,
+            peerKeyPackage = marmotKeyPackageFor(secondPeer),
+        )
+
+        val invited = transcript().filter { it.messageType == ChatMessage.TYPE_MEMBER_INVITED }
+        assertEquals(2, invited.size, "the deferred invite left no line in the room")
+        assertTrue(
+            invited.any { it.content.contains("second") },
+            "the second invitee is not named: ${invited.map { it.content }}",
+        )
+
+        // Nothing has acknowledged the commit, so the Welcome has not gone out and nothing
+        // may claim it has. That absence is what makes a stuck invite visible.
+        assertTrue(
+            transcript().none { it.messageType == ChatMessage.TYPE_MEMBER_INVITE_SENT },
+            "a welcome was reported sent before any relay acknowledged the commit",
+        )
+    }
+
+    /**
+     * Membership lines are not somebody's words, and the transcript decides that from the
+     * type alone. One missing from [ChatMessage.MEMBERSHIP_TYPES] renders as a chat bubble,
+     * looking exactly like the inviter having said "Invited peer to the group".
+     */
+    @Test
+    fun `the invite line is a membership line and not a bubble`() = runBlocking {
+        db.marmotOutboundDao().inviteMemberToChatRoom(
+            localChatRoom = seedMlsRoom(),
+            peerPublicKey = peer,
+            peerKeyPackage = marmotKeyPackageFor(peer),
+        )
+
+        assertTrue(
+            transcript().all { it.messageType in ChatMessage.MEMBERSHIP_TYPES },
+            "an invite wrote something the transcript would render as a bubble: " +
+                transcript().map { it.messageType },
+        )
+    }
+
+    /**
+     * A refused invite must not leave the room claiming one was made. The line is written
+     * inside the caller's transaction precisely so that it goes down with everything else the
+     * refused invite touched -- what tells the user instead is
+     * `DatabaseChatRepository.inviteMember`, from outside it.
+     */
+    @Test
+    fun `a refused invite leaves no claim that one was made`() = runBlocking {
+        runCatching {
+            db.marmotOutboundDao().inviteMemberToChatRoom(
+                localChatRoom = seedStatelessRoom(),
+                peerPublicKey = peer,
+                peerKeyPackage = keyPackage(),
+            )
+        }
+
+        assertTrue(
+            transcript().none { it.messageType == ChatMessage.TYPE_MEMBER_INVITED },
+            "the room was told about an invite that was refused",
+        )
     }
 }
