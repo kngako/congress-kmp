@@ -49,16 +49,9 @@ import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
-import press.mantra.compose.managers.SharedKeyDerivation
-import press.mantra.compose.nostr.frost.GroupKeyStateEvent
-import press.mantra.compose.nostr.nip30303.ArtifactEvent
-import press.mantra.compose.nostr.nip30303.ChapterEvent
-import press.mantra.compose.nostr.nip30303.DialectEvent
-import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
-import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
-import press.mantra.compose.text.Markdown
+import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.FrostSigningViewModel
@@ -322,10 +315,11 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
 /**
  * What the group is being asked to put its name to.
  *
- * Shown as the thing rather than as an event: a member deciding whether to sign
- * is deciding about a dialect or an artifact, and "kind 30304" answers a
- * question nobody asked. The raw kind stays for anything not recognised, since
- * refusing to describe an event is better than describing it wrongly.
+ * One entry per event, each said as the thing it is rather than as an event --
+ * see [ProposedEvent], which the room's list of proposals says it the same way
+ * from. Nothing is described here that could not be read: a batch is
+ * all-or-nothing, so a member who cannot see one of its events is being asked to
+ * sign something they cannot check.
  */
 @Composable
 private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
@@ -370,75 +364,12 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
 /** One event of the batch, described as the thing it is. */
 @Composable
 private fun OneThingBeingSigned(event: Event) {
-    val (label, detail) = when (event.kind) {
-        DialectEvent.KIND -> "New dialect" to DialectEvent(
-            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).let { dialect ->
-            listOfNotNull(dialect.name(), dialect.country(), dialect.language())
-                .joinToString(" · ")
-        }
-
-        ArtifactEvent.KIND -> "New artifact" to ArtifactEvent(
-            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).let { artifact ->
-            // The url is the substance of an artifact -- signing one is putting
-            // the group's name to what it points at -- so it goes next to the
-            // name rather than being left for the detail screen afterwards.
-            listOfNotNull(event.content, artifact.versionLabel(), artifact.url())
-                .joinToString(" · ")
-        }
-
-        ChapterEvent.KIND -> "New chapter" to ChapterEvent(
-            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).let { chapter ->
-            // The text is the substance of a chapter -- signing one is putting
-            // the group's name to what everybody will translate from -- but it
-            // is a whole chapter, so its size stands in for it here. The chunk
-            // count says how many of the batch's other items came out of this
-            // text, which is the rest of what is being signed.
-            val chunkCount = chapter.originalText()?.let { Markdown.splitParagraphs(it).size }
-
-            listOfNotNull(
-                chapter.name(),
-                chapter.wordCount()?.let { "$it words" },
-                chunkCount?.let { "$it ${if (it == 1) "chunk" else "chunks"}" }
-            ).joinToString(" · ")
-        }
-
-        TranslationArtifactVersionEvent.KIND -> "New translation" to TranslationArtifactVersionEvent(
-            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).let { translation ->
-            // Named after the dialect it is into, which is the whole of what is
-            // being decided: everything else in the batch follows from it.
-            listOfNotNull(translation.name(), translation.visibility(), translation.license())
-                .joinToString(" · ")
-        }
-
-        TranslationChapterEvent.KIND -> "Chapter of the translation" to TranslationChapterEvent(
-            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-        ).let { chapter ->
-            // A translation chapter is a place for translated chunks to hang
-            // off, so there is nothing in it to read -- only where in the work
-            // it sits. Counted from one, the way the chapter list reads.
-            chapter.index()?.let { "Chapter ${it + 1}" } ?: "Position unknown"
-        }
-
-        // The one thing a group signs that is about the group rather than about
-        // its work, and the only one a member sees before the room has done
-        // anything. Shown as the path and the ceremony rather than as the key:
-        // the key is the room's own id, which the member is already looking at.
-        GroupKeyStateEvent.KIND -> "This group's shared key" to listOfNotNull(
-            GroupKeyStateEvent.parsePath(event.tags)?.let(SharedKeyDerivation::formatPath),
-            GroupKeyStateEvent.parseDkgSessionId(event.tags)?.take(12)
-        ).joinToString(" · ")
-
-        else -> "Event of kind ${event.kind}" to event.content
-    }
+    val summary = ProposedEvent.summarize(event)
 
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
+        Text(text = summary.label, style = MaterialTheme.typography.labelMedium)
 
-        Text(text = detail, style = MaterialTheme.typography.titleMedium)
+        Text(text = summary.detail, style = MaterialTheme.typography.titleMedium)
     }
 }
 
