@@ -100,7 +100,7 @@ class DatabaseNostrRepository(
         database.connectionDao().delete(connection)
     }
 
-    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<UnsignedNostrEvent?> {
+    override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<List<UnsignedNostrEvent>> {
         return database.unsignedNostrEventDao().observeUnsignedNostrEvents(publicKey)
     }
 
