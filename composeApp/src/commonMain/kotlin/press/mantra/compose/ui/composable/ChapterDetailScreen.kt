@@ -39,6 +39,11 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChapterDetailViewModel
 import press.mantra.compose.ui.view.state.ChapterDetailUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.chapter_detail
+import mantra.composeapp.generated.resources.no_chunks
+import mantra.composeapp.generated.resources.original_text
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +109,7 @@ fun ChapterDetailScreen(
                     // Original text (markdown, shown as-is).
                     item {
                         Text(
-                            text = "Original text",
+                            text = stringResource(Res.string.original_text),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -128,7 +133,7 @@ fun ChapterDetailScreen(
                         )
                     }
                     if (chapterDetailUIState.chunks.isEmpty()) {
-                        item { Text("No chunks.") }
+                        item { Text(stringResource(Res.string.no_chunks)) }
                     } else {
                         items(
                             items = chapterDetailUIState.chunks,
@@ -163,7 +168,7 @@ fun ChapterDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Chapter detail",
+                    text = stringResource(Res.string.chapter_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

@@ -69,6 +69,26 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_artifact_to_library
+import mantra.composeapp.generated.resources.add_dialect
+import mantra.composeapp.generated.resources.create_project
+import mantra.composeapp.generated.resources.delete_group
+import mantra.composeapp.generated.resources.dialects
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.invite_new_member
+import mantra.composeapp.generated.resources.leave_group
+import mantra.composeapp.generated.resources.library
+import mantra.composeapp.generated.resources.members_2
+import mantra.composeapp.generated.resources.no_artifacts_exists_in_this_groups_library
+import mantra.composeapp.generated.resources.no_dialects_have_been_defined_in_this_group_2
+import mantra.composeapp.generated.resources.no_projects_exists_in_this_group
+import mantra.composeapp.generated.resources.projects
+import mantra.composeapp.generated.resources.proposals
+import mantra.composeapp.generated.resources.reindex_events
+import mantra.composeapp.generated.resources.shared_key
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -144,14 +164,14 @@ fun ChatRoomDetailScreen(
                         item {
                             // Artifacts
                             Text(
-                                text = "Library",
+                                text = stringResource(Res.string.library),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
 
                         if (chatRoomDetailUIState.artifacts.isEmpty()) {
                             item {
-                                Text("No artifacts exists in this groups library.")
+                                Text(stringResource(Res.string.no_artifacts_exists_in_this_groups_library))
                             }
                         } else {
                             items(
@@ -217,7 +237,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Add artifact to library")
+                                Text(stringResource(Res.string.add_artifact_to_library))
                             }
                         }
 
@@ -228,14 +248,14 @@ fun ChatRoomDetailScreen(
                         item {
                             // Dialects
                             Text(
-                                text = "Dialects",
+                                text = stringResource(Res.string.dialects),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
 
                         if (chatRoomDetailUIState.dialects.isEmpty()) {
                             item {
-                                Text("No dialects have been defined in this group.")
+                                Text(stringResource(Res.string.no_dialects_have_been_defined_in_this_group_2))
                             }
                         } else {
                             items(
@@ -283,7 +303,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Add dialect")
+                                Text(stringResource(Res.string.add_dialect))
                             }
                         }
 
@@ -296,13 +316,13 @@ fun ChatRoomDetailScreen(
                         item {
                             // Artifacts
                             Text(
-                                text = "Projects",
+                                text = stringResource(Res.string.projects),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
 
                         item {
-                            Text("No projects exists in this group.")
+                            Text(stringResource(Res.string.no_projects_exists_in_this_group))
                         }
 
                         item {
@@ -326,7 +346,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Create project")
+                                Text(stringResource(Res.string.create_project))
                             }
                         }
 
@@ -336,7 +356,7 @@ fun ChatRoomDetailScreen(
 
                         item {
                             Text(
-                                text = "members",
+                                text = stringResource(Res.string.members_2),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
@@ -365,7 +385,7 @@ fun ChatRoomDetailScreen(
                                         modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
-                                    Text("Shared key")
+                                    Text(stringResource(Res.string.shared_key))
                                 }
                             }
                         }
@@ -399,7 +419,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Proposals")
+                                Text(stringResource(Res.string.proposals))
                             }
                         }
 
@@ -426,7 +446,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Invite new member")
+                                Text(stringResource(Res.string.invite_new_member))
                             }
                         }
 
@@ -503,7 +523,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Leave group")
+                                Text(stringResource(Res.string.leave_group))
                             }
 
                             // What it actually does: sets leftGroupAt and posts a line to
@@ -544,7 +564,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Delete group")
+                                Text(stringResource(Res.string.delete_group))
                             }
 
                             // A soft delete: it sets deletedAt on the local row. Saying
@@ -596,13 +616,13 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct message detail",
+                    text = stringResource(Res.string.direct_message_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Direct message functionality will be here.",
+                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -663,7 +683,7 @@ private fun ReindexMarmotGroupEventsButton(
                 modifier = Modifier.width(MaterialTheme.spacing.space125)
             )
 
-            Text("Reindex events")
+            Text(stringResource(Res.string.reindex_events))
         }
 
         when (reindexState) {

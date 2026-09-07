@@ -45,6 +45,12 @@ import press.mantra.compose.ui.view.state.ShareProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.profile
+import mantra.composeapp.generated.resources.re_broadcast
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +79,7 @@ fun ShareProfileScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Something went wrong")
+                Text(stringResource(Res.string.something_went_wrong))
             }
         }
         is ShareProfileUIState.Loaded -> {
@@ -82,7 +88,7 @@ fun ShareProfileScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Profile"
+                                text = stringResource(Res.string.profile)
                             )
                         },
                         navigationIcon = {
@@ -192,7 +198,7 @@ fun ShareProfileScreen(
                             }
                         ) {
                             Text(
-                                "Re-broadcast"
+                                stringResource(Res.string.re_broadcast)
                             )
                         }
                     }
@@ -212,7 +218,7 @@ fun ShareProfileScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("We couldn't find the local profile. Please try again later.")
+                Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
             }
         }
     }

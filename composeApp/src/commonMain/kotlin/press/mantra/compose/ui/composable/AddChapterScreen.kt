@@ -54,6 +54,15 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddChapterViewModel
 import press.mantra.compose.ui.view.state.AddChapterUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_chapter
+import mantra.composeapp.generated.resources.chapter_name
+import mantra.composeapp.generated.resources.eg_chapter_1_the_beginning
+import mantra.composeapp.generated.resources.original_text_markdown
+import mantra.composeapp.generated.resources.paste_the_chapter_s_markdown_blank_lines
+import mantra.composeapp.generated.resources.propose_chapter
+import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,7 +206,7 @@ fun AddChapterScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose chapter"
                                 )
-                                Text("Propose chapter")
+                                Text(stringResource(Res.string.propose_chapter))
                             }
                         }
                     )
@@ -216,7 +225,7 @@ fun AddChapterScreen(
                         )
                     } else if (artifactVersion == null) {
                         Text(
-                            text = "This artifact has no version for a chapter to attach to.",
+                            text = stringResource(Res.string.this_artifact_has_no_version_for_a_chapter),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -239,15 +248,15 @@ fun AddChapterScreen(
                                 contentDescription = "Name of the chapter"
                             )
                         },
-                        label = { Text("Chapter name") },
-                        placeholder = { Text("eg. Chapter 1 — The Beginning") },
+                        label = { Text(stringResource(Res.string.chapter_name)) },
+                        placeholder = { Text(stringResource(Res.string.eg_chapter_1_the_beginning)) },
                     )
 
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         state = originalTextFieldState,
-                        label = { Text("Original text (markdown)") },
-                        placeholder = { Text("Paste the chapter's markdown. Blank lines separate paragraphs into chunks.") },
+                        label = { Text(stringResource(Res.string.original_text_markdown)) },
+                        placeholder = { Text(stringResource(Res.string.paste_the_chapter_s_markdown_blank_lines)) },
                     )
 
                     Text(
@@ -276,7 +285,7 @@ fun AddChapterScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Add chapter",
+                    text = stringResource(Res.string.add_chapter),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

@@ -25,6 +25,11 @@ import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import kotlin.time.Instant
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_author_information_2
+import mantra.composeapp.generated.resources.malformed_note
+import mantra.composeapp.generated.resources.reposted
 
 @Composable
 fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
@@ -66,7 +71,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                         color = press.mantra.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
                     )
                     Text(
-                        text = "reposted",
+                        text = stringResource(Res.string.reposted),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -92,7 +97,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                     ).containedPost()
 
                     if (containedPost != null) {
-                        Text("Loading author information...")
+                        Text(stringResource(Res.string.loading_author_information_2))
                         Text(
                             containedPost.content
                         )
@@ -100,7 +105,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                             text = Instant.fromEpochSeconds(containedPost.createdAt).toFormattedTimeAndDateString()
                         )
                     } else {
-                        Text("Malformed note")
+                        Text(stringResource(Res.string.malformed_note))
                     }
 
                 }

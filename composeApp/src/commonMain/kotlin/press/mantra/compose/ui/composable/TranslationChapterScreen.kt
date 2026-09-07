@@ -48,6 +48,10 @@ import press.mantra.compose.ui.view.model.TranslationChapterViewModel
 import press.mantra.compose.ui.view.state.ChunkTranslationPair
 import press.mantra.compose.ui.view.state.TranslationChapterUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.chapter_translation
+import mantra.composeapp.generated.resources.this_chapter_has_no_chunks
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +91,7 @@ fun TranslationChapterScreen(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Chapter translation") },
+                        title = { Text(stringResource(Res.string.chapter_translation)) },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(
@@ -127,7 +131,7 @@ fun TranslationChapterScreen(
                                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.containerPadding),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("This chapter has no chunks.")
+                                Text(stringResource(Res.string.this_chapter_has_no_chunks))
                             }
                         }
                     } else {
@@ -164,7 +168,7 @@ fun TranslationChapterScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Chapter translation",
+                    text = stringResource(Res.string.chapter_translation),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

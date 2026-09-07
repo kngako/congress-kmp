@@ -52,6 +52,18 @@ import press.mantra.compose.ui.view.state.ActiveProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.change_account
+import mantra.composeapp.generated.resources.edit_profile
+import mantra.composeapp.generated.resources.key_package_management
+import mantra.composeapp.generated.resources.network_relays
+import mantra.composeapp.generated.resources.profile
+import mantra.composeapp.generated.resources.profile_keys
+import mantra.composeapp.generated.resources.share_profile
+import mantra.composeapp.generated.resources.sign_out
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +92,7 @@ fun ActiveProfileScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Something went wrong")
+                Text(stringResource(Res.string.something_went_wrong))
             }
         }
         is ActiveProfileUIState.Loaded -> {
@@ -89,7 +101,7 @@ fun ActiveProfileScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Profile"
+                                text = stringResource(Res.string.profile)
                             )
                         },
                         navigationIcon = {
@@ -177,7 +189,7 @@ fun ActiveProfileScreen(
                                     )
 
                                     Text(
-                                        "Edit profile"
+                                        stringResource(Res.string.edit_profile)
                                     )
                                 }
 
@@ -204,7 +216,7 @@ fun ActiveProfileScreen(
                                         modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
                                     Text(
-                                        "Share profile"
+                                        stringResource(Res.string.share_profile)
                                     )
                                 }
 
@@ -236,7 +248,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Key package management"
+                                    stringResource(Res.string.key_package_management)
                                 )
                             }
                         }
@@ -261,7 +273,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Change account"
+                                    stringResource(Res.string.change_account)
                                 )
                             }
                         }
@@ -285,7 +297,7 @@ fun ActiveProfileScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Profile keys")
+                                Text(stringResource(Res.string.profile_keys))
                             }
                         }
 
@@ -308,7 +320,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Network relays"
+                                    stringResource(Res.string.network_relays)
                                 )
                             }
                         }
@@ -331,7 +343,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Sign out"
+                                    stringResource(Res.string.sign_out)
                                 )
                             }
                         }
@@ -352,7 +364,7 @@ fun ActiveProfileScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("We couldn't find the local profile. Please try again later.")
+                Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
             }
         }
     }

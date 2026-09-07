@@ -45,6 +45,16 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.time.Clock
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to_3
+import mantra.composeapp.generated.resources.the_above_will_be_your_new_note
+import mantra.composeapp.generated.resources.transmit_note
+import mantra.composeapp.generated.resources.type_out_what_you_would_like_to_publish
+import mantra.composeapp.generated.resources.what_s_your_comment_on_the_below
+import mantra.composeapp.generated.resources.what_s_your_reply_to_the_above
+import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send_out
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -148,18 +158,18 @@ fun WriteNewNoteScreen(
                                         label = {
                                             Text(
                                                 text = if (writeNewNoteUIState.inReplyToNostrEvent != null) {
-                                                    "What's your reply to the above"
+                                                    stringResource(Res.string.what_s_your_reply_to_the_above)
                                                 } else if (writeNewNoteUIState.quotedNostrEvent != null) {
-                                                    "What's your comment on the below"
+                                                    stringResource(Res.string.what_s_your_comment_on_the_below)
                                                 } else {
-                                                    "What vibrations do you want to send out?"
+                                                    stringResource(Res.string.what_vibrations_do_you_want_to_send_out)
                                                 },
                                                 maxLines = 1,
                                             )
                                         },
                                         placeholder = {
                                             Text(
-                                                text = "Type out what you would like to publish",
+                                                text = stringResource(Res.string.type_out_what_you_would_like_to_publish),
                                                 maxLines = 1,
                                             )
                                         },
@@ -271,7 +281,7 @@ fun WriteNewNoteScreen(
                             },
                         ) {
                             Text(
-                                "Next"
+                                stringResource(Res.string.next)
                             )
                             Icon(
                                 Icons.Default.NavigateNext,
@@ -399,7 +409,7 @@ fun WriteNewNoteScreen(
                         }
 
                         Text(
-                            text = "The above will be your new note.",
+                            text = stringResource(Res.string.the_above_will_be_your_new_note),
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -419,7 +429,7 @@ fun WriteNewNoteScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Transmit note"
+                                    text = stringResource(Res.string.transmit_note)
                                 )
                             }
                         }
@@ -430,7 +440,7 @@ fun WriteNewNoteScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Something went wrong and we were unable to write a new note. Please try again later.",
+                            text = stringResource(Res.string.something_went_wrong_and_we_were_unable_to_3),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )

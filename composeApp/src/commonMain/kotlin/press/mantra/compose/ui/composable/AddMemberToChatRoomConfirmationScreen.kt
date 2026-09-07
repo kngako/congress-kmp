@@ -38,6 +38,11 @@ import press.mantra.compose.ui.view.model.AddMemberToChatRoomConfirmationViewMod
 import press.mantra.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.invite
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -135,7 +140,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                             modifier = Modifier.weight(1f)
                         )
 
-                        Text("Invite")
+                        Text(stringResource(Res.string.invite))
 
                         Text(
                             text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
@@ -170,13 +175,13 @@ fun AddMemberToChatRoomConfirmationScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct message detail",
+                    text = stringResource(Res.string.direct_message_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Direct message functionality will be here.",
+                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

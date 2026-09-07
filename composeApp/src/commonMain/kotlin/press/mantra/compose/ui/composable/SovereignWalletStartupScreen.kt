@@ -27,6 +27,11 @@ import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
 import kotlinx.coroutines.flow.first
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.lock_prompt_coming_soon
+import mantra.composeapp.generated.resources.select_a_wallet
+import mantra.composeapp.generated.resources.startup_error
 
 @Composable
 fun SovereignWalletStartupScreen(
@@ -135,7 +140,7 @@ fun SovereignWalletStartupScreen(
                                             topContent = {
                                                 Spacer(Modifier.height(MaterialTheme.spacing.space800))
                                                 Text(
-                                                    text = "Select a wallet",
+                                                    text = stringResource(Res.string.select_a_wallet),
                                                     style = MaterialTheme.typography.headlineSmall
                                                 )
                                                 Spacer(Modifier.height(MaterialTheme.spacing.space200))
@@ -191,7 +196,7 @@ fun SovereignWalletStartupScreen(
 
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = "Startup error"
+                                        text = stringResource(Res.string.startup_error)
                                     )
 
                                     when (startupState) {
@@ -280,7 +285,7 @@ private fun BoxScope.ScreenLockPrompt(
     goToWalletSelector: (() -> Unit)?,
 ) {
     Text(
-        text = "Lock prompt coming soon.",
+        text = stringResource(Res.string.lock_prompt_coming_soon),
     )
 //    val scope = rememberCoroutineScope()
 //

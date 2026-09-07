@@ -58,6 +58,12 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddTranslationArtifactVersionViewModel
 import press.mantra.compose.ui.view.state.AddTranslationArtifactVersionUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_translation
+import mantra.composeapp.generated.resources.propose_translation
+import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a
+import mantra.composeapp.generated.resources.translate_into_which_dialect
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -201,7 +207,7 @@ fun AddTranslationArtifactVersionScreen(
                                     Icons.Default.Translate,
                                     contentDescription = "Propose translation"
                                 )
-                                Text("Propose translation")
+                                Text(stringResource(Res.string.propose_translation))
                             }
                         }
                     )
@@ -220,13 +226,13 @@ fun AddTranslationArtifactVersionScreen(
                         )
                     } else if (artifactVersion == null) {
                         Text(
-                            text = "This artifact has no version for a translation to be of.",
+                            text = stringResource(Res.string.this_artifact_has_no_version_for_a),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
 
-                    Text("Translate into which dialect?")
+                    Text(stringResource(Res.string.translate_into_which_dialect))
 
                     if (addTranslationUIState.dialects.isEmpty()) {
                         // The only way out of this screen, and it is not on it:
@@ -283,7 +289,7 @@ fun AddTranslationArtifactVersionScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Add translation",
+                    text = stringResource(Res.string.add_translation),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

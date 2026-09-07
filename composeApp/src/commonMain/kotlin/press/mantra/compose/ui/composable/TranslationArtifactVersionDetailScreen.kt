@@ -47,6 +47,14 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslationArtifactVersionDetailViewModel
 import press.mantra.compose.ui.view.state.TranslationArtifactVersionDetailUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.chapters
+import mantra.composeapp.generated.resources.details
+import mantra.composeapp.generated.resources.no_chapters
+import mantra.composeapp.generated.resources.propose
+import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_cannot
+import mantra.composeapp.generated.resources.translation_detail
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,7 +142,7 @@ fun TranslationArtifactVersionDetailScreen(
                                     supportingContent = {
                                         Text(
                                             if (!translationDetailUIState.canSign) {
-                                                "This group has no shared key, so it cannot sign them in."
+                                                stringResource(Res.string.this_group_has_no_shared_key_so_it_cannot)
                                             } else {
                                                 "They were signed into the artifact after this " +
                                                     "translation. Ask the group to add them so they " +
@@ -166,7 +174,7 @@ fun TranslationArtifactVersionDetailScreen(
                                                 )
                                             }
                                         ) {
-                                            Text("Propose")
+                                            Text(stringResource(Res.string.propose))
                                         }
                                     }
                                 )
@@ -179,12 +187,12 @@ fun TranslationArtifactVersionDetailScreen(
                     // Chapters with translation progress
                     item {
                         Text(
-                            text = "Chapters",
+                            text = stringResource(Res.string.chapters),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                     if (translationDetailUIState.chapters.isEmpty()) {
-                        item { Text("No chapters.") }
+                        item { Text(stringResource(Res.string.no_chapters)) }
                     } else {
                         items(
                             items = translationDetailUIState.chapters,
@@ -223,7 +231,7 @@ fun TranslationArtifactVersionDetailScreen(
                     // Details
                     item {
                         Text(
-                            text = "Details",
+                            text = stringResource(Res.string.details),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -250,7 +258,7 @@ fun TranslationArtifactVersionDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Translation detail",
+                    text = stringResource(Res.string.translation_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

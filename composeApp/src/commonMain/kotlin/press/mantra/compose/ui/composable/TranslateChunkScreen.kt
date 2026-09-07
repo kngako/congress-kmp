@@ -54,6 +54,14 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslateChunkViewModel
 import press.mantra.compose.ui.view.state.TranslateChunkUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.enter_the_translation_for_this_chunk
+import mantra.composeapp.generated.resources.original
+import mantra.composeapp.generated.resources.propose_translation
+import mantra.composeapp.generated.resources.translate_chunk
+import mantra.composeapp.generated.resources.translated_text
+import mantra.composeapp.generated.resources.translation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,7 +117,7 @@ fun TranslateChunkScreen(
                 modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(
-                        title = { Text("Translate chunk") },
+                        title = { Text(stringResource(Res.string.translate_chunk)) },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(
@@ -177,7 +185,7 @@ fun TranslateChunkScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose translation"
                                 )
-                                Text("Propose translation")
+                                Text(stringResource(Res.string.propose_translation))
                             }
                         }
                     )
@@ -201,7 +209,7 @@ fun TranslateChunkScreen(
                     }
 
                     Text(
-                        text = "Original",
+                        text = stringResource(Res.string.original),
                         style = MaterialTheme.typography.labelMedium
                     )
                     Card {
@@ -213,14 +221,14 @@ fun TranslateChunkScreen(
                     }
 
                     Text(
-                        text = "Translation",
+                        text = stringResource(Res.string.translation),
                         style = MaterialTheme.typography.labelMedium
                     )
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
                         state = translationFieldState,
-                        label = { Text("Translated text") },
-                        placeholder = { Text("Enter the translation for this chunk") },
+                        label = { Text(stringResource(Res.string.translated_text)) },
+                        placeholder = { Text(stringResource(Res.string.enter_the_translation_for_this_chunk)) },
                     )
                 }
             }
@@ -234,7 +242,7 @@ fun TranslateChunkScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Translate chunk",
+                    text = stringResource(Res.string.translate_chunk),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

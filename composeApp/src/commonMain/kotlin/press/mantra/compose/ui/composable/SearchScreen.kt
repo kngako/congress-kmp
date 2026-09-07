@@ -63,6 +63,13 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SearchViewModel
 import press.mantra.compose.ui.view.state.SearchUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.profiles
+import mantra.composeapp.generated.resources.recents
+import mantra.composeapp.generated.resources.search
+import mantra.composeapp.generated.resources.search_hashtags
+import mantra.composeapp.generated.resources.trending_notes_functionality_coming_soon_in
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -117,7 +124,7 @@ fun SearchScreen(
                             },
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
-                            placeholder = { Text("Search") },
+                            placeholder = { Text(stringResource(Res.string.search)) },
                             leadingIcon = {
                                 if (expanded) {
                                     IconButton(
@@ -156,7 +163,7 @@ fun SearchScreen(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = "Search"
+                                            text = stringResource(Res.string.search)
                                         )
                                     },
                                     leadingContent = {
@@ -196,7 +203,7 @@ fun SearchScreen(
                                     headlineContent = { Text(textFieldState.text.toString()) },
                                     supportingContent = {
                                         Text(
-                                            text = "Search hashtags"
+                                            text = stringResource(Res.string.search_hashtags)
                                         )
                                     },
                                     leadingContent = {
@@ -289,7 +296,7 @@ fun SearchScreen(
                                                 modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                             ) {
                                                 Text(
-                                                    text = "Profiles",
+                                                    text = stringResource(Res.string.profiles),
                                                     style = MaterialTheme.typography.titleMedium
                                                 )
                                             }
@@ -344,7 +351,7 @@ fun SearchScreen(
                                         modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                     ) {
                                         Text(
-                                            text = "Recents",
+                                            text = stringResource(Res.string.recents),
                                             style = MaterialTheme.typography.titleMedium
                                         )
                                     }
@@ -404,7 +411,7 @@ fun SearchScreen(
                         title = {}
                     )
                     Text(
-                        text = "Trending notes functionality coming soon. In the meantime search for what you are looking for.",
+                        text = stringResource(Res.string.trending_notes_functionality_coming_soon_in),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )

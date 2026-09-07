@@ -18,6 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.everything_is_cryptographical_sound_just
+import mantra.composeapp.generated.resources.torch_will_be_broadcast_what_you_publish_to
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -39,13 +43,13 @@ fun UnannouncedProfileScreen() {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Everything is cryptographical sound. Just announcing your profile to the world.",
+                    text = stringResource(Res.string.everything_is_cryptographical_sound_just),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Torch will be broadcast what you publish to a distributed set of relays so that it's decentralized.",
+                    text = stringResource(Res.string.torch_will_be_broadcast_what_you_publish_to),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

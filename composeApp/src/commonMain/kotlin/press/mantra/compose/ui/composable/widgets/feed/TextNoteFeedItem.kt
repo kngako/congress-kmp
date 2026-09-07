@@ -26,6 +26,10 @@ import androidx.compose.ui.unit.dp
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_author_information
+import mantra.composeapp.generated.resources.loading_information
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -63,7 +67,7 @@ internal fun TextNoteFeedItem(
                     ),
                     style = MaterialTheme.typography.labelLargeEmphasized,
                     color = press.mantra.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(localInReplyToNostrEvent.nostrEvent.pubKey),
-                    text = localInReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "loading information..."
+                    text = localInReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: stringResource(Res.string.loading_information)
                 )
             }
         }
@@ -116,7 +120,7 @@ internal fun TextNoteFeedItem(
                     }
                 } else {
                     Text(
-                        text = "Loading author information"
+                        text = stringResource(Res.string.loading_author_information)
                     )
                 }
 

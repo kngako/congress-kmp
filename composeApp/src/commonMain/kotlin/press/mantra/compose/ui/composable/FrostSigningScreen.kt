@@ -58,6 +58,16 @@ import press.mantra.compose.ui.view.model.FrostSigningViewModel
 import press.mantra.compose.ui.view.state.FrostSigningUIState
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.don_t_sign
+import mantra.composeapp.generated.resources.has_not_taken_part_yet
+import mantra.composeapp.generated.resources.members
+import mantra.composeapp.generated.resources.read_to_the_end_of_the_list_to_sign
+import mantra.composeapp.generated.resources.ready_to_sign
+import mantra.composeapp.generated.resources.sign
+import mantra.composeapp.generated.resources.sign_with_the_group_s_key
+import mantra.composeapp.generated.resources.signed_their_part
 
 /**
  * One signing session, and the member's decision about it.
@@ -105,7 +115,7 @@ fun FrostSigningScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Sign with the group's key",
+                        text = stringResource(Res.string.sign_with_the_group_s_key),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -174,7 +184,7 @@ fun FrostSigningScreen(
                     HorizontalDivider()
 
                     Text(
-                        text = "Members",
+                        text = stringResource(Res.string.members),
                         style = MaterialTheme.typography.labelMedium
                     )
 
@@ -224,9 +234,9 @@ fun FrostSigningScreen(
                                     supportingContent = {
                                         Text(
                                             text = when {
-                                                member in state.signed -> "Signed their part"
-                                                member in state.offeredNonce -> "Ready to sign"
-                                                else -> "Has not taken part yet"
+                                                member in state.signed -> stringResource(Res.string.signed_their_part)
+                                                member in state.offeredNonce -> stringResource(Res.string.ready_to_sign)
+                                                else -> stringResource(Res.string.has_not_taken_part_yet)
                                             }
                                         )
                                     }
@@ -260,7 +270,7 @@ fun FrostSigningScreen(
 
                         if (readable && !seenEverything) {
                             Text(
-                                text = "Read to the end of the list to sign.",
+                                text = stringResource(Res.string.read_to_the_end_of_the_list_to_sign),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -278,7 +288,7 @@ fun FrostSigningScreen(
                             ) {
                                 Icon(Icons.Default.Draw, contentDescription = Decorative)
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                                Text("Sign")
+                                Text(stringResource(Res.string.sign))
                             }
 
                             // Declining stays available whatever the screen could
@@ -293,7 +303,7 @@ fun FrostSigningScreen(
                                 enabled = !frostSigningViewModel.isActionPending.value,
                                 onClick = { frostSigningViewModel.decline(onNavigateBack) }
                             ) {
-                                Text("Don't sign")
+                                Text(stringResource(Res.string.don_t_sign))
                             }
                         }
                     }

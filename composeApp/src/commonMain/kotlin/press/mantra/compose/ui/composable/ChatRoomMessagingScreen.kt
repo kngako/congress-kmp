@@ -58,6 +58,12 @@ import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.creating_new_chat
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.say_what_now
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -280,7 +286,7 @@ fun ChatRoomMessagingScreen(
                                         text = if (directMessageRecipient != null) {
                                             "Private message to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}"
                                         } else {
-                                            "Say what now?"
+                                            stringResource(Res.string.say_what_now)
                                         }
                                     )
                                 },
@@ -380,13 +386,13 @@ fun ChatRoomMessagingScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct message detail",
+                    text = stringResource(Res.string.direct_message_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Direct message functionality will be here.",
+                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -413,7 +419,7 @@ fun ChatRoomMessagingScreen(
                 )
 
                 Text(
-                    text = "Creating new chat.",
+                    text = stringResource(Res.string.creating_new_chat),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

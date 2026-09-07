@@ -41,6 +41,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading
+import mantra.composeapp.generated.resources.no_messages_go_to_a_profile_and_send_them_a
+import mantra.composeapp.generated.resources.something_went_wrong
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: ChatRoomListUIState,
@@ -154,7 +159,7 @@ class ChatRoomListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Something went wrong",
+                            text = stringResource(Res.string.something_went_wrong),
                         )
                     }
                 }
@@ -167,7 +172,7 @@ class ChatRoomListViewModel(
 
                         if (chatRoomListUIState.chatRoomList.isEmpty()) {
                             Text(
-                                text = "No messages. Go to a profile and send them a message."
+                                text = stringResource(Res.string.no_messages_go_to_a_profile_and_send_them_a)
                             )
                         } else {
                             LazyColumn(
@@ -236,7 +241,7 @@ class ChatRoomListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Loading",
+                            text = stringResource(Res.string.loading),
                             textAlign = TextAlign.Center
                         )
                         Spacer(

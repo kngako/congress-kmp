@@ -49,6 +49,19 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ArtifactDetailViewModel
 import press.mantra.compose.ui.view.state.ArtifactDetailUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_chapter
+import mantra.composeapp.generated.resources.add_translation
+import mantra.composeapp.generated.resources.artifact_detail
+import mantra.composeapp.generated.resources.chapters
+import mantra.composeapp.generated.resources.details
+import mantra.composeapp.generated.resources.no_chapters_yet
+import mantra.composeapp.generated.resources.no_translations_yet
+import mantra.composeapp.generated.resources.no_versions
+import mantra.composeapp.generated.resources.translations
+import mantra.composeapp.generated.resources.version
+import mantra.composeapp.generated.resources.versions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,12 +121,12 @@ fun ArtifactDetailScreen(
                     // Chapters
                     item {
                         Text(
-                            text = "Chapters",
+                            text = stringResource(Res.string.chapters),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                     if (artifactDetailUIState.chapters.isEmpty()) {
-                        item { Text("No chapters yet.") }
+                        item { Text(stringResource(Res.string.no_chapters_yet)) }
                     } else {
                         items(
                             items = artifactDetailUIState.chapters,
@@ -167,7 +180,7 @@ fun ArtifactDetailScreen(
                                 contentDescription = "Add chapter"
                             )
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text("Add chapter")
+                            Text(stringResource(Res.string.add_chapter))
                         }
                     }
 
@@ -176,12 +189,12 @@ fun ArtifactDetailScreen(
                     // Translations
                     item {
                         Text(
-                            text = "Translations",
+                            text = stringResource(Res.string.translations),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                     if (artifactDetailUIState.translations.isEmpty()) {
-                        item { Text("No translations yet.") }
+                        item { Text(stringResource(Res.string.no_translations_yet)) }
                     } else {
                         items(
                             items = artifactDetailUIState.translations,
@@ -232,7 +245,7 @@ fun ArtifactDetailScreen(
                                 contentDescription = "Add translation"
                             )
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text("Add translation")
+                            Text(stringResource(Res.string.add_translation))
                         }
                     }
 
@@ -241,7 +254,7 @@ fun ArtifactDetailScreen(
                     // Details
                     item {
                         Text(
-                            text = "Details",
+                            text = stringResource(Res.string.details),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -260,12 +273,12 @@ fun ArtifactDetailScreen(
                     // Versions
                     item {
                         Text(
-                            text = "Versions",
+                            text = stringResource(Res.string.versions),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
                     if (artifactDetailUIState.versions.isEmpty()) {
-                        item { Text("No versions.") }
+                        item { Text(stringResource(Res.string.no_versions)) }
                     } else {
                         items(
                             items = artifactDetailUIState.versions,
@@ -274,7 +287,7 @@ fun ArtifactDetailScreen(
                             Card {
                                 ListItem(
                                     headlineContent = { Text(version.versionLabel) },
-                                    overlineContent = { Text("Version") }
+                                    overlineContent = { Text(stringResource(Res.string.version)) }
                                 )
                             }
                         }
@@ -291,7 +304,7 @@ fun ArtifactDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Artifact detail",
+                    text = stringResource(Res.string.artifact_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

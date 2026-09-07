@@ -32,6 +32,12 @@ import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.functionality_coming_soon
+import mantra.composeapp.generated.resources.post_functionality_coming_soon
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_your_nostr_event_please_try
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +69,7 @@ fun NostrEventDetailScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Something went wrong")
+                Text(stringResource(Res.string.something_went_wrong))
             }
         }
         is NostrEventDetailUIState.Loaded -> {
@@ -98,7 +104,7 @@ fun NostrEventDetailScreen(
                     ) {
                         Text(feedListUIState.localNostrEvent.nostrEvent.content)
 
-                        Text("post functionality coming soon.")
+                        Text(stringResource(Res.string.post_functionality_coming_soon))
                     }
                 }
                 else -> {
@@ -113,7 +119,7 @@ fun NostrEventDetailScreen(
                             ) {
                                 Text(feedListUIState.localNostrEvent.nostrEvent.content)
 
-                                Text("functionality coming soon.")
+                                Text(stringResource(Res.string.functionality_coming_soon))
                             }
                         }
                     }
@@ -133,7 +139,7 @@ fun NostrEventDetailScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("We couldn't find your nostr event. Please try again later.")
+                Text(stringResource(Res.string.we_couldn_t_find_your_nostr_event_please_try))
             }
         }
     }

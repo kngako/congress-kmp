@@ -94,6 +94,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.currently_no_messages_have_been_shared
+import mantra.composeapp.generated.resources.loading
+import mantra.composeapp.generated.resources.no_chat_message_relays_were_found_for_this
+import mantra.composeapp.generated.resources.private_to_you
+import mantra.composeapp.generated.resources.review
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.waiting_for_your_signature
+import mantra.composeapp.generated.resources.you
 
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
@@ -399,7 +409,7 @@ class ChatMessageListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Something went wrong",
+                            text = stringResource(Res.string.something_went_wrong),
                         )
                     }
                 }
@@ -420,7 +430,7 @@ class ChatMessageListViewModel(
                             )
                             Text(
                                 modifier = Modifier.padding(MaterialTheme.spacing.space250),
-                                text = "Currently no messages have been shared.\nBreak the ice.",
+                                text = stringResource(Res.string.currently_no_messages_have_been_shared),
                                 textAlign = TextAlign.Center
                             )
 
@@ -489,7 +499,7 @@ class ChatMessageListViewModel(
                                                         modifier = Modifier.weight(1f)
                                                     ) {
                                                         Text(
-                                                            text = "No chat message relays were found for this user.",
+                                                            text = stringResource(Res.string.no_chat_message_relays_were_found_for_this),
                                                             textAlign = TextAlign.Center,
                                                             style = MaterialTheme.typography.labelSmall
                                                         )
@@ -660,7 +670,7 @@ class ChatMessageListViewModel(
                                                                 text = if (localChatMessage.chatMessage.isUserMessage) {
                                                                     "Private to ${nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey)}"
                                                                 } else {
-                                                                    "Private to you"
+                                                                    stringResource(Res.string.private_to_you)
                                                                 },
                                                                 color = MaterialTheme.colorScheme.primary,
                                                                 style = MaterialTheme.typography.labelSmall
@@ -750,7 +760,7 @@ class ChatMessageListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Loading",
+                            text = stringResource(Res.string.loading),
                             textAlign = TextAlign.Center
                         )
                         Spacer(
@@ -875,7 +885,7 @@ private fun ProposalsAwaitingYouNotice(
             ) {
                 Text(
                     text = if (single != null) {
-                        "Waiting for your signature"
+                        stringResource(Res.string.waiting_for_your_signature)
                     } else {
                         "${proposals.size} proposals are waiting for your signature"
                     },
@@ -896,7 +906,7 @@ private fun ProposalsAwaitingYouNotice(
             // thing, so a member reading down the room is not asked twice in two
             // vocabularies.
             Text(
-                text = "Review",
+                text = stringResource(Res.string.review),
                 style = MaterialTheme.typography.labelLarge
             )
 
@@ -1062,7 +1072,7 @@ private fun RitualNotice(
                         ) {
                             append(
                                 if (chatMessage.isUserMessage) {
-                                    "You"
+                                    stringResource(Res.string.you)
                                 } else {
                                     localChatMessage.profile?.humanReadableNameOrPubkey()
                                         ?: chatMessage.senderPublicKey.shortened()
@@ -1087,7 +1097,7 @@ private fun RitualNotice(
 
         if (isRequest) {
             Text(
-                text = "Review",
+                text = stringResource(Res.string.review),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )

@@ -20,6 +20,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.create_profile
+import mantra.composeapp.generated.resources.if_you_are_new_to_torch_or_just_want_to
+import mantra.composeapp.generated.resources.keep_the_feed_alive
+import mantra.composeapp.generated.resources.learn_more
+import mantra.composeapp.generated.resources.mantra
+import mantra.composeapp.generated.resources.sign_in
+import mantra.composeapp.generated.resources.sign_in_to_torch_via_nsec_or_remote_signer
 
 @Composable
 fun LandingScreen(
@@ -37,19 +46,19 @@ fun LandingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Mantra",
+                    text = stringResource(Res.string.mantra),
                     style = MaterialTheme.typography.headlineLarge
                 )
 
                 Text(
-                    text = "Keep the feed alive."
+                    text = stringResource(Res.string.keep_the_feed_alive)
                 )
 
                 TextButton(
                     onClick = onNavigateToLearnMore
                 ) {
                     Text(
-                        text = "Learn more",
+                        text = stringResource(Res.string.learn_more),
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -63,13 +72,13 @@ fun LandingScreen(
                 ) {
 
                     Text(
-                        "Sign in",
+                        stringResource(Res.string.sign_in),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
 
                 Text(
-                    text = "Sign in to Torch via nsec, or remote signer",
+                    text = stringResource(Res.string.sign_in_to_torch_via_nsec_or_remote_signer),
                     modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
@@ -83,13 +92,13 @@ fun LandingScreen(
                     onClick = onNavigateToCreateProfile
                 ) {
                     Text(
-                        "Create profile",
+                        stringResource(Res.string.create_profile),
                         style = MaterialTheme.typography.bodyLarge
                     )
 
                 }
                 Text(
-                    text = "If you are new to Torch or just want to create a fresh profile",
+                    text = stringResource(Res.string.if_you_are_new_to_torch_or_just_want_to),
                     modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center

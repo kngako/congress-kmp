@@ -69,6 +69,20 @@ import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendin
 import press.mantra.compose.ui.view.model.AddArtifactViewModel
 import press.mantra.compose.ui.view.state.AddArtifactUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_artifact_to_the_group_library
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.eg_first_edition
+import mantra.composeapp.generated.resources.eg_https_harper_com_2_kill_bird
+import mantra.composeapp.generated.resources.eg_to_kill_a_mocking_bird
+import mantra.composeapp.generated.resources.initial_version_label
+import mantra.composeapp.generated.resources.name_of_artifact
+import mantra.composeapp.generated.resources.no_dialects_have_been_defined_in_this_group
+import mantra.composeapp.generated.resources.propose_artifact
+import mantra.composeapp.generated.resources.source_dialect
+import mantra.composeapp.generated.resources.url
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -205,7 +219,7 @@ fun AddArtifactScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose artifact"
                                 )
-                                Text("Propose artifact")
+                                Text(stringResource(Res.string.propose_artifact))
                             }
                         }
                     )
@@ -220,7 +234,7 @@ fun AddArtifactScreen(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Add artifact to the group library")
+                        Text(stringResource(Res.string.add_artifact_to_the_group_library))
 
                         if (!addArtifactUIState.canSign) {
                             Text(
@@ -248,12 +262,12 @@ fun AddArtifactScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Name of artifact"
+                                    text = stringResource(Res.string.name_of_artifact)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. To Kill a Mocking Bird"
+                                    text = stringResource(Res.string.eg_to_kill_a_mocking_bird)
                                 )
                             },
                         )
@@ -275,12 +289,12 @@ fun AddArtifactScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Url"
+                                    text = stringResource(Res.string.url)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. https://harper.com/2-kill-Bird"
+                                    text = stringResource(Res.string.eg_https_harper_com_2_kill_bird)
                                 )
                             },
                         )
@@ -302,21 +316,21 @@ fun AddArtifactScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Initial version label"
+                                    text = stringResource(Res.string.initial_version_label)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. First Edition"
+                                    text = stringResource(Res.string.eg_first_edition)
                                 )
                             },
                         )
 
-                        Text("Source dialect")
+                        Text(stringResource(Res.string.source_dialect))
 
                         if (addArtifactUIState.dialects.isEmpty()) {
                             Text(
-                                text = "No dialects have been defined in this group yet. Add one from the group's detail screen first.",
+                                text = stringResource(Res.string.no_dialects_have_been_defined_in_this_group),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         } else {
@@ -352,13 +366,13 @@ fun AddArtifactScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct message detail",
+                    text = stringResource(Res.string.direct_message_detail),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Direct message functionality will be here.",
+                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

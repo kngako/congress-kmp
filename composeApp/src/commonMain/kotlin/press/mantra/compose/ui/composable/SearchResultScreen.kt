@@ -55,6 +55,12 @@ import press.mantra.compose.ui.view.model.SearchResultViewModel
 import press.mantra.compose.ui.view.state.SearchResultListUIState
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.no_events_were_found
+import mantra.composeapp.generated.resources.profiles
+import mantra.composeapp.generated.resources.search
+import mantra.composeapp.generated.resources.something_went_wrong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -109,7 +115,7 @@ fun SearchResultScreen(
                             enabled = false,
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
-                            placeholder = { Text("Search") },
+                            placeholder = { Text(stringResource(Res.string.search)) },
                             leadingIcon = {
                                 if (expanded) {
                                     IconButton(
@@ -200,7 +206,7 @@ fun SearchResultScreen(
                         ) {
                             when(SearchResultType.entries[pageIndex]) {
                                 SearchResultType.Profiles -> {
-                                    Text("Profiles")
+                                    Text(stringResource(Res.string.profiles))
                                 }
                             }
 
@@ -214,7 +220,7 @@ fun SearchResultScreen(
                                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
                                         Text(
-                                            text = "Something went wrong",
+                                            text = stringResource(Res.string.something_went_wrong),
                                         )
                                     }
                                 }
@@ -229,7 +235,7 @@ fun SearchResultScreen(
                                                 modifier = Modifier.height(MaterialTheme.spacing.space600)
                                             )
                                             Text(
-                                                text = "No events were found",
+                                                text = stringResource(Res.string.no_events_were_found),
                                             )
                                         }
                                     } else {

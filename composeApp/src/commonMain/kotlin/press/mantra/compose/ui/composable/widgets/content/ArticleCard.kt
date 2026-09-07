@@ -22,6 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.article
+import mantra.composeapp.generated.resources.loading_article
+import mantra.composeapp.generated.resources.untitled_article
 
 @Composable
 private fun ArticleCard(
@@ -71,7 +76,7 @@ private fun ArticleCard(
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
-                    text = "Loading article...",
+                    text = stringResource(Res.string.loading_article),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -99,14 +104,14 @@ private fun ArticleCard(
                             modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
-                                text = "ARTICLE",
+                                text = stringResource(Res.string.article),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
                             )
                         }
                         Text(
-                            text = title ?: "Untitled article",
+                            text = title ?: stringResource(Res.string.untitled_article),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,

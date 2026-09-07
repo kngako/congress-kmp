@@ -35,6 +35,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.any_amount
+import mantra.composeapp.generated.resources.cancel
+import mantra.composeapp.generated.resources.expired
+import mantra.composeapp.generated.resources.failed
+import mantra.composeapp.generated.resources.lightning_invoice
+import mantra.composeapp.generated.resources.paid
+import mantra.composeapp.generated.resources.pay
+import mantra.composeapp.generated.resources.pay_now
 
 @Composable
 internal fun LightningInvoiceCard(
@@ -52,7 +62,7 @@ internal fun LightningInvoiceCard(
     if (showConfirm) {
         AlertDialog(
             onDismissRequest = { showConfirm = false },
-            title = { Text("Lightning invoice") },
+            title = { Text(stringResource(Res.string.lightning_invoice)) },
             text = {
                 Column {
                     Text(
@@ -86,11 +96,11 @@ internal fun LightningInvoiceCard(
                         containerColor = primary,
                         contentColor = onPrimary
                     )
-                ) { Text("Pay") }
+                ) { Text(stringResource(Res.string.pay)) }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirm = false }) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.cancel))
                 }
             }
         )
@@ -119,7 +129,7 @@ internal fun LightningInvoiceCard(
                 Text(
                     text = if (decoded.amount != null)
                         "${decoded.amount!!.truncateToSatoshi()}"
-                    else "Any amount",
+                    else stringResource(Res.string.any_amount),
                     style = MaterialTheme.typography.titleSmall,
                     color = primary
                 )
@@ -133,7 +143,7 @@ internal fun LightningInvoiceCard(
                 }
                 if (isExpired) {
                     Text(
-                        text = "Expired",
+                        text = stringResource(Res.string.expired),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -148,12 +158,12 @@ internal fun LightningInvoiceCard(
                         strokeWidth = 2.dp
                     )
                     InvoicePayState.Success -> Text(
-                        text = "✓ Paid",
+                        text = stringResource(Res.string.paid),
                         style = MaterialTheme.typography.labelMedium,
                         color = primary
                     )
                     InvoicePayState.Failed -> Text(
-                        text = "✗ Failed",
+                        text = stringResource(Res.string.failed),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -166,8 +176,8 @@ internal fun LightningInvoiceCard(
                         )
                     ) {
                         Text(
-                            if (isExpired) "Expired"
-                            else "Pay now"
+                            if (isExpired) stringResource(Res.string.expired)
+                            else stringResource(Res.string.pay_now)
                         )
                     }
                 }

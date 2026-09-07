@@ -20,6 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.ended
+import mantra.composeapp.generated.resources.live
+import mantra.composeapp.generated.resources.live_stream
+import mantra.composeapp.generated.resources.loading_stream
 
 @Composable
 internal fun LiveStreamCardContent(
@@ -45,7 +51,7 @@ internal fun LiveStreamCardContent(
             )
             Spacer(Modifier.width(MaterialTheme.spacing.space100))
             Text(
-                text = "Loading stream...",
+                text = stringResource(Res.string.loading_stream),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -92,7 +98,7 @@ internal fun LiveStreamCardContent(
                             modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
-                                text = "LIVE",
+                                text = stringResource(Res.string.live),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onError,
                                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
@@ -105,7 +111,7 @@ internal fun LiveStreamCardContent(
                             modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
-                                text = "ENDED",
+                                text = stringResource(Res.string.ended),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
@@ -113,7 +119,7 @@ internal fun LiveStreamCardContent(
                         }
                     }
                     Text(
-                        text = title ?: "Live stream",
+                        text = title ?: stringResource(Res.string.live_stream),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,

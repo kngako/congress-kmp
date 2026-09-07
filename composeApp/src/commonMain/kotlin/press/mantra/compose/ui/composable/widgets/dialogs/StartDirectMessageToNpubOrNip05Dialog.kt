@@ -46,6 +46,11 @@ import press.mantra.compose.ui.theme.spacing
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.input_npub_or_nip05
+import mantra.composeapp.generated.resources.start_chat
+import mantra.composeapp.generated.resources.start_chat_via_npub_or_nip05
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
@@ -91,7 +96,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                     modifier = Modifier.fillMaxWidth().padding(
                         horizontal = MaterialTheme.spacing.space250,
                     ),
-                    text = "Start chat via npub or nip05",
+                    text = stringResource(Res.string.start_chat_via_npub_or_nip05),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
@@ -99,7 +104,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                     modifier = Modifier.focusRequester(npubFieldFocus),
                     state = textFieldState,
                     placeholder = {
-                        Text("Input npub... or nip05")
+                        Text(stringResource(Res.string.input_npub_or_nip05))
                     },
                     trailingIcon = {
                         IconButton(
@@ -166,7 +171,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         }
                     }
                 ) {
-                    Text("Start chat")
+                    Text(stringResource(Res.string.start_chat))
 
                     Spacer(
                         modifier = Modifier.width(MaterialTheme.spacing.space125)

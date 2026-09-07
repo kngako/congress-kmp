@@ -21,6 +21,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_note
 
 @Composable
 fun QuotedNote(
@@ -105,7 +108,7 @@ fun QuotedNote(
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
-                    text = "Loading note...",
+                    text = stringResource(Res.string.loading_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

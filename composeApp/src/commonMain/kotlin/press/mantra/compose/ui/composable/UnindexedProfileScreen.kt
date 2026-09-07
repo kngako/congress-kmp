@@ -18,6 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.events_are_indexed_so_that_we_can_deliver_a
+import mantra.composeapp.generated.resources.everything_is_cryptographical_sound_just_2
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -39,13 +43,13 @@ fun UnindexedProfileScreen() {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Everything is cryptographical sound. Just indexing your profile on the device.",
+                    text = stringResource(Res.string.everything_is_cryptographical_sound_just_2),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Events are indexed so that we can deliver a premium local first experience.",
+                    text = stringResource(Res.string.events_are_indexed_so_that_we_can_deliver_a),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

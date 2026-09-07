@@ -49,6 +49,11 @@ import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.be_the_first_to_comment
+import mantra.composeapp.generated.resources.post
+import mantra.composeapp.generated.resources.something_went_wrong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -87,7 +92,7 @@ fun TextNoteEventDetail(
                     }
                 },
                 title = {
-                    Text("Post")
+                    Text(stringResource(Res.string.post))
                 },
             )
         },
@@ -346,7 +351,7 @@ fun TextNoteEventDetail(
                         if (inReplyToFeedListUIState.localNostrEvents.isEmpty()) {
                             item {
                                 Text(
-                                    "Be the first to comment."
+                                    stringResource(Res.string.be_the_first_to_comment)
                                 )
                             }
                         } else {
@@ -363,7 +368,7 @@ fun TextNoteEventDetail(
                     press.mantra.compose.ui.view.state.FeedListUIState.Error -> {
                         item {
                             Text(
-                                text = "Something went wrong"
+                                text = stringResource(Res.string.something_went_wrong)
                             )
                         }
                     }

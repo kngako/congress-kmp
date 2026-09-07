@@ -32,6 +32,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
 import com.vitorpamplona.quartz.nip19Bech32.entities.NSec
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.be_sure_to_keep_this_nsec_safe
+import mantra.composeapp.generated.resources.enter_the_nsec_or_npub_read_only_that_you
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.nsec_npub_nip_05_static_address
+import mantra.composeapp.generated.resources.sign_in
+import mantra.composeapp.generated.resources.sign_in_to_nsec
+import mantra.composeapp.generated.resources.sign_in_with_an_npub
+import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to
+import mantra.composeapp.generated.resources.this_will_give_you_read_only_access_to_the
+import mantra.composeapp.generated.resources.this_will_give_you_write_access_to_the
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -63,7 +75,7 @@ fun SignInToProfileScreen(
                 when (val signInToProfileUIState = signInToProfileViewModel.signInToProfileUIState.value) {
                     is press.mantra.compose.ui.view.state.SignInToProfileUIState.InputPrompt -> {
                         Text(
-                            "Sign in",
+                            stringResource(Res.string.sign_in),
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -87,13 +99,13 @@ fun SignInToProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "nsec, npub, nip-05 (static address)",
+                                    text = stringResource(Res.string.nsec_npub_nip_05_static_address),
                                     maxLines = 1,
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "Enter the nsec or npub (read only) that you want to sign in as",
+                                    text = stringResource(Res.string.enter_the_nsec_or_npub_read_only_that_you),
                                     maxLines = 1,
                                 )
                             },
@@ -129,7 +141,7 @@ fun SignInToProfileScreen(
                             },
                         ) {
                             Text(
-                                "Next"
+                                stringResource(Res.string.next)
                             )
                             Icon(
                                 Icons.Default.NavigateNext,
@@ -144,7 +156,7 @@ fun SignInToProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Sign in with an npub",
+                            text = stringResource(Res.string.sign_in_with_an_npub),
                             style = MaterialTheme.typography.headlineMedium
                         )
 
@@ -168,7 +180,7 @@ fun SignInToProfileScreen(
 
 
                         Text(
-                            text = "This will give you read only access to the profile.",
+                            text = stringResource(Res.string.this_will_give_you_read_only_access_to_the),
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center
                         )
@@ -184,7 +196,7 @@ fun SignInToProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Sign in"
+                                    text = stringResource(Res.string.sign_in)
                                 )
                             }
                         }
@@ -196,12 +208,12 @@ fun SignInToProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Sign in to nsec",
+                            text = stringResource(Res.string.sign_in_to_nsec),
                             style = MaterialTheme.typography.headlineMedium
                         )
 
                         Text(
-                            text = "Be sure to keep this nsec safe.",
+                            text = stringResource(Res.string.be_sure_to_keep_this_nsec_safe),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -214,7 +226,7 @@ fun SignInToProfileScreen(
 
 
                         Text(
-                            text = "This will give you write access to the profile.",
+                            text = stringResource(Res.string.this_will_give_you_write_access_to_the),
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center
                         )
@@ -230,7 +242,7 @@ fun SignInToProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Sign in"
+                                    text = stringResource(Res.string.sign_in)
                                 )
                             }
                         }
@@ -241,7 +253,7 @@ fun SignInToProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Something went wrong and we were unable to sign in to your provided profile. Please try again later.",
+                            text = stringResource(Res.string.something_went_wrong_and_we_were_unable_to),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )

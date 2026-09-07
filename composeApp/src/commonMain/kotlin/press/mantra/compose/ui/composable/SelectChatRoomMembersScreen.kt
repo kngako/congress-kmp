@@ -43,6 +43,13 @@ import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.no_one_selected_yet
+import mantra.composeapp.generated.resources.no_one_to_add_yet
+import mantra.composeapp.generated.resources.search_for_people_and_chat_with_them_first
+import mantra.composeapp.generated.resources.you_can_still_carry_on_and_invite_people
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -120,7 +127,7 @@ fun SelectChatRoomMembersScreen(
                                     text = if (selectedCount > 0) {
                                         "Next with $selectedCount"
                                     } else {
-                                        "Next"
+                                        stringResource(Res.string.next)
                                     }
                                 )
                             }
@@ -131,7 +138,7 @@ fun SelectChatRoomMembersScreen(
                                 text = if (selectedCount > 0) {
                                     "$selectedCount selected"
                                 } else {
-                                    "No one selected yet"
+                                    stringResource(Res.string.no_one_selected_yet)
                                 },
                                 style = MaterialTheme.typography.labelLarge
                             )
@@ -153,19 +160,19 @@ fun SelectChatRoomMembersScreen(
                             )
 
                             Text(
-                                text = "No one to add yet.",
+                                text = stringResource(Res.string.no_one_to_add_yet),
                                 style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Center
                             )
 
                             Text(
-                                text = "Search for people and chat with them first — everyone you know locally shows up here.",
+                                text = stringResource(Res.string.search_for_people_and_chat_with_them_first),
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center
                             )
 
                             Text(
-                                text = "You can still carry on and invite people later.",
+                                text = stringResource(Res.string.you_can_still_carry_on_and_invite_people),
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center
                             )

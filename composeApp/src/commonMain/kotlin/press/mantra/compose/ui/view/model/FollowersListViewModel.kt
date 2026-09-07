@@ -31,6 +31,11 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading
+import mantra.composeapp.generated.resources.no_events_were_found
+import mantra.composeapp.generated.resources.something_went_wrong
 
 class FollowersListViewModel(
     initialFollowingListUIState: press.mantra.compose.ui.view.state.FollowersListUIState,
@@ -115,7 +120,7 @@ class FollowersListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Something went wrong",
+                            text = stringResource(Res.string.something_went_wrong),
                         )
                     }
                 }
@@ -129,7 +134,7 @@ class FollowersListViewModel(
                                 modifier = Modifier.height(MaterialTheme.spacing.space600)
                             )
                             Text(
-                                text = "No events were found",
+                                text = stringResource(Res.string.no_events_were_found),
                             )
                         }
                     } else {
@@ -160,7 +165,7 @@ class FollowersListViewModel(
                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Loading",
+                            text = stringResource(Res.string.loading),
                             textAlign = TextAlign.Center
                         )
                         Spacer(

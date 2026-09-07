@@ -57,6 +57,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.create_chat
+import mantra.composeapp.generated.resources.how_many_admins_have_to_approve_a_change
+import mantra.composeapp.generated.resources.just_you_for_now
+import mantra.composeapp.generated.resources.open_chat
+import mantra.composeapp.generated.resources.this_decides_who_can_change_the_group_later
+import mantra.composeapp.generated.resources.you_and_1_other
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -149,9 +157,9 @@ fun SelectChatRoomTypeScreen(
 
                                 Text(
                                     text = if (selectChatRoomTypeViewModel.createdChatRoomId.value != null) {
-                                        "Open chat"
+                                        stringResource(Res.string.open_chat)
                                     } else {
-                                        "Create chat"
+                                        stringResource(Res.string.create_chat)
                                     }
                                 )
                             }
@@ -160,8 +168,8 @@ fun SelectChatRoomTypeScreen(
                             Text(
                                 modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
                                 text = when (selectChatRoomTypeUIState.members.size) {
-                                    0 -> "Just you for now"
-                                    1 -> "You and 1 other"
+                                    0 -> stringResource(Res.string.just_you_for_now)
+                                    1 -> stringResource(Res.string.you_and_1_other)
                                     else -> "You and ${selectChatRoomTypeUIState.members.size} others"
                                 },
                                 style = MaterialTheme.typography.labelLarge
@@ -211,7 +219,7 @@ fun SelectChatRoomTypeScreen(
                     }
 
                     Text(
-                        text = "This decides who can change the group later. You can't switch afterwards.",
+                        text = stringResource(Res.string.this_decides_who_can_change_the_group_later),
                         style = MaterialTheme.typography.labelMedium,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space125)
@@ -400,7 +408,7 @@ private fun QuorumPicker(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)
     ) {
         Text(
-            text = "How many admins have to approve a change?",
+            text = stringResource(Res.string.how_many_admins_have_to_approve_a_change),
             style = MaterialTheme.typography.titleSmall
         )
 

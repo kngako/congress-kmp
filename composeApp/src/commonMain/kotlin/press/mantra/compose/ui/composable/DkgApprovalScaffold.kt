@@ -39,6 +39,10 @@ import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.back
+import mantra.composeapp.generated.resources.not_now
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -149,7 +153,7 @@ internal fun DkgApprovalScaffold(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
-                        TextButton(onClick = onDone) { Text(text = "Back") }
+                        TextButton(onClick = onDone) { Text(text = stringResource(Res.string.back)) }
                     }
 
                     return@Scaffold
@@ -181,7 +185,7 @@ internal fun DkgApprovalScaffold(
                             onClick = onDone,
                             enabled = !isActionPending
                         ) {
-                            Text(text = "Not now")
+                            Text(text = stringResource(Res.string.not_now))
                         }
 
                         Button(

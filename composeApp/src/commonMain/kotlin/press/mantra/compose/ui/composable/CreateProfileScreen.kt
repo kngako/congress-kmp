@@ -37,6 +37,28 @@ import press.mantra.compose.ui.theme.LocalExtendedColors
 import press.mantra.compose.ui.view.model.CreateProfileViewModel
 import press.mantra.compose.ui.view.state.CreateProfileUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.after_this_there_is_no_turning_back
+import mantra.composeapp.generated.resources.bio
+import mantra.composeapp.generated.resources.create_profile
+import mantra.composeapp.generated.resources.end_this
+import mantra.composeapp.generated.resources.enter_the_name_you_want_to_use_for_your_2
+import mantra.composeapp.generated.resources.introduce_yourself
+import mantra.composeapp.generated.resources.it_is_cryptographical_secure_and
+import mantra.composeapp.generated.resources.name
+import mantra.composeapp.generated.resources.name_eg_alan_turing
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.profile_is_ready
+import mantra.composeapp.generated.resources.see_how_deep_the_rabbit_hole_goes
+import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to_2
+import mantra.composeapp.generated.resources.start
+import mantra.composeapp.generated.resources.the_above_will_be_your_profile
+import mantra.composeapp.generated.resources.this_will_be_shown_when_people_open_your
+import mantra.composeapp.generated.resources.this_will_be_the_display_name_for_your
+import mantra.composeapp.generated.resources.what_should_people_know_about_you
+import mantra.composeapp.generated.resources.you_are_about_to_create_a_nostr_profile
+import mantra.composeapp.generated.resources.you_will_be_in_full_control_of_this_profile
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -73,18 +95,18 @@ fun CreateProfileScreen(
                     is CreateProfileUIState.Declaration -> {
 
                         Text(
-                            "Create profile",
+                            stringResource(Res.string.create_profile),
                             style = MaterialTheme.typography.headlineSmall
                         )
 
                         Text(
-                            "You are about to create a NOSTR profile.",
+                            stringResource(Res.string.you_are_about_to_create_a_nostr_profile),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
 
                         Text(
-                            "It is cryptographical secure, and decentralized, putting you in total control of your digital profile",
+                            stringResource(Res.string.it_is_cryptographical_secure_and),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
@@ -100,13 +122,13 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                text = "Start"
+                                text = stringResource(Res.string.start)
                             )
                         }
                     }
                     is CreateProfileUIState.InputPrompt -> {
                         Text(
-                            "Create profile",
+                            stringResource(Res.string.create_profile),
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -134,13 +156,13 @@ fun CreateProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "Name (eg. Alan Turing)",
+                                    text = stringResource(Res.string.name_eg_alan_turing),
                                     maxLines = 1,
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "Enter the name you want to use for your profile",
+                                    text = stringResource(Res.string.enter_the_name_you_want_to_use_for_your_2),
                                     maxLines = 1,
                                 )
                             },
@@ -153,7 +175,7 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "This will be the display name for your profile and also important for search.",
+                            text = stringResource(Res.string.this_will_be_the_display_name_for_your),
                             style = MaterialTheme.typography.labelMedium,
                             textAlign = TextAlign.Center
                         )
@@ -178,14 +200,14 @@ fun CreateProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "Introduce yourself",
+                                    text = stringResource(Res.string.introduce_yourself),
                                     maxLines = 1,
 
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "What should people know about you?",
+                                    text = stringResource(Res.string.what_should_people_know_about_you),
                                     maxLines = 1,
                                 )
                             },
@@ -198,7 +220,7 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "This will be shown when people open your profile.",
+                            text = stringResource(Res.string.this_will_be_shown_when_people_open_your),
                             style = MaterialTheme.typography.labelMedium,
                             textAlign = TextAlign.Center
                         )
@@ -220,7 +242,7 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                "Next"
+                                stringResource(Res.string.next)
                             )
                         }
 
@@ -228,7 +250,7 @@ fun CreateProfileScreen(
                     is CreateProfileUIState.ConfirmInput -> {
 
                         Text(
-                            text = "Name",
+                            text = stringResource(Res.string.name),
                             style = MaterialTheme.typography.labelLarge
                         )
 
@@ -239,7 +261,7 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "Bio",
+                            text = stringResource(Res.string.bio),
                             style = MaterialTheme.typography.labelLarge
                         )
 
@@ -252,7 +274,7 @@ fun CreateProfileScreen(
 
 
                         Text(
-                            text = "The above will be your profile.",
+                            text = stringResource(Res.string.the_above_will_be_your_profile),
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -261,7 +283,7 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "You will be in full control of this profile. If you would like to use it for the long term please remember to backup the profile/keys.",
+                            text = stringResource(Res.string.you_will_be_in_full_control_of_this_profile),
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center
                         )
@@ -277,7 +299,7 @@ fun CreateProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Create profile"
+                                    text = stringResource(Res.string.create_profile)
                                 )
                             }
                         }
@@ -288,7 +310,7 @@ fun CreateProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Something went wrong and we were unable to sign you up. Please try again later.",
+                            text = stringResource(Res.string.something_went_wrong_and_we_were_unable_to_2),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
@@ -308,13 +330,13 @@ fun CreateProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Profile is ready",
+                            text = stringResource(Res.string.profile_is_ready),
                             style = MaterialTheme.typography.headlineLarge,
                             textAlign = TextAlign.Center
                         )
 
                         Text(
-                            text = "After this there is no turning back."
+                            text = stringResource(Res.string.after_this_there_is_no_turning_back)
                         )
 
                         Button(
@@ -327,7 +349,7 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                text = "See how deep the rabbit hole goes"
+                                text = stringResource(Res.string.see_how_deep_the_rabbit_hole_goes)
                             )
                         }
 
@@ -348,7 +370,7 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                text = "end this"
+                                text = stringResource(Res.string.end_this)
                             )
                         }
                         Spacer(

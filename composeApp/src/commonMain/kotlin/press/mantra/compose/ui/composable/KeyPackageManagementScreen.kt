@@ -44,6 +44,12 @@ import press.mantra.compose.ui.view.model.KeyPackageManagementViewModel
 import press.mantra.compose.ui.view.state.KeyPackageManagementUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.key_package_management
+import mantra.composeapp.generated.resources.publish_new_key_package
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +78,7 @@ fun KeyPackageManagementScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Something went wrong")
+                Text(stringResource(Res.string.something_went_wrong))
             }
         }
         is KeyPackageManagementUIState.Loaded -> {
@@ -81,7 +87,7 @@ fun KeyPackageManagementScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Key package management"
+                                text = stringResource(Res.string.key_package_management)
                             )
                         },
                         navigationIcon = {
@@ -123,7 +129,7 @@ fun KeyPackageManagementScreen(
                                 )
 
                                 Text(
-                                    text = "Publish new key package"
+                                    text = stringResource(Res.string.publish_new_key_package)
                                 )
                             }
                         }
@@ -213,7 +219,7 @@ fun KeyPackageManagementScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("We couldn't find the local profile. Please try again later.")
+                Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
             }
         }
     }

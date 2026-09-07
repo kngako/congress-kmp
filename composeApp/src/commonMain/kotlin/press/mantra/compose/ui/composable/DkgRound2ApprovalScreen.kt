@@ -15,6 +15,9 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.this_is_the_last_thing_the_ceremony_needs
 
 /**
  * Asks whether to confirm the combined result.
@@ -74,7 +77,7 @@ fun DkgRound2ApprovalScreen(
         }
 
         Text(
-            text = "This is the last thing the ceremony needs from you.",
+            text = stringResource(Res.string.this_is_the_last_thing_the_ceremony_needs),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

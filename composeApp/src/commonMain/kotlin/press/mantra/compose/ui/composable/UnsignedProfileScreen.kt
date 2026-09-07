@@ -18,6 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.as_long_as_you_control_your_keys_there_can
+import mantra.composeapp.generated.resources.your_profile_is_almost_ready_just_getting_it
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -39,13 +43,13 @@ fun UnsignedProfileScreen() {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Your profile is almost ready... just getting it's first cryptographic signature together.",
+                    text = stringResource(Res.string.your_profile_is_almost_ready_just_getting_it),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "As long as you control your keys there can be no dispute about who YOU actually is.",
+                    text = stringResource(Res.string.as_long_as_you_control_your_keys_there_can),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

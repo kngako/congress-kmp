@@ -56,6 +56,17 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddDialectViewModel
 import press.mantra.compose.ui.view.state.AddDialectUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_a_dialect_the_group_can_translate_into
+import mantra.composeapp.generated.resources.add_dialect
+import mantra.composeapp.generated.resources.country
+import mantra.composeapp.generated.resources.dialect_name
+import mantra.composeapp.generated.resources.eg_lesotho
+import mantra.composeapp.generated.resources.eg_sesotho
+import mantra.composeapp.generated.resources.eg_st
+import mantra.composeapp.generated.resources.language
+import mantra.composeapp.generated.resources.propose_dialect
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -174,7 +185,7 @@ fun AddDialectScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose dialect"
                                 )
-                                Text("Propose dialect")
+                                Text(stringResource(Res.string.propose_dialect))
                             }
                         }
                     )
@@ -188,7 +199,7 @@ fun AddDialectScreen(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Add a dialect the group can translate into")
+                        Text(stringResource(Res.string.add_a_dialect_the_group_can_translate_into))
 
                         if (!addDialectUIState.canSign) {
                             Text(
@@ -216,12 +227,12 @@ fun AddDialectScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Dialect name"
+                                    text = stringResource(Res.string.dialect_name)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. Sesotho"
+                                    text = stringResource(Res.string.eg_sesotho)
                                 )
                             },
                         )
@@ -243,12 +254,12 @@ fun AddDialectScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Country"
+                                    text = stringResource(Res.string.country)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. Lesotho"
+                                    text = stringResource(Res.string.eg_lesotho)
                                 )
                             },
                         )
@@ -270,12 +281,12 @@ fun AddDialectScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Language"
+                                    text = stringResource(Res.string.language)
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "eg. st"
+                                    text = stringResource(Res.string.eg_st)
                                 )
                             },
                         )
@@ -296,7 +307,7 @@ fun AddDialectScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Add dialect",
+                    text = stringResource(Res.string.add_dialect),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

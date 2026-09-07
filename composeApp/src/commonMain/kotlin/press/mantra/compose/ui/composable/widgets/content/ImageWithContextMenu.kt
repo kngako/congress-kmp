@@ -33,6 +33,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.copy_url
+import mantra.composeapp.generated.resources.download
+import mantra.composeapp.generated.resources.tap_to_load
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -67,7 +72,7 @@ internal fun ImageWithContextMenu(meta: MediaMeta, onFullScreen: () -> Unit) {
                 )
                 Spacer(Modifier.height(MaterialTheme.spacing.space100))
                 Text(
-                    "Tap to load",
+                    stringResource(Res.string.tap_to_load),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -95,14 +100,14 @@ internal fun ImageWithContextMenu(meta: MediaMeta, onFullScreen: () -> Unit) {
             onDismissRequest = { showMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Copy URL") },
+                text = { Text(stringResource(Res.string.copy_url)) },
                 onClick = {
                     clipboardManager.setText(AnnotatedString(url))
                     showMenu = false
                 }
             )
             DropdownMenuItem(
-                text = { Text("Download") },
+                text = { Text(stringResource(Res.string.download)) },
                 onClick = {
                     showMenu = false
 //                    scope.launch { MediaDownloader.downloadMedia(context, url) }

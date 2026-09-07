@@ -30,6 +30,15 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.model.ChatRoomCreationViewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.choose_who_to_chat_with
+import mantra.composeapp.generated.resources.enter_the_name_you_want_to_use_for_your
+import mantra.composeapp.generated.resources.name_eg_group_discussions
+import mantra.composeapp.generated.resources.this_will_be_shown_when_people_open_the_chat
+import mantra.composeapp.generated.resources.this_will_be_the_display_name_for_this_chat
+import mantra.composeapp.generated.resources.what_should_people_know_about_you
+import mantra.composeapp.generated.resources.what_will_be_discussed_in_this_chat_room
 
 @Composable
 fun ChatRoomCreationScreen(
@@ -72,13 +81,13 @@ fun ChatRoomCreationScreen(
                     ),
                     label = {
                         Text(
-                            text = "Name (eg. Group Discussions)",
+                            text = stringResource(Res.string.name_eg_group_discussions),
                             maxLines = 1,
                         )
                     },
                     placeholder = {
                         Text(
-                            text = "Enter the name you want to use for your group",
+                            text = stringResource(Res.string.enter_the_name_you_want_to_use_for_your),
                             maxLines = 1,
                         )
                     },
@@ -91,7 +100,7 @@ fun ChatRoomCreationScreen(
                 )
 
                 Text(
-                    text = "This will be the display name for this chat room.",
+                    text = stringResource(Res.string.this_will_be_the_display_name_for_this_chat),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
@@ -116,14 +125,14 @@ fun ChatRoomCreationScreen(
                     ),
                     label = {
                         Text(
-                            text = "What will be discussed in this chat room.",
+                            text = stringResource(Res.string.what_will_be_discussed_in_this_chat_room),
                             maxLines = 1,
 
                             )
                     },
                     placeholder = {
                         Text(
-                            text = "What should people know about you?",
+                            text = stringResource(Res.string.what_should_people_know_about_you),
                             maxLines = 1,
                         )
                     },
@@ -136,7 +145,7 @@ fun ChatRoomCreationScreen(
                 )
 
                 Text(
-                    text = "This will be shown when people open the chat for more details.",
+                    text = stringResource(Res.string.this_will_be_shown_when_people_open_the_chat),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
@@ -151,7 +160,7 @@ fun ChatRoomCreationScreen(
                     }
                 ) {
                     Text(
-                        "Choose who to chat with"
+                        stringResource(Res.string.choose_who_to_chat_with)
                     )
                 }
             }

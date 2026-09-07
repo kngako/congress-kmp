@@ -55,6 +55,13 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ProposalListViewModel
 import press.mantra.compose.ui.view.state.ProposalListUIState
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.everything_else
+import mantra.composeapp.generated.resources.proposals
+import mantra.composeapp.generated.resources.review
+import mantra.composeapp.generated.resources.this_group_has_not_been_asked_to_sign
+import mantra.composeapp.generated.resources.waiting_for_you
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -102,7 +109,7 @@ fun ProposalListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Proposals",
+                        text = stringResource(Res.string.proposals),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -151,7 +158,7 @@ fun ProposalListScreen(
                         item {
                             Text(
                                 modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space600),
-                                text = "This group has not been asked to sign anything yet.",
+                                text = stringResource(Res.string.this_group_has_not_been_asked_to_sign),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -160,7 +167,7 @@ fun ProposalListScreen(
                     if (state.waitingForYou.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Waiting for you",
+                                text = stringResource(Res.string.waiting_for_you),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -181,7 +188,7 @@ fun ProposalListScreen(
                         if (state.waitingForYou.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Everything else",
+                                    text = stringResource(Res.string.everything_else),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }
@@ -296,7 +303,7 @@ private fun ProposalCard(
                     // it saying what it said there.
                     if (proposal.awaitsYou) {
                         Text(
-                            text = "Review",
+                            text = stringResource(Res.string.review),
                             style = MaterialTheme.typography.labelLarge,
                             color = cardContentColor
                         )

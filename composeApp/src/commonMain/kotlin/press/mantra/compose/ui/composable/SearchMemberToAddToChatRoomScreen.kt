@@ -41,6 +41,11 @@ import press.mantra.compose.ui.view.model.SearchMemberToAddToChatRoomViewModel
 import press.mantra.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.currently_no_contacts_please_search_and_chat
+import mantra.composeapp.generated.resources.search_member_functionality
+import mantra.composeapp.generated.resources.search_message_functionality_will_be_here
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +115,7 @@ fun SearchMemberToAddToChatRoomScreen(
                             )
                             Text(
                                 modifier = Modifier.padding(MaterialTheme.spacing.space250),
-                                text = "Currently no contacts. Please search and chat with a few people.",
+                                text = stringResource(Res.string.currently_no_contacts_please_search_and_chat),
                                 textAlign = TextAlign.Center
                             )
 
@@ -182,13 +187,13 @@ fun SearchMemberToAddToChatRoomScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Search member functionality",
+                    text = stringResource(Res.string.search_member_functionality),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Search message functionality will be here.",
+                    text = stringResource(Res.string.search_message_functionality_will_be_here),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )

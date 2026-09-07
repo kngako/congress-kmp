@@ -29,6 +29,12 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.close
+import mantra.composeapp.generated.resources.create_new_chat
+import mantra.composeapp.generated.resources.direct_message_via_npub
+import mantra.composeapp.generated.resources.start_a_group_chat
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +61,7 @@ fun NewChatBottomSheetDialog(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Create new chat",
+                text = stringResource(Res.string.create_new_chat),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -74,7 +80,7 @@ fun NewChatBottomSheetDialog(
                         )
                     },
                     headlineContent = {
-                        Text("Direct message via npub")
+                        Text(stringResource(Res.string.direct_message_via_npub))
                     },
                     trailingContent = {
                         Icon(
@@ -101,7 +107,7 @@ fun NewChatBottomSheetDialog(
                     },
                     headlineContent = {
                         Text(
-                            text = "Start a group chat"
+                            text = stringResource(Res.string.start_a_group_chat)
                         )
                     },
                     trailingContent = {
@@ -129,7 +135,7 @@ fun NewChatBottomSheetDialog(
                 Spacer(
                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                 )
-                Text("Close")
+                Text(stringResource(Res.string.close))
             }
         }
 

@@ -58,6 +58,15 @@ import press.mantra.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_to_group
+import mantra.composeapp.generated.resources.block_user
+import mantra.composeapp.generated.resources.edit_profile
+import mantra.composeapp.generated.resources.follow
+import mantra.composeapp.generated.resources.follow_back
+import mantra.composeapp.generated.resources.send_message
+import mantra.composeapp.generated.resources.unfollow
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -181,7 +190,7 @@ fun MetadataEventDetail(
                                                 onClick = onNavigateToEditProfile
                                             ) {
                                                 Text(
-                                                    "Edit profile"
+                                                    stringResource(Res.string.edit_profile)
                                                 )
                                             }
 
@@ -195,7 +204,7 @@ fun MetadataEventDetail(
                                                 }
                                             ) {
                                                 Text(
-                                                    "Unfollow"
+                                                    stringResource(Res.string.unfollow)
                                                 )
                                             }
                                         } else {
@@ -207,9 +216,9 @@ fun MetadataEventDetail(
                                             ) {
                                                 Text(
                                                     text = if (metadataEventDetailUIState.followingActiveUserConnection != null) {
-                                                        "follow back"
+                                                        stringResource(Res.string.follow_back)
                                                     } else {
-                                                        "follow"
+                                                        stringResource(Res.string.follow)
                                                     }
                                                 )
                                             }
@@ -252,7 +261,7 @@ fun MetadataEventDetail(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Add to group")
+                        Text(stringResource(Res.string.add_to_group))
                     }
                 }
 
@@ -273,7 +282,7 @@ fun MetadataEventDetail(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Block user")
+                        Text(stringResource(Res.string.block_user))
                     }
                 }
 
@@ -297,7 +306,7 @@ fun MetadataEventDetail(
                         Spacer(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
-                        Text("Send message")
+                        Text(stringResource(Res.string.send_message))
                     }
                 }
             }

@@ -57,6 +57,11 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.mantra
+import mantra.composeapp.generated.resources.new_chat
+import mantra.composeapp.generated.resources.something_went_wrong
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -96,7 +101,7 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = "Something went wrong"
+                        text = stringResource(Res.string.something_went_wrong)
                     )
 
                     Spacer(
@@ -122,7 +127,7 @@ fun HomeScreen(
                             // the other, and is left alone -- it goes on the wire to relay
                             // operators, so it is a network identity question rather than
                             // a content one.
-                            Text("Mantra")
+                            Text(stringResource(Res.string.mantra))
                         },
                         navigationIcon = {
                             IconButton(
@@ -168,7 +173,7 @@ fun HomeScreen(
                             )
                         },
                         text = {
-                            Text("New chat")
+                            Text(stringResource(Res.string.new_chat))
                         }
                     )
                 }

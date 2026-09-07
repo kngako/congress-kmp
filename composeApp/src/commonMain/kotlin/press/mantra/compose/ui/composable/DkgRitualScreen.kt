@@ -77,6 +77,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.create_the_admins_group
+import mantra.composeapp.generated.resources.how_many_members_will_it_take_to_sign
+import mantra.composeapp.generated.resources.key
+import mantra.composeapp.generated.resources.members
+import mantra.composeapp.generated.resources.nothing_was_created_and_no_key_exists_it_is
+import mantra.composeapp.generated.resources.review_and_confirm
+import mantra.composeapp.generated.resources.review_and_contribute
+import mantra.composeapp.generated.resources.review_and_join
+import mantra.composeapp.generated.resources.shared_key
+import mantra.composeapp.generated.resources.start_key_ceremony
+import mantra.composeapp.generated.resources.the_ceremony_was_abandoned
+import mantra.composeapp.generated.resources.the_group_can_hold_one_key_together_split_so
+import mantra.composeapp.generated.resources.the_group_has_a_shared_key
+import mantra.composeapp.generated.resources.this_is_fixed_once_the_ceremony_runs
+import mantra.composeapp.generated.resources.try_again
+import mantra.composeapp.generated.resources.your_share_of_it_is_on_this_device_only_your
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -169,9 +187,9 @@ fun DkgRitualScreen(
                                     Icon(Icons.Default.Key, contentDescription = Decorative)
                                     Text(
                                         text = when (pending) {
-                                            DkgApprovalStep.HOST_KEY -> "Review and join"
-                                            DkgApprovalStep.ROUND_1 -> "Review and contribute"
-                                            DkgApprovalStep.ROUND_2 -> "Review and confirm"
+                                            DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
+                                            DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
+                                            DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
                                         }
                                     )
                                 }
@@ -197,7 +215,7 @@ fun DkgRitualScreen(
                                     }
 
                                     Text(
-                                        text = if (session == null) "Start key ceremony" else "Try again"
+                                        text = if (session == null) stringResource(Res.string.start_key_ceremony) else stringResource(Res.string.try_again)
                                     )
                                 }
                             },
@@ -222,7 +240,7 @@ fun DkgRitualScreen(
                 ) {
                     if (session == null) {
                         Text(
-                            text = "The group can hold one key together, split so that no single member holds it. Signing with it takes a quorum.",
+                            text = stringResource(Res.string.the_group_can_hold_one_key_together_split_so),
                             style = MaterialTheme.typography.bodyMedium
                         )
 
@@ -272,7 +290,7 @@ fun DkgRitualScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Shared key",
+                    text = stringResource(Res.string.shared_key),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -336,12 +354,12 @@ private fun RitualProgress(
             ) {
                 Icon(Icons.Default.ErrorOutline, contentDescription = Decorative)
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)) {
-                    Text("The ceremony was abandoned.", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(Res.string.the_ceremony_was_abandoned), style = MaterialTheme.typography.titleSmall)
                     session.failureReason?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium)
                     }
                     Text(
-                        "Nothing was created and no key exists. It is safe to run it again.",
+                        stringResource(Res.string.nothing_was_created_and_no_key_exists_it_is),
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -406,13 +424,13 @@ private fun RitualProgress(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
-                    Text("The group has a shared key.", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(Res.string.the_group_has_a_shared_key), style = MaterialTheme.typography.titleSmall)
                 }
 
                 session.thresholdPublicKey?.let { thresholdPublicKey ->
                     val clipboardManager = LocalClipboardManager.current
 
-                    Text(text = "Key", style = MaterialTheme.typography.labelMedium)
+                    Text(text = stringResource(Res.string.key), style = MaterialTheme.typography.labelMedium)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -445,7 +463,7 @@ private fun RitualProgress(
                 }
 
                 Text(
-                    text = "Your share of it is on this device only. Your wallet backup restores it — nobody else's share can.",
+                    text = stringResource(Res.string.your_share_of_it_is_on_this_device_only_your),
                     style = MaterialTheme.typography.labelMedium
                 )
 
@@ -476,7 +494,7 @@ private fun RitualProgress(
                         } else {
                             Icon(Icons.Default.Groups, contentDescription = Decorative)
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
-                            Text(text = "Create the #admins group")
+                            Text(text = stringResource(Res.string.create_the_admins_group))
                         }
                     }
                 }
@@ -506,7 +524,7 @@ private fun RitualRoster(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
         ) {
-            Text(text = "Members", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(Res.string.members), style = MaterialTheme.typography.titleSmall)
 
             members
                 .sortedBy { it.participant.participantPublicKey }
@@ -616,7 +634,7 @@ private fun QuorumStepper(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)
     ) {
         Text(
-            text = "How many members will it take to sign?",
+            text = stringResource(Res.string.how_many_members_will_it_take_to_sign),
             style = MaterialTheme.typography.titleSmall
         )
 
@@ -646,7 +664,7 @@ private fun QuorumStepper(
         }
 
         Text(
-            text = "This is fixed once the ceremony runs. Changing it later means generating a new key.",
+            text = stringResource(Res.string.this_is_fixed_once_the_ceremony_runs),
             style = MaterialTheme.typography.labelMedium
         )
     }
