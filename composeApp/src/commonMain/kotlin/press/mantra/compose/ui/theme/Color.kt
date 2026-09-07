@@ -2,8 +2,68 @@ package press.mantra.compose.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val BluePill = Color(0xFF5D8DD6)
-val RedPill = Color(230, 32, 32, 191)
+// ---------------------------------------------------------------------------
+// Extended colour roles: the two pills
+// ---------------------------------------------------------------------------
+//
+// The choice on CreateProfileScreen -- commit to the account, or wipe and leave -- is
+// the Matrix pill choice, and the two colours carry that meaning rather than a place in
+// the scheme. M3 calls this an extended colour: a brand colour promoted to a full role
+// family (`color` / `onColor` / `colorContainer` / `onColorContainer`) so that contrast
+// is a property of the family rather than something chosen per call site.
+//
+// They were `val BluePill = Color(0xFF5D8DD6)` and `val RedPill = Color(230, 32, 32, 191)`,
+// paired at the call site with `Color.DarkGray` and `Color.White`. Both pairings were
+// below the 4.5:1 floor -- 2.90:1 and, because RedPill carried alpha 0.749 and composited
+// over the surface, 3.50:1 -- so this step could not leave the pixels alone. Any correct
+// version of these two buttons is a visible change.
+//
+// **Derivation**, the same rule as the gold palette in the fixed-roles block: maximum
+// in-gamut chroma at the source colour's Lab hue, sampled at M3's role tones. BluePill's
+// hue is 277.0 and RedPill's is 36.3.
+//
+//     role              light          dark
+//     color             tone 40        tone 80
+//     onColor           tone 100       tone 20
+//     colorContainer    tone 90        tone 30
+//     onColorContainer  tone 10        tone 90
+//
+// A side effect worth having: at tone 40 the two pills are the same lightness, so they
+// read as a matched pair. Before, a saturated red sat beside a soft periwinkle and the
+// blue looked like the lesser option -- which is not what the screen is asking.
+//
+// No medium- or high-contrast variants. The whole surface is two buttons on one screen,
+// and the light family's weakest pair is 6.44:1 -- clear of the 4.5:1 floor by more than
+// the contrast schemes would need to add. Generating 32 more values for that would be
+// out of proportion to what they cover.
+
+val bluePillLight = ColorFamily(
+    color = Color(0xFF0060AB),           // tone 40
+    onColor = Color(0xFFFFFFFF),         // tone 100
+    colorContainer = Color(0xFFD7E2FF),  // tone 90
+    onColorContainer = Color(0xFF001C39) // tone 10
+)
+
+val bluePillDark = ColorFamily(
+    color = Color(0xFFACC7FF),           // tone 80
+    onColor = Color(0xFF00315C),         // tone 20
+    colorContainer = Color(0xFF004882),  // tone 30
+    onColorContainer = Color(0xFFD7E2FF) // tone 90
+)
+
+val redPillLight = ColorFamily(
+    color = Color(0xFFC00012),
+    onColor = Color(0xFFFFFFFF),
+    colorContainer = Color(0xFFFFDAD3),
+    onColorContainer = Color(0xFF390C00)
+)
+
+val redPillDark = ColorFamily(
+    color = Color(0xFFFFB4A5),
+    onColor = Color(0xFF690000),
+    colorContainer = Color(0xFF93000B),
+    onColorContainer = Color(0xFFFFDAD3)
+)
 
 val primaryLight = Color(0xFF000000)
 val onPrimaryLight = Color(0xFFFFFFFF)

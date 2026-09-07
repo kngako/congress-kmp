@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.repository.MarmotRepository
+import press.mantra.compose.ui.theme.LocalExtendedColors
 import press.mantra.compose.ui.view.model.CreateProfileViewModel
 import press.mantra.compose.ui.view.state.CreateProfileUIState
 
@@ -292,6 +293,12 @@ fun CreateProfileScreen(
                         )
                     }
                     is CreateProfileUIState.ProfileReady -> {
+                        // Both pills come from the extended families rather than from a
+                        // literal paired with Color.White/Color.DarkGray by eye. The old
+                        // pairings read 4.57:1 and 2.90:1 against their containers, and
+                        // RedPill carried alpha 0.749, so composited over the surface the
+                        // first was really 3.50:1. Both are below the 4.5:1 floor.
+                        val extendedColors = LocalExtendedColors.current
 
                         Spacer(
                             modifier = Modifier.weight(1f)
@@ -308,8 +315,8 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = press.mantra.compose.ui.theme.RedPill,
-                                contentColor = Color.White
+                                containerColor = extendedColors.redPill.color,
+                                contentColor = extendedColors.redPill.onColor
                             ),
                             onClick = {
                                 createProfileViewModel.createAccount(writeSeed)
@@ -326,8 +333,8 @@ fun CreateProfileScreen(
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = press.mantra.compose.ui.theme.BluePill,
-                                contentColor = Color.DarkGray
+                                containerColor = extendedColors.bluePill.color,
+                                contentColor = extendedColors.bluePill.onColor
                             ),
                             onClick = {
                                 // TODO: Delete everything and close the app

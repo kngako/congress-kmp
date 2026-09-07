@@ -24,7 +24,7 @@ THEME="$UI/theme"
 # ---------------------------------------------------------------------------
 # Budgets. "-1" means not yet budgeted -- reported, but never fails --check.
 # ---------------------------------------------------------------------------
-BUDGET_HARDCODED_COLOR=11      # phase 3 drives to 0 outside theme/
+BUDGET_HARDCODED_COLOR=9       # phase 3 drives to 0 outside theme/
 BUDGET_DP_LITERALS=-1          # phase 2 drives to ~0 outside theme/
 BUDGET_OFF_SCALE_DP=-1         # phase 2 drives to 0
 BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
@@ -60,15 +60,21 @@ report() {
   fi
 }
 
+# Lines that are comments rather than code. Without this a note *about* a hardcoded
+# colour counts as one -- which happened the first time a call site was fixed and the
+# commit explained what it had replaced.
+NOT_A_COMMENT='^[^:]*:[[:space:]]*(//|\*|/\*)'
+
 # Count matches across the UI tree, optionally excluding the theme package.
 # $1 pattern, $2 "exclude-theme" | "all"
 count() {
   local pattern=$1 scope=${2:-all}
   if [[ $scope == exclude-theme ]]; then
     grep -rE "$pattern" "$UI" --include=*.kt 2>/dev/null \
-      | grep -v "^$THEME/" | wc -l | tr -d ' '
+      | grep -v "^$THEME/" | grep -vE "$NOT_A_COMMENT" | wc -l | tr -d ' '
   else
-    grep -rE "$pattern" "$UI" --include=*.kt 2>/dev/null | wc -l | tr -d ' '
+    grep -rE "$pattern" "$UI" --include=*.kt 2>/dev/null \
+      | grep -vE "$NOT_A_COMMENT" | wc -l | tr -d ' '
   fi
 }
 
@@ -119,8 +125,10 @@ report 'roles falling to the baseline palette' "$unset_baseline" "$BUDGET_UNSET_
 
 hardcoded=$(count 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' exclude-theme)
 report 'hardcoded Color outside theme/' "$hardcoded" "$BUDGET_HARDCODED_COLOR"
-[[ $hardcoded -gt 0 ]] && grep -rEln 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' \
-  "$UI" --include=*.kt | grep -v "^$THEME/" | sed "s|$UI/|     |"
+# No -n, so the line is path:content and NOT_A_COMMENT's single-colon prefix matches.
+[[ $hardcoded -gt 0 ]] && grep -rE 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' \
+  "$UI" --include=*.kt | grep -v "^$THEME/" | grep -vE "$NOT_A_COMMENT" \
+  | cut -d: -f1 | sort -u | sed "s|$UI/|     |"
 
 alpha=$(count '\.copy\(alpha')
 report 'colours derived with .copy(alpha =)' "$alpha" -1

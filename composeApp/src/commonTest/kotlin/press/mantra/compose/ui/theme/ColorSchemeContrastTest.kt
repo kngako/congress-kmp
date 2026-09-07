@@ -194,6 +194,61 @@ class ColorSchemeContrastTest {
     }
 
     @Test
+    fun `the extended brand families read at 4_5 to 1`() {
+        // The two pills on CreateProfileScreen. They are not part of any ColorScheme, so
+        // nothing else in this file reaches them, and their previous incarnation is
+        // exactly why they need asserting: `BluePill` paired with `Color.DarkGray` by eye
+        // was 2.90:1, and `RedPill` carried alpha 0.749 so its white label was 3.50:1 once
+        // composited. Both looked fine to whoever wrote them.
+        val failures = mutableListOf<String>()
+
+        listOf(
+            "bluePill light" to bluePillLight,
+            "bluePill dark" to bluePillDark,
+            "redPill light" to redPillLight,
+            "redPill dark" to redPillDark,
+        ).forEach { (name, family) ->
+            listOf(
+                "onColor on color" to contrastRatio(family.color, family.onColor),
+                "onColorContainer on colorContainer" to
+                    contrastRatio(family.colorContainer, family.onColorContainer),
+            ).forEach { (pairName, ratio) ->
+                if (ratio < SMALL_TEXT_MINIMUM) {
+                    failures += "$name: $pairName is ${ratio.format()}:1"
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), "below 4.5:1 —\n" + failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `the extended brand families are opaque`() {
+        // `RedPill` was `Color(230, 32, 32, 191)` -- the four-Int constructor, whose last
+        // argument is alpha. A translucent container has no contrast ratio of its own; it
+        // has one only once composited, and the test above would have measured a colour
+        // the user never sees. Roles are opaque.
+        val translucent = listOf(
+            "bluePillLight" to bluePillLight,
+            "bluePillDark" to bluePillDark,
+            "redPillLight" to redPillLight,
+            "redPillDark" to redPillDark,
+        ).flatMap { (name, family) ->
+            listOf(
+                "$name.color" to family.color,
+                "$name.onColor" to family.onColor,
+                "$name.colorContainer" to family.colorContainer,
+                "$name.onColorContainer" to family.onColorContainer,
+            )
+        }.filter { (_, color) -> color.alpha != 1f }
+
+        assertTrue(
+            translucent.isEmpty(),
+            "translucent roles —\n" + translucent.joinToString("\n") { "${it.first} alpha ${it.second.alpha}" },
+        )
+    }
+
+    @Test
     fun `outline separates from every surface it is drawn on at 3 to 1`() {
         val failures = mutableListOf<String>()
 
