@@ -2,6 +2,7 @@ package press.mantra.compose.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -34,9 +35,12 @@ import kotlin.test.assertTrue
  *  - **`outlineVariant`.** It reads 1.61:1 against surface, which looks alarming and is
  *    not a defect: M3's own baseline sits in the same range, and outlineVariant is a
  *    decorative divider. `outline`, the meaningful-boundary role, is asserted at 3:1.
- *  - **Call-site pairings.** Seven of those are below threshold today, the worst at
- *    1.00:1. They belong to phase 3 of the conformance plan and get their own table
- *    there; asserting them now would mean checking in a red test.
+ *  - **Call sites that pair two roles the scheme already covers.** Once
+ *    `ProposalListScreen` derives its `ListItem` colours from its `Card`, the pairing it
+ *    produces is `onPrimaryContainer` on `primaryContainer`, which the first assertion
+ *    already walks. Restating it here would double the maintenance and catch nothing.
+ *    What *is* asserted per call site is the composited case, below, because a
+ *    translucent container has no ratio until it is put over something.
  */
 class ColorSchemeContrastTest {
 
@@ -246,6 +250,42 @@ class ColorSchemeContrastTest {
             translucent.isEmpty(),
             "translucent roles —\n" + translucent.joinToString("\n") { "${it.first} alpha ${it.second.alpha}" },
         )
+    }
+
+    @Test
+    fun `translucent containers still carry their content at 4_5 to 1 once composited`() {
+        // Call sites that tint a container with `.copy(alpha = …)`. A translucent colour
+        // has no ratio of its own, so the only way to check one is to composite it over
+        // what is actually behind it and measure that -- which is why these could not be
+        // caught by the role-pair assertions above, and why one of them was missed for
+        // as long as it was.
+        //
+        // Each row names the call site so a failure says where to go. `surface` is the
+        // backdrop in every case; a screen that puts one of these on a tonal surface
+        // instead would need its own row.
+        val failures = mutableListOf<String>()
+
+        schemes.forEach { (schemeName, scheme) ->
+            listOf(
+                Triple(
+                    "ChatRoomMessagingScreen: private-message field",
+                    scheme.primaryContainer.copy(alpha = 0.3f),
+                    scheme.onSurface,
+                ),
+                Triple(
+                    "UnsupportedKindBadge / LinkPreview: tinted badge",
+                    scheme.surfaceVariant.copy(alpha = 0.3f),
+                    scheme.onSurfaceVariant,
+                ),
+            ).forEach { (site, container, content) ->
+                val ratio = contrastRatio(container.compositeOver(scheme.surface), content)
+                if (ratio < SMALL_TEXT_MINIMUM) {
+                    failures += "$schemeName: $site is ${ratio.format()}:1"
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), "below 4.5:1 once composited —\n" + failures.joinToString("\n"))
     }
 
     @Test

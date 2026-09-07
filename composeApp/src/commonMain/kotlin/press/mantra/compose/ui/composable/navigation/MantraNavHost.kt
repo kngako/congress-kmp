@@ -2,6 +2,7 @@ package press.mantra.compose.ui.composable.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -674,7 +675,11 @@ fun MantraNavHost(
         composable<BlankRoute> {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color.Black
+                // Nothing is drawn on it, so this is a backdrop rather than a surface
+                // carrying content. `scrim` is the role for that, and is #000000 in every
+                // one of this app's schemes -- so the pixels are unchanged and the value
+                // now moves with the theme instead of standing outside it.
+                color = MaterialTheme.colorScheme.scrim
             ) {
 
             }

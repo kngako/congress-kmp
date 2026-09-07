@@ -62,6 +62,11 @@ internal fun LoadingAsyncImage(
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.dp,
+                    // m3-color-exempt: over a blurhash placeholder the backdrop is an
+                    // arbitrary blurred image, so no role is reliably legible on it.
+                    // White is the conventional choice and holds on all but a white
+                    // photograph. Without a placeholder the surface is known and the
+                    // role is used.
                     color = if (blurPainter != null) Color.White else MaterialTheme.colorScheme.primary
                 )
             }

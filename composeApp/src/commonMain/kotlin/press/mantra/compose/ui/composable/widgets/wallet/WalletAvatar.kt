@@ -103,8 +103,22 @@ fun ColumnScope.AvatarPicker(
                         showPickerDialog = false
                         onAvatarChange(emoji)
                     }) {
-                        val mutedBgColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        WalletAvatar(emoji, backgroundColor = if (emoji == avatar) mutedBgColor else Color.Transparent)
+                        // `secondaryContainer` is M3's role for a selected item, and it
+                        // replaces `onSurface` at 50% -- a content colour used as a
+                        // background, which composited to a mid grey 2.49:1 from the
+                        // unselected cells beside it.
+                        //
+                        // The tonal container is not itself high-contrast against the
+                        // surface in this palette (1.65:1), which M3 accepts because its
+                        // own selected states carry a second cue -- an outline or a
+                        // checkmark. This grid has neither, and adding one is component
+                        // work rather than a colour fix. Recorded in
+                        // docs/material-design-conformance.md.
+                        val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
+                        WalletAvatar(
+                            emoji,
+                            backgroundColor = if (emoji == avatar) selectedBackground else Color.Transparent
+                        )
                     }
                 }
             }

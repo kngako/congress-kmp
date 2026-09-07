@@ -40,7 +40,7 @@ internal fun LiveStreamCardContent(
             CircularProgressIndicator(
                 modifier = Modifier.width(14.dp).height(14.dp),
                 strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(MaterialTheme.spacing.space100))
             Text(
@@ -84,13 +84,16 @@ internal fun LiveStreamCardContent(
                     if (status == "live") {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFE53935),
+                            // Was #E53935 with a white label: 4.23:1, under the floor
+                            // for text this size. `error` is the role for a red that has
+                            // to be read, and carries its own `onError`.
+                            color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
                                 text = "LIVE",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onError,
                                 modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
                             )
                         }

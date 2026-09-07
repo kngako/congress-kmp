@@ -151,7 +151,7 @@ Measured against the light scheme:
 |---|---|---|---|
 | `ProposalListScreen.kt:228` | `ListItem` headline (`onSurface`) on a `Card` of `primaryContainer` | **1.00:1** | 4.5:1 |
 | `HomeScreen.kt:113` | `titleContentColor = primary` on `containerColor = primaryContainer` | **1.22:1** | 4.5:1 |
-| `ArticleCard.kt:67`, `QuotedNote.kt:101`, `QuotedAddressableNote.kt:62`, `LiveStreamCardContent.kt:42` | `onSurfaceVariant.copy(alpha = 0.5f)` on surface | 2.49:1 | 4.5:1 |
+| `ArticleCard.kt:67`, `QuotedNote.kt:101`, `QuotedAddressableNote.kt:62`, `LiveStreamCardContent.kt:42` | `onSurfaceVariant.copy(alpha = 0.5f)` on surface — these four are `CircularProgressIndicator` colours, not text, so the threshold is 3:1 rather than 4.5:1. Still under it. | 2.49:1 | 3:1 |
 | `CreateProfileScreen.kt:329` | `Color.DarkGray` on `BluePill` | 2.90:1 | 4.5:1 |
 | `ArticleCard.kt:154` | `onSurfaceVariant.copy(alpha = 0.7f)` on surface | 3.96:1 | 4.5:1 |
 | `CreateProfileScreen.kt:311` | `Color.White` on `RedPill` (75% alpha over surface) | 3.50:1 | 4.5:1 |

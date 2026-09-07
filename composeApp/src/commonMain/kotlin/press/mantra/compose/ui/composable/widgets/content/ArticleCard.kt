@@ -65,7 +65,7 @@ private fun ArticleCard(
                 CircularProgressIndicator(
                     modifier = Modifier.width(14.dp).height(14.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
@@ -152,7 +152,7 @@ private fun ArticleCard(
                                     )
                                 }",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

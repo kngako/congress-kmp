@@ -24,7 +24,7 @@ THEME="$UI/theme"
 # ---------------------------------------------------------------------------
 # Budgets. "-1" means not yet budgeted -- reported, but never fails --check.
 # ---------------------------------------------------------------------------
-BUDGET_HARDCODED_COLOR=9       # phase 3 drives to 0 outside theme/
+BUDGET_HARDCODED_COLOR=0       # phase 3: reached 2026-09-08
 BUDGET_SPACING_LITERALS=0      # phase 2: reached 2026-09-08
 BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
 BUDGET_NULL_DESCRIPTION=18     # phase 3 triages each one
@@ -54,6 +54,23 @@ report() {
 # colour counts as one -- which happened the first time a call site was fixed and the
 # commit explained what it had replaced.
 NOT_A_COMMENT='^[^:]*:[[:space:]]*(//|\*|/\*)'
+
+# A colour that genuinely cannot come from a role -- a QR code's modules, a control
+# floating over an arbitrary photograph -- is marked at the site with
+# `// m3-color-exempt: <reason>` on the lines above it, the same convention
+# m3-spacing-positions.py uses. `grep -A` pulls the following lines in so the marker
+# above a literal suppresses it; the reason travels with the code rather than living
+# in a list of file names in this script.
+hardcoded_colours() {
+  grep -rE -A 8 'm3-color-exempt' "$UI" --include=*.kt 2>/dev/null \
+    | grep -E 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' \
+    | sed 's/^\([^-:]*\)[-:]/\1:/' | sort -u > /tmp/.m3-exempt-lines.$$
+  grep -rE 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' \
+    "$UI" --include=*.kt 2>/dev/null \
+    | grep -v "^$THEME/" | grep -vE "$NOT_A_COMMENT" \
+    | grep -vxFf /tmp/.m3-exempt-lines.$$ 2>/dev/null
+  rm -f /tmp/.m3-exempt-lines.$$
+}
 
 # Count matches across the UI tree, optionally excluding the theme package.
 # $1 pattern, $2 "exclude-theme" | "all"
@@ -113,12 +130,9 @@ report 'roles falling to the baseline palette' "$unset_baseline" "$BUDGET_UNSET_
 [[ -n $baseline_list ]] && note "lavender:$baseline_list"
 [[ -n $derived_list ]] && note "derived (not a defect):$derived_list"
 
-hardcoded=$(count 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' exclude-theme)
+hardcoded=$(hardcoded_colours | wc -l | tr -d ' ')
 report 'hardcoded Color outside theme/' "$hardcoded" "$BUDGET_HARDCODED_COLOR"
-# No -n, so the line is path:content and NOT_A_COMMENT's single-colon prefix matches.
-[[ $hardcoded -gt 0 ]] && grep -rE 'Color\(0x|Color\.(Red|Blue|Green|Gray|LightGray|DarkGray|White|Black|Yellow|Magenta|Cyan)' \
-  "$UI" --include=*.kt | grep -v "^$THEME/" | grep -vE "$NOT_A_COMMENT" \
-  | cut -d: -f1 | sort -u | sed "s|$UI/|     |"
+[[ $hardcoded -gt 0 ]] && hardcoded_colours | cut -d: -f1 | sort -u | sed "s|$UI/|     |"
 
 alpha=$(count '\.copy\(alpha')
 report 'colours derived with .copy(alpha =)' "$alpha" -1

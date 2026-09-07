@@ -63,7 +63,7 @@ fun FullScreenImageViewer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(MaterialTheme.colorScheme.scrim)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -92,7 +92,12 @@ fun FullScreenImageViewer(
                     .padding(MaterialTheme.spacing.containerPadding)
             ) {
                 val buttonColors = IconButtonDefaults.iconButtonColors(
-                    containerColor = Color.Black.copy(alpha = 0.5f),
+                    // m3-color-exempt: this button floats over an arbitrary
+                    // photograph, so no scheme role is safe behind it. A translucent
+                    // scrim with white on it is M3's own full-screen media treatment
+                    // and the only pairing that holds over both a white sky and a
+                    // black one.
+                    containerColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
                     contentColor = Color.White
                 )
 

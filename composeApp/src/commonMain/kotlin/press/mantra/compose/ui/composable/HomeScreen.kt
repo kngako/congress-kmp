@@ -110,11 +110,11 @@ fun HomeScreen(
             Scaffold(
                 modifier = Modifier,
                 topBar = {
+                    // No colour override. It was `containerColor = primaryContainer` with
+                    // `titleContentColor = primary`, which in the light scheme is #000000
+                    // on #1B1B1B -- 1.22:1, a black title on a near-black bar. The
+                    // default is `surface`/`onSurface` and needs no help.
                     TopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            titleContentColor = MaterialTheme.colorScheme.primary
-                        ),
                         title = {
                             Text(
                                 "Torch"

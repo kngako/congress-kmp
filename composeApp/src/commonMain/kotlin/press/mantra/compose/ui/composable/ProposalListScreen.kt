@@ -226,18 +226,40 @@ private fun ProposalCard(
             "None of its events could be read"
         }
 
+    // Every colour inside this card is derived from the card, rather than reached for
+    // independently, because ListItem does not inherit LocalContentColor -- its headline
+    // comes from ListTokens.ItemLabelTextColor, which is `onSurface`. With the container
+    // at `primaryContainer` and the headline at `onSurface`, the light scheme drew
+    // #1B1B1B on #1B1B1B: 1.00:1, invisible, and applied to exactly the proposals that
+    // await your signature. The icon tint (`primary`) was 1.22:1, the supporting text
+    // 1.84:1 and the error line 2.67:1. Only the dark scheme was legible, because there
+    // `primaryContainer` is black.
+    val cardColors = if (proposal.awaitsYou) {
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
+    // `primaryContainer` is kept as the highlight so this stays a fix rather than a
+    // restyle. It is a near-black card in the light scheme, and `secondaryContainer` --
+    // the brand gold, 4.56:1 against its own content -- would read more like "this needs
+    // you". That is a design call, not an accessibility one.
+    val cardContentColor = cardColors.contentColor
+
     Card(
         onClick = onClick,
-        colors = if (proposal.awaitsYou) {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        } else {
-            CardDefaults.cardColors()
-        }
+        colors = cardColors
     ) {
         ListItem(
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = cardContentColor,
+                overlineColor = cardContentColor,
+                supportingColor = cardContentColor,
+                leadingIconColor = cardContentColor,
+                trailingIconColor = cardContentColor,
+            ),
             leadingContent = {
                 Icon(
                     imageVector = when {
@@ -250,10 +272,13 @@ private fun ProposalCard(
                     },
                     contentDescription = null,
                     tint = when {
-                        proposal.session.stage == FrostSigningStage.FAILED ->
-                            MaterialTheme.colorScheme.error
-                        proposal.awaitsYou -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        // `error` is 2.67:1 on the highlighted card, so on that one the
+                        // failure is carried by the icon shape and the supporting line
+                        // rather than by colour -- which is the more robust signal
+                        // anyway, and the only one available to a monochrome display.
+                        proposal.session.stage == FrostSigningStage.FAILED &&
+                            !proposal.awaitsYou -> MaterialTheme.colorScheme.error
+                        else -> cardContentColor
                     }
                 )
             },
@@ -266,7 +291,7 @@ private fun ProposalCard(
                         Text(
                             text = "Review",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+                            color = cardContentColor
                         )
                     }
 
@@ -302,7 +327,11 @@ private fun ProposalCard(
                     if (proposal.unreadable > 0) {
                         Text(
                             text = "${proposal.unreadable} of them could not be read",
-                            color = MaterialTheme.colorScheme.error
+                            color = if (proposal.awaitsYou) {
+                                cardContentColor
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
                         )
                     }
 

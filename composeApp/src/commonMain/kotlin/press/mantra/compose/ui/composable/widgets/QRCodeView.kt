@@ -65,6 +65,10 @@ class QRCodeBackgroundPainter(
 fun QRCodeView(
     data: String,
 ) {
+    // m3-color-exempt: a QR code is read by a camera, not a person. Scanners need
+    // maximum luminance contrast between the modules and their background, so these
+    // are black and white rather than onSurface and surface -- which in a dynamic
+    // colour scheme could be two mid tones and unscannable.
     val qrCodeColor = if (isSystemInDarkTheme()) {
         Color.White
     } else {

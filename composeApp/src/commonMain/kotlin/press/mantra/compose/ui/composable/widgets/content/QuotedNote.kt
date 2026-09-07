@@ -99,7 +99,7 @@ fun QuotedNote(
                         .width(14.dp)
                         .height(14.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
