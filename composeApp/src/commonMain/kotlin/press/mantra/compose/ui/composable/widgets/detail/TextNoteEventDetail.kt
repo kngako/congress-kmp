@@ -287,7 +287,7 @@ fun TextNoteEventDetail(
                                 ) {
                                     Icon(
                                         Icons.Default.AddReaction,
-                                        contentDescription = "Add Reaction"
+                                        contentDescription = "Add reaction"
                                     )
                                 }
 

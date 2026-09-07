@@ -70,16 +70,16 @@ fun NewChatBottomSheetDialog(
                     leadingContent = {
                         Icon(
                             Icons.Default.Key,
-                            contentDescription = "Direct Message via npub"
+                            contentDescription = "Direct message via npub"
                         )
                     },
                     headlineContent = {
-                        Text("Direct Message via npub")
+                        Text("Direct message via npub")
                     },
                     trailingContent = {
                         Icon(
                             Icons.Default.ChevronRight,
-                            contentDescription = "Direct Message via npub"
+                            contentDescription = "Direct message via npub"
                         )
                     }
                 )

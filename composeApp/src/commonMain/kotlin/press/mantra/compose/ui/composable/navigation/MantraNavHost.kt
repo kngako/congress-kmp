@@ -627,7 +627,7 @@ fun MantraNavHost(
                 onNavigateToInviteFriend = {
                     navController.navigate(
                         route = ImplementationPendingRoute(
-                            "Invite Friend"
+                            "Invite friend"
                         )
                     )
                 },
@@ -1136,7 +1136,7 @@ fun MantraNavHost(
                 onNavigateToEditProfile = {
                     navController.navigate(
                         route = ImplementationPendingRoute(
-                            "Edit Profile"
+                            "Edit profile"
                         )
                     )
                 },

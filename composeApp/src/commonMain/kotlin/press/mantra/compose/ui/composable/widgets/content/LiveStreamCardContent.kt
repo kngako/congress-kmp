@@ -113,7 +113,7 @@ internal fun LiveStreamCardContent(
                         }
                     }
                     Text(
-                        text = title ?: "Live Stream",
+                        text = title ?: "Live stream",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,

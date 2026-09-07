@@ -164,7 +164,7 @@ fun AddDialectScreen(
                                         },
                                         onFailure = {
                                             onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed Dialect")
+                                                ImplementationPendingRoute("Failed dialect")
                                             )
                                         }
                                     )
@@ -174,7 +174,7 @@ fun AddDialectScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose dialect"
                                 )
-                                Text("Propose Dialect")
+                                Text("Propose dialect")
                             }
                         }
                     )
@@ -216,7 +216,7 @@ fun AddDialectScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Dialect Name"
+                                    text = "Dialect name"
                                 )
                             },
                             placeholder = {
@@ -296,7 +296,7 @@ fun AddDialectScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Add Dialect",
+                    text = "Add dialect",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

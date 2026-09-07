@@ -272,7 +272,7 @@ private fun SelectChatRoomMembersScreenPreview() {
         ) {
             SelectChatRoomMembersScreen(
                 activeUserPublicKey = "",
-                name = "Group Discussions",
+                name = "Group discussions",
                 description = "See something... say something.",
                 initialSelectChatRoomMembersUIState = SelectChatRoomMembersUIState.Loaded(
                     profiles = listOf(

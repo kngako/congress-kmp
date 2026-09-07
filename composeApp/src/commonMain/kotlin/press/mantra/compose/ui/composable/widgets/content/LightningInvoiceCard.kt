@@ -52,7 +52,7 @@ internal fun LightningInvoiceCard(
     if (showConfirm) {
         AlertDialog(
             onDismissRequest = { showConfirm = false },
-            title = { Text("Lightning Invoice") },
+            title = { Text("Lightning invoice") },
             text = {
                 Column {
                     Text(
@@ -119,7 +119,7 @@ internal fun LightningInvoiceCard(
                 Text(
                     text = if (decoded.amount != null)
                         "${decoded.amount!!.truncateToSatoshi()}"
-                    else "Any Amount",
+                    else "Any amount",
                     style = MaterialTheme.typography.titleSmall,
                     color = primary
                 )

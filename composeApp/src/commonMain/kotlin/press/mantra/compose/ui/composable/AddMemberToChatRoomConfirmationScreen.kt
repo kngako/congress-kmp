@@ -170,7 +170,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct Message Detail",
+                    text = "Direct message detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -218,7 +218,7 @@ private fun ChatRoomDetailScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "hex",
                             userPublicKey = "hex",
-                            subject = "Room Title",
+                            subject = "Room title",
                             description = "See something... say something.",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null

@@ -81,7 +81,7 @@ fun KeyPackageManagementScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Key Package Management"
+                                text = "Key package management"
                             )
                         },
                         navigationIcon = {
@@ -123,7 +123,7 @@ fun KeyPackageManagementScreen(
                                 )
 
                                 Text(
-                                    text = "Publish New Key Package"
+                                    text = "Publish new key package"
                                 )
                             }
                         }
@@ -191,7 +191,7 @@ fun KeyPackageManagementScreen(
                                             ) {
                                                 Icon(
                                                     Icons.Default.LockReset,
-                                                    contentDescription = "Rotate Key"
+                                                    contentDescription = "Rotate key"
                                                 )
                                             }
                                         }

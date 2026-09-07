@@ -96,7 +96,7 @@ fun SovereignWalletStartupScreen(
                     }
                     activeWallet != null -> {
                         LoadingDataIndicator(
-                            text = "Opening Wallet"
+                            text = "Opening wallet"
                         )
                         LaunchedEffect(Unit) {
                             sovereignWalletViewModel.loadSovereignData(activeWallet.id)
@@ -191,7 +191,7 @@ fun SovereignWalletStartupScreen(
 
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = "Startup Error"
+                                        text = "Startup error"
                                     )
 
                                     when (startupState) {

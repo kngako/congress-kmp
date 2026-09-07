@@ -250,7 +250,7 @@ fun TranslationArtifactVersionDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Translation Detail",
+                    text = "Translation detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

@@ -87,7 +87,7 @@ fun SocialPreconditionScreen(
                     }
                 ) {
                     Text(
-                        "Invite a Friend"
+                        "Invite a friend"
                     )
                 }
 

@@ -163,7 +163,7 @@ fun ChapterDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Chapter Detail",
+                    text = "Chapter detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

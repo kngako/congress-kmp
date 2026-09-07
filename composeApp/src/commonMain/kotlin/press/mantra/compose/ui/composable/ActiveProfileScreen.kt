@@ -163,7 +163,7 @@ fun ActiveProfileScreen(
                                 TextButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Edit Profile")
+                                            ImplementationPendingRoute("Edit profile")
                                         )
                                     }
                                 ) {
@@ -177,7 +177,7 @@ fun ActiveProfileScreen(
                                     )
 
                                     Text(
-                                        "Edit Profile"
+                                        "Edit profile"
                                     )
                                 }
 
@@ -204,7 +204,7 @@ fun ActiveProfileScreen(
                                         modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
                                     Text(
-                                        "Share Profile"
+                                        "Share profile"
                                     )
                                 }
 
@@ -228,7 +228,7 @@ fun ActiveProfileScreen(
 
                                 Icon(
                                     Icons.Default.Bento,
-                                    contentDescription = "Key Packages"
+                                    contentDescription = "Key packages"
                                 )
 
                                 Spacer(
@@ -236,7 +236,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Key Package Management"
+                                    "Key package management"
                                 )
                             }
                         }
@@ -246,14 +246,14 @@ fun ActiveProfileScreen(
                             TextButton(
                                 onClick = {
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Change Account")
+                                        ImplementationPendingRoute("Change account")
                                     )
                                 }
                             ) {
 
                                 Icon(
                                     Icons.Default.ImportExport,
-                                    contentDescription = "Change Profile"
+                                    contentDescription = "Change profile"
                                 )
 
                                 Spacer(
@@ -261,7 +261,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Change Account"
+                                    "Change account"
                                 )
                             }
                         }
@@ -272,20 +272,20 @@ fun ActiveProfileScreen(
                                 onClick = {
 
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Profile Keys")
+                                        ImplementationPendingRoute("Profile keys")
                                     )
                                 }
                             ) {
                                 Icon(
                                     Icons.Default.Key,
-                                    contentDescription = "Profile Keys"
+                                    contentDescription = "Profile keys"
                                 )
 
                                 Spacer(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Profile Keys")
+                                Text("Profile keys")
                             }
                         }
 
@@ -293,14 +293,14 @@ fun ActiveProfileScreen(
                             TextButton(
                                 onClick = {
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Network Relays")
+                                        ImplementationPendingRoute("Network relays")
                                     )
 
                                 }
                             ) {
                                 Icon(
                                     Icons.Default.Hub,
-                                    contentDescription = "Network Relays"
+                                    contentDescription = "Network relays"
                                 )
 
                                 Spacer(
@@ -308,7 +308,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Text(
-                                    "Network Relays"
+                                    "Network relays"
                                 )
                             }
                         }
@@ -317,7 +317,7 @@ fun ActiveProfileScreen(
                             Button(
                                 onClick = {
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Sign Out")
+                                        ImplementationPendingRoute("Sign out")
                                     )
                                 }
                             ) {

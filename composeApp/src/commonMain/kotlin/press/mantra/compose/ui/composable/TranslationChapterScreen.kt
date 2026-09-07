@@ -164,7 +164,7 @@ fun TranslationChapterScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Chapter Translation",
+                    text = "Chapter translation",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

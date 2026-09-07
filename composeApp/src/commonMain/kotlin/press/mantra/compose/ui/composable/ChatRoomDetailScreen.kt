@@ -217,7 +217,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Add Artifact to Library")
+                                Text("Add artifact to library")
                             }
                         }
 
@@ -283,7 +283,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Add Dialect")
+                                Text("Add dialect")
                             }
                         }
 
@@ -365,7 +365,7 @@ fun ChatRoomDetailScreen(
                                         modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
-                                    Text("Shared Key")
+                                    Text("Shared key")
                                 }
                             }
                         }
@@ -426,7 +426,7 @@ fun ChatRoomDetailScreen(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Invite New Member")
+                                Text("Invite new member")
                             }
                         }
 
@@ -496,15 +496,30 @@ fun ChatRoomDetailScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Unsubscribe,
-                                    contentDescription = "Leave Group"
+                                    contentDescription = "Leave group"
                                 )
 
                                 Spacer(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Leave Group")
+                                Text("Leave group")
                             }
+
+                            // What it actually does: sets leftGroupAt and posts a line to
+                            // the room. Said here because the button fires immediately --
+                            // there is no confirmation step to say it in.
+                            Text(
+                                text = "Posts a line to the room saying you left, and " +
+                                    "lets you delete it from this device afterwards.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    start = MaterialTheme.spacing.space600,
+                                    end = MaterialTheme.spacing.containerPadding,
+                                    bottom = MaterialTheme.spacing.compactPadding,
+                                )
+                            )
                         }
 
                         item {
@@ -522,15 +537,31 @@ fun ChatRoomDetailScreen(
                             ) {
                                 Icon(
                                     Icons.Default.DeleteForever,
-                                    contentDescription = "Delete Group"
+                                    contentDescription = "Delete group"
                                 )
 
                                 Spacer(
                                     modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
-                                Text("Delete Group")
+                                Text("Delete group")
                             }
+
+                            // A soft delete: it sets deletedAt on the local row. Saying
+                            // "delete" without saying where would leave somebody believing
+                            // the messages are gone from the relays and from the other
+                            // members, which is the opposite of true.
+                            Text(
+                                text = "Removes the room from this device. The messages " +
+                                    "stay on the relays and with the other members.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    start = MaterialTheme.spacing.space600,
+                                    end = MaterialTheme.spacing.containerPadding,
+                                    bottom = MaterialTheme.spacing.compactPadding,
+                                )
+                            )
                         }
 
                         // Only MLS rooms have group events to read again. A NIP-17
@@ -565,7 +596,7 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct Message Detail",
+                    text = "Direct message detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -632,7 +663,7 @@ private fun ReindexMarmotGroupEventsButton(
                 modifier = Modifier.width(MaterialTheme.spacing.space125)
             )
 
-            Text("Reindex Events")
+            Text("Reindex events")
         }
 
         when (reindexState) {
@@ -695,7 +726,7 @@ private fun ChatRoomMessagingScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "",
                             userPublicKey = "",
-                            subject = "Message Title",
+                            subject = "Message title",
                             description = "Description of a chat room so that members now why they are here.",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null

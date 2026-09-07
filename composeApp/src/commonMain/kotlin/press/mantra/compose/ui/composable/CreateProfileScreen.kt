@@ -73,7 +73,7 @@ fun CreateProfileScreen(
                     is CreateProfileUIState.Declaration -> {
 
                         Text(
-                            "Create Profile",
+                            "Create profile",
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -106,7 +106,7 @@ fun CreateProfileScreen(
                     }
                     is CreateProfileUIState.InputPrompt -> {
                         Text(
-                            "Create Profile",
+                            "Create profile",
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -277,7 +277,7 @@ fun CreateProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Create Profile"
+                                    text = "Create profile"
                                 )
                             }
                         }

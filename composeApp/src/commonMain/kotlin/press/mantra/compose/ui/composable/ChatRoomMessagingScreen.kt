@@ -380,7 +380,7 @@ fun ChatRoomMessagingScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct Message Detail",
+                    text = "Direct message detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

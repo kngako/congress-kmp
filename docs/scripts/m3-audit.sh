@@ -29,7 +29,7 @@ BUDGET_SPACING_LITERALS=0      # phase 2: reached 2026-09-08
 BUDGET_BARE_CLICKABLE=0        # phase 3: reached 2026-09-08
 BUDGET_NULL_DESCRIPTION=0      # phase 3: reached 2026-09-08
 BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
-BUDGET_TITLE_CASE=-1           # phase 4 drives to 0
+BUDGET_TITLE_CASE=0            # phase 4: reached 2026-09-08
 BUDGET_UNSET_COLOR_ROLES=0     # phase 1: reached 2026-09-07
 
 fail_count=0
@@ -193,9 +193,13 @@ literals=$(( $(count 'text = "') + $(count 'Text\("') ))
 report 'string literals in composables' "$literals" "$BUDGET_STRING_LITERALS"
 res=$(count 'stringResource|Res\.string')
 note "stringResource / Res.string:            $res"
-title_case=$(grep -rhoE '"[A-Z][a-z]+( [A-Z][a-z]+)+"' "$UI" --include=*.kt 2>/dev/null | sort -u | wc -l | tr -d ' ')
-report 'distinct Title Case strings' "$title_case" "$BUDGET_TITLE_CASE"
-note 'includes preview sample data (person names); phase 4 triages'
+# Delegated, because the grep version was wrong twice: it required every word after the
+# first to be capitalised (missing "Invite a Friend") and it read one line at a time
+# (missing a `Text(` whose literal was on the next). It also counted sample data --
+# "Steve Biko" is title case because that is how a name is written.
+title_case=$(python3 docs/scripts/m3-title-case.py | grep -oE '[0-9]+$')
+report 'Title Case in UI strings' "$title_case" "$BUDGET_TITLE_CASE"
+note 'run docs/scripts/m3-title-case.py --list to see them'
 
 # ---------------------------------------------------------------------------
 hdr 'States and feedback  (phase 5)'

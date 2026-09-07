@@ -100,7 +100,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                             text = Instant.fromEpochSeconds(containedPost.createdAt).toFormattedTimeAndDateString()
                         )
                     } else {
-                        Text("Malformed Note")
+                        Text("Malformed note")
                     }
 
                 }

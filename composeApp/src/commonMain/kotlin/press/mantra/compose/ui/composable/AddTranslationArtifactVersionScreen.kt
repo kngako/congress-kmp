@@ -191,7 +191,7 @@ fun AddTranslationArtifactVersionScreen(
                                         },
                                         onFailure = {
                                             onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed Translation")
+                                                ImplementationPendingRoute("Failed translation")
                                             )
                                         }
                                     )
@@ -201,7 +201,7 @@ fun AddTranslationArtifactVersionScreen(
                                     Icons.Default.Translate,
                                     contentDescription = "Propose translation"
                                 )
-                                Text("Propose Translation")
+                                Text("Propose translation")
                             }
                         }
                     )
@@ -283,7 +283,7 @@ fun AddTranslationArtifactVersionScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Add Translation",
+                    text = "Add translation",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

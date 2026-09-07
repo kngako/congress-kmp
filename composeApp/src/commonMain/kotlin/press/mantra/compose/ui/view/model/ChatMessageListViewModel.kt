@@ -489,7 +489,7 @@ class ChatMessageListViewModel(
                                                         modifier = Modifier.weight(1f)
                                                     ) {
                                                         Text(
-                                                            text = "No Chat Message Relays were found for this user.",
+                                                            text = "No chat message relays were found for this user.",
                                                             textAlign = TextAlign.Center,
                                                             style = MaterialTheme.typography.labelSmall
                                                         )

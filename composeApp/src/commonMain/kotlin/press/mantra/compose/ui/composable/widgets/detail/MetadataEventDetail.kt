@@ -115,7 +115,7 @@ fun MetadataEventDetail(
                             ) {
                                 Icon(
                                     Icons.Default.Bolt,
-                                    contentDescription = "Lightning Bolt",
+                                    contentDescription = "Lightning payment",
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
@@ -181,7 +181,7 @@ fun MetadataEventDetail(
                                                 onClick = onNavigateToEditProfile
                                             ) {
                                                 Text(
-                                                    "Edit Profile"
+                                                    "Edit profile"
                                                 )
                                             }
 
@@ -239,20 +239,20 @@ fun MetadataEventDetail(
                     TextButton(
                         onClick = {
                             onNavigateToEvent.invoke(
-                                ImplementationPendingRoute("Add to Group")
+                                ImplementationPendingRoute("Add to group")
                             )
                         }
                     ) {
                         Icon(
                             Icons.Default.GroupAdd,
-                            contentDescription = "Add to Group"
+                            contentDescription = "Add to group"
                         )
 
                         Spacer(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Add To Group")
+                        Text("Add to group")
                     }
                 }
 
@@ -260,7 +260,7 @@ fun MetadataEventDetail(
                     TextButton(
                         onClick = {
                             onNavigateToEvent.invoke(
-                                ImplementationPendingRoute("Block User")
+                                ImplementationPendingRoute("Block user")
                             )
                         }
                     ) {
@@ -273,7 +273,7 @@ fun MetadataEventDetail(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Block User")
+                        Text("Block user")
                     }
                 }
 
@@ -291,13 +291,13 @@ fun MetadataEventDetail(
                     ) {
                         Icon(
                             Icons.Default.Mail,
-                            contentDescription = "Direct Message"
+                            contentDescription = "Direct message"
                         )
 
                         Spacer(
                             modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
-                        Text("Send Message")
+                        Text("Send message")
                     }
                 }
             }

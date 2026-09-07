@@ -63,7 +63,7 @@ fun SignInToProfileScreen(
                 when (val signInToProfileUIState = signInToProfileViewModel.signInToProfileUIState.value) {
                     is press.mantra.compose.ui.view.state.SignInToProfileUIState.InputPrompt -> {
                         Text(
-                            "Sign In",
+                            "Sign in",
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -144,7 +144,7 @@ fun SignInToProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Sign in to Npub",
+                            text = "Sign in with an npub",
                             style = MaterialTheme.typography.headlineMedium
                         )
 
@@ -184,7 +184,7 @@ fun SignInToProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Sign In"
+                                    text = "Sign in"
                                 )
                             }
                         }
@@ -230,7 +230,7 @@ fun SignInToProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Sign In"
+                                    text = "Sign in"
                                 )
                             }
                         }

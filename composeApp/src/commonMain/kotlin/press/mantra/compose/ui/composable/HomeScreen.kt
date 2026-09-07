@@ -116,9 +116,13 @@ fun HomeScreen(
                     // default is `surface`/`onSurface` and needs no help.
                     TopAppBar(
                         title = {
-                            Text(
-                                "Torch"
-                            )
+                            // "Mantra". The launcher label, the desktop window title, the
+                            // landing screen and the package name all say so; this bar was
+                            // the last place still saying "Torch". `UserAgent.APP_NAME` is
+                            // the other, and is left alone -- it goes on the wire to relay
+                            // operators, so it is a network identity question rather than
+                            // a content one.
+                            Text("Mantra")
                         },
                         navigationIcon = {
                             IconButton(
@@ -160,11 +164,11 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "New Chat"
+                                contentDescription = "New chat"
                             )
                         },
                         text = {
-                            Text("New Chat")
+                            Text("New chat")
                         }
                     )
                 }

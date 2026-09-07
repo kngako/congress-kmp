@@ -167,7 +167,7 @@ fun ArtifactDetailScreen(
                                 contentDescription = "Add chapter"
                             )
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text("Add Chapter")
+                            Text("Add chapter")
                         }
                     }
 
@@ -232,7 +232,7 @@ fun ArtifactDetailScreen(
                                 contentDescription = "Add translation"
                             )
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text("Add Translation")
+                            Text("Add translation")
                         }
                     }
 
@@ -291,7 +291,7 @@ fun ArtifactDetailScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Artifact Detail",
+                    text = "Artifact detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

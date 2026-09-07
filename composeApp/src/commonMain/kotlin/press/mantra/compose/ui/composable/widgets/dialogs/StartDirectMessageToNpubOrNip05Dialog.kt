@@ -112,7 +112,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         ) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Close Start Npub Direct Message"
+                                contentDescription = "Close"
                             )
                         }
                     },
@@ -166,7 +166,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         }
                     }
                 ) {
-                    Text("Start Chat")
+                    Text("Start chat")
 
                     Spacer(
                         modifier = Modifier.width(MaterialTheme.spacing.space125)

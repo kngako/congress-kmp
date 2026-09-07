@@ -194,7 +194,7 @@ fun AddArtifactScreen(
                                         },
                                         onFailure = {
                                             onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed Artifact")
+                                                ImplementationPendingRoute("Failed artifact")
                                             )
                                         }
                                     )
@@ -205,7 +205,7 @@ fun AddArtifactScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose artifact"
                                 )
-                                Text("Propose Artifact")
+                                Text("Propose artifact")
                             }
                         }
                     )
@@ -220,7 +220,7 @@ fun AddArtifactScreen(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Add Artifact to the group library")
+                        Text("Add artifact to the group library")
 
                         if (!addArtifactUIState.canSign) {
                             Text(
@@ -248,7 +248,7 @@ fun AddArtifactScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Name of Artifact"
+                                    text = "Name of artifact"
                                 )
                             },
                             placeholder = {
@@ -302,7 +302,7 @@ fun AddArtifactScreen(
                             },
                             label = {
                                 Text(
-                                    text = "Initial Version Label"
+                                    text = "Initial version label"
                                 )
                             },
                             placeholder = {
@@ -352,7 +352,7 @@ fun AddArtifactScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Direct Message Detail",
+                    text = "Direct message detail",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

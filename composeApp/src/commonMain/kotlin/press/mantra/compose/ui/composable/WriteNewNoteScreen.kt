@@ -419,7 +419,7 @@ fun WriteNewNoteScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Transmit Note"
+                                    text = "Transmit note"
                                 )
                             }
                         }

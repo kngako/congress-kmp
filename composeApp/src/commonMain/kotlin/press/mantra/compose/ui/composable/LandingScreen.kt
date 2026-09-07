@@ -49,7 +49,7 @@ fun LandingScreen(
                     onClick = onNavigateToLearnMore
                 ) {
                     Text(
-                        text = "Learn More",
+                        text = "Learn more",
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -83,7 +83,7 @@ fun LandingScreen(
                     onClick = onNavigateToCreateProfile
                 ) {
                     Text(
-                        "Create Profile",
+                        "Create profile",
                         style = MaterialTheme.typography.bodyLarge
                     )
 

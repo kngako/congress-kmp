@@ -146,7 +146,7 @@ fun SearchResultScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.Tune,
-                                        contentDescription = "Adjust Search"
+                                        contentDescription = "Adjust search"
                                     )
                                 }
                             }

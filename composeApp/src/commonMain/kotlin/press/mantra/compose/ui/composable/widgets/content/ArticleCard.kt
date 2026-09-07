@@ -106,7 +106,7 @@ private fun ArticleCard(
                             )
                         }
                         Text(
-                            text = title ?: "Untitled Article",
+                            text = title ?: "Untitled article",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,

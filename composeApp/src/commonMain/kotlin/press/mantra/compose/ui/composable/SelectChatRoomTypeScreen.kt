@@ -451,7 +451,7 @@ private fun SelectChatRoomTypeScreenPreview() {
         ) {
             SelectChatRoomTypeScreen(
                 activeUserPublicKey = "",
-                name = "Group Discussions",
+                name = "Group discussions",
                 description = "See something... say something.",
                 memberPublicKeys = listOf("hex", "otherHex"),
                 initialSelectChatRoomTypeUIState = SelectChatRoomTypeUIState.Loaded(

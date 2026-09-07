@@ -187,7 +187,7 @@ fun AddChapterScreen(
                                         },
                                         onFailure = {
                                             onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed Chapter")
+                                                ImplementationPendingRoute("Failed chapter")
                                             )
                                         }
                                     )
@@ -197,7 +197,7 @@ fun AddChapterScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose chapter"
                                 )
-                                Text("Propose Chapter")
+                                Text("Propose chapter")
                             }
                         }
                     )
@@ -239,7 +239,7 @@ fun AddChapterScreen(
                                 contentDescription = "Name of the chapter"
                             )
                         },
-                        label = { Text("Chapter Name") },
+                        label = { Text("Chapter name") },
                         placeholder = { Text("eg. Chapter 1 — The Beginning") },
                     )
 
@@ -276,7 +276,7 @@ fun AddChapterScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Add Chapter",
+                    text = "Add chapter",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

@@ -167,7 +167,7 @@ fun TranslateChunkScreen(
                                         },
                                         onFailure = {
                                             onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed Translation")
+                                                ImplementationPendingRoute("Failed translation")
                                             )
                                         }
                                     )
@@ -177,7 +177,7 @@ fun TranslateChunkScreen(
                                     Icons.Default.Add,
                                     contentDescription = "Propose translation"
                                 )
-                                Text("Propose Translation")
+                                Text("Propose translation")
                             }
                         }
                     )
@@ -234,7 +234,7 @@ fun TranslateChunkScreen(
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "Translate Chunk",
+                    text = "Translate chunk",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
