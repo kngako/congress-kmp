@@ -496,57 +496,55 @@ alone.
 
 ### Phase 2 — spacing becomes a token
 
-**Why here.** Phase 6 has to adapt spacing per breakpoint. It cannot adapt 527
-literals.
+**Why here.** Phase 6 has to adapt spacing per breakpoint. It cannot adapt 527 literals.
 
-**Work.**
+**Built.** Three commits.
 
-1. **A spacing scale, named as the spec names it.** `MaterialTheme` has no
-   spacing slot, so this is a `CompositionLocal`:
+1. **The scale**, `Spacing.kt` — M3's eighteen stops on a composition local, with eight
+   semantic names over them (`screenMargin`, `containerPadding`, `compactPadding`,
+   `relatedGap`, `itemGap`, `sectionGap`, `emphasisGap`, `targetGap`) split along the
+   spec's padding / gap / margin distinction, with exactly one margin. A `data class`
+   rather than constants so that a wider instance at a larger breakpoint moves every
+   value, including the semantic ones — asserted, because a semantic name holding a
+   literal would stay behind and the layout would half-adapt.
 
-   ```kotlin
-   @Immutable
-   data class Spacing(
-       val space0: Dp = 0.dp,    val space25: Dp = 2.dp,   val space50: Dp = 4.dp,
-       val space75: Dp = 6.dp,   val space100: Dp = 8.dp,  val space125: Dp = 10.dp,
-       val space150: Dp = 12.dp, val space175: Dp = 14.dp, val space200: Dp = 16.dp,
-       val space250: Dp = 20.dp, val space300: Dp = 24.dp, val space400: Dp = 32.dp,
-       val space450: Dp = 36.dp, val space500: Dp = 40.dp, val space600: Dp = 48.dp,
-       val space700: Dp = 56.dp, val space800: Dp = 64.dp, val space900: Dp = 72.dp,
-   )
+   Reached through `MaterialTheme.spacing.containerPadding`, matching
+   `MaterialTheme.colorScheme.primary`. `LocalSpacing.current` would have to be read into
+   a local first and so could not appear inline in a `Modifier` chain; over 500 call sites
+   that difference is what decides whether the scale gets used.
 
-   val LocalSpacing = staticCompositionLocalOf { Spacing() }
-   ```
+2. **The 89 off-grid values**, to their nearest stop — 5→4, 15→16, 30→32, 50→48. Largest
+   move 2dp. Plus the one hand-written corner that was off the *shape* scale, 30dp against
+   `extraLarge`'s 28, which is the drift a scale exists to stop.
 
-   Defaulted to the M3 values so the migration is a rename, not a restyle. It is
-   a `data class` so Phase 6 can supply a wider instance at larger breakpoints
-   without touching a call site.
+3. **The remaining 353**, shape-aware: `padding + 8dp → compactPadding`,
+   `padding + 16dp → containerPadding`, `gap + 4dp → relatedGap`, `gap + 8dp → itemGap`,
+   everything else to the raw stop. 38 of 353 take a semantic name; the rest do not,
+   because assigning one needs somebody to have read what the container is, and a name
+   asserting a meaning the code lacks is worse than a stop asserting none.
 
-2. **A semantic layer over it**, because `space125` at a call site is no more
-   readable than `10.dp`. Screen margin, list gap, card padding, section gap —
-   named for what they are, each pointing at a stop. This is the layer that lets
-   the audit distinguish padding from gap from margin, which the raw scale
-   cannot.
+**The audit was measuring the wrong thing, and this is where it showed.** It split
+literals by *value* against an exemption list, and the split is not a property of the
+value: 16dp is a spacing stop and a plausible icon size, and 50dp was a `Spacer` height in
+52 places and a divider width in one. `docs/scripts/m3-spacing-positions.py` classifies by
+**call shape** instead — brace-matching `padding(…)`, `PaddingValues(…)`,
+`Arrangement.spacedBy(…)`, and a `.height()`/`.width()` whose enclosing call is `Spacer(`
+— and `docs/scripts/m3-migrate-spacing.py` rewrites using the same parse, so the audit and
+the migration agree by construction.
 
-3. **Migrate, in the order the audit reports.** The 89 off-scale values are the
-   interesting ones and go first: each is either a typo (round to the nearest
-   stop) or deliberate (say why, in a comment, and pick the nearest stop
-   anyway). Then `10.dp` and `20.dp` en masse.
+One value is exempt and says so at the site, through an inline `// m3-spacing-exempt:
+<reason>` comment the classifier honours: a 128dp spacer reserving room to scroll the last
+wallet clear of the window. Exemptions belong at the call site rather than in a list of
+numbers in the tool.
 
-4. **Retire the 49 spacer idioms** into the empty-state composable Phase 5
-   builds. They disappear rather than being migrated.
+**Done:** spacing positions 527 → **0**, 431 token reads, one reasoned exemption.
+Verified on-device that nothing moved — the landing screen differs in 47 of 162,000
+sampled pixels, 0.03%, all of them the status bar clock.
 
-5. Adopt the parent-container rule while passing through: prefer
-   `Arrangement.spacedBy` on the parent (119 uses already) and padding on the
-   container over per-child padding. The 119 existing `spacedBy` calls suggest
-   this is already the instinct.
-
-**Done when** the audit script reports zero `.dp` literals outside
-`ui/theme/Spacing.kt` and a short allowlist of genuine dimensions (avatar sizes,
-image heights, hairline borders).
-
-**Risk:** low but wide — it touches nearly every file. Best done as one
-mechanical commit per directory with previews checked between.
+**Left for later:** 76 `.dp` in dimension positions — avatar sizes at 35/55/70/75dp, icon
+sizes at 18/22dp. Sizing is a per-component question, and the plan puts component specs
+after the adaptive phase. They are reported rather than exempted so the number stays
+visible.
 
 ---
 
