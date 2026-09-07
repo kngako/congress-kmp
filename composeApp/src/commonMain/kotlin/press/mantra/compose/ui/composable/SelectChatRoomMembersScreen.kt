@@ -74,7 +74,7 @@ fun SelectChatRoomMembersScreen(
     when (val selectChatRoomMembersUIState = selectChatRoomMembersViewModel.selectChatRoomMembersUIState) {
         is SelectChatRoomMembersUIState.Error -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
@@ -144,9 +144,9 @@ fun SelectChatRoomMembersScreen(
                 ) {
                     if (selectChatRoomMembersUIState.profiles.isEmpty()) {
                         Column(
-                            modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
                             Spacer(
                                 modifier = Modifier.weight(1f)
@@ -177,7 +177,7 @@ fun SelectChatRoomMembersScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space50),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
                             items(
                                 items = selectChatRoomMembersUIState.profiles,
@@ -229,10 +229,10 @@ fun SelectChatRoomMembersScreen(
         SelectChatRoomMembersUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(

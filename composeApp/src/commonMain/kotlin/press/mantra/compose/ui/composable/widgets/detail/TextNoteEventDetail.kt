@@ -47,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -93,8 +94,8 @@ fun TextNoteEventDetail(
             FlexibleBottomAppBar(
                 containerColor = Color.Transparent,
                 contentPadding = PaddingValues(
-                    start = 10.dp,
-                    end = 10.dp
+                    start = MaterialTheme.spacing.space125,
+                    end = MaterialTheme.spacing.space125
                 ),
                 scrollBehavior = scrollBehavior
             ) {
@@ -114,8 +115,8 @@ fun TextNoteEventDetail(
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(MaterialTheme.spacing.space125).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                     ) {
                         // TODO: Load user profile...
                         Icon(
@@ -199,8 +200,8 @@ fun TextNoteEventDetail(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space150),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val profile = localNostrEvent.profile
@@ -254,7 +255,7 @@ fun TextNoteEventDetail(
 
                         press.mantra.compose.ui.composable.widgets.content.RichContent(
                             modifier = Modifier.fillMaxWidth().padding(
-                                horizontal = 20.dp
+                                horizontal = MaterialTheme.spacing.space250
                             ),
                             nostrEvent = localNostrEvent.nostrEvent,
                             localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
@@ -263,7 +264,7 @@ fun TextNoteEventDetail(
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                             horizontalArrangement = Arrangement.Start
                         ) {
                             Text(
@@ -385,7 +386,7 @@ private fun TextNoteEventDetailPreview() {
 
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             TextNoteEventDetail(
                 localNostrEvent = press.mantra.compose.database.model.intermdiate.LocalNostrEvent(

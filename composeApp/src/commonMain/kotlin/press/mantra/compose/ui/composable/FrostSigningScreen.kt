@@ -121,7 +121,7 @@ fun FrostSigningScreen(
             is FrostSigningUIState.Loading -> Loading(padding)
 
             is FrostSigningUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -150,7 +150,7 @@ fun FrostSigningScreen(
                         .padding(padding)
                         .fillMaxSize()
                         .verticalScroll(scrollState)
-                        .padding(20.dp),
+                        .padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
                     WhatIsBeingSigned(proposed, state.items.size)
@@ -267,7 +267,7 @@ fun FrostSigningScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Button(
@@ -276,7 +276,7 @@ fun FrostSigningScreen(
                                 onClick = { frostSigningViewModel.approve(onNavigateBack) }
                             ) {
                                 Icon(Icons.Default.Draw, contentDescription = null)
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
                                 Text("Sign")
                             }
 
@@ -305,7 +305,7 @@ fun FrostSigningScreen(
 @Composable
 private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+        modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))

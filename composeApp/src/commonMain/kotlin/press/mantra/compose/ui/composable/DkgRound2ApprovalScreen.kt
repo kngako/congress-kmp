@@ -14,6 +14,7 @@ import press.mantra.compose.repository.DkgRepository
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Asks whether to confirm the combined result.
@@ -59,7 +60,7 @@ fun DkgRound2ApprovalScreen(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             DkgApprovalPoint(
                 "Your device has checked the combined result against what it sent, and they match."

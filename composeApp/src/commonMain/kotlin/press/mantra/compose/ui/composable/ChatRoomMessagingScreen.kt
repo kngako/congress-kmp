@@ -216,8 +216,8 @@ fun ChatRoomMessagingScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    .padding(horizontal = MaterialTheme.spacing.containerPadding, vertical = MaterialTheme.spacing.space75),
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -363,10 +363,10 @@ fun ChatRoomMessagingScreen(
         ChatRoomMessagingUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
@@ -396,10 +396,10 @@ fun ChatRoomMessagingScreen(
         ChatRoomMessagingUIState.InitiatingNewChat -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(
                     modifier = Modifier.weight(1f)

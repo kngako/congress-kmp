@@ -20,11 +20,15 @@ is a dimension and is left alone.
 import re, sys, io, os
 
 UI = 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui'
-MAPPING = {}          # filled by the caller
+# {"padding": {"8": "compactPadding"}, "gap": {...}, "spacer": {...}, "*": {...}}
+# A shape-specific entry wins over "*". Shape matters because the same number means
+# different things in different positions: 8dp of padding is compactPadding, 8dp of gap
+# is itemGap, and 8dp under a Spacer is neither.
+MAPPING = {}
 DRY = '--apply' not in sys.argv
 
-def token(value):
-    return MAPPING.get(value)
+def token(value, shape):
+    return MAPPING.get(shape, {}).get(value) or MAPPING.get('*', {}).get(value)
 
 def spacer_spans(text):
     """Character ranges covered by a Spacer( ... ) call, brace-matched."""
@@ -92,18 +96,24 @@ def process(path):
         edit = None
         for m in re.finditer(r'\b(\d+)\.dp\b', text):
             lit = m.group(0)
-            tok = token(m.group(1))
-            if tok is None:
-                continue
             pos = m.start()
             line_start = text.rfind('\n', 0, pos) + 1
             line = text[line_start:text.find('\n', pos)]
             if re.match(r'\s*(//|\*|/\*)', line):        # a comment
                 continue
-            if in_spans(pos, pads) or in_spans(pos, gaps) or \
-               any(a <= pos < b for a, b, _ in hw):
-                edit = (m.start(), m.end(), tok, lit, line.strip()[:80])
-                break
+            if in_spans(pos, pads):
+                shape = 'padding'
+            elif in_spans(pos, gaps):
+                shape = 'gap'
+            elif any(a <= pos < b for a, b, _ in hw):
+                shape = 'spacer'
+            else:
+                continue
+            tok = token(m.group(1), shape)
+            if tok is None:
+                continue
+            edit = (m.start(), m.end(), tok, lit, line.strip()[:80])
+            break
         if edit is None:
             break
         a, b, tok, lit, ctx = edit

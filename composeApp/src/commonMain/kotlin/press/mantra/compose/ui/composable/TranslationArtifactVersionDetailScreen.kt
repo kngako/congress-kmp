@@ -104,8 +104,8 @@ fun TranslationArtifactVersionDetailScreen(
                 }
             ) { innerPadding ->
                 LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     // Chapters the source version has and this translation
                     // does not. Above the list rather than after it: a chapter
@@ -244,9 +244,9 @@ fun TranslationArtifactVersionDetailScreen(
 
         TranslationArtifactVersionDetailUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(

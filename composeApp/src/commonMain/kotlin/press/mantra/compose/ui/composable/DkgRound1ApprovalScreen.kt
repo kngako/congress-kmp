@@ -14,6 +14,7 @@ import press.mantra.compose.repository.DkgRepository
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Asks whether to contribute to the key itself.
@@ -57,7 +58,7 @@ fun DkgRound1ApprovalScreen(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             DkgApprovalPoint(
                 "Your device publishes its contribution to the key. Every member's is mixed in, " +
@@ -74,7 +75,7 @@ fun DkgRound1ApprovalScreen(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
         ) {
             state.ritualMembers.forEach { member ->
                 val key = member.participant.participantPublicKey

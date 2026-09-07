@@ -43,6 +43,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.view.model.KeyPackageManagementViewModel
 import press.mantra.compose.ui.view.state.KeyPackageManagementUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +104,7 @@ fun KeyPackageManagementScreen(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         item {
@@ -118,7 +119,7 @@ fun KeyPackageManagementScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text(

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.ktor.http.Url
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 internal fun LinkPreview(url: String) {
@@ -47,7 +48,7 @@ internal fun LinkPreview(url: String) {
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
+                .padding(vertical = MaterialTheme.spacing.space50)
                 .clickable { uriHandler.openUri(url) }
         ) {
             Column {
@@ -62,7 +63,7 @@ internal fun LinkPreview(url: String) {
                             .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                     )
                 }
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(MaterialTheme.spacing.space150)) {
                     data.siteName?.let { site ->
                         Text(
                             text = site.uppercase(),
@@ -93,7 +94,7 @@ internal fun LinkPreview(url: String) {
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 2.dp)
+                            modifier = Modifier.padding(top = MaterialTheme.spacing.space25)
                         )
                     }
                     data.description?.let { desc ->
@@ -103,7 +104,7 @@ internal fun LinkPreview(url: String) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = MaterialTheme.spacing.space50)
                         )
                     }
                 }
@@ -118,7 +119,7 @@ internal fun LinkPreview(url: String) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .padding(vertical = 2.dp)
+                .padding(vertical = MaterialTheme.spacing.space25)
                 .clickable { uriHandler.openUri(url) }
         )
     }

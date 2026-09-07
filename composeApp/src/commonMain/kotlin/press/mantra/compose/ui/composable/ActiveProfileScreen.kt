@@ -51,6 +51,7 @@ import press.mantra.compose.ui.view.model.ActiveProfileViewModel
 import press.mantra.compose.ui.view.state.ActiveProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -111,14 +112,14 @@ fun ActiveProfileScreen(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                             ) {
                                 ProfileAvatar(
                                     profile = activeProfileUIState.localNostrEvent.profile,
@@ -140,7 +141,7 @@ fun ActiveProfileScreen(
                                     }
 
                                     Spacer(
-                                        modifier = Modifier.height(10.dp)
+                                        modifier = Modifier.height(MaterialTheme.spacing.space125)
                                     )
 
                                     Text(
@@ -153,7 +154,7 @@ fun ActiveProfileScreen(
 
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(10.dp)
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125)
                             ) {
                                 Spacer(
                                     modifier = Modifier.weight(1f)
@@ -172,7 +173,7 @@ fun ActiveProfileScreen(
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
                                     Text(
@@ -200,7 +201,7 @@ fun ActiveProfileScreen(
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
                                     Text(
                                         "Share Profile"
@@ -231,7 +232,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text(
@@ -256,7 +257,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text(
@@ -281,7 +282,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Profile Keys")
@@ -303,7 +304,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text(
@@ -326,7 +327,7 @@ fun ActiveProfileScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text(

@@ -43,7 +43,7 @@ fun LoadingDataIndicator(
 
             Text(
                 text = text,
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
                 textAlign = TextAlign.Center
             )
         }

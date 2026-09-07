@@ -101,26 +101,26 @@ fun SearchMemberToAddToChatRoomScreen(
                     Column(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
 
                         if (searchMemberToAddToChatRoomUIState.contacts.isEmpty()) {
                             Spacer(
-                                modifier = Modifier.height(20.dp)
+                                modifier = Modifier.height(MaterialTheme.spacing.space250)
                             )
                             Text(
-                                modifier = Modifier.padding(20.dp),
+                                modifier = Modifier.padding(MaterialTheme.spacing.space250),
                                 text = "Currently no contacts. Please search and chat with a few people.",
                                 textAlign = TextAlign.Center
                             )
 
                             Spacer(
-                                modifier = Modifier.height(20.dp)
+                                modifier = Modifier.height(MaterialTheme.spacing.space250)
                             )
                         } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                 reverseLayout = true
                             ) {
 
@@ -172,10 +172,10 @@ fun SearchMemberToAddToChatRoomScreen(
         SearchMemberToAddToChatRoomUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(

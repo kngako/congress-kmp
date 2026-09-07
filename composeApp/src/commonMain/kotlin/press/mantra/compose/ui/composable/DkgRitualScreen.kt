@@ -111,7 +111,7 @@ fun DkgRitualScreen(
     when (val dkgRitualUIState = dkgRitualViewModel.dkgRitualUIState) {
         is DkgRitualUIState.Error -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -216,8 +216,8 @@ fun DkgRitualScreen(
                         .padding(innerPadding)
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(MaterialTheme.spacing.space125),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (session == null) {
                         Text(
@@ -265,9 +265,9 @@ fun DkgRitualScreen(
         }
         DkgRitualUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
@@ -330,11 +330,11 @@ private fun RitualProgress(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.ErrorOutline, contentDescription = null)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)) {
                     Text("The ceremony was abandoned.", style = MaterialTheme.typography.titleSmall)
                     session.failureReason?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium)
@@ -398,10 +398,10 @@ private fun RitualProgress(
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.CheckCircle, contentDescription = null)
@@ -415,7 +415,7 @@ private fun RitualProgress(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // In full, and wrapping rather than ellipsised. This is the
@@ -474,7 +474,7 @@ private fun RitualProgress(
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
                             Icon(Icons.Default.Groups, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
                             Text(text = "Create the #admins group")
                         }
                     }
@@ -503,7 +503,7 @@ private fun RitualRoster(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
         ) {
             Text(text = "Members", style = MaterialTheme.typography.titleSmall)
 
@@ -523,7 +523,7 @@ private fun RitualRoster(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -565,11 +565,11 @@ private fun RitualStep(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(

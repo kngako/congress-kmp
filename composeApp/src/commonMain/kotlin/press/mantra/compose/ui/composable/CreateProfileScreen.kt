@@ -35,6 +35,7 @@ import press.mantra.compose.repository.MarmotRepository
 import press.mantra.compose.ui.theme.LocalExtendedColors
 import press.mantra.compose.ui.view.model.CreateProfileViewModel
 import press.mantra.compose.ui.view.state.CreateProfileUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -59,10 +60,10 @@ fun CreateProfileScreen(
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 when (val createAccountUIState = createProfileViewModel.createProfileUIState.value) {
@@ -119,7 +120,7 @@ fun CreateProfileScreen(
                                     Text(
                                         text = it,
                                         modifier = Modifier.padding(
-                                            bottom = 8.dp
+                                            bottom = MaterialTheme.spacing.compactPadding
                                         )
                                     )
                                 }
@@ -163,7 +164,7 @@ fun CreateProfileScreen(
                                     Text(
                                         text = it,
                                         modifier = Modifier.padding(
-                                            bottom = 8.dp
+                                            bottom = MaterialTheme.spacing.compactPadding
                                         )
                                     )
                                 }
@@ -328,7 +329,7 @@ fun CreateProfileScreen(
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier.padding(MaterialTheme.spacing.space250)
                         )
 
                         Button(

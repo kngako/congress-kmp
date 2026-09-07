@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import androidx.compose.material3.MaterialTheme
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun FullScreenImageViewer(
@@ -87,7 +89,7 @@ fun FullScreenImageViewer(
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(MaterialTheme.spacing.containerPadding)
             ) {
                 val buttonColors = IconButtonDefaults.iconButtonColors(
                     containerColor = Color.Black.copy(alpha = 0.5f),
@@ -104,7 +106,7 @@ fun FullScreenImageViewer(
 //                        contentDescription = "Download"
 //                    )
 //                }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 IconButton(
                     onClick = { clipboardManager.setText(AnnotatedString(imageUrl)) },
                     colors = buttonColors,
@@ -112,7 +114,7 @@ fun FullScreenImageViewer(
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = "Copy URL")
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 IconButton(
                     onClick = onDismiss,
                     colors = buttonColors,

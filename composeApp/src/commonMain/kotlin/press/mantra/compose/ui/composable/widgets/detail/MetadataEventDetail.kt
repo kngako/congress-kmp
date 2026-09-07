@@ -57,6 +57,7 @@ import press.mantra.compose.ui.view.model.MetadataEventDetailViewModel
 import press.mantra.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -110,7 +111,7 @@ fun MetadataEventDetail(
                         profile?.nip05?.let {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                             ) {
                                 Icon(
                                     Icons.Default.Bolt,
@@ -139,7 +140,7 @@ fun MetadataEventDetail(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 item {
                     Column(
@@ -148,8 +149,8 @@ fun MetadataEventDetail(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ProfileAvatar(
@@ -224,7 +225,7 @@ fun MetadataEventDetail(
                         }
                         Text(
                             modifier = Modifier.fillMaxWidth().padding(
-                                horizontal = 20.dp
+                                horizontal = MaterialTheme.spacing.space250
                             ),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -248,7 +249,7 @@ fun MetadataEventDetail(
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
                         Text("Add To Group")
@@ -269,7 +270,7 @@ fun MetadataEventDetail(
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
                         Text("Block User")
@@ -294,7 +295,7 @@ fun MetadataEventDetail(
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
                         Text("Send Message")
                     }
@@ -314,7 +315,7 @@ private fun MetadataEventEventDetailPreview() {
 
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             MetadataEventDetail(
                 activeUserPublicKey = "",

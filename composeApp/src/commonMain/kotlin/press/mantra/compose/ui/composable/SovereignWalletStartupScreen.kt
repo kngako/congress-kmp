@@ -26,6 +26,7 @@ import fr.acinq.phoenix.utils.preferences.UserPrefs
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
 import kotlinx.coroutines.flow.first
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun SovereignWalletStartupScreen(
@@ -130,16 +131,22 @@ fun SovereignWalletStartupScreen(
                                                 ); loadingWallet = it
                                             },
                                             canEdit = false,
-                                            modifier = Modifier.padding(horizontal = 24.dp),
+                                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space300),
                                             topContent = {
-                                                Spacer(Modifier.height(64.dp))
+                                                Spacer(Modifier.height(MaterialTheme.spacing.space800))
                                                 Text(
                                                     text = "Select a wallet",
                                                     style = MaterialTheme.typography.headlineSmall
                                                 )
-                                                Spacer(Modifier.height(16.dp))
+                                                Spacer(Modifier.height(MaterialTheme.spacing.space200))
                                             },
                                             bottomContent = {
+                                                // m3-spacing-exempt: room to scroll the
+                                                // last wallet clear of the bottom of the
+                                                // window, not a step in the spacing
+                                                // rhythm. The scale tops out at 72dp and
+                                                // rounding to it would put the last row
+                                                // back under the edge.
                                                 Spacer(Modifier.height(128.dp))
                                             }
                                         )
@@ -196,17 +203,17 @@ fun SovereignWalletStartupScreen(
                                             }
                                         }
                                     }
-                                    Spacer(Modifier.height(16.dp))
+                                    Spacer(Modifier.height(MaterialTheme.spacing.space200))
                                     HorizontalDivider(
                                         modifier = Modifier.width(50.dp)
                                     )
-                                    Spacer(Modifier.height(24.dp))
+                                    Spacer(Modifier.height(MaterialTheme.spacing.space300))
 //                                    BorderButton(
 //                                        text = stringResource(R.string.startup_error_try_again),
 //                                        icon = R.drawable.ic_reset,
 //                                        onClick = onTryAgainClick
 //                                    )
-                                    Spacer(Modifier.height(8.dp))
+                                    Spacer(Modifier.height(MaterialTheme.spacing.space100))
 //                                    StartErrorShareLogsButton()
                                 }
                             }

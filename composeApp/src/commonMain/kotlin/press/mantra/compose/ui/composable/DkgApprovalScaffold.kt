@@ -87,7 +87,7 @@ internal fun DkgApprovalScaffold(
     ) { padding ->
         when (val state = dkgRitualViewModel.dkgRitualUIState) {
             is DkgRitualUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -95,7 +95,7 @@ internal fun DkgApprovalScaffold(
             }
 
             is DkgRitualUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -110,7 +110,7 @@ internal fun DkgApprovalScaffold(
                 // on the way in, which looks exactly like the screen not working.
                 if (state.session == null) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                        modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -130,11 +130,11 @@ internal fun DkgApprovalScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(padding)
-                            .padding(20.dp),
+                            .padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space150)
                     ) {
-                        Spacer(modifier = Modifier.height(40.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.space500))
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
@@ -161,14 +161,14 @@ internal fun DkgApprovalScaffold(
                         .fillMaxWidth()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.containerPadding),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
                     body(state)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space150),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Declining is deliberately not a button that refuses on the
@@ -209,7 +209,7 @@ internal fun DkgApprovalScaffold(
 internal fun DkgApprovalPoint(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
     ) {
         Text(text = "•", style = MaterialTheme.typography.bodyMedium)
         Text(

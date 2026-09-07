@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun SocialPreconditionScreen(
@@ -60,9 +61,9 @@ fun SocialPreconditionScreen(
             modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
 
                 Text(
@@ -116,7 +117,7 @@ fun SocialPreconditionScreen(
 private fun SocialPreconditionScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SocialPreconditionScreen(
                 onNavigateToSkipForNow = {},

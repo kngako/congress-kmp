@@ -117,7 +117,7 @@ fun ProposalListScreen(
     ) { padding ->
         when (val state = proposalListViewModel.proposalListUIState) {
             is ProposalListUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -125,7 +125,7 @@ fun ProposalListScreen(
             }
 
             is ProposalListUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -144,8 +144,8 @@ fun ProposalListScreen(
                 }
 
                 LazyColumn(
-                    modifier = Modifier.padding(padding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(padding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (state.proposals.isEmpty()) {
                         item {
@@ -287,7 +287,7 @@ private fun ProposalCard(
                 )
             },
             supportingContent = {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space25)) {
                     if (proposal.eventCount > 1) {
                         Text(
                             text = "with ${proposal.eventCount - 1} more " +

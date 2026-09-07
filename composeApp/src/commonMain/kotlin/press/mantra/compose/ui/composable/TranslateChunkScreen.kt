@@ -184,8 +184,8 @@ fun TranslateChunkScreen(
                         .padding(innerPadding)
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (!translateChunkUIState.canSign) {
                         Text(
@@ -202,7 +202,7 @@ fun TranslateChunkScreen(
                     )
                     Card {
                         Text(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(MaterialTheme.spacing.containerPadding),
                             text = translateChunkUIState.originalChunk.text,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -224,9 +224,9 @@ fun TranslateChunkScreen(
 
         TranslateChunkUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(

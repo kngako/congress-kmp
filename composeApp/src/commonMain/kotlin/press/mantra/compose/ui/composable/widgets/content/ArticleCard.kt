@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 private fun ArticleCard(
@@ -50,7 +51,7 @@ private fun ArticleCard(
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = MaterialTheme.spacing.space75)
             .then(
                 if (onArticleClick != null) Modifier.clickable { onArticleClick(30023, author, dTag) }
                 else Modifier
@@ -59,14 +60,14 @@ private fun ArticleCard(
         if (event == null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(MaterialTheme.spacing.space175)
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.width(14.dp).height(14.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
                     text = "Loading article...",
                     style = MaterialTheme.typography.bodyMedium,
@@ -88,18 +89,18 @@ private fun ArticleCard(
 //                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
 //                    )
 //                }
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space175, vertical = MaterialTheme.spacing.space125)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
                                 text = "ARTICLE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
                             )
                         }
                         Text(
@@ -118,19 +119,19 @@ private fun ArticleCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = MaterialTheme.spacing.space50)
                         )
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 6.dp)
+                        modifier = Modifier.padding(top = MaterialTheme.spacing.space75)
                     ) {
                         press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
                             profile = profile,
                             publicKey = localNostrEvent.nostrEvent.pubKey,
                             size = 20.dp
                         )
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(MaterialTheme.spacing.space75))
                         val displayName = profile?.humanReadableNameOrPubkey()
                             ?: "${author.take(8)}...${author.takeLast(4)}"
                         Text(

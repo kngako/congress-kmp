@@ -181,7 +181,7 @@ fun AddDialectScreen(
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Add a dialect the group can translate into")
@@ -282,10 +282,10 @@ fun AddDialectScreen(
         AddDialectUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(

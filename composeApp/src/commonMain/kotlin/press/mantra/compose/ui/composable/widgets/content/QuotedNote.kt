@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun QuotedNote(
@@ -56,7 +57,7 @@ fun QuotedNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = MaterialTheme.spacing.space75)
         ) {
             localQuotedNostrEvent.RenderNotePreview(
                 onNavigateToEvent = onNavigateToEvent
@@ -87,11 +88,11 @@ fun QuotedNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = MaterialTheme.spacing.space75)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(MaterialTheme.spacing.space175)
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier
@@ -100,7 +101,7 @@ fun QuotedNote(
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
                     text = "Loading note...",
                     style = MaterialTheme.typography.bodyMedium,
@@ -116,7 +117,7 @@ fun QuotedNote(
 private fun QuotedNotePreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
 
             QuotedNote(

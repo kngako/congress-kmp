@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun Clickable(
@@ -48,7 +49,7 @@ fun Clickable(
     backgroundColor: Color = Color.Unspecified, // transparent by default!
     shape: Shape = RectangleShape,
     clickDescription: String = "",
-    internalPadding: PaddingValues = PaddingValues(0.dp),
+    internalPadding: PaddingValues = PaddingValues(MaterialTheme.spacing.space0),
     indication: Indication? = LocalIndication.current,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable () -> Unit,

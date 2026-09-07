@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -42,7 +43,7 @@ internal fun TextNoteFeedItem(
         if (localInReplyToNostrEvent != null) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(
-                    horizontal = 20.dp
+                    horizontal = MaterialTheme.spacing.space250
                 ),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
@@ -67,15 +68,15 @@ internal fun TextNoteFeedItem(
 
         ElevatedCard(
             modifier = Modifier.padding(
-                horizontal = 10.dp
+                horizontal = MaterialTheme.spacing.space125
             ),
             onClick = {
                 onNavigateToEvent.invoke(nostrEvent.id)
             }
         ) {
             Column(
-                modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(MaterialTheme.spacing.space125).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (profile != null) {
@@ -85,7 +86,7 @@ internal fun TextNoteFeedItem(
                                 onNavigateToEvent.invoke(profile.nostrEventId)
                             }
                         ),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125, Alignment.Start),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
@@ -128,7 +129,7 @@ internal fun TextNoteFeedItem(
                     LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(
-                            10.dp,
+                            MaterialTheme.spacing.space125,
                             alignment = Alignment.Start
                         )
                     ) {
@@ -181,7 +182,7 @@ internal fun TextNoteFeedItem(
 private fun TextNoteFeedItemPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             TextNoteFeedItem(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(
@@ -212,7 +213,7 @@ private fun TextNoteFeedItemPreview() {
 private fun TextNoteFeedItemInReplyToPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             TextNoteFeedItem(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(
@@ -266,7 +267,7 @@ private fun TextNoteFeedItemInReplyToPreview() {
 private fun TextNoteFeedItemQuoteNostrEventPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             TextNoteFeedItem(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(

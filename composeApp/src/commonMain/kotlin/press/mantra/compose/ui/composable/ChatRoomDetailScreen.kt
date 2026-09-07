@@ -123,9 +123,9 @@ fun ChatRoomDetailScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
                         item {
                             chatRoomDetailUIState.localChatRoom.chatRoom.description?.let {
@@ -214,7 +214,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Add Artifact to Library")
@@ -280,7 +280,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Add Dialect")
@@ -323,7 +323,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Create project")
@@ -362,7 +362,7 @@ fun ChatRoomDetailScreen(
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
                                     Text("Shared Key")
@@ -396,7 +396,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Proposals")
@@ -423,7 +423,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Invite New Member")
@@ -500,7 +500,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Leave Group")
@@ -526,7 +526,7 @@ fun ChatRoomDetailScreen(
                                 )
 
                                 Spacer(
-                                    modifier = Modifier.width(10.dp)
+                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                                 )
 
                                 Text("Delete Group")
@@ -555,10 +555,10 @@ fun ChatRoomDetailScreen(
         ChatRoomDetailUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
@@ -629,7 +629,7 @@ private fun ReindexMarmotGroupEventsButton(
             }
 
             Spacer(
-                modifier = Modifier.width(10.dp)
+                modifier = Modifier.width(MaterialTheme.spacing.space125)
             )
 
             Text("Reindex Events")

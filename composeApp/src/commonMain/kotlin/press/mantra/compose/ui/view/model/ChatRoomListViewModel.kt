@@ -162,7 +162,7 @@ class ChatRoomListViewModel(
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
 
                         if (chatRoomListUIState.chatRoomList.isEmpty()) {
@@ -172,7 +172,7 @@ class ChatRoomListViewModel(
                         } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                             ) {
                                 items(
                                     items = chatRoomListUIState.chatRoomList,
@@ -191,8 +191,8 @@ class ChatRoomListViewModel(
                                         }
                                     ) {
                                         Row(
-                                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             // Both lines are clipped to one, so the name
@@ -201,7 +201,7 @@ class ChatRoomListViewModel(
                                             // the clock off the row.
                                             Column(
                                                 modifier = Modifier.weight(1f),
-                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                                             ) {
                                                 localChatRoom.RenderChatRoomTitleText()
                                                 localChatRoom.RenderChatRoomLastMessageText()

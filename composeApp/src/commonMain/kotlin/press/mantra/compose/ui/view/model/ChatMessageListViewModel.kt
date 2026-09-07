@@ -409,21 +409,21 @@ class ChatMessageListViewModel(
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
 
                         if (chatRoomDetailMessageListUIState.chatMessageList.isEmpty()) {
                             Spacer(
-                                modifier = Modifier.height(20.dp)
+                                modifier = Modifier.height(MaterialTheme.spacing.space250)
                             )
                             Text(
-                                modifier = Modifier.padding(20.dp),
+                                modifier = Modifier.padding(MaterialTheme.spacing.space250),
                                 text = "Currently no messages have been shared.\nBreak the ice.",
                                 textAlign = TextAlign.Center
                             )
 
                             Spacer(
-                                modifier = Modifier.height(20.dp)
+                                modifier = Modifier.height(MaterialTheme.spacing.space250)
                             )
                         } else {
 
@@ -447,7 +447,7 @@ class ChatMessageListViewModel(
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                 reverseLayout = true
                             ) {
                                 // First item, and the layout is reversed, so this
@@ -479,7 +479,7 @@ class ChatMessageListViewModel(
                                             ) {
 
                                                 Row(
-                                                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.compactPadding),
                                                     horizontalArrangement = Arrangement.Center,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
@@ -620,13 +620,13 @@ class ChatMessageListViewModel(
                                                 },
                                             ) {
                                                 Column(
-                                                    modifier = Modifier.padding(10.dp),
+                                                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                                     horizontalAlignment = if (localChatMessage.chatMessage.isUserMessage) {
                                                         Alignment.End
                                                     } else {
                                                         Alignment.Start
                                                     },
-                                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space75)
                                                 ) {
                                                     if (localChatMessage.chatMessage.isUserMessage.not()) {
                                                         Text(
@@ -645,7 +645,7 @@ class ChatMessageListViewModel(
                                                     // assume was the whole room.
                                                     if (localChatMessage.chatMessage.messageType == ChatMessage.TYPE_DIRECT_MESSAGE) {
                                                         Row(
-                                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap),
                                                             verticalAlignment = Alignment.CenterVertically
                                                         ) {
                                                             Icon(
@@ -677,7 +677,7 @@ class ChatMessageListViewModel(
 
                                                     Row(
                                                         horizontalArrangement = Arrangement.spacedBy(
-                                                            10.dp,
+                                                            MaterialTheme.spacing.space125,
                                                             Alignment.End
                                                         ),
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -858,8 +858,8 @@ private fun ProposalsAwaitingYouNotice(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space150),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -869,7 +869,7 @@ private fun ProposalsAwaitingYouNotice(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space25)
             ) {
                 Text(
                     text = if (single != null) {
@@ -924,8 +924,8 @@ private fun PrivateMessageNotice(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.space125),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1030,8 +1030,8 @@ private fun RitualNotice(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.space125),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1042,7 +1042,7 @@ private fun RitualNotice(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space25)
         ) {
             Text(
                 text = buildAnnotatedString {

@@ -61,6 +61,7 @@ import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SearchViewModel
 import press.mantra.compose.ui.view.state.SearchUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -277,11 +278,11 @@ fun SearchScreen(
                                     if (searchableProfiles.isNotEmpty()) {
                                         Column(
                                             modifier = Modifier.fillMaxWidth(),
-                                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                             horizontalAlignment = Alignment.Start
                                         ) {
                                             Column(
-                                                modifier = Modifier.padding(10.dp),
+                                                modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                             ) {
                                                 Text(
                                                     text = "Profiles",
@@ -292,7 +293,7 @@ fun SearchScreen(
                                             LazyRow {
                                                 items(searchViewModel.searchableProfiles) { profile ->
                                                     Column(
-                                                        modifier = Modifier.padding(10.dp).width(70.dp),
+                                                        modifier = Modifier.padding(MaterialTheme.spacing.space125).width(70.dp),
                                                         horizontalAlignment = Alignment.CenterHorizontally,
                                                         verticalArrangement = Arrangement.Center
                                                     ) {
@@ -336,7 +337,7 @@ fun SearchScreen(
                             item {
                                 if (searchViewModel.recentSearches.isNotEmpty()) {
                                     Column(
-                                        modifier = Modifier.padding(10.dp),
+                                        modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                     ) {
                                         Text(
                                             text = "Recents",
@@ -389,7 +390,7 @@ fun SearchScreen(
                 }
 
                 Column(
-                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space250).fillMaxWidth(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -413,7 +414,7 @@ fun SearchScreen(
 private fun SearchScreenPreview() {
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SearchScreen(
                 activeUserPublicKey = "",

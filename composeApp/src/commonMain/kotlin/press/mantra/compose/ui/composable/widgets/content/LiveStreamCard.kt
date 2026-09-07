@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 private fun LiveStreamCard(
@@ -44,7 +45,7 @@ private fun LiveStreamCard(
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = MaterialTheme.spacing.space75)
             .then(
                 if (onLiveStreamClick != null) Modifier.clickable {
                     onLiveStreamClick(author, dTag, segmentRelayHints.firstOrNull())

@@ -213,7 +213,7 @@ fun AddArtifactScreen(
                     // TODO: Check that we have direct message relays for this user...
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Add Artifact to the group library")
@@ -318,7 +318,7 @@ fun AddArtifactScreen(
                         } else {
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
                             ) {
                                 addArtifactUIState.dialects.forEach { dialect ->
                                     FilterChip(
@@ -338,10 +338,10 @@ fun AddArtifactScreen(
         AddArtifactUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(

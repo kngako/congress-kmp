@@ -66,7 +66,7 @@ fun AddMemberToChatRoomConfirmationScreen(
     when (val addMemberToChatRoomConfirmationUIState = addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) {
         is AddMemberToChatRoomConfirmationUIState.Error -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
@@ -127,9 +127,9 @@ fun AddMemberToChatRoomConfirmationScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
                         Spacer(
                             modifier = Modifier.weight(1f)
@@ -160,10 +160,10 @@ fun AddMemberToChatRoomConfirmationScreen(
         AddMemberToChatRoomConfirmationUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(

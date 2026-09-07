@@ -91,8 +91,8 @@ fun ChapterDetailScreen(
                 }
             ) { innerPadding ->
                 LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     item {
                         Text(
@@ -111,7 +111,7 @@ fun ChapterDetailScreen(
                     item {
                         Card {
                             Text(
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(MaterialTheme.spacing.containerPadding),
                                 text = chapter.originalText,
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -157,9 +157,9 @@ fun ChapterDetailScreen(
 
         ChapterDetailUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(

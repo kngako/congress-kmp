@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 internal fun LiveStreamCardContent(
@@ -34,14 +35,14 @@ internal fun LiveStreamCardContent(
     if (event == null) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space175)
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.width(14.dp).height(14.dp),
                 strokeWidth = 2.dp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(MaterialTheme.spacing.space100))
             Text(
                 text = "Loading stream...",
                 style = MaterialTheme.typography.bodyMedium,
@@ -78,32 +79,32 @@ internal fun LiveStreamCardContent(
 //                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
 //                )
             }
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space175, vertical = MaterialTheme.spacing.space125)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (status == "live") {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = Color(0xFFE53935),
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
                                 text = "LIVE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
                             )
                         }
                     } else if (status == "ended") {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.compactPadding)
                         ) {
                             Text(
                                 text = "ENDED",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space75, vertical = MaterialTheme.spacing.space25)
                             )
                         }
                     }
@@ -123,19 +124,19 @@ internal fun LiveStreamCardContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = MaterialTheme.spacing.space50)
                     )
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 6.dp)
+                    modifier = Modifier.padding(top = MaterialTheme.spacing.space75)
                 ) {
                     press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar(
                         profile = profile,
                         publicKey = event.pubKey,
                         size = 20.dp
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(MaterialTheme.spacing.space75))
                     val displayName = profile?.humanReadableNameOrPubkey()
                         ?: "${author.take(8)}...${author.takeLast(4)}"
                     Text(

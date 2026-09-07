@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
 import com.vitorpamplona.quartz.nip19Bech32.entities.NSec
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -50,10 +51,10 @@ fun SignInToProfileScreen(
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 when (val signInToProfileUIState = signInToProfileViewModel.signInToProfileUIState.value) {
@@ -72,7 +73,7 @@ fun SignInToProfileScreen(
                                     Text(
                                         text = it,
                                         modifier = Modifier.padding(
-                                            bottom = 8.dp
+                                            bottom = MaterialTheme.spacing.compactPadding
                                         )
                                     )
                                 }

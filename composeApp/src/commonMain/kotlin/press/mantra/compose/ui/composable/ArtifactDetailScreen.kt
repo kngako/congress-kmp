@@ -102,8 +102,8 @@ fun ArtifactDetailScreen(
                 }
             ) { innerPadding ->
                 LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     // Chapters
                     item {
@@ -166,7 +166,7 @@ fun ArtifactDetailScreen(
                                 Icons.Default.PostAdd,
                                 contentDescription = "Add chapter"
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
                             Text("Add Chapter")
                         }
                     }
@@ -231,7 +231,7 @@ fun ArtifactDetailScreen(
                                 Icons.Default.Translate,
                                 contentDescription = "Add translation"
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
                             Text("Add Translation")
                         }
                     }
@@ -285,9 +285,9 @@ fun ArtifactDetailScreen(
 
         ArtifactDetailUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(

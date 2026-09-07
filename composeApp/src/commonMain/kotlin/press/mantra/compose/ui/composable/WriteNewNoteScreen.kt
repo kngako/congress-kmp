@@ -72,10 +72,10 @@ fun WriteNewNoteScreen(
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
 
                 when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState) {
@@ -98,8 +98,10 @@ fun WriteNewNoteScreen(
                                         onNavigateToEvent = onNavigateToNostrEvent
                                     )
                                 } else {
+                                    // Nothing to show, but the LazyColumn item has to
+                                    // render something. 1dp was standing in for zero.
                                     Spacer(
-                                        modifier = Modifier.height(1.dp)
+                                        modifier = Modifier.height(MaterialTheme.spacing.space0)
                                     )
                                 }
                             }
@@ -112,7 +114,7 @@ fun WriteNewNoteScreen(
                                         Text(
                                             modifier = Modifier.padding(
                                                 start = MaterialTheme.spacing.space600,
-                                                bottom = 10.dp,
+                                                bottom = MaterialTheme.spacing.space125,
 
                                             ),
                                             text = "replying To ${writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"}",
@@ -132,7 +134,7 @@ fun WriteNewNoteScreen(
                                                 Text(
                                                     text = it,
                                                     modifier = Modifier.padding(
-                                                        bottom = 8.dp
+                                                        bottom = MaterialTheme.spacing.compactPadding
                                                     )
                                                 )
                                             }
@@ -235,7 +237,7 @@ fun WriteNewNoteScreen(
                                         Card(
                                             modifier = Modifier.padding(
                                                 start = MaterialTheme.spacing.space600,
-                                                top = 10.dp
+                                                top = MaterialTheme.spacing.space125
                                             )
                                         ) {
                                             writeNewNoteUIState.quotedNostrEvent.RenderNotePreview(
@@ -294,11 +296,13 @@ fun WriteNewNoteScreen(
 
 
                                     HorizontalDivider(
-                                        modifier = Modifier.padding(20.dp)
+                                        modifier = Modifier.padding(MaterialTheme.spacing.space250)
                                     )
                                 } else {
+                                    // Nothing to show, but the LazyColumn item has to
+                                    // render something. 1dp was standing in for zero.
                                     Spacer(
-                                        modifier = Modifier.height(1.dp)
+                                        modifier = Modifier.height(MaterialTheme.spacing.space0)
                                     )
                                 }
                             }
@@ -306,10 +310,10 @@ fun WriteNewNoteScreen(
                             item {
                                 Column(
                                     modifier = Modifier.fillParentMaxHeight().fillMaxWidth().padding(
-                                        10.dp
+                                        MaterialTheme.spacing.space125
                                     ),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                                 ) {
                                     Text(
                                         text = writeNewNoteUIState.localProfile.profile.humanReadableNameOrPubkey(),

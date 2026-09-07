@@ -92,7 +92,7 @@ fun SelectChatRoomTypeScreen(
     when (val selectChatRoomTypeUIState = selectChatRoomTypeViewModel.selectChatRoomTypeUIState) {
         is SelectChatRoomTypeUIState.Error -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
@@ -174,8 +174,8 @@ fun SelectChatRoomTypeScreen(
                         .padding(innerPadding)
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(MaterialTheme.spacing.space125),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (membersNotAdded.isNotEmpty()) {
                         Card(
@@ -213,7 +213,7 @@ fun SelectChatRoomTypeScreen(
                         text = "This decides who can change the group later. You can't switch afterwards.",
                         style = MaterialTheme.typography.labelMedium,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space125)
                     )
 
                     ChatRoomTypeCard(
@@ -267,10 +267,10 @@ fun SelectChatRoomTypeScreen(
         SelectChatRoomTypeUIState.Loading -> {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
+                    MaterialTheme.spacing.space250
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
@@ -330,11 +330,11 @@ private fun ChatRoomTypeCard(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(

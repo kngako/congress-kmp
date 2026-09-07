@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.model.ChatRoomCreationViewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun ChatRoomCreationScreen(
@@ -44,9 +45,9 @@ fun ChatRoomCreationScreen(
         ) {
 
             Column(
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 TextField(
                     modifier = Modifier.fillMaxWidth(),
@@ -57,7 +58,7 @@ fun ChatRoomCreationScreen(
                             Text(
                                 text = it,
                                 modifier = Modifier.padding(
-                                    bottom = 8.dp
+                                    bottom = MaterialTheme.spacing.compactPadding
                                 )
                             )
                         }
@@ -101,7 +102,7 @@ fun ChatRoomCreationScreen(
                             Text(
                                 text = it,
                                 modifier = Modifier.padding(
-                                    bottom = 8.dp
+                                    bottom = MaterialTheme.spacing.compactPadding
                                 )
                             )
                         }

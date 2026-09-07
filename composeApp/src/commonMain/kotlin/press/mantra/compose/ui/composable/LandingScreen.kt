@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun LandingScreen(
@@ -32,7 +33,7 @@ fun LandingScreen(
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -69,13 +70,13 @@ fun LandingScreen(
 
                 Text(
                     text = "Sign in to Torch via nsec, or remote signer",
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(
-                    modifier = Modifier.height(20.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space250)
                 )
 
                 Button(
@@ -89,7 +90,7 @@ fun LandingScreen(
                 }
                 Text(
                     text = "If you are new to Torch or just want to create a fresh profile",
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )

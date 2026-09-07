@@ -237,7 +237,7 @@ fun SearchResultScreen(
                                         LazyColumn(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                                         ) {
                                             items(
                                                 items = searchResultListUIState.localNostrEvents,
@@ -295,7 +295,7 @@ fun SearchResultScreen(
 private fun SearchResultScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SearchResultScreen(
                 activeUserPublicKey = "",

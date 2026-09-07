@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import fr.acinq.lightning.payment.Bolt11Invoice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 internal fun LightningInvoiceCard(
@@ -57,7 +58,7 @@ internal fun LightningInvoiceCard(
                         text = "${decoded.amount?.truncateToSatoshi() ?: "Any amount"}"
                     )
                     if (!decoded.description.isNullOrBlank()) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(MaterialTheme.spacing.space50))
                         Text(
                             text = decoded.description!!,
                             style = MaterialTheme.typography.bodySmall,
@@ -97,13 +98,13 @@ internal fun LightningInvoiceCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = MaterialTheme.spacing.space50),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(1.dp, primary.copy(alpha = 0.4f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space150, vertical = MaterialTheme.spacing.space125),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -112,7 +113,7 @@ internal fun LightningInvoiceCard(
                 tint = primary,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(MaterialTheme.spacing.space125))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = if (decoded.amount != null)
@@ -138,7 +139,7 @@ internal fun LightningInvoiceCard(
                 }
             }
             if (onPayInvoice != null) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 when (payState) {
                     InvoicePayState.Paying -> CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),

@@ -23,6 +23,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import kotlin.time.Instant
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
@@ -33,13 +34,13 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = 10.dp
+                            horizontal = MaterialTheme.spacing.space125
                         ).clickable(
                             enabled = true,
                             onClick = {
@@ -47,7 +48,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                             }
                         ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                 ) {
                     Icon(
                         modifier = Modifier.size(
@@ -123,7 +124,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
 private fun EventListViewRepostedPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(
@@ -174,7 +175,7 @@ private fun EventListViewRepostedPreview() {
 private fun EventListViewInReplyPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(

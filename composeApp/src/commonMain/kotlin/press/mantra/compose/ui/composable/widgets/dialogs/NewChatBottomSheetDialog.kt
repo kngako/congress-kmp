@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,8 +50,8 @@ fun NewChatBottomSheetDialog(
     ) {
         // Sheet content
         Column(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -126,7 +127,7 @@ fun NewChatBottomSheetDialog(
                     contentDescription = "Close new chat"
                 )
                 Spacer(
-                    modifier = Modifier.width(10.dp)
+                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                 )
                 Text("Close")
             }

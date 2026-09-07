@@ -56,6 +56,7 @@ import press.mantra.compose.ui.view.state.HomeScreenUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -172,7 +173,7 @@ fun HomeScreen(
                     modifier = Modifier.padding(innerPadding).fillMaxSize()
                 ) {
                     PrimaryScrollableTabRow(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(MaterialTheme.spacing.space125),
                         edgePadding = 10.dp,
                         selectedTabIndex = homeScreenViewModel.pagerState.currentPage,
                     ) {
@@ -272,7 +273,7 @@ fun HomeScreen(
 private fun HomeScreenPreview() {
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             HomeScreen(
                 activeUserPublicKey = "",

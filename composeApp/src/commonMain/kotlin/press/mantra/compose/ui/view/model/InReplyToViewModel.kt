@@ -146,7 +146,7 @@ class InReplyToViewModel(
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
                             items(
                                 items = feedListUIState.localNostrEvents,

@@ -123,7 +123,7 @@ fun TranslationChapterScreen(
                     if (translationChapterUIState.rows.isEmpty()) {
                         item {
                             Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.containerPadding),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text("This chapter has no chunks.")
@@ -157,9 +157,9 @@ fun TranslationChapterScreen(
 
         TranslationChapterUIState.Loading -> {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
@@ -223,9 +223,9 @@ private fun TableRow(
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
     ) {
-        Box(modifier = Modifier.weight(1f).padding(12.dp)) { left() }
+        Box(modifier = Modifier.weight(1f).padding(MaterialTheme.spacing.space150)) { left() }
         VerticalDivider(modifier = Modifier.fillMaxHeight())
-        Box(modifier = Modifier.weight(1f).then(rightModifier).padding(12.dp)) { right() }
+        Box(modifier = Modifier.weight(1f).then(rightModifier).padding(MaterialTheme.spacing.space150)) { right() }
     }
 }
 

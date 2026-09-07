@@ -42,6 +42,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
@@ -62,21 +63,21 @@ fun StartDirectMessageToNpubOrNip05Dialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .padding(16.dp),
+                .padding(MaterialTheme.spacing.containerPadding),
             shape = RoundedCornerShape(16.dp),
         ) {
             val textFieldState = rememberTextFieldState()
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 Spacer(
-                    modifier = Modifier.height(4.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space50)
                 )
                 Text(
                     modifier = Modifier.fillMaxWidth().padding(
-                        horizontal = 20.dp,
+                        horizontal = MaterialTheme.spacing.space250,
                     ),
                     text = "Start chat via npub or nip05",
                     style = MaterialTheme.typography.labelMedium,
@@ -155,7 +156,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                     Text("Start Chat")
 
                     Spacer(
-                        modifier = Modifier.width(10.dp)
+                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                     )
 
                     Icon(

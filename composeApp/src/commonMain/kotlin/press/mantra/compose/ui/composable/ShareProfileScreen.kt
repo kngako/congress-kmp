@@ -44,6 +44,7 @@ import press.mantra.compose.ui.view.model.ShareProfileViewModel
 import press.mantra.compose.ui.view.state.ShareProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -104,14 +105,14 @@ fun ShareProfileScreen(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                             ) {
                                 ProfileAvatar(
                                     profile = shareProfileUIState.localNostrEvent.profile,
@@ -137,7 +138,7 @@ fun ShareProfileScreen(
 
                         item {
                             Row(
-                                modifier = Modifier.padding(40.dp)
+                                modifier = Modifier.padding(MaterialTheme.spacing.space500)
                             ) {
                                 QRCodeView(
                                     activeUserPublicKey.hexToNpubHrp()
@@ -147,7 +148,7 @@ fun ShareProfileScreen(
 
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(20.dp)
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250)
                             ) {
                                 val clipboardManager = LocalClipboardManager.current
 
@@ -167,7 +168,7 @@ fun ShareProfileScreen(
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
                                     Text(
                                         text = activeUserPublicKey.hexToNpubHrp(),
@@ -180,7 +181,7 @@ fun ShareProfileScreen(
                     }
 
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Button(

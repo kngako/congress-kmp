@@ -136,7 +136,7 @@ class FollowersListViewModel(
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
                             items(
                                 items = followersListUIState.followers,

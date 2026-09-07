@@ -61,6 +61,22 @@ def classify(path):
         line = text[line_start:text.find('\n', pos)]
         if re.match(r'\s*(//|\*|/\*)', line):
             continue
+        # An explicit, reasoned opt-out. A value that is genuinely not a step in the
+        # spacing rhythm -- room reserved below a list, say -- is marked at the site
+        # rather than exempted by value in this file, so the reason travels with it
+        # and a reviewer sees it in the diff.
+        # Walk back over the unbroken run of comment lines directly above.
+        exempt = False
+        prev = text[:line_start].rstrip('\n').split('\n')
+        for candidate in reversed(prev[-8:]):
+            stripped = candidate.strip()
+            if not stripped.startswith('//'):
+                break
+            if 'm3-spacing-exempt' in stripped:
+                exempt = True
+                break
+        if exempt:
+            continue
         entry = (path, text[:pos].count('\n') + 1, m.group(0), line.strip()[:90])
         if inside(pos, pads) or inside(pos, gaps) or any(a <= pos < b for a, b in hw):
             spacing.append(entry)

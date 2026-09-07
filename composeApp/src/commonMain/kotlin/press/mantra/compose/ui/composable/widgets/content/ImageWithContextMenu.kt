@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,7 +63,7 @@ internal fun ImageWithContextMenu(meta: MediaMeta, onFullScreen: () -> Unit) {
                     modifier = Modifier.size(40.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(MaterialTheme.spacing.space100))
                 Text(
                     "Tap to load",
                     style = MaterialTheme.typography.bodySmall,

@@ -49,6 +49,7 @@ import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.utils.preferences.GlobalPrefs
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun WalletsSelector(
@@ -82,9 +83,9 @@ fun WalletsSelector(
                     canEdit = canEdit,
                     onClick = { onWalletClick(currentWallet) }
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(MaterialTheme.spacing.space150))
                 HorizontalDivider()
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(MaterialTheme.spacing.space100))
             }
         }
         items(items = otherWalletsList) { (walletId, userWallet) ->
@@ -96,7 +97,7 @@ fun WalletsSelector(
                 canEdit = canEdit,
                 onClick = { onWalletClick(userWallet) }
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(MaterialTheme.spacing.space100))
         }
         bottomContent?.let {
             item { it.invoke() }
@@ -142,22 +143,22 @@ private fun AvailableWalletView(
         Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    .padding(horizontal = MaterialTheme.spacing.space150, vertical = MaterialTheme.spacing.space150)
                     .weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                WalletAvatar(avatar = metadata.avatar, backgroundColor = Color.Transparent, internalPadding = PaddingValues(4.dp))
-                Spacer(Modifier.width(12.dp))
+                WalletAvatar(avatar = metadata.avatar, backgroundColor = Color.Transparent, internalPadding = PaddingValues(MaterialTheme.spacing.space50))
+                Spacer(Modifier.width(MaterialTheme.spacing.space150))
                 Column {
                     Text(text = metadata.nameOrDefault(), modifier = Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(MaterialTheme.spacing.space25))
                     Text(text = userWallet.nodeId, modifier = Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp))
                 }
             }
             if (isCurrent && canEdit) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
 //              TODO:  PhoenixIcon(R.drawable.ic_edit, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space200))
             }
         }
     }

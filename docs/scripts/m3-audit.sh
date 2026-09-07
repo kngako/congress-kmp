@@ -25,7 +25,7 @@ THEME="$UI/theme"
 # Budgets. "-1" means not yet budgeted -- reported, but never fails --check.
 # ---------------------------------------------------------------------------
 BUDGET_HARDCODED_COLOR=9       # phase 3 drives to 0 outside theme/
-BUDGET_SPACING_LITERALS=353    # phase 2 drives to 0
+BUDGET_SPACING_LITERALS=0      # phase 2: reached 2026-09-08
 BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
 BUDGET_NULL_DESCRIPTION=18     # phase 3 triages each one
 BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
