@@ -200,6 +200,12 @@ fun ChatRoomMessagingScreen(
 
                     // TODO: Check that we have direct message relays for this user...
 
+                    // The composer handles its own bottom inset, which is why this
+                    // screen is the one text-field screen without `imePadding()` on its
+                    // Scaffold. Adding it here would pad twice while the keyboard is up:
+                    // the ime inset already covers the navigation bar area this row is
+                    // separately reserving. Getting the combination right wants a device
+                    // with a keyboard open, not a compiler.
                     Column(
                         modifier = Modifier.fillMaxWidth()
                             .background(BottomAppBarDefaults.containerColor)

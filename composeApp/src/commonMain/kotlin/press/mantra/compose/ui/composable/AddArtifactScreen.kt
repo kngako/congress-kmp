@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -130,7 +131,10 @@ fun AddArtifactScreen(
             // other button in the app uses rather than inventing a shade here.
             val buttonColors = ButtonDefaults.buttonColors()
 
+            // imePadding: this screen has a text field, and without it the software
+            // keyboard covers whatever is being typed into.
             Scaffold(
+                modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(
                         title = {

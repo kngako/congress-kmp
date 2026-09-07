@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material.icons.Icons
@@ -53,7 +54,9 @@ fun CreateProfileScreen(
             marmotRepository = marmotRepository
         )
     )
-    Scaffold { innerPadding ->
+    // imePadding: this screen has a text field, and without it the software
+    // keyboard covers whatever is being typed into.
+    Scaffold(modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
