@@ -497,7 +497,13 @@ fun TorchTheme(
     val colorScheme = dynamicColorScheme(darkTheme, dynamicColor)
         ?: appColorScheme(darkTheme, contrast)
 
-    CompositionLocalProvider(LocalExtendedColors provides extendedColorsFor(darkTheme)) {
+    CompositionLocalProvider(
+        LocalExtendedColors provides extendedColorsFor(darkTheme),
+        // Nothing scales it yet. It rides the theme now so that the breakpoint phase can
+        // provide a wider instance without touching a call site -- which is the whole
+        // reason for tokenising spacing rather than leaving it in literals.
+        LocalSpacing provides Spacing(),
+    ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
             // Every animation in the app should come from here rather than from a literal
