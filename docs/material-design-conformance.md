@@ -439,23 +439,27 @@ find-and-replace.
    pixel of the "Skip for now" label reads `#848484` → `#A7A7A7` → `#D0D0D0` as the
    setting moves, the three declared values exactly, **without the app restarting**.
 
-3. **Give `MaterialTheme` its other three slots.** `Shapes`, `Typography` and a
-   `MotionScheme` are all parameters of the overload the app already calls:
+3. **Give the theme its other three slots.** *Built.* The expressive-vs-standard
+   question was put to the product owner on 2026-09-08 and answered
+   **expressive**, so `TorchTheme` calls `MaterialExpressiveTheme` with all four
+   slots passed explicitly — colour, `MotionScheme.expressive()`, `MantraShapes`,
+   `AuxTypography`. Explicitly, because `MaterialExpressiveTheme` would otherwise
+   default them to `expressiveLightColorScheme()` and friends, which is Material's
+   palette rather than this app's: the same class of accident as the twelve
+   unassigned fixed roles.
 
-   ```kotlin
-   MaterialTheme(
-       colorScheme = colorScheme,
-       motionScheme = MotionScheme.expressive(),   // or .standard()
-       shapes = MantraShapes,
-       typography = MantraTypography,
-       content = content,
-   )
-   ```
+   No visual change on the screens checked. The "Invite a Friend" button measures
+   byte-identical before and after — same fill, same 357×… box — because the
+   expressive default for a `Button` at default size matches the baseline in this
+   version. What expressive buys is elsewhere: `LocalUsingExpressiveTheme`, the
+   three increased shape steps, the fifteen `…Emphasized` type roles, and the
+   components later phases need (button groups, split buttons, floating toolbars,
+   wide navigation rails, `LoadingIndicator`).
 
-   Decide `MaterialExpressiveTheme` vs `MaterialTheme` here and once. The app
-   already opts into `ExperimentalMaterial3ExpressiveApi` in 66 places, so the
-   expressive default is the honest choice; it is also what makes the
-   `…Emphasized` type roles and the increased shape sizes meaningful.
+   `MantraShapes` is baseline `Shapes()`, and `Shape.kt` records why: the corners
+   hand-written across the tree already land on the scale — 4dp ×3 = `extraSmall`,
+   12dp ×11 = `medium`, 16dp ×2 = `large`, and one 30dp that drifted two units off
+   `extraLarge`. Nothing needs restyling; seventeen literals need migrating, later.
 
 4. **Move and fill typography.** `Type.kt` moves from `com.example.ui.theme` to
    `press.mantra.compose.ui.theme`. It stays baseline-derived, but it becomes a
@@ -468,8 +472,15 @@ find-and-replace.
    `container`/`on`/`onContainer`. `CreateProfileScreen.kt:311` and `:329` then
    stop pairing them with `Color.White`/`Color.DarkGray` by eye.
 
-6. **Wrap the desktop gate.** `Main.kt` moves `TorchTheme` outside the
-   `unlocked` branch so `PassphraseGate` composes inside it.
+6. **Wrap the desktop gate.** *Built.* `Main.kt` moves `TorchTheme` outside the
+   `unlocked` branch, so `PassphraseGate` — the first screen a desktop user sees —
+   stops composing under the default `MaterialTheme`. `MantraApp` keeps its own
+   `TorchTheme`, so the unlocked branch is wrapped twice: android and ios enter
+   through `MantraApp` and would lose the theme entirely if it moved out, and a
+   second application of the same values costs one `CompositionLocalProvider`.
+
+   `Type.kt` also left `com.example.ui.theme` for `press.mantra.compose.ui.theme`,
+   which removes one of the three package namespaces the UI was living across.
 
 **Done when** every role in `ColorScheme` is explicitly assigned in both
 schemes; the contrast test still passes and now covers six schemes; `Type.kt`

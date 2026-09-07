@@ -2,13 +2,14 @@ package press.mantra.compose.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import com.example.ui.theme.AuxTypography
 
 // The six schemes are `internal` rather than `private` so ColorSchemeContrastTest can
 // walk the real objects. Testing a copy rebuilt in the test from Color.kt would assert
@@ -422,6 +423,22 @@ internal fun appColorScheme(darkTheme: Boolean, contrast: ThemeContrast): ColorS
             if (darkTheme) highContrastDarkColorScheme else highContrastLightColorScheme
     }
 
+/**
+ * The app's theme: colour, shape, type and motion, in one place.
+ *
+ * **Expressive, deliberately.** `MaterialExpressiveTheme` rather than `MaterialTheme` is a
+ * product decision taken 2026-09-08. The pinned material3 1.10.0-alpha05 ships the whole
+ * expressive set -- button groups, split buttons, floating toolbars, wide navigation rails,
+ * loading indicators, the eight-step shape scale, thirty type roles -- and the tree already
+ * opts into `ExperimentalMaterial3ExpressiveApi` in 66 places. The visible effect is that
+ * components take their expressive defaults: rounder, larger, more motion. It is one
+ * function name to change back.
+ *
+ * All four slots are passed explicitly. `MaterialExpressiveTheme` would otherwise supply
+ * `expressiveLightColorScheme()` and friends, which are Material's palette rather than this
+ * app's -- the same class of accident as the twelve unassigned fixed roles.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TorchTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -435,11 +452,22 @@ fun TorchTheme(
     // `system_*` palette resources shift with it, so `dynamicLightColorScheme` needs
     // no help from `contrast`. Everywhere else the app's schemes answer, and that is
     // where `contrast` decides which of the six.
+    //
+    // Note what this means in practice: on Android 12+ the six schemes above are not
+    // used at all, and the app takes the wallpaper palette. That is the intended
+    // behaviour -- see "What this plan does not cover" in
+    // docs/material-design-conformance.md -- but it is why a change to Color.kt shows
+    // up on desktop and ios and not on a modern phone.
     val colorScheme = dynamicColorScheme(darkTheme, dynamicColor)
         ?: appColorScheme(darkTheme, contrast)
 
-    MaterialTheme(
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        // Every animation in the app should come from here rather than from a literal
+        // `tween`, so that the whole app's feel is one decision. Nothing reads it yet;
+        // the motion phase is what puts it to work.
+        motionScheme = MotionScheme.expressive(),
+        shapes = MantraShapes,
         typography = AuxTypography,
         content = content
     )

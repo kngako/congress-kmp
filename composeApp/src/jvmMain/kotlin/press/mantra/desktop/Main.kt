@@ -37,6 +37,7 @@ import press.mantra.compose.MantraApp
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.PlatformContext
 import press.mantra.compose.defaultMantraDir
+import press.mantra.compose.ui.theme.TorchTheme
 import java.io.File
 
 /**
@@ -62,17 +63,28 @@ fun main() = application {
     ) {
         var unlocked by remember { mutableStateOf(false) }
 
-        if (unlocked) {
-            val navController = rememberNavController()
-            MantraApp(
-                navController = navController,
-                mantraGlobal = MantraGlobal(platformContext = PlatformContext(appDir)),
-                phoenixGlobal = PhoenixGlobal(
-                    ctx = fr.acinq.phoenix.utils.PlatformContext(applicationDir = appDir),
-                ),
-            )
-        } else {
-            PassphraseGate(appDir = appDir, onUnlocked = { unlocked = true })
+        // TorchTheme wraps both branches, not just the app. PassphraseGate used to sit
+        // beside MantraApp -- which applies the theme itself -- so it composed under the
+        // default MaterialTheme and its colorScheme and typography were baseline M3
+        // rather than this app's. It is the first screen a desktop user sees.
+        //
+        // MantraApp still applies TorchTheme, so the unlocked branch is wrapped twice.
+        // That is deliberate: android and ios enter through MantraApp and would lose the
+        // theme entirely if it moved out, and a second application of the same values
+        // costs one composition of a CompositionLocalProvider.
+        TorchTheme {
+            if (unlocked) {
+                val navController = rememberNavController()
+                MantraApp(
+                    navController = navController,
+                    mantraGlobal = MantraGlobal(platformContext = PlatformContext(appDir)),
+                    phoenixGlobal = PhoenixGlobal(
+                        ctx = fr.acinq.phoenix.utils.PlatformContext(applicationDir = appDir),
+                    ),
+                )
+            } else {
+                PassphraseGate(appDir = appDir, onUnlocked = { unlocked = true })
+            }
         }
     }
 }
