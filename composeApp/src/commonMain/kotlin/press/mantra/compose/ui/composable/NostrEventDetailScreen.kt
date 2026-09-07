@@ -38,6 +38,9 @@ import mantra.composeapp.generated.resources.functionality_coming_soon
 import mantra.composeapp.generated.resources.post_functionality_coming_soon
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.we_couldn_t_find_your_nostr_event_please_try
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,13 +67,7 @@ fun NostrEventDetailScreen(
 
     when(val feedListUIState = nostrEventDetailViewModel.nostrEventDetailUIState) {
         NostrEventDetailUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.something_went_wrong))
-            }
+            ErrorState()
         }
         is NostrEventDetailUIState.Loaded -> {
 
@@ -108,7 +105,7 @@ fun NostrEventDetailScreen(
                     }
                 }
                 else -> {
-                    Scaffold { innerPadding ->
+                    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
                         Column(
                             modifier = Modifier.padding(innerPadding).fillMaxSize()
                         ) {

@@ -57,6 +57,8 @@ import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_
 import mantra.composeapp.generated.resources.translation_detail
 import mantra.composeapp.generated.resources.chapter
 import mantra.composeapp.generated.resources.chunks_translated
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +101,7 @@ fun TranslationArtifactVersionDetailScreen(
         is TranslationArtifactVersionDetailUIState.Loaded -> {
             val translation = translationDetailUIState.translation
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = { Text(translation.name) },

@@ -44,6 +44,8 @@ import mantra.composeapp.generated.resources.sign_in_with_an_npub
 import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to
 import mantra.composeapp.generated.resources.this_will_give_you_read_only_access_to_the
 import mantra.composeapp.generated.resources.this_will_give_you_write_access_to_the
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -59,7 +61,9 @@ fun SignInToProfileScreen(
     )
     // imePadding: this screen has a text field, and without it the software
     // keyboard covers whatever is being typed into.
-    Scaffold(modifier = Modifier.imePadding()) { innerPadding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

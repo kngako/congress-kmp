@@ -53,6 +53,8 @@ import mantra.composeapp.generated.resources.you_can_still_carry_on_and_invite_p
 import mantra.composeapp.generated.resources.add_people_to
 import mantra.composeapp.generated.resources.next_with
 import mantra.composeapp.generated.resources.selected
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -100,6 +102,7 @@ fun SelectChatRoomMembersScreen(
             val selectedCount = selectChatRoomMembersViewModel.selectedPublicKeys.size
 
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

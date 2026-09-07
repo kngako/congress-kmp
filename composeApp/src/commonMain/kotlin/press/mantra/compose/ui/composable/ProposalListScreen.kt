@@ -63,6 +63,8 @@ import mantra.composeapp.generated.resources.review
 import mantra.composeapp.generated.resources.this_group_has_not_been_asked_to_sign
 import mantra.composeapp.generated.resources.waiting_for_you
 import mantra.composeapp.generated.resources.of_them_could_not_be_read
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -106,6 +108,7 @@ fun ProposalListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         topBar = {
             TopAppBar(
                 title = {

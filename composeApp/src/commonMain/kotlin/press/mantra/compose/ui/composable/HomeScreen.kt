@@ -62,6 +62,9 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.mantra
 import mantra.composeapp.generated.resources.new_chat
 import mantra.composeapp.generated.resources.something_went_wrong
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -91,28 +94,19 @@ fun HomeScreen(
 
     when(val homeScreenUIState = homeScreenViewModel.homeScreenUIState) {
         HomeScreenUIState.Error -> {
-            Scaffold { innerPadding ->
+            Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding).fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = stringResource(Res.string.something_went_wrong)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.weight(2f)
-                    )
+                    ErrorState()
                 }
             }
 
         }
         is HomeScreenUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 modifier = Modifier,
                 topBar = {
                     // No colour override. It was `containerColor = primaryContainer` with

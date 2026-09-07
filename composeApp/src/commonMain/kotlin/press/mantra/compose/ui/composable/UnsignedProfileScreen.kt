@@ -22,11 +22,13 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.as_long_as_you_control_your_keys_there_can
 import mantra.composeapp.generated.resources.your_profile_is_almost_ready_just_getting_it
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnsignedProfileScreen() {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

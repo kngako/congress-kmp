@@ -55,6 +55,9 @@ import mantra.composeapp.generated.resources.be_the_first_to_comment
 import mantra.composeapp.generated.resources.post
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.reply_to
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -79,6 +82,7 @@ fun TextNoteEventDetail(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
@@ -367,11 +371,7 @@ fun TextNoteEventDetail(
                         }
                     }
                     press.mantra.compose.ui.view.state.FeedListUIState.Error -> {
-                        item {
-                            Text(
-                                text = stringResource(Res.string.something_went_wrong)
-                            )
-                        }
+                        item { ErrorState() }
                     }
                     press.mantra.compose.ui.view.state.FeedListUIState.Loading -> {
                         item {

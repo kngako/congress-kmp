@@ -70,6 +70,8 @@ import mantra.composeapp.generated.resources.of
 import mantra.composeapp.generated.resources.was_created_but_couldn_t_be_added_yet_invite
 import mantra.composeapp.generated.resources.was_created_but_its_shared_key_ceremony
 import mantra.composeapp.generated.resources.you_and_others
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -128,6 +130,7 @@ fun SelectChatRoomTypeScreen(
             val isRobustSelected = selectedChatRoomType == ChatRoomType.ROBUST
 
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

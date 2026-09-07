@@ -64,6 +64,9 @@ import mantra.composeapp.generated.resources.share_profile
 import mantra.composeapp.generated.resources.sign_out
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -87,16 +90,11 @@ fun ActiveProfileScreen(
 
     when(val activeProfileUIState = activeProfileViewModel.activeProfileUIState) {
         ActiveProfileUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.something_went_wrong))
-            }
+            ErrorState()
         }
         is ActiveProfileUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

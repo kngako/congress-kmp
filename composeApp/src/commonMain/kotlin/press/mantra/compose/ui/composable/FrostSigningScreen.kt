@@ -69,6 +69,8 @@ import mantra.composeapp.generated.resources.sign
 import mantra.composeapp.generated.resources.sign_with_the_group_s_key
 import mantra.composeapp.generated.resources.signed_their_part
 import mantra.composeapp.generated.resources.events_signed_together
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 /**
  * One signing session, and the member's decision about it.
@@ -112,6 +114,7 @@ fun FrostSigningScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         topBar = {
             TopAppBar(
                 title = {

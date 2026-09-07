@@ -31,6 +31,8 @@ import mantra.composeapp.generated.resources.tell_friends_to_join_you_so_your_fe
 import mantra.composeapp.generated.resources.view_and_accept_invites_you_may_have
 import mantra.composeapp.generated.resources.view_invites
 import mantra.composeapp.generated.resources.who_will_you_be_passing_the_aux_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @Composable
 fun SocialPreconditionScreen(
@@ -39,6 +41,7 @@ fun SocialPreconditionScreen(
     onNavigateToViewInvites: () -> Unit,
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         bottomBar = {
             BottomAppBar(
                 modifier = Modifier,

@@ -67,6 +67,8 @@ import mantra.composeapp.generated.resources.eg_sesotho
 import mantra.composeapp.generated.resources.eg_st
 import mantra.composeapp.generated.resources.language
 import mantra.composeapp.generated.resources.propose_dialect
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -119,6 +121,7 @@ fun AddDialectScreen(
             // imePadding: this screen has a text field, and without it the software
             // keyboard covers whatever is being typed into.
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(

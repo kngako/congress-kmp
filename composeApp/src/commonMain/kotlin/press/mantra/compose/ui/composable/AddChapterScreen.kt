@@ -64,6 +64,8 @@ import mantra.composeapp.generated.resources.paste_the_chapter_s_markdown_blank_
 import mantra.composeapp.generated.resources.propose_chapter
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
 import mantra.composeapp.generated.resources.add_chapter_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,6 +138,7 @@ fun AddChapterScreen(
             // imePadding: this screen has a text field, and without it the software
             // keyboard covers whatever is being typed into.
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(

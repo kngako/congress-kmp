@@ -46,6 +46,8 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.currently_no_contacts_please_search_and_chat
 import mantra.composeapp.generated.resources.search_member_functionality
 import mantra.composeapp.generated.resources.search_message_functionality_will_be_here
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +87,7 @@ fun SearchMemberToAddToChatRoomScreen(
         }
         is SearchMemberToAddToChatRoomUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

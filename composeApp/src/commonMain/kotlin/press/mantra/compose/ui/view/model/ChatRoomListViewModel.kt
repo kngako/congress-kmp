@@ -46,6 +46,7 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.loading
 import mantra.composeapp.generated.resources.no_messages_go_to_a_profile_and_send_them_a
 import mantra.composeapp.generated.resources.something_went_wrong
+import press.mantra.compose.ui.composable.widgets.ErrorState
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: ChatRoomListUIState,
@@ -151,17 +152,7 @@ class ChatRoomListViewModel(
         ) {
             when (val chatRoomListUIState = chatRoomListUIState) {
                 ChatRoomListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(MaterialTheme.spacing.space600)
-                        )
-                        Text(
-                            text = stringResource(Res.string.something_went_wrong),
-                        )
-                    }
+                    ErrorState()
                 }
                 is ChatRoomListUIState.Loaded -> {
                     Column(

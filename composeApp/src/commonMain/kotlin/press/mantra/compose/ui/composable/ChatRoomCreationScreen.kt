@@ -39,6 +39,8 @@ import mantra.composeapp.generated.resources.this_will_be_shown_when_people_open
 import mantra.composeapp.generated.resources.this_will_be_the_display_name_for_this_chat
 import mantra.composeapp.generated.resources.what_should_people_know_about_you
 import mantra.composeapp.generated.resources.what_will_be_discussed_in_this_chat_room
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @Composable
 fun ChatRoomCreationScreen(
@@ -51,7 +53,9 @@ fun ChatRoomCreationScreen(
 
     // imePadding: this screen has a text field, and without it the software
     // keyboard covers whatever is being typed into.
-    Scaffold(modifier = Modifier.imePadding()) { innerPadding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding).fillMaxWidth()
         ) {

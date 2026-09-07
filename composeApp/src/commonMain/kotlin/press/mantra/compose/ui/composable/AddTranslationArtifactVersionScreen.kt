@@ -65,6 +65,8 @@ import mantra.composeapp.generated.resources.propose_translation
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a
 import mantra.composeapp.generated.resources.translate_into_which_dialect
 import mantra.composeapp.generated.resources.translate
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -136,6 +138,7 @@ fun AddTranslationArtifactVersionScreen(
             val buttonColors = ButtonDefaults.buttonColors()
 
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = { Text(stringResource(Res.string.translate, addTranslationUIState.artifact.name)) },

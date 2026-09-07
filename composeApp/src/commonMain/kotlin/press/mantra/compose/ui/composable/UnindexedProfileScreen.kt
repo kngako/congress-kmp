@@ -22,11 +22,13 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.events_are_indexed_so_that_we_can_deliver_a
 import mantra.composeapp.generated.resources.everything_is_cryptographical_sound_just_2
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnindexedProfileScreen() {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

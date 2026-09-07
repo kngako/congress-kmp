@@ -108,6 +108,7 @@ import mantra.composeapp.generated.resources.private_to
 import mantra.composeapp.generated.resources.proposals_are_waiting_for_your_signature
 import mantra.composeapp.generated.resources.reply_privately_to
 import mantra.composeapp.generated.resources.sent_a_private_message_to
+import press.mantra.compose.ui.composable.widgets.ErrorState
 
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
@@ -405,17 +406,7 @@ class ChatMessageListViewModel(
         ) {
             when (val chatRoomDetailMessageListUIState = this@ChatMessageListViewModel.chatMessageListUIState) {
                 ChatMessageListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(MaterialTheme.spacing.space600)
-                        )
-                        Text(
-                            text = stringResource(Res.string.something_went_wrong),
-                        )
-                    }
+                    ErrorState()
                 }
                 is ChatMessageListUIState.Loaded -> {
                     Spacer(

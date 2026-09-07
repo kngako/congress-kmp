@@ -39,8 +39,10 @@ import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.loading
-import mantra.composeapp.generated.resources.no_events_were_found
 import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.no_replies_to_this_yet
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import press.mantra.compose.ui.composable.widgets.EmptyState
 
 class InReplyToViewModel(
     val nostrEvent: press.mantra.compose.database.model.NostrEvent,
@@ -122,31 +124,11 @@ class InReplyToViewModel(
         ) {
             when (val feedListUIState = inReplyToFeedListUIState) {
                 press.mantra.compose.ui.view.state.FeedListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(MaterialTheme.spacing.space600)
-                        )
-                        Text(
-                            text = stringResource(Res.string.something_went_wrong),
-                        )
-                    }
+                    ErrorState()
                 }
                 is press.mantra.compose.ui.view.state.FeedListUIState.Loaded -> {
                     if (feedListUIState.localNostrEvents.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        )  {
-                            Spacer(
-                                modifier = Modifier.height(MaterialTheme.spacing.space600)
-                            )
-                            Text(
-                                text = stringResource(Res.string.no_events_were_found),
-                            )
-                        }
+                        EmptyState(message = stringResource(Res.string.no_replies_to_this_yet))
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),

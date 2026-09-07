@@ -56,6 +56,8 @@ import mantra.composeapp.generated.resources.what_s_your_comment_on_the_below
 import mantra.composeapp.generated.resources.what_s_your_reply_to_the_above
 import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send_out
 import mantra.composeapp.generated.resources.replying_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -79,7 +81,9 @@ fun WriteNewNoteScreen(
     )
     // imePadding: this screen has a text field, and without it the software
     // keyboard covers whatever is being typed into.
-    Scaffold(modifier = Modifier.imePadding()) { innerPadding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

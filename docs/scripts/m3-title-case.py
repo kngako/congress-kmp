@@ -20,6 +20,7 @@ Usage: m3-title-case.py [--list]
 import os, re, sys
 
 UI = 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui'
+CATALOGUE = 'composeApp/src/commonMain/composeResources/values/strings.xml'
 
 SMALL = {'a', 'an', 'the', 'to', 'of', 'for', 'and', 'or', 'via',
          'in', 'on', 'at', 'with', 'from', 'by'}
@@ -33,6 +34,26 @@ SAMPLE = {
 
 def offenders():
     found = []
+    # The catalogue, first. When phase 4 moved 364 strings out of composables it moved
+    # them out of this checker's reach at the same time -- it scanned .kt files only, so
+    # it went on reporting zero while "%1$s Key Packages" and three surviving mentions of
+    # the old product name sat in strings.xml. Externalising narrows what a source scan
+    # can see; the check has to follow.
+    if os.path.exists(CATALOGUE):
+        for m in re.finditer(r'<string name="([^"]+)">([^<]*)</string>',
+                             open(CATALOGUE, encoding='utf-8').read()):
+            phrase = m.group(2)
+            if phrase in SAMPLE:
+                continue
+            words = [w for w in re.sub(r'%\d+\$s', '', phrase).split() if w]
+            if len(words) < 2 or not words[0][:1].isupper():
+                continue
+            later = [w for w in words[1:] if w.lower() not in SMALL]
+            if not later:
+                continue
+            if all(w[:1].isupper() for w in later) and \
+               any(w[:1].isupper() and w[1:].islower() for w in later):
+                found.append((CATALOGUE, m.group(1), phrase))
     for root, _, files in os.walk(UI):
         for f in sorted(files):
             if not f.endswith('.kt'):

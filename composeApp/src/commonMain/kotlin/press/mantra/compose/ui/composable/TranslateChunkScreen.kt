@@ -62,6 +62,8 @@ import mantra.composeapp.generated.resources.propose_translation
 import mantra.composeapp.generated.resources.translate_chunk
 import mantra.composeapp.generated.resources.translated_text
 import mantra.composeapp.generated.resources.translation
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +116,7 @@ fun TranslateChunkScreen(
             // imePadding: this screen has a text field, and without it the software
             // keyboard covers whatever is being typed into.
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(

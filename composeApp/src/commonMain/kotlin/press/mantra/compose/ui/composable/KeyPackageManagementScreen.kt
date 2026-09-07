@@ -51,6 +51,13 @@ import mantra.composeapp.generated.resources.publish_new_key_package
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
 import mantra.composeapp.generated.resources.key_packages
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import mantra.composeapp.generated.resources.key_package_published
+import mantra.composeapp.generated.resources.key_package_rotated
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +70,12 @@ fun KeyPackageManagementScreen(
     marmotRepository: MarmotRepository
 ) {
 
+    // Read outside the click handlers: stringResource and rememberNotifier are both
+    // composable, and a lambda passed to onClick is not.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val publishedMessage = stringResource(Res.string.key_package_published)
+    val rotatedMessage = stringResource(Res.string.key_package_rotated)
+
     val keyPackageManagementViewModel: KeyPackageManagementViewModel = viewModel(
         factory = KeyPackageManagementViewModel.factory(
             nostrEventId = nostrEventId,
@@ -74,16 +87,11 @@ fun KeyPackageManagementScreen(
 
     when(val keyPackageManagementUIState = keyPackageManagementViewModel.keyPackageManagementUIState) {
         KeyPackageManagementUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.something_went_wrong))
-            }
+            ErrorState()
         }
         is KeyPackageManagementUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {
@@ -117,7 +125,9 @@ fun KeyPackageManagementScreen(
                         item {
                             Button(
                                 onClick = {
-                                    keyPackageManagementViewModel.publishNewKeyPackage()
+                                    keyPackageManagementViewModel.publishNewKeyPackage {
+                                        notify(publishedMessage)
+                                    }
                                 }
                             ) {
                                 Icon(
@@ -193,7 +203,9 @@ fun KeyPackageManagementScreen(
                                                 onClick = {
                                                     keyPackageManagementViewModel.rotateKeyPackage(
                                                         marmotKeyPackageBundle
-                                                    )
+                                                    ) {
+                                                        notify(rotatedMessage)
+                                                    }
                                                 }
                                             ) {
                                                 Icon(

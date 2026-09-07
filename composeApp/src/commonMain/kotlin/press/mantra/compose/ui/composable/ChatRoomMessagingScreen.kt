@@ -66,6 +66,8 @@ import mantra.composeapp.generated.resources.direct_message_functionality_will_b
 import mantra.composeapp.generated.resources.say_what_now
 import mantra.composeapp.generated.resources.private_message_to
 import mantra.composeapp.generated.resources.private_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +120,7 @@ fun ChatRoomMessagingScreen(
             )
 
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

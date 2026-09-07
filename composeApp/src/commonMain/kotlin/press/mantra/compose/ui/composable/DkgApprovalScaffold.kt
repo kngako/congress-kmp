@@ -43,6 +43,8 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.back
 import mantra.composeapp.generated.resources.not_now
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -84,6 +86,7 @@ internal fun DkgApprovalScaffold(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         topBar = {
             TopAppBar(
                 title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) }

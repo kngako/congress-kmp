@@ -48,6 +48,8 @@ import mantra.composeapp.generated.resources.chapter_words_characters
 import mantra.composeapp.generated.resources.chunk
 import mantra.composeapp.generated.resources.chunks
 import mantra.composeapp.generated.resources.words_characters
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +87,7 @@ fun ChapterDetailScreen(
         is ChapterDetailUIState.Loaded -> {
             val chapter = chapterDetailUIState.chapter
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = { Text(chapter.name) },

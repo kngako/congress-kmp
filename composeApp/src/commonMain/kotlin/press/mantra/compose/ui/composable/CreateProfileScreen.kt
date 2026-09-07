@@ -59,6 +59,8 @@ import mantra.composeapp.generated.resources.this_will_be_the_display_name_for_y
 import mantra.composeapp.generated.resources.what_should_people_know_about_you
 import mantra.composeapp.generated.resources.you_are_about_to_create_a_nostr_profile
 import mantra.composeapp.generated.resources.you_will_be_in_full_control_of_this_profile
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -78,7 +80,9 @@ fun CreateProfileScreen(
     )
     // imePadding: this screen has a text field, and without it the software
     // keyboard covers whatever is being typed into.
-    Scaffold(modifier = Modifier.imePadding()) { innerPadding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

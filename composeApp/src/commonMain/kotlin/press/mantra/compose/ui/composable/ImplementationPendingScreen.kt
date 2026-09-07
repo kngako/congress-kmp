@@ -17,13 +17,15 @@ import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.functionality_coming_soon_2
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @Composable
 fun ImplementationPendingScreen(
     text: String
 ) {
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding).fillMaxSize()
         ) {

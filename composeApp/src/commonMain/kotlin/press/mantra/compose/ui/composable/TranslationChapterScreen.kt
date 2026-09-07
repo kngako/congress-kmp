@@ -52,6 +52,8 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.chapter_translation
 import mantra.composeapp.generated.resources.this_chapter_has_no_chunks
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +91,7 @@ fun TranslationChapterScreen(
 
         is TranslationChapterUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = { Text(stringResource(Res.string.chapter_translation)) },

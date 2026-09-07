@@ -34,8 +34,10 @@ import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.loading
-import mantra.composeapp.generated.resources.no_events_were_found
 import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.nobody_following_you_yet
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import press.mantra.compose.ui.composable.widgets.EmptyState
 
 class FollowersListViewModel(
     initialFollowingListUIState: press.mantra.compose.ui.view.state.FollowersListUIState,
@@ -112,31 +114,11 @@ class FollowersListViewModel(
         ) {
             when (val followersListUIState = followersListUIState) {
                 press.mantra.compose.ui.view.state.FollowersListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(MaterialTheme.spacing.space600)
-                        )
-                        Text(
-                            text = stringResource(Res.string.something_went_wrong),
-                        )
-                    }
+                    ErrorState()
                 }
                 is press.mantra.compose.ui.view.state.FollowersListUIState.Loaded -> {
                     if (followersListUIState.followers.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        )  {
-                            Spacer(
-                                modifier = Modifier.height(MaterialTheme.spacing.space600)
-                            )
-                            Text(
-                                text = stringResource(Res.string.no_events_were_found),
-                            )
-                        }
+                        EmptyState(message = stringResource(Res.string.nobody_following_you_yet))
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),

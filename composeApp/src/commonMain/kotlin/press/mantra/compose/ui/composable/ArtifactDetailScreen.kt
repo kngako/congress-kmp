@@ -64,6 +64,8 @@ import mantra.composeapp.generated.resources.version
 import mantra.composeapp.generated.resources.versions
 import mantra.composeapp.generated.resources.chapter
 import mantra.composeapp.generated.resources.words_characters
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +104,7 @@ fun ArtifactDetailScreen(
         is ArtifactDetailUIState.Loaded -> {
             val artifact = artifactDetailUIState.artifact
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = { Text(artifact.name) },

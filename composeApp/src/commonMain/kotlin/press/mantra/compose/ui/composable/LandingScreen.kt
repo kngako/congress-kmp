@@ -29,6 +29,8 @@ import mantra.composeapp.generated.resources.learn_more
 import mantra.composeapp.generated.resources.mantra
 import mantra.composeapp.generated.resources.sign_in
 import mantra.composeapp.generated.resources.sign_in_to_torch_via_nsec_or_remote_signer
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @Composable
 fun LandingScreen(
@@ -36,7 +38,7 @@ fun LandingScreen(
     onNavigateToSignIn: () -> Unit,
     onNavigateToCreateProfile: () -> Unit
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {

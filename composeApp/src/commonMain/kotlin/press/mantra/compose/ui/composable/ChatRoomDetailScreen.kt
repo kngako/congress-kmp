@@ -92,6 +92,8 @@ import mantra.composeapp.generated.resources.shared_key
 import mantra.composeapp.generated.resources.event_s_still_unreadable
 import mantra.composeapp.generated.resources.recovered_of_event_s
 import mantra.composeapp.generated.resources.recovered_of_still_unreadable
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -134,6 +136,7 @@ fun ChatRoomDetailScreen(
         }
         is ChatRoomDetailUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
                 topBar = {
                     TopAppBar(
                         title = {

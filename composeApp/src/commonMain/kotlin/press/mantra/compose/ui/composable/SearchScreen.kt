@@ -70,6 +70,8 @@ import mantra.composeapp.generated.resources.recents
 import mantra.composeapp.generated.resources.search
 import mantra.composeapp.generated.resources.search_hashtags
 import mantra.composeapp.generated.resources.trending_notes_functionality_coming_soon_in
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -92,7 +94,7 @@ fun SearchScreen(
     // Controls expansion state of the search bar
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,

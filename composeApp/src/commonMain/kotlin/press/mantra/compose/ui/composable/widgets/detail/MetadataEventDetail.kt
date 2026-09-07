@@ -67,6 +67,8 @@ import mantra.composeapp.generated.resources.follow
 import mantra.composeapp.generated.resources.follow_back
 import mantra.composeapp.generated.resources.send_message
 import mantra.composeapp.generated.resources.unfollow
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -94,6 +96,7 @@ fun MetadataEventDetail(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(

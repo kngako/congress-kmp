@@ -57,11 +57,15 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
-import mantra.composeapp.generated.resources.no_events_were_found
 import mantra.composeapp.generated.resources.profiles
 import mantra.composeapp.generated.resources.search
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.searching_for_on
+import mantra.composeapp.generated.resources.nothing_matched_that_search
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import press.mantra.compose.ui.composable.widgets.EmptyState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -89,7 +93,7 @@ fun SearchResultScreen(
     var expanded by rememberSaveable { mutableStateOf(true) }
 
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -213,32 +217,12 @@ fun SearchResultScreen(
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
                                 SearchResultListUIState.Error -> {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Spacer(
-                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
-                                        )
-                                        Text(
-                                            text = stringResource(Res.string.something_went_wrong),
-                                        )
-                                    }
+                                    ErrorState()
                                 }
                                 is SearchResultListUIState.Loaded -> {
                                     // TODO: Handle gallery UI
                                     if (searchResultListUIState.localNostrEvents.isEmpty()) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        )  {
-                                            Spacer(
-                                                modifier = Modifier.height(MaterialTheme.spacing.space600)
-                                            )
-                                            Text(
-                                                text = stringResource(Res.string.no_events_were_found),
-                                            )
-                                        }
+                                        EmptyState(message = stringResource(Res.string.nothing_matched_that_search))
                                     } else {
 
                                         LazyColumn(

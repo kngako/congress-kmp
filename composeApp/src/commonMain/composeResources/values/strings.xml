@@ -93,7 +93,7 @@
     <string name="has_not_taken_part_yet">Has not taken part yet</string>
     <string name="how_many_admins_have_to_approve_a_change">How many admins have to approve a change?</string>
     <string name="how_many_members_will_it_take_to_sign">How many members will it take to sign?</string>
-    <string name="if_you_are_new_to_torch_or_just_want_to">If you are new to Torch or just want to create a fresh profile</string>
+    <string name="if_you_are_new_to_torch_or_just_want_to">If you are new to Mantra or just want to create a fresh profile</string>
     <string name="initial_version_label">Initial version label</string>
     <string name="input_npub_or_nip05">Input npub... or nip05</string>
     <string name="introduce_yourself">Introduce yourself</string>
@@ -138,7 +138,6 @@
     <string name="no_chunks">No chunks.</string>
     <string name="no_dialects_have_been_defined_in_this_group">No dialects have been defined in this group yet. Add one from the group's detail screen first.</string>
     <string name="no_dialects_have_been_defined_in_this_group_2">No dialects have been defined in this group.</string>
-    <string name="no_events_were_found">No events were found</string>
     <string name="no_messages_go_to_a_profile_and_send_them_a">No messages. Go to a profile and send them a message.</string>
     <string name="no_one_selected_yet">No one selected yet</string>
     <string name="no_one_to_add_yet">No one to add yet.</string>
@@ -195,7 +194,7 @@
     <string name="sign">Sign</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_in_to_nsec">Sign in to nsec</string>
-    <string name="sign_in_to_torch_via_nsec_or_remote_signer">Sign in to Torch via nsec, or remote signer</string>
+    <string name="sign_in_to_torch_via_nsec_or_remote_signer">Sign in to Mantra via nsec, or remote signer</string>
     <string name="sign_in_with_an_npub">Sign in with an npub</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_with_the_group_s_key">Sign with the group's key</string>
@@ -234,7 +233,7 @@
     <string name="this_will_be_the_display_name_for_your">This will be the display name for your profile and also important for search.</string>
     <string name="this_will_give_you_read_only_access_to_the">This will give you read only access to the profile.</string>
     <string name="this_will_give_you_write_access_to_the">This will give you write access to the profile.</string>
-    <string name="torch_will_be_broadcast_what_you_publish_to">Torch will be broadcast what you publish to a distributed set of relays so that it's decentralized.</string>
+    <string name="torch_will_be_broadcast_what_you_publish_to">Mantra broadcasts what you publish to a distributed set of relays, so it stays decentralised.</string>
     <string name="translate_chunk">Translate chunk</string>
     <string name="translate_into_which_dialect">Translate into which dialect?</string>
     <string name="translated_text">Translated text</string>
@@ -286,7 +285,7 @@
     <string name="functionality_coming_soon_2">"%1$s" functionality coming soon</string>
     <string name="how_should_be_run">How should %1$s be run?</string>
     <string name="invite_2">Invite %1$s</string>
-    <string name="key_packages">%1$s Key Packages</string>
+    <string name="key_packages">%1$s key packages</string>
     <string name="next_with">Next with %1$s</string>
     <string name="nostr">nostr:%1$s..</string>
     <string name="nostr_2">nostr:%1$s...</string>
@@ -301,7 +300,7 @@
     <string name="recovered_of_still_unreadable">Recovered %1$s of %2$s · %3$s still unreadable%4$s</string>
     <string name="reply_privately_to">Reply privately to %1$s</string>
     <string name="reply_to">Reply to %1$s</string>
-    <string name="replying_to">replying To %1$s</string>
+    <string name="replying_to">Replying to %1$s</string>
     <string name="searching_for_on">Searching for %1$s on "%2$s"</string>
     <string name="selected">%1$s selected</string>
     <string name="sent_a_private_message_to">%1$s sent a private message to %2$s</string>
@@ -309,8 +308,15 @@
     <string name="to_join_the_chat_room">to join the %1$s chat room.</string>
     <string name="translate">Translate %1$s</string>
     <string name="unsupported_event_kind_2">Unsupported event kind: %1$s</string>
-    <string name="was_created_but_couldn_t_be_added_yet_invite">%1$s was created, but %2$s couldn't be added yet. Invite them again from the chat once they're on Torch.</string>
+    <string name="was_created_but_couldn_t_be_added_yet_invite">%1$s was created, but %2$s couldn't be added yet. Invite them again from the chat once they're on Mantra.</string>
     <string name="was_created_but_its_shared_key_ceremony">%1$s was created, but its shared key ceremony couldn't be started. Open the chat and start it from the group's details — until then the group has no key of its own.</string>
     <string name="words_characters">%1$s words · %2$s characters</string>
     <string name="you_and_others">You and %1$s others</string>
+    <string name="not_following_anyone_yet">You aren't following anyone yet.</string>
+    <string name="nobody_following_you_yet">Nobody is following you yet.</string>
+    <string name="nothing_in_this_feed_yet">Nothing in this feed yet.</string>
+    <string name="no_replies_to_this_yet">No replies to this yet.</string>
+    <string name="nothing_matched_that_search">Nothing matched that search.</string>
+    <string name="key_package_published">Key package published</string>
+    <string name="key_package_rotated">Key package rotated</string>
 </resources>

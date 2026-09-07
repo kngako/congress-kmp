@@ -46,6 +46,8 @@ import mantra.composeapp.generated.resources.invite
 import mantra.composeapp.generated.resources.invite_2
 import mantra.composeapp.generated.resources.once_invited_will_be_able_to_receive_and
 import mantra.composeapp.generated.resources.to_join_the_chat_room
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +90,7 @@ fun AddMemberToChatRoomConfirmationScreen(
         }
         is AddMemberToChatRoomConfirmationUIState.Loaded -> {
             Scaffold(
+                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
 //                topBar = {
 //                    TopAppBar(
 //                        title = {
