@@ -16,6 +16,7 @@ silent, or a decision that looked arbitrary and was not.
 | [long-running-sync.md](./long-running-sync.md) | the chat subscriptions that stay open instead of pulling once per screen — why the request queue could not simply hold one, and how the group filter follows the room list |
 | [dead-code.md](./dead-code.md) | code in the sync and relay stack that nothing calls, why each piece is still there, and which of it is a bug rather than a leftover |
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
+| [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 
 Start with the ceremony if you are new to this area; the Marmot notes all assume it.
 Read the skipped-keys note before debugging any "the other device never got it"
@@ -27,3 +28,6 @@ chronicle note is a phased plan that has not been built, and reads as the
 membership note's unanswered half: what a member who joins late can be given,
 and the one thing they cannot. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.
+The Material Design note is a phased plan that has not been built, and is the
+only one about what the app looks like rather than what it does; read the
+jvm-target note first if you want to know why its adaptive-layout phase exists.
