@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.ktor.http.Url
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 @Composable
 internal fun LinkPreview(url: String) {
@@ -49,13 +51,14 @@ internal fun LinkPreview(url: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = MaterialTheme.spacing.space50)
+                .minimumInteractiveComponentSize()
                 .clickable { uriHandler.openUri(url) }
         ) {
             Column {
                 data.image?.let { imageUrl ->
                     AsyncImage(
                         model = imageUrl,
-                        contentDescription = null,
+                        contentDescription = Decorative,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -120,6 +123,7 @@ internal fun LinkPreview(url: String) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .padding(vertical = MaterialTheme.spacing.space25)
+                .minimumInteractiveComponentSize()
                 .clickable { uriHandler.openUri(url) }
         )
     }

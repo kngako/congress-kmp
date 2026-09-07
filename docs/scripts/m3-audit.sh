@@ -26,8 +26,8 @@ THEME="$UI/theme"
 # ---------------------------------------------------------------------------
 BUDGET_HARDCODED_COLOR=0       # phase 3: reached 2026-09-08
 BUDGET_SPACING_LITERALS=0      # phase 2: reached 2026-09-08
-BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
-BUDGET_NULL_DESCRIPTION=18     # phase 3 triages each one
+BUDGET_BARE_CLICKABLE=0        # phase 3: reached 2026-09-08
+BUDGET_NULL_DESCRIPTION=0      # phase 3: reached 2026-09-08
 BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
 BUDGET_TITLE_CASE=-1           # phase 4 drives to 0
 BUDGET_UNSET_COLOR_ROLES=0     # phase 1: reached 2026-09-07
@@ -169,10 +169,16 @@ note "hardcoded fontSize:                     $fontsize"
 # ---------------------------------------------------------------------------
 hdr 'Targets and labels  (phase 3)'
 
-clickable=$(count '\.clickable')
-report 'bare Modifier.clickable' "$clickable" "$BUDGET_BARE_CLICKABLE"
+# Counting `.clickable` was never the question -- a clickable Card is fine and a
+# clickable Text is not, and only the minimum-size modifier tells them apart.
+targets_left=$(python3 docs/scripts/m3-touch-targets.py | grep -oE '[0-9]+$')
+report 'clickable chains with no minimum target' "$targets_left" "$BUDGET_BARE_CLICKABLE"
+note 'run docs/scripts/m3-touch-targets.py --list to see them'
+# `null` and `Decorative` compile to the same thing; the difference is that one of them
+# is a decision. Untriaged icons are the count that matters.
 null_desc=$(count 'contentDescription = null')
-report 'contentDescription = null' "$null_desc" "$BUDGET_NULL_DESCRIPTION"
+report 'contentDescription = null (untriaged)' "$null_desc" "$BUDGET_NULL_DESCRIPTION"
+note "marked Decorative: $(count 'contentDescription = Decorative')"
 icons=$(count 'Icon\(')
 note "Icon( call sites:                       $icons"
 min_size=$(count 'minimumInteractiveComponentSize')

@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machankura.compose.ui.composable.widgets.buttons.Clickable
+import press.mantra.compose.ui.composable.widgets.buttons.Clickable
 import fr.acinq.phoenix.data.UserWallet
 import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.utils.preferences.GlobalPrefs

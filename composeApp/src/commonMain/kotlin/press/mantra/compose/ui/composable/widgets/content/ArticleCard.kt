@@ -14,6 +14,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -53,7 +54,8 @@ private fun ArticleCard(
             .fillMaxWidth()
             .padding(vertical = MaterialTheme.spacing.space75)
             .then(
-                if (onArticleClick != null) Modifier.clickable { onArticleClick(30023, author, dTag) }
+                if (onArticleClick != null) Modifier.minimumInteractiveComponentSize()
+                                                .clickable { onArticleClick(30023, author, dTag) }
                 else Modifier
             )
     ) {
@@ -141,7 +143,8 @@ private fun ArticleCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = if (onProfileClick != null) {
-                                Modifier.clickable { onProfileClick(author) }
+                                Modifier.minimumInteractiveComponentSize()
+                                    .clickable { onProfileClick(author) }
                             } else Modifier
                         )
                         if (publishedAt != null) {

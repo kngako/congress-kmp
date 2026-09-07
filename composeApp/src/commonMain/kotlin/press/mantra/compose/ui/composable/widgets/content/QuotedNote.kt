@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +74,8 @@ fun QuotedNote(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    Modifier.clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
+                    Modifier.minimumInteractiveComponentSize()
+                        .clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
                 )
         ) {
             localQuotedNostrEvent.RenderNotePreview(

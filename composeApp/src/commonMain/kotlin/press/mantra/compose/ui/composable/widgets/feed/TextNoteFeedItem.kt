@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
@@ -54,7 +55,8 @@ internal fun TextNoteFeedItem(
                 )
 
                 Text(
-                    modifier = Modifier.clickable(
+                    modifier = Modifier.minimumInteractiveComponentSize()
+                                   .clickable(
                         onClick = {
                             onNavigateToEvent.invoke(localInReplyToNostrEvent.inReplyToRelation.inReplyToNostrEventId)
                         }
@@ -81,7 +83,8 @@ internal fun TextNoteFeedItem(
             ) {
                 if (profile != null) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable(
+                        modifier = Modifier.fillMaxWidth().minimumInteractiveComponentSize()
+                        .clickable(
                             onClick = {
                                 onNavigateToEvent.invoke(profile.nostrEventId)
                             }

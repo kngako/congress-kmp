@@ -44,7 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machankura.compose.ui.composable.widgets.buttons.Clickable
+import press.mantra.compose.ui.composable.widgets.buttons.Clickable
 import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
 import press.mantra.compose.ui.theme.spacing
 

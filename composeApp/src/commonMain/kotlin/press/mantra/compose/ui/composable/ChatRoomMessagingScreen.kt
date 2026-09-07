@@ -57,6 +57,7 @@ import press.mantra.compose.ui.view.model.ChatRoomMessagingViewModel
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -222,7 +223,7 @@ fun ChatRoomMessagingScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Lock,
-                                    contentDescription = null,
+                                    contentDescription = Decorative,
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )

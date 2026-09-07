@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -47,7 +48,8 @@ private fun LiveStreamCard(
             .fillMaxWidth()
             .padding(vertical = MaterialTheme.spacing.space75)
             .then(
-                if (onLiveStreamClick != null) Modifier.clickable {
+                if (onLiveStreamClick != null) Modifier.minimumInteractiveComponentSize()
+                                                   .clickable {
                     onLiveStreamClick(author, dTag, segmentRelayHints.firstOrNull())
                 }
                 else Modifier

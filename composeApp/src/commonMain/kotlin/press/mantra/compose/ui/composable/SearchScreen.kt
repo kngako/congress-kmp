@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -176,6 +177,7 @@ fun SearchScreen(
                                         }
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
@@ -218,6 +220,7 @@ fun SearchScreen(
                                         }
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
@@ -257,6 +260,7 @@ fun SearchScreen(
                                         )
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToProfile.invoke(
                                                 NostrEventDetailRoute(
@@ -362,6 +366,7 @@ fun SearchScreen(
                                         )
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(

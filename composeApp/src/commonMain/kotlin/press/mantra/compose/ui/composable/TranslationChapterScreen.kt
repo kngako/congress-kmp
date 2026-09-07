@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -192,7 +193,8 @@ private fun ChunkTranslationRow(
         // there is no translation yet, the original text is shown greyed out as
         // a placeholder. It stays plain text, laid out like the original cell
         // beside it, rather than a button with its own shape and padding.
-        rightModifier = Modifier.clickable(onClick = onClick),
+        rightModifier = Modifier.minimumInteractiveComponentSize()
+                            .clickable(onClick = onClick),
         right = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

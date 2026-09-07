@@ -76,6 +76,7 @@ import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -165,7 +166,7 @@ fun DkgRitualScreen(
                                         )
                                     }
                                 ) {
-                                    Icon(Icons.Default.Key, contentDescription = null)
+                                    Icon(Icons.Default.Key, contentDescription = Decorative)
                                     Text(
                                         text = when (pending) {
                                             DkgApprovalStep.HOST_KEY -> "Review and join"
@@ -333,7 +334,7 @@ private fun RitualProgress(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.ErrorOutline, contentDescription = null)
+                Icon(Icons.Default.ErrorOutline, contentDescription = Decorative)
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)) {
                     Text("The ceremony was abandoned.", style = MaterialTheme.typography.titleSmall)
                     session.failureReason?.let {
@@ -404,7 +405,7 @@ private fun RitualProgress(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
+                    Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
                     Text("The group has a shared key.", style = MaterialTheme.typography.titleSmall)
                 }
 
@@ -473,7 +474,7 @@ private fun RitualProgress(
                         if (isActionPending) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Icon(Icons.Default.Groups, contentDescription = null)
+                            Icon(Icons.Default.Groups, contentDescription = Decorative)
                             Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
                             Text(text = "Create the #admins group")
                         }
@@ -526,13 +527,19 @@ private fun RitualRoster(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Not decorative: the name beside it says who, and only the
+                        // icon says whether they have contributed.
                         Icon(
                             imageVector = if (publicKey in hostKeyParticipants) {
                                 Icons.Default.CheckCircle
                             } else {
                                 Icons.Default.RadioButtonUnchecked
                             },
-                            contentDescription = null
+                            contentDescription = if (publicKey in hostKeyParticipants) {
+                                "Contributed"
+                            } else {
+                                "Not yet contributed"
+                            }
                         )
 
                         Text(
@@ -572,9 +579,11 @@ private fun RitualStep(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Not decorative: the title says which round, the count says how far
+                // along, and only the icon says whether it has finished.
                 Icon(
                     imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = null
+                    contentDescription = if (isDone) "Complete" else "In progress"
                 )
                 Text(text = title, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.weight(1f))

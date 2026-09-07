@@ -47,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -92,6 +93,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
@@ -650,7 +652,7 @@ class ChatMessageListViewModel(
                                                         ) {
                                                             Icon(
                                                                 Icons.Default.Lock,
-                                                                contentDescription = null,
+                                                                contentDescription = Decorative,
                                                                 modifier = Modifier.size(12.dp),
                                                                 tint = MaterialTheme.colorScheme.primary
                                                             )
@@ -724,7 +726,7 @@ class ChatMessageListViewModel(
                                                         Text("Reply privately to ${nameFor(localChatMessage.chatMessage.senderPublicKey)}")
                                                     },
                                                     leadingIcon = {
-                                                        Icon(Icons.Default.Lock, contentDescription = null)
+                                                        Icon(Icons.Default.Lock, contentDescription = Decorative)
                                                     },
                                                     onClick = {
                                                         participantFor(localChatMessage.chatMessage.senderPublicKey)
@@ -864,7 +866,7 @@ private fun ProposalsAwaitingYouNotice(
         ) {
             Icon(
                 Icons.Default.Draw,
-                contentDescription = null
+                contentDescription = Decorative
             )
 
             Column(
@@ -930,7 +932,7 @@ private fun PrivateMessageNotice(
     ) {
         Icon(
             Icons.Default.Lock,
-            contentDescription = null,
+            contentDescription = Decorative,
             modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1029,6 +1031,7 @@ private fun RitualNotice(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .minimumInteractiveComponentSize()
             .clickable(onClick = onClick)
             .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.space125),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
@@ -1036,7 +1039,7 @@ private fun RitualNotice(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = Decorative,
             tint = tint
         )
 

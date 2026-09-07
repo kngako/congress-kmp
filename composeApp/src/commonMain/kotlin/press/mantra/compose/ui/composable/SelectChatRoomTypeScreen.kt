@@ -56,6 +56,7 @@ import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -345,7 +346,7 @@ private fun ChatRoomTypeCard(
 
                 Icon(
                     imageVector = icon,
-                    contentDescription = null
+                    contentDescription = Decorative
                 )
 
                 Text(

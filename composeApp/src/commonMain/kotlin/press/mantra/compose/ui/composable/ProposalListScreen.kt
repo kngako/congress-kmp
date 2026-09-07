@@ -270,7 +270,14 @@ private fun ProposalCard(
                             Icons.Default.ErrorOutline
                         else -> Icons.Default.HourglassEmpty
                     },
-                    contentDescription = null,
+                    // Carries the stage on its own, and carries it alone on the
+                    // highlighted card where the failure state has no colour to spare.
+                    contentDescription = when {
+                        proposal.awaitsYou -> "Awaiting your signature"
+                        proposal.session.stage == FrostSigningStage.COMPLETE -> "Signed"
+                        proposal.session.stage == FrostSigningStage.FAILED -> "Failed"
+                        else -> "Waiting on others"
+                    },
                     tint = when {
                         // `error` is 2.67:1 on the highlighted card, so on that one the
                         // failure is carried by the icon shape and the supporting line

@@ -57,6 +57,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.FrostSigningViewModel
 import press.mantra.compose.ui.view.state.FrostSigningUIState
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 /**
  * One signing session, and the member's decision about it.
@@ -275,7 +276,7 @@ fun FrostSigningScreen(
                                     !frostSigningViewModel.isActionPending.value,
                                 onClick = { frostSigningViewModel.approve(onNavigateBack) }
                             ) {
-                                Icon(Icons.Default.Draw, contentDescription = null)
+                                Icon(Icons.Default.Draw, contentDescription = Decorative)
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
                                 Text("Sign")
                             }

@@ -38,6 +38,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -137,7 +138,7 @@ internal fun DkgApprovalScaffold(
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.space500))
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
+                            contentDescription = Decorative,
                             modifier = Modifier.size(40.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

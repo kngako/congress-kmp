@@ -12,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -149,7 +150,8 @@ internal fun LiveStreamCardContent(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = if (onProfileClick != null) {
-                            Modifier.clickable { onProfileClick(author) }
+                            Modifier.minimumInteractiveComponentSize()
+                                .clickable { onProfileClick(author) }
                         } else Modifier
                     )
                 }

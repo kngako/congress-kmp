@@ -34,6 +34,7 @@ import fr.acinq.lightning.payment.Bolt11Invoice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
 
 @Composable
 internal fun LightningInvoiceCard(
@@ -109,7 +110,7 @@ internal fun LightningInvoiceCard(
         ) {
             Icon(
                 Icons.Default.Bolt,
-                contentDescription = null,
+                contentDescription = Decorative,
                 tint = primary,
                 modifier = Modifier.size(20.dp)
             )
