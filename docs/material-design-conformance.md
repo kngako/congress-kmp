@@ -195,21 +195,20 @@ is the specified disabled opacity and is exempt.
 
 ### Spacing is a habit, not a system
 
-520 `.dp` literals. Roughly 419 land on a defined spacing stop and about 101 do
-not:
+527 `.dp` literals. 419 land on a defined spacing stop, 19 are dimensions rather
+than spacing (a hairline border, an avatar, an image height), and 89 are off-scale:
 
 ```
-  1dp × 12    5dp × 10   15dp × 14   18dp × 1   22dp × 1
- 30dp ×  2   35dp ×  3   50dp × 53   55dp × 2   70dp × 2   75dp × 1
+  5dp × 10   15dp × 14   18dp × 1   22dp × 1   30dp × 2
+ 35dp ×  3   50dp × 53   55dp ×  2   70dp × 2   75dp × 1
 ```
 
-Two things are true at once here, and the second matters more. The 1dp values
-are hairline borders and dividers, which is fine. But `10.dp` (132 uses) and
+The off-scale values are the smaller half of the problem. `10.dp` (132 uses) and
 `20.dp` (115) — the two dominant values — *are* on the scale, as `space125` and
-`space250`. So this is not mostly an off-grid problem. It is that **nothing
-records which of padding, gap or margin any of these is**, so there is no way to
-adapt them per breakpoint or density later, and no way to tell a deliberate 15dp
-from a typo.
+`space250`, so a sweep for off-grid numbers would change almost nothing. What is
+wrong is that **nothing records which of padding, gap or margin any of these
+is**, so there is no way to adapt them per breakpoint or density later, and no
+way to tell a deliberate 15dp from a typo.
 
 `Modifier.height(50.dp)` appears 49 times, almost always as a `Spacer` pushing
 an empty or error message down the screen. It is the same three lines copied
@@ -226,7 +225,7 @@ labelLarge  13   titleSmall 12  titleMedium 6  titleLarge 4    headlineSmall 4
 headlineMedium 2 headlineLarge 2 displayMedium 1
 ```
 
-`label*` roles are 90 of 240 uses. Labels are for component text — buttons,
+`label*` roles are 92 of 240 uses. Labels are for component text — buttons,
 tabs, chips — not for body copy or list content, and they are the smallest and
 tightest roles in the scale. Reading a screen where `labelMedium` carries the
 prose is the visual equivalent of everything being at the same pitch. Meanwhile
@@ -338,7 +337,7 @@ state change in the app is a hard cut.
 |---|---|---|
 | Theme completeness | 12 roles unset, 4 schemes unreachable, no shapes/motion | 1 |
 | Colour at call sites | 7 pairings under threshold, one at 1.00:1 | 1, 3 |
-| Spacing | 520 literals, no role recorded | 2 |
+| Spacing | 527 literals, no role recorded | 2 |
 | Typography | 90/240 uses on `label*`, 2/30 roles emphasized | 1 |
 | Targets & labels | 33 unguarded `.clickable`, 18 untriaged nulls | 3 |
 | Content | 334 literals, title case throughout | 4 |
@@ -361,38 +360,47 @@ so they lock in real state rather than aspiration.
 **Why first.** Every count in this document was produced by hand. If they cannot
 be regenerated, the phases below have no acceptance criteria — only opinions.
 
-**Work.**
+**Built.**
 
-1. `docs/scripts/m3-audit.sh`, checked in, emitting the tables above: dp
-   histogram split by on/off the spacing scale, typography role distribution,
-   hardcoded colour sites, `.clickable` sites, `contentDescription = null`
-   count, string literal count, snackbar count, adaptive API count.
-2. `composeApp/src/commonTest/.../ui/theme/ColorSchemeContrastTest.kt` — a pure
-   computation over the six declared schemes, no Compose runtime needed:
+1. **`docs/scripts/m3-audit.sh`** regenerates every count in "Where this app
+   stands": the dp histogram split three ways, the typography role
+   distribution, hardcoded colour sites, `.clickable` sites,
+   `contentDescription = null`, string literals, snackbars, adaptive APIs. Each
+   number that a phase is meant to move carries a **budget** at the top of the
+   file, and `--check` exits 1 when one is exceeded. Budgets ratchet down in the
+   same commit that earns the reduction; Phase 8 wires `--check` into CI, at
+   which point raising one is the thing a reviewer looks for.
 
-   ```kotlin
-   private fun ratio(a: Color, b: Color): Double { … }   // WCAG relative luminance
+   Two counts it reports separately, because conflating them would overstate the
+   problem: the twelve `*Fixed*` roles that fall through to Material baseline
+   lavender, and `surfaceTint`, which is also unassigned but defaults to
+   `primary` and is therefore correct. The `.dp` histogram likewise splits
+   dimensions (a hairline border, an avatar) out of the off-scale count.
 
-   @Test
-   fun everyOnRolePairsAtFourPointFive() {
-       schemes.forEach { (name, scheme) ->
-           pairs.forEach { (bg, fg) ->
-               val r = ratio(bg(scheme), fg(scheme))
-               assertTrue(r >= 4.5, "$name: ${fg.name} on ${bg.name} is $r")
-           }
-       }
-   }
-   ```
+2. **`ColorSchemeContrastTest`** in `commonTest` — WCAG relative luminance from
+   first principles, no Compose runtime, four assertions over all six schemes:
+   every content role on its container at 4.5:1, `onSurface` on each of the
+   seven tonal surfaces at 4.5:1, `outline` against every surface it is drawn on
+   at 3:1, and `primary`/`error` containers against `surface` at 3:1. 4 tests,
+   green.
 
-   It passes today. It exists so Phase 1 cannot regress it, and so Phase 3 has
-   somewhere to add the call-site pairings.
-3. Baseline the numbers into `docs/` alongside this file, dated.
+   It walks the real `ColorScheme` objects, which is why `Theme.kt`'s six
+   schemes moved from `private` to `internal`: rebuilding them in the test from
+   `Color.kt` would assert the palette and miss the wiring, and a role pointed at
+   its neighbour's value is exactly the slip that reads fine in review.
 
-**Done when** the script runs from a clean checkout and its output matches the
-tables in "Where this app stands", and `:composeApp:jvmTest` runs the contrast
-test green.
+   Verified to bite. Nudging `onSurfaceVariantLight` from `#4C4546` to `#9C9496`
+   — a plausible "soften the secondary text" edit — fails it with
+   `light: onSurfaceVariant on surfaceVariant is 2.29:1`.
 
-**Risk:** none. Nothing in the app changes.
+**Deliberately not asserted:** monotonicity across the contrast ladder. The
+obvious invariant — high-contrast beats medium beats default, for every pair —
+is false, and correctly so: ten pairs move the other way because a high-contrast
+scheme darkens `surfaceContainerHighest` to separate it from `surface`, trading
+ratio against `onSurface` for the separation that matters. The floor is the
+invariant; the ladder is not.
+
+**Risk:** none to the app. The only production change is a visibility keyword.
 
 ---
 
@@ -463,7 +471,7 @@ alone.
 
 ### Phase 2 — spacing becomes a token
 
-**Why here.** Phase 6 has to adapt spacing per breakpoint. It cannot adapt 520
+**Why here.** Phase 6 has to adapt spacing per breakpoint. It cannot adapt 527
 literals.
 
 **Work.**
@@ -495,7 +503,7 @@ literals.
    the audit distinguish padding from gap from margin, which the raw scale
    cannot.
 
-3. **Migrate, in the order the audit reports.** The 101 off-scale values are the
+3. **Migrate, in the order the audit reports.** The 89 off-scale values are the
    interesting ones and go first: each is either a typo (round to the nearest
    stop) or deliberate (say why, in a comment, and pick the nearest stop
    anyway). Then `10.dp` and `20.dp` en masse.
