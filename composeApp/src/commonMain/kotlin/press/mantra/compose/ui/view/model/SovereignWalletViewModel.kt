@@ -65,7 +65,16 @@ class SovereignWalletViewModel(
     // We might end up only using the machankuraWalletRepository in the future where we send the walletId in each request.
 ): ViewModel() {
     private val log = Logger.withTag("SovereignWalletViewModel")
-    val listWalletState = mutableStateOf<ListWalletState>(ListWalletState.Init)
+
+    // A StateFlow, not a `mutableStateOf`, and it has to stay one. This view model is built by
+    // `viewModel()` during composition, so a Compose state created in its constructor is created
+    // inside that composition's snapshot -- and a write from another thread that lands before the
+    // composition is applied is discarded. `listAvailableWallets` runs from `init` and, on a device
+    // with no seed file, answers in about four milliseconds, which is squarely inside that window:
+    // the write to Success was lost and the app sat on "Decrypting..." for ever. A StateFlow has no
+    // snapshot to belong to, so the same write from the same thread at the same moment is seen.
+    private val _listWalletState = MutableStateFlow<ListWalletState>(ListWalletState.Init)
+    val listWalletState = _listWalletState.asStateFlow()
 
     private val _availableWallets = MutableStateFlow<Map<WalletId, UserWallet>>(emptyMap())
     val availableWallets = _availableWallets.asStateFlow()
@@ -119,33 +128,33 @@ class SovereignWalletViewModel(
     fun listAvailableWallets(onDone: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO + CoroutineExceptionHandler { _, e ->
 //            log.error("error when initialising startup-view: ", e)
-            listWalletState.value = ListWalletState.Error.Generic(e)
+            _listWalletState.value = ListWalletState.Error.Generic(e)
         }) {
 
             when (val result = loadAndDecryptSeed(phoenixGlobal)) {
                 is DecryptSeedResult.Failure.SerializationError -> {
                     log.error {"cannot deserialize seed file: "}
-                    listWalletState.value = ListWalletState.Error.Serialization
+                    _listWalletState.value = ListWalletState.Error.Serialization
                 }
                 is DecryptSeedResult.Failure.DecryptionError -> {
                     log.e("cannot decrypt seed file: ", throwable = result.cause)
-                    listWalletState.value = ListWalletState.Error.DecryptionError.GeneralException(result.cause)
+                    _listWalletState.value = ListWalletState.Error.DecryptionError.GeneralException(result.cause)
                 }
                 is DecryptSeedResult.Failure.KeyStoreFailure -> {
                     log.e("key store failure: ", throwable = result.cause)
-                    listWalletState.value = ListWalletState.Error.DecryptionError.KeystoreFailure(result.cause)
+                    _listWalletState.value = ListWalletState.Error.DecryptionError.KeystoreFailure(result.cause)
                 }
                 is DecryptSeedResult.Failure.SeedFileUnreadable -> {
                     log.e("aborting, unreadable seed file")
-                    listWalletState.value = ListWalletState.Error.Generic(null)
+                    _listWalletState.value = ListWalletState.Error.Generic(null)
                 }
                 is DecryptSeedResult.Failure.SeedInvalid -> {
                     log.e("aborting, seed is invalid")
-                    listWalletState.value = ListWalletState.Error.Generic(null)
+                    _listWalletState.value = ListWalletState.Error.Generic(null)
                 }
 
                 is DecryptSeedResult.Failure.SeedFileNotFound -> {
-                    listWalletState.value = ListWalletState.Success
+                    _listWalletState.value = ListWalletState.Success
                     _availableWallets.value = emptyMap()
                 }
 
@@ -164,7 +173,7 @@ class SovereignWalletViewModel(
                         }
                     }
                     _availableWallets.value = result.userWalletsMap
-                    listWalletState.value = ListWalletState.Success
+                    _listWalletState.value = ListWalletState.Success
                     viewModelScope.launch(Dispatchers.Main) {
                         onDone()
                     }

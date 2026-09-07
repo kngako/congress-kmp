@@ -46,13 +46,15 @@ fun SovereignWalletStartupScreen(
     // to completion here: everything downstream reads the node's key manager. An intro screen has
     // to be a step inside this flow, not a detour around it.
 
+    val listWalletState by sovereignWalletViewModel.listWalletState.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .imePadding(),
         contentAlignment = Alignment.Center
     ) {
-        when (sovereignWalletViewModel.listWalletState.value) {
+        when (listWalletState) {
             is ListWalletState.Init -> {
                 LoadingDataIndicator(
                     text = "Decrypting..."
