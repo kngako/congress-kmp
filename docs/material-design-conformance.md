@@ -418,12 +418,26 @@ find-and-replace.
    Keep the existing hex values for the roles already defined so nothing shifts
    visually; this phase adds, it does not restyle.
 
-2. **Reach the contrast schemes.** `TorchTheme` grows a contrast parameter and
-   the platform actuals report it — Android from `UiModeManager.getContrast()`
-   (API 34+, a float where `0f`/`0.33f`/`0.66f` map onto the three schemes),
-   falling back to the default scheme on the app's minSdk of 26; iOS from
-   `UIAccessibilityDarkerSystemColorsEnabled`; desktop from a preference. The
-   four schemes already written stop being dead code.
+2. **Reach the contrast schemes.** *Built.* `TorchTheme` takes a `ThemeContrast`
+   defaulted from a new `platformThemeContrast()` expect/actual, and the six-way
+   selection table lives in common code as `appColorScheme`. The old
+   `themeColorScheme` expect took four arguments and did both jobs; it splits into
+   `platformThemeContrast()` and `dynamicColorScheme()`, each answering one narrow
+   question, so the scheme table is in one place rather than three.
+
+   Android reads `UiModeManager.getContrast()` (API 34+) and registers a
+   `ContrastChangeListener`, because a contrast change does not restart the
+   activity or arrive as a `Configuration` update — without the listener the new
+   setting would wait for the next cold start, which is the case the setting
+   exists for. iOS reads `UIAccessibilityDarkerSystemColorsEnabled` and observes
+   `…StatusDidChangeNotification`; it is a boolean, so iOS never reports Medium.
+   Desktop reads Windows' `win.highContrast.on` AWT desktop property and answers
+   Standard on linux and macos, which is honest rather than complete — see
+   "What this plan does not cover".
+
+   Verified on an API 36 emulator with dynamic colour off: the `onPrimaryContainer`
+   pixel of the "Skip for now" label reads `#848484` → `#A7A7A7` → `#D0D0D0` as the
+   setting moves, the three declared values exactly, **without the app restarting**.
 
 3. **Give `MaterialTheme` its other three slots.** `Shapes`, `Typography` and a
    `MotionScheme` are all parameters of the overload the app already calls:
@@ -787,6 +801,17 @@ Phases 1–5 can be worked in parallel by different people if 1 lands first;
   `ExperimentalMaterial3ExpressiveApi` opt-ins and the pinned alpha both point
   expressive, but it is a product decision with a visible outcome, and it should
   be made deliberately rather than inherited from an import.
+- **Whether dynamic colour should keep overriding the brand.** `TorchTheme` defaults
+  `dynamicColor = true`, and on Android 12+ that wins unconditionally — so on
+  essentially every current Android device, none of the six schemes below is used
+  and the app renders in whatever the user's wallpaper produced. Verified on an API
+  36 emulator: the app paints Material lavender until dynamic colour is switched
+  off, at which point the black-and-gold brand appears. M3's customization
+  foundation treats this as a developer choice, and applying it selectively — a
+  profile screen, say — is the usual answer for an app with a brand. Deciding it is
+  a product call, not a conformance one, and it is why phase 1's contrast work is
+  reachable today only on Android below 12, on iOS and on desktop. On Android 14+
+  with dynamic colour on, the platform honours contrast itself.
 - **Whether the monochrome palette is right.** The scheme's `primary` is pure
   black in light and near-white in dark, with the entire tertiary family a copy
   of primary. That is a defensible choice for this product and it passes

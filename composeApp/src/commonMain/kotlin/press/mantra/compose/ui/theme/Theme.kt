@@ -384,19 +384,59 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
+/**
+ * How much contrast the person using the device has asked for.
+ *
+ * Not a preference this app invents -- every platform that has the setting owns it, and
+ * `platformThemeContrast` reports it. M3's accessibility foundation puts *honour
+ * individuals* first: "supporting varying preferences and choices that allow individuals
+ * to address how their changing conditions, individual knowledge, and varying needs are
+ * met." The four schemes to answer with were already written out in Color.kt and were,
+ * until this type existed, unreachable.
+ */
+enum class ThemeContrast {
+    /** The app's default schemes. */
+    Standard,
+
+    /** Android's 0.5 contrast step. No iOS or desktop equivalent, so never reported there. */
+    Medium,
+
+    /** Android's 1.0 step; iOS "Increase Contrast"; Windows high contrast mode. */
+    High,
+}
+
+/**
+ * The scheme to use, before dynamic colour gets a say.
+ *
+ * Kept in common code rather than behind the platform boundary so that all six schemes
+ * are selected from one table. The platform actuals answer two narrow questions instead
+ * -- what contrast was asked for, and whether there is a wallpaper palette to prefer --
+ * which is the part that genuinely differs.
+ */
+internal fun appColorScheme(darkTheme: Boolean, contrast: ThemeContrast): ColorScheme =
+    when (contrast) {
+        ThemeContrast.Standard -> if (darkTheme) darkScheme else lightScheme
+        ThemeContrast.Medium ->
+            if (darkTheme) mediumContrastDarkColorScheme else mediumContrastLightColorScheme
+        ThemeContrast.High ->
+            if (darkTheme) highContrastDarkColorScheme else highContrastLightColorScheme
+    }
+
 @Composable
 fun TorchTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    contrast: ThemeContrast = platformThemeContrast(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
-    content: @Composable() () -> Unit
+    content: @Composable () -> Unit
 ) {
-    val colorScheme = themeColorScheme(
-        darkTheme,
-        dynamicColor,
-        darkScheme,
-        lightScheme
-    )
+    // Dynamic colour wins when the platform offers it, because it is the user's own
+    // choice and already carries their contrast setting -- on Android 14+ the
+    // `system_*` palette resources shift with it, so `dynamicLightColorScheme` needs
+    // no help from `contrast`. Everywhere else the app's schemes answer, and that is
+    // where `contrast` decides which of the six.
+    val colorScheme = dynamicColorScheme(darkTheme, dynamicColor)
+        ?: appColorScheme(darkTheme, contrast)
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -405,10 +445,21 @@ fun TorchTheme(
     )
 }
 
+/**
+ * The platform's contrast setting, recomposing when it changes.
+ *
+ * Reading it once at startup would be a worse version of honouring it: someone who turns
+ * contrast up because they cannot read the screen in front of them should not have to
+ * find out that the app needs restarting.
+ */
 @Composable
-expect fun themeColorScheme(
-    darkTheme: Boolean,
-    dynamicColor: Boolean,
-    darkScheme: ColorScheme,
-    lightScheme: ColorScheme
-): ColorScheme
+expect fun platformThemeContrast(): ThemeContrast
+
+/**
+ * A wallpaper-derived palette, or `null` where the platform has none.
+ *
+ * Returns `null` rather than falling back internally so that the choice of app scheme --
+ * which now depends on contrast as well as darkness -- stays in one place.
+ */
+@Composable
+expect fun dynamicColorScheme(darkTheme: Boolean, dynamicColor: Boolean): ColorScheme?
