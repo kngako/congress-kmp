@@ -43,6 +43,7 @@ import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.time.Clock
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -110,7 +111,7 @@ fun WriteNewNoteScreen(
                                     if (writeNewNoteUIState.inReplyToNostrEvent != null) {
                                         Text(
                                             modifier = Modifier.padding(
-                                                start = 50.dp,
+                                                start = MaterialTheme.spacing.space600,
                                                 bottom = 10.dp,
 
                                             ),
@@ -233,7 +234,7 @@ fun WriteNewNoteScreen(
                                     if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
                                         Card(
                                             modifier = Modifier.padding(
-                                                start = 50.dp,
+                                                start = MaterialTheme.spacing.space600,
                                                 top = 10.dp
                                             )
                                         ) {

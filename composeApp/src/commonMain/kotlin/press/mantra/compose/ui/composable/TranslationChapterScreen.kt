@@ -46,6 +46,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslationChapterViewModel
 import press.mantra.compose.ui.view.state.ChunkTranslationPair
 import press.mantra.compose.ui.view.state.TranslationChapterUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +77,7 @@ fun TranslationChapterScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = translationChapterUIState.message)
             }
         }

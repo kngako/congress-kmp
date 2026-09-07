@@ -54,6 +54,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddDialectViewModel
 import press.mantra.compose.ui.view.state.AddDialectUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +88,7 @@ fun AddDialectScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = addDialectUIState.message,

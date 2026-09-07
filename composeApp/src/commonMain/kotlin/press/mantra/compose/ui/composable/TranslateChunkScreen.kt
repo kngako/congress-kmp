@@ -52,6 +52,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslateChunkViewModel
 import press.mantra.compose.ui.view.state.TranslateChunkUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +90,7 @@ fun TranslateChunkScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = translateChunkUIState.message)
             }
         }

@@ -55,6 +55,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -95,7 +96,7 @@ fun SelectChatRoomTypeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = selectChatRoomTypeUIState.message,
@@ -156,7 +157,7 @@ fun SelectChatRoomTypeScreen(
                         },
                         actions = {
                             Text(
-                                modifier = Modifier.padding(start = 15.dp),
+                                modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
                                 text = when (selectChatRoomTypeUIState.members.size) {
                                     0 -> "Just you for now"
                                     1 -> "You and 1 other"
@@ -185,7 +186,7 @@ fun SelectChatRoomTypeScreen(
                             )
                         ) {
                             Text(
-                                modifier = Modifier.padding(15.dp),
+                                modifier = Modifier.padding(MaterialTheme.spacing.space200),
                                 text = "$name was created, but ${membersNotAdded.joinToString { selectChatRoomTypeViewModel.displayNameFor(it) }} couldn't be added yet. Invite them again from the chat once they're on Torch.",
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -201,7 +202,7 @@ fun SelectChatRoomTypeScreen(
                             )
                         ) {
                             Text(
-                                modifier = Modifier.padding(15.dp),
+                                modifier = Modifier.padding(MaterialTheme.spacing.space200),
                                 text = "$name was created, but its shared key ceremony couldn't be started. Open the chat and start it from the group's details — until then the group has no key of its own.",
                                 style = MaterialTheme.typography.bodyMedium
                             )
@@ -328,7 +329,7 @@ private fun ChatRoomTypeCard(
         }
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(15.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
@@ -394,8 +395,8 @@ private fun QuorumPicker(
     onQuorumChange: (Int) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space50),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)
     ) {
         Text(
             text = "How many admins have to approve a change?",
@@ -404,7 +405,7 @@ private fun QuorumPicker(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilledIconButton(

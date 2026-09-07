@@ -91,6 +91,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
@@ -393,7 +394,7 @@ class ChatMessageListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Something went wrong",
@@ -445,7 +446,7 @@ class ChatMessageListViewModel(
                             val awaitingYou = proposalsAwaitingYou
 
                             LazyColumn(
-                                modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 reverseLayout = true
                             ) {
@@ -744,14 +745,14 @@ class ChatMessageListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     )  {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Loading",
                             textAlign = TextAlign.Center
                         )
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
 
                         LoadingIndicator()
@@ -850,7 +851,7 @@ private fun ProposalsAwaitingYouNotice(
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space50),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer

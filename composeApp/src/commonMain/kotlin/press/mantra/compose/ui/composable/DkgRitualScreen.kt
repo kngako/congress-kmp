@@ -75,6 +75,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -113,7 +114,7 @@ fun DkgRitualScreen(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = dkgRitualUIState.message, textAlign = TextAlign.Center)
             }
         }
@@ -201,7 +202,7 @@ fun DkgRitualScreen(
                             },
                             actions = {
                                 Text(
-                                    modifier = Modifier.padding(start = 15.dp),
+                                    modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
                                     text = "${dkgRitualViewModel.threshold.value} of $participantCount",
                                     style = MaterialTheme.typography.labelLarge
                                 )
@@ -328,7 +329,7 @@ private fun RitualProgress(
             )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(15.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -396,7 +397,7 @@ private fun RitualProgress(
             )
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(15.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
@@ -501,7 +502,7 @@ private fun RitualRoster(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(15.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(text = "Members", style = MaterialTheme.typography.titleSmall)
@@ -563,7 +564,7 @@ private fun RitualStep(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(15.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
@@ -602,8 +603,8 @@ private fun QuorumStepper(
     onThresholdChange: (Int) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space50),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)
     ) {
         Text(
             text = "How many members will it take to sign?",
@@ -612,7 +613,7 @@ private fun QuorumStepper(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilledIconButton(

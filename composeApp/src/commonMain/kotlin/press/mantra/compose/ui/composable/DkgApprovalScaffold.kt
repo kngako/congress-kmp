@@ -37,6 +37,7 @@ import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -89,7 +90,7 @@ internal fun DkgApprovalScaffold(
                 modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 CircularProgressIndicator()
             }
 
@@ -97,7 +98,7 @@ internal fun DkgApprovalScaffold(
                 modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = state.message, textAlign = TextAlign.Center)
             }
 
@@ -112,7 +113,7 @@ internal fun DkgApprovalScaffold(
                         modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(modifier = Modifier.height(50.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                         CircularProgressIndicator()
                     }
 

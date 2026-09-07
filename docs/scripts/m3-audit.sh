@@ -25,22 +25,12 @@ THEME="$UI/theme"
 # Budgets. "-1" means not yet budgeted -- reported, but never fails --check.
 # ---------------------------------------------------------------------------
 BUDGET_HARDCODED_COLOR=9       # phase 3 drives to 0 outside theme/
-BUDGET_DP_LITERALS=-1          # phase 2 drives to ~0 outside theme/
-BUDGET_OFF_SCALE_DP=-1         # phase 2 drives to 0
+BUDGET_SPACING_LITERALS=353    # phase 2 drives to 0
 BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
 BUDGET_NULL_DESCRIPTION=18     # phase 3 triages each one
 BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
 BUDGET_TITLE_CASE=-1           # phase 4 drives to 0
 BUDGET_UNSET_COLOR_ROLES=0     # phase 1: reached 2026-09-07
-
-# The M3 spacing scale: docs/material-design-conformance.md, "The numbers".
-# space0..space900. Anything outside this set is off-scale.
-ON_SCALE=(0 2 4 6 8 10 12 14 16 20 24 32 36 40 48 56 64 72)
-
-# Dimensions rather than spacing -- an avatar, an image height, a hairline
-# border. These are exempt from the off-scale count; keep the list short and
-# justify additions in the commit that makes them.
-DIMENSION_EXEMPT=(1 80 128 180 200 500)
 
 fail_count=0
 
@@ -136,40 +126,18 @@ report 'colours derived with .copy(alpha =)' "$alpha" -1
 # ---------------------------------------------------------------------------
 hdr 'Spacing  (phase 2)'
 
-dp_all=$(grep -rhoE '\b[0-9]+\.dp' "$UI" --include=*.kt 2>/dev/null \
-  | grep -v "^$THEME/" | wc -l | tr -d ' ')
-dp_outside_theme=$(grep -rhoE '\b[0-9]+\.dp' \
-  $(grep -rl '\.dp' "$UI" --include=*.kt 2>/dev/null | grep -v "^$THEME/") \
-  2>/dev/null | wc -l | tr -d ' ')
-report '.dp literals outside theme/' "$dp_outside_theme" "$BUDGET_DP_LITERALS"
+# Classified by call shape rather than by value, which is the only thing that says
+# whether a given literal is spacing or a dimension: 16.dp is a spacing stop and also a
+# plausible icon size, and 50.dp was a Spacer height in 53 places and a divider width in
+# one. m3-spacing-positions.py does the parse; it exits 1 while any spacing literal is
+# left, which is phase 2's acceptance criterion.
+spacing_report=$(python3 docs/scripts/m3-spacing-positions.py)
+spacing_left=$(echo "$spacing_report" | awk '/spacing positions/ {print $NF}')
+dimensions=$(echo "$spacing_report" | grep 'dimension positions' | grep -oE '[0-9]+')
+report 'dp literals in spacing positions' "$spacing_left" "$BUDGET_SPACING_LITERALS"
+note "in dimension positions (out of scope): $dimensions"
+note 'run docs/scripts/m3-spacing-positions.py --list to see them'
 
-# Split the histogram into on-scale, exempt dimensions, and off-scale.
-declare -A hist
-while read -r n; do
-  hist[$n]=$(( ${hist[$n]:-0} + 1 ))
-done < <(grep -rhoE '\b[0-9]+\.dp' \
-  $(grep -rl '\.dp' "$UI" --include=*.kt 2>/dev/null | grep -v "^$THEME/") \
-  2>/dev/null | sed 's/\.dp//')
-
-on_scale_total=0; off_scale_total=0; exempt_total=0; off_scale_detail=""
-for n in "${!hist[@]}"; do
-  c=${hist[$n]}
-  if printf '%s\n' "${ON_SCALE[@]}" | grep -qx "$n"; then
-    on_scale_total=$((on_scale_total + c))
-  elif printf '%s\n' "${DIMENSION_EXEMPT[@]}" | grep -qx "$n"; then
-    exempt_total=$((exempt_total + c))
-  else
-    off_scale_total=$((off_scale_total + c))
-    off_scale_detail="$off_scale_detail ${n}dp:${c}"
-  fi
-done
-note "on the M3 scale:        $on_scale_total"
-note "exempt dimensions:      $exempt_total"
-report 'off the M3 spacing scale' "$off_scale_total" "$BUDGET_OFF_SCALE_DP"
-[[ -n $off_scale_detail ]] && note "off-scale:$off_scale_detail"
-
-spacer_idiom=$(count 'height\(50\.dp\)')
-note "Spacer(height(50.dp)) idiom:            $spacer_idiom"
 
 # ---------------------------------------------------------------------------
 hdr 'Typography  (phase 1)'

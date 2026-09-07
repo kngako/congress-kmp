@@ -40,6 +40,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SearchMemberToAddToChatRoomViewModel
 import press.mantra.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +71,7 @@ fun SearchMemberToAddToChatRoomScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = searchMemberToAddToChatRoomUIState.message,
@@ -118,7 +119,7 @@ fun SearchMemberToAddToChatRoomScreen(
                             )
                         } else {
                             LazyColumn(
-                                modifier = Modifier.fillMaxWidth().padding(5.dp),
+                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                                 reverseLayout = true
                             ) {

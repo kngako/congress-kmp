@@ -67,6 +67,7 @@ import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.view.model.AddArtifactViewModel
 import press.mantra.compose.ui.view.state.AddArtifactUIState
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -102,7 +103,7 @@ fun AddArtifactScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = addArtifactUIState.message,

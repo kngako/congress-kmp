@@ -56,6 +56,7 @@ import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.FrostSigningViewModel
 import press.mantra.compose.ui.view.state.FrostSigningUIState
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * One signing session, and the member's decision about it.
@@ -123,7 +124,7 @@ fun FrostSigningScreen(
                 modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = state.message, textAlign = TextAlign.Center)
             }
 
@@ -150,7 +151,7 @@ fun FrostSigningScreen(
                         .fillMaxSize()
                         .verticalScroll(scrollState)
                         .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(15.dp)
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
                     WhatIsBeingSigned(proposed, state.items.size)
 
@@ -307,7 +308,7 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
         modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(50.dp))
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
         CircularProgressIndicator()
     }
 }
@@ -337,7 +338,7 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
         return
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)) {
         if (events.size > 1) {
             Text(
                 text = "${events.size} events, signed together",
@@ -366,7 +367,7 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
 private fun OneThingBeingSigned(event: Event) {
     val summary = ProposedEvent.summarize(event)
 
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)) {
         Text(text = summary.label, style = MaterialTheme.typography.labelMedium)
 
         Text(text = summary.detail, style = MaterialTheme.typography.titleMedium)

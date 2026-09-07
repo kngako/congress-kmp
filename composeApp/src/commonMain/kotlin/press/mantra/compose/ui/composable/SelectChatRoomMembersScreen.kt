@@ -42,6 +42,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -77,7 +78,7 @@ fun SelectChatRoomMembersScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = selectChatRoomMembersUIState.message,
@@ -126,7 +127,7 @@ fun SelectChatRoomMembersScreen(
                         },
                         actions = {
                             Text(
-                                modifier = Modifier.padding(start = 15.dp),
+                                modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
                                 text = if (selectedCount > 0) {
                                     "$selectedCount selected"
                                 } else {
@@ -175,7 +176,7 @@ fun SelectChatRoomMembersScreen(
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.weight(1f).fillMaxWidth().padding(5.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space50),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(

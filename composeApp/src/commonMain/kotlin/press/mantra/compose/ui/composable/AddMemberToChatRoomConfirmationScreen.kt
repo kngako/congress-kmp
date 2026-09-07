@@ -37,6 +37,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddMemberToChatRoomConfirmationViewModel
 import press.mantra.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +70,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space600)
                 )
                 Text(
                     text = addMemberToChatRoomConfirmationUIState.message,

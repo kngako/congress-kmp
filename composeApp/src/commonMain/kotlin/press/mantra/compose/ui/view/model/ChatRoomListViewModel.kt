@@ -40,6 +40,7 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: ChatRoomListUIState,
@@ -150,7 +151,7 @@ class ChatRoomListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Something went wrong",
@@ -232,14 +233,14 @@ class ChatRoomListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     )  {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Loading",
                             textAlign = TextAlign.Center
                         )
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
 
                         LoadingIndicator()

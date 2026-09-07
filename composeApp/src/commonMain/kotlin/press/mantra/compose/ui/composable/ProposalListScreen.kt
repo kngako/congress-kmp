@@ -54,6 +54,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ProposalListViewModel
 import press.mantra.compose.ui.view.state.ProposalListUIState
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -119,7 +120,7 @@ fun ProposalListScreen(
                 modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 CircularProgressIndicator()
             }
 
@@ -127,7 +128,7 @@ fun ProposalListScreen(
                 modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = state.message, textAlign = TextAlign.Center)
             }
 
@@ -149,7 +150,7 @@ fun ProposalListScreen(
                     if (state.proposals.isEmpty()) {
                         item {
                             Text(
-                                modifier = Modifier.fillMaxWidth().padding(top = 50.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space600),
                                 text = "This group has not been asked to sign anything yet.",
                                 textAlign = TextAlign.Center
                             )

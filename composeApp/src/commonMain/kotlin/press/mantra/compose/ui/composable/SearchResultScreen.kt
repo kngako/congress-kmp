@@ -54,6 +54,7 @@ import press.mantra.compose.ui.view.model.SearchResultType
 import press.mantra.compose.ui.view.model.SearchResultViewModel
 import press.mantra.compose.ui.view.state.SearchResultListUIState
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -210,7 +211,7 @@ fun SearchResultScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Spacer(
-                                            modifier = Modifier.height(50.dp)
+                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
                                         Text(
                                             text = "Something went wrong",
@@ -225,7 +226,7 @@ fun SearchResultScreen(
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         )  {
                                             Spacer(
-                                                modifier = Modifier.height(50.dp)
+                                                modifier = Modifier.height(MaterialTheme.spacing.space600)
                                             )
                                             Text(
                                                 text = "No events were found",
@@ -263,14 +264,14 @@ fun SearchResultScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     )  {
                                         Spacer(
-                                            modifier = Modifier.height(50.dp)
+                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
                                         Text(
                                             text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(
-                                            modifier = Modifier.height(50.dp)
+                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
 
                                         LoadingIndicator()

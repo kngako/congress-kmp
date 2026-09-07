@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 @Composable
 fun LoadingDataIndicator(
@@ -37,7 +38,7 @@ fun LoadingDataIndicator(
         text?.let {
 
             Spacer(
-                modifier = Modifier.height(30.dp)
+                modifier = Modifier.height(MaterialTheme.spacing.space400)
             )
 
             Text(

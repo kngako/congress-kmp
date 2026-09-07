@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -34,6 +35,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.time.Instant
+import press.mantra.compose.ui.theme.spacing
 
 class InReplyToViewModel(
     val nostrEvent: press.mantra.compose.database.model.NostrEvent,
@@ -120,7 +122,7 @@ class InReplyToViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Something went wrong",
@@ -134,7 +136,7 @@ class InReplyToViewModel(
                             horizontalAlignment = Alignment.CenterHorizontally
                         )  {
                             Spacer(
-                                modifier = Modifier.height(50.dp)
+                                modifier = Modifier.height(MaterialTheme.spacing.space600)
                             )
                             Text(
                                 text = "No events were found",
@@ -171,14 +173,14 @@ class InReplyToViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     )  {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
                             text = "Loading",
                             textAlign = TextAlign.Center
                         )
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
 
                         LoadingIndicator()

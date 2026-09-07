@@ -1,6 +1,9 @@
 package press.mantra.compose.ui.theme
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -88,3 +91,21 @@ data class Spacing(
 }
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
+
+/**
+ * `MaterialTheme.spacing.containerPadding`, to match `MaterialTheme.colorScheme.primary`.
+ *
+ * The alternative is `LocalSpacing.current`, which has to be read into a local before it
+ * can be used and so cannot appear inline in a `Modifier` chain. That difference decides
+ * whether a call site reads
+ *
+ *     Modifier.padding(MaterialTheme.spacing.containerPadding)
+ *
+ * or acquires a `val spacing = LocalSpacing.current` several lines above, in whichever
+ * composable happens to enclose it. Over 500 call sites the second shape is what stops
+ * people using the scale.
+ */
+val MaterialTheme.spacing: Spacing
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalSpacing.current

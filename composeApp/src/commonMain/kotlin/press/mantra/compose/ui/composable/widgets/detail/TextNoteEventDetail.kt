@@ -107,7 +107,10 @@ fun TextNoteEventDetail(
                                 localNostrEvent.nostrEvent.id
                             )
                         },
-                    shape = RoundedCornerShape(30.dp),
+                    // The one hand-written corner that was off the shape scale, at 30dp
+                    // against extraLarge's 28. Two units, invisible on its own and exactly
+                    // the drift a scale exists to stop.
+                    shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
