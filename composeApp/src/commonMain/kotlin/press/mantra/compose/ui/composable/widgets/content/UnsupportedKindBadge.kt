@@ -15,6 +15,7 @@ import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.unsupported_event_kind
+import mantra.composeapp.generated.resources.unsupported_event_kind_2
 
 @Composable
 internal fun UnsupportedKindBadge(kind: Int?, style: TextStyle) {
@@ -27,7 +28,7 @@ internal fun UnsupportedKindBadge(kind: Int?, style: TextStyle) {
             .padding(vertical = MaterialTheme.spacing.space75)
     ) {
         Text(
-            text = if (kind != null) "Unsupported event kind: $kind" else stringResource(Res.string.unsupported_event_kind),
+            text = if (kind != null) stringResource(Res.string.unsupported_event_kind_2, kind) else stringResource(Res.string.unsupported_event_kind),
             style = style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(MaterialTheme.spacing.space175)

@@ -64,6 +64,7 @@ import mantra.composeapp.generated.resources.add_translation
 import mantra.composeapp.generated.resources.propose_translation
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a
 import mantra.composeapp.generated.resources.translate_into_which_dialect
+import mantra.composeapp.generated.resources.translate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -137,7 +138,7 @@ fun AddTranslationArtifactVersionScreen(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Translate ${addTranslationUIState.artifact.name}") },
+                        title = { Text(stringResource(Res.string.translate, addTranslationUIState.artifact.name)) },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(

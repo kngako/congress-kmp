@@ -62,6 +62,8 @@ import mantra.composeapp.generated.resources.no_versions
 import mantra.composeapp.generated.resources.translations
 import mantra.composeapp.generated.resources.version
 import mantra.composeapp.generated.resources.versions
+import mantra.composeapp.generated.resources.chapter
+import mantra.composeapp.generated.resources.words_characters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,10 +153,10 @@ fun ArtifactDetailScreen(
                                             contentDescription = "Chapter"
                                         )
                                     },
-                                    overlineContent = { Text("Chapter ${chapter.index}") },
+                                    overlineContent = { Text(stringResource(Res.string.chapter, chapter.index)) },
                                     headlineContent = { Text(chapter.name) },
                                     supportingContent = {
-                                        Text("${chapter.wordCount} words · ${chapter.characterCount} characters")
+                                        Text(stringResource(Res.string.words_characters, chapter.wordCount, chapter.characterCount))
                                     }
                                 )
                             }

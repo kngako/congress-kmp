@@ -63,6 +63,7 @@ import mantra.composeapp.generated.resources.original_text_markdown
 import mantra.composeapp.generated.resources.paste_the_chapter_s_markdown_blank_lines
 import mantra.composeapp.generated.resources.propose_chapter
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
+import mantra.composeapp.generated.resources.add_chapter_to
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,7 +139,7 @@ fun AddChapterScreen(
                 modifier = Modifier.imePadding(),
                 topBar = {
                     TopAppBar(
-                        title = { Text("Add chapter to ${addChapterUIState.artifact.name}") },
+                        title = { Text(stringResource(Res.string.add_chapter_to, addChapterUIState.artifact.name)) },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(

@@ -64,6 +64,8 @@ import mantra.composeapp.generated.resources.creating_new_chat
 import mantra.composeapp.generated.resources.direct_message_detail
 import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
 import mantra.composeapp.generated.resources.say_what_now
+import mantra.composeapp.generated.resources.private_message_to
+import mantra.composeapp.generated.resources.private_to
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -242,7 +244,7 @@ fun ChatRoomMessagingScreen(
 
                                 Text(
                                     modifier = Modifier.weight(1f),
-                                    text = "Private to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}",
+                                    text = stringResource(Res.string.private_to, chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)),
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     style = MaterialTheme.typography.labelMedium
                                 )
@@ -284,7 +286,7 @@ fun ChatRoomMessagingScreen(
                                 placeholder = {
                                     Text(
                                         text = if (directMessageRecipient != null) {
-                                            "Private message to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}"
+                                            stringResource(Res.string.private_message_to, chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey))
                                         } else {
                                             stringResource(Res.string.say_what_now)
                                         }

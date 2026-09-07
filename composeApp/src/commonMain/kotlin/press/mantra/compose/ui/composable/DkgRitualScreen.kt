@@ -95,6 +95,10 @@ import mantra.composeapp.generated.resources.the_group_has_a_shared_key
 import mantra.composeapp.generated.resources.this_is_fixed_once_the_ceremony_runs
 import mantra.composeapp.generated.resources.try_again
 import mantra.composeapp.generated.resources.your_share_of_it_is_on_this_device_only_your
+import mantra.composeapp.generated.resources.everyone_has_to_be_online_at_the_same_time
+import mantra.composeapp.generated.resources.of
+import mantra.composeapp.generated.resources.of_members_will_be_needed_to_sign_with_this
+import mantra.composeapp.generated.resources.shared_key_for
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -148,7 +152,7 @@ fun DkgRitualScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Shared key for ${dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"}",
+                                text = stringResource(Res.string.shared_key_for, dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -222,7 +226,7 @@ fun DkgRitualScreen(
                             actions = {
                                 Text(
                                     modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
-                                    text = "${dkgRitualViewModel.threshold.value} of $participantCount",
+                                    text = stringResource(Res.string.of, dkgRitualViewModel.threshold.value, participantCount),
                                     style = MaterialTheme.typography.labelLarge
                                 )
                             }
@@ -245,7 +249,7 @@ fun DkgRitualScreen(
                         )
 
                         Text(
-                            text = "Everyone has to be online at the same time — the ceremony can only finish once all $participantCount of you have taken part.",
+                            text = stringResource(Res.string.everyone_has_to_be_online_at_the_same_time, participantCount),
                             style = MaterialTheme.typography.bodyMedium
                         )
 
@@ -369,7 +373,7 @@ private fun RitualProgress(
     }
 
     Text(
-        text = "${session.threshold} of $participantCount members will be needed to sign with this key.",
+        text = stringResource(Res.string.of_members_will_be_needed_to_sign_with_this, session.threshold, participantCount),
         style = MaterialTheme.typography.bodyMedium
     )
 
@@ -606,7 +610,7 @@ private fun RitualStep(
                 Text(text = title, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "$count of $total",
+                    text = stringResource(Res.string.of, count, total),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -651,7 +655,7 @@ private fun QuorumStepper(
             }
 
             Text(
-                text = "$threshold of $participantCount",
+                text = stringResource(Res.string.of, threshold, participantCount),
                 style = MaterialTheme.typography.titleMedium
             )
 

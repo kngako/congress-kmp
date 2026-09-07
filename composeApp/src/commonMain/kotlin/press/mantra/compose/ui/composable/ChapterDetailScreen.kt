@@ -44,6 +44,10 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.chapter_detail
 import mantra.composeapp.generated.resources.no_chunks
 import mantra.composeapp.generated.resources.original_text
+import mantra.composeapp.generated.resources.chapter_words_characters
+import mantra.composeapp.generated.resources.chunk
+import mantra.composeapp.generated.resources.chunks
+import mantra.composeapp.generated.resources.words_characters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +105,7 @@ fun ChapterDetailScreen(
                 ) {
                     item {
                         Text(
-                            text = "Chapter ${chapter.index} · ${chapter.wordCount} words · ${chapter.characterCount} characters",
+                            text = stringResource(Res.string.chapter_words_characters, chapter.index, chapter.wordCount, chapter.characterCount),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -128,7 +132,7 @@ fun ChapterDetailScreen(
                     // Chunks
                     item {
                         Text(
-                            text = "Chunks (${chapterDetailUIState.chunks.size})",
+                            text = stringResource(Res.string.chunks, chapterDetailUIState.chunks.size),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -147,10 +151,10 @@ fun ChapterDetailScreen(
                                             contentDescription = "Chunk"
                                         )
                                     },
-                                    overlineContent = { Text("Chunk ${chunk.index}") },
+                                    overlineContent = { Text(stringResource(Res.string.chunk, chunk.index)) },
                                     headlineContent = { Text(chunk.text) },
                                     supportingContent = {
-                                        Text("${chunk.wordCount} words · ${chunk.characterCount} characters")
+                                        Text(stringResource(Res.string.words_characters, chunk.wordCount, chunk.characterCount))
                                     }
                                 )
                             }

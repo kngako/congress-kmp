@@ -50,6 +50,7 @@ import mantra.composeapp.generated.resources.key_package_management
 import mantra.composeapp.generated.resources.publish_new_key_package
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
+import mantra.composeapp.generated.resources.key_packages
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -135,7 +136,7 @@ fun KeyPackageManagementScreen(
                         }
                         item {
                             Text(
-                                "${keyPackageManagementUIState.keyPackageBundles.size} Key Packages"
+                                stringResource(Res.string.key_packages, keyPackageManagementUIState.keyPackageBundles.size)
                             )
                         }
 

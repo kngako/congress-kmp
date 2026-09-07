@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.functionality_coming_soon_2
 
 @Composable
 fun ImplementationPendingScreen(
@@ -30,7 +33,7 @@ fun ImplementationPendingScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "\"$text\" functionality coming soon",
+                    stringResource(Res.string.functionality_coming_soon_2, text),
 
                 )
             }

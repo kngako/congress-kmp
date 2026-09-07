@@ -43,6 +43,9 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.direct_message_detail
 import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
 import mantra.composeapp.generated.resources.invite
+import mantra.composeapp.generated.resources.invite_2
+import mantra.composeapp.generated.resources.once_invited_will_be_able_to_receive_and
+import mantra.composeapp.generated.resources.to_join_the_chat_room
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +122,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                                     contentDescription = "Invite new member"
                                 )
 
-                                Text("Invite ${addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()}")
+                                Text(stringResource(Res.string.invite_2, addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()))
                             }
                         },
                         actions = {
@@ -147,11 +150,11 @@ fun AddMemberToChatRoomConfirmationScreen(
                         )
 
                         Text(
-                            text = "to join the ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: ""} chat room."
+                            text = stringResource(Res.string.to_join_the_chat_room, addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: "")
                         )
 
                         Text(
-                            text = "Once invited will be able to receive and send private message sent to all the ${addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size} members in the chat room.",
+                            text = stringResource(Res.string.once_invited_will_be_able_to_receive_and, addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size),
                             textAlign = TextAlign.Center
                         )
 

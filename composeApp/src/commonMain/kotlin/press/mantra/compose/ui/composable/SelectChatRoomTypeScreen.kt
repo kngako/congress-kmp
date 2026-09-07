@@ -65,6 +65,11 @@ import mantra.composeapp.generated.resources.just_you_for_now
 import mantra.composeapp.generated.resources.open_chat
 import mantra.composeapp.generated.resources.this_decides_who_can_change_the_group_later
 import mantra.composeapp.generated.resources.you_and_1_other
+import mantra.composeapp.generated.resources.how_should_be_run
+import mantra.composeapp.generated.resources.of
+import mantra.composeapp.generated.resources.was_created_but_couldn_t_be_added_yet_invite
+import mantra.composeapp.generated.resources.was_created_but_its_shared_key_ceremony
+import mantra.composeapp.generated.resources.you_and_others
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -127,7 +132,7 @@ fun SelectChatRoomTypeScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "How should $name be run?",
+                                text = stringResource(Res.string.how_should_be_run, name),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -170,7 +175,7 @@ fun SelectChatRoomTypeScreen(
                                 text = when (selectChatRoomTypeUIState.members.size) {
                                     0 -> stringResource(Res.string.just_you_for_now)
                                     1 -> stringResource(Res.string.you_and_1_other)
-                                    else -> "You and ${selectChatRoomTypeUIState.members.size} others"
+                                    else -> stringResource(Res.string.you_and_others, selectChatRoomTypeUIState.members.size)
                                 },
                                 style = MaterialTheme.typography.labelLarge
                             )
@@ -196,7 +201,7 @@ fun SelectChatRoomTypeScreen(
                         ) {
                             Text(
                                 modifier = Modifier.padding(MaterialTheme.spacing.space200),
-                                text = "$name was created, but ${membersNotAdded.joinToString { selectChatRoomTypeViewModel.displayNameFor(it) }} couldn't be added yet. Invite them again from the chat once they're on Torch.",
+                                text = stringResource(Res.string.was_created_but_couldn_t_be_added_yet_invite, name, membersNotAdded.joinToString { selectChatRoomTypeViewModel.displayNameFor(it) }),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -212,7 +217,7 @@ fun SelectChatRoomTypeScreen(
                         ) {
                             Text(
                                 modifier = Modifier.padding(MaterialTheme.spacing.space200),
-                                text = "$name was created, but its shared key ceremony couldn't be started. Open the chat and start it from the group's details — until then the group has no key of its own.",
+                                text = stringResource(Res.string.was_created_but_its_shared_key_ceremony, name),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -287,7 +292,7 @@ fun SelectChatRoomTypeScreen(
                 )
 
                 Text(
-                    text = "How should $name be run?",
+                    text = stringResource(Res.string.how_should_be_run, name),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
@@ -428,7 +433,7 @@ private fun QuorumPicker(
             }
 
             Text(
-                text = "$quorum of $adminCount",
+                text = stringResource(Res.string.of, quorum, adminCount),
                 style = MaterialTheme.typography.titleMedium
             )
 

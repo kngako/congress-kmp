@@ -62,6 +62,7 @@ import mantra.composeapp.generated.resources.proposals
 import mantra.composeapp.generated.resources.review
 import mantra.composeapp.generated.resources.this_group_has_not_been_asked_to_sign
 import mantra.composeapp.generated.resources.waiting_for_you
+import mantra.composeapp.generated.resources.of_them_could_not_be_read
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -340,7 +341,7 @@ private fun ProposalCard(
                     // rather than left for the screen behind it.
                     if (proposal.unreadable > 0) {
                         Text(
-                            text = "${proposal.unreadable} of them could not be read",
+                            text = stringResource(Res.string.of_them_could_not_be_read, proposal.unreadable),
                             color = if (proposal.awaitsYou) {
                                 cardContentColor
                             } else {

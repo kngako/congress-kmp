@@ -55,6 +55,7 @@ import mantra.composeapp.generated.resources.type_out_what_you_would_like_to_pub
 import mantra.composeapp.generated.resources.what_s_your_comment_on_the_below
 import mantra.composeapp.generated.resources.what_s_your_reply_to_the_above
 import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send_out
+import mantra.composeapp.generated.resources.replying_to
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -130,7 +131,7 @@ fun WriteNewNoteScreen(
                                                 bottom = MaterialTheme.spacing.space125,
 
                                             ),
-                                            text = "replying To ${writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"}",
+                                            text = stringResource(Res.string.replying_to, writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -346,7 +347,7 @@ fun WriteNewNoteScreen(
 
                                     if (writeNewNoteUIState.inReplyToNostrEvent != null) {
                                         Text(
-                                            text = "replying To ${writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"}",
+                                            text = stringResource(Res.string.replying_to, writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

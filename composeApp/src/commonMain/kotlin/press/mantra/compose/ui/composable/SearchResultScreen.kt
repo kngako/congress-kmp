@@ -61,6 +61,7 @@ import mantra.composeapp.generated.resources.no_events_were_found
 import mantra.composeapp.generated.resources.profiles
 import mantra.composeapp.generated.resources.search
 import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.searching_for_on
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -273,7 +274,7 @@ fun SearchResultScreen(
                                             modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
                                         Text(
-                                            text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                            text = stringResource(Res.string.searching_for_on, searchViewModel.searchResultType.name.lowercase(), searchQuery.lowercase()),
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(

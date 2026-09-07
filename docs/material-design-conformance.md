@@ -608,35 +608,51 @@ neither an outline nor a checkmark, and adding one is component work.
 
 ### Phase 4 — text the system can translate
 
-**Why here.** It is the last phase that touches every file, and doing it after
-Phase 2 means one pass over each file instead of two. It must precede Phase 6:
-RTL is a breakpoint concern too, and there is no point testing a mirrored layout
-against 334 English literals.
+**Why here.** It is the last phase that touches every file, and doing it after phase 2
+means one pass over each file instead of two. It must precede phase 6: RTL is a breakpoint
+concern too, and there is no point testing a mirrored layout against 334 English literals.
 
-**Work.**
+**Built.** Three commits.
 
-1. **Externalise all 334 strings** into `composeResources/values/strings.xml`,
-   organised by screen. Clear out the inherited Phoenix wallet strings that
-   nothing references, and settle `app_name`.
-2. **Sentence case, everywhere.** "Edit profile", "Create profile", "New chat",
-   "Sign in", "Leave group", "Key package management", "Publish new key
-   package". Roughly 45 strings. Product names stay capitalised — which requires
-   settling on one: Torch, Mantra or Machankura.
-3. **Rewrite the destructive confirmations** to state consequences plainly.
-   "Delete group" and "Leave group" currently offer a label and nothing else;
-   the style guide wants the outcome and whether it can be undone.
-4. **Alt text for meaningful images** — profile avatars, QR codes, artifact
-   images — following the Phase 3 triage rule.
-5. **Spell out abbreviations** in user-facing text. Protocol terms that are
-   genuinely the domain (npub, NIP-05, relay) stay; incidental shortenings go.
-6. Verify RTL by mirroring: the codebase has no `left`/`right` modifiers, so
-   this should be confirmation rather than repair.
+1. **Sentence case, 100 occurrences across 60 strings.** Two passes, and the second is
+   the instructive one: the first pattern required every word after the first to be
+   capitalised, so anything with an article survived — "Invite a Friend" was still on the
+   app's first screen after the audit reported zero — and it read one line at a time, so a
+   `Text(` whose literal sat on the next line was invisible.
 
-**Done when** the audit reports fewer than ten string literals in composables
-(test data and previews), and no user-facing string uses title case.
+   Sample data is deliberately left in title case: "Steve Biko", "To Kill a Mockingbird".
+   Those are a person and a book.
 
-**Risk:** low, high volume. Sentence-casing is the part most likely to draw
-disagreement — settle the product name first, in one decision.
+2. **251 plain strings into the catalogue**, 315 call sites. The extractor took four
+   attempts and each failure is recorded in `docs/scripts/m3-extract-strings.py`: a bare
+   `text = "…"` is not a Compose string (it rewrote a data class), a regex over quote
+   pairs is not a Kotlin lexer (it lifted `"chunk"` out of `"${if (n == 1) "chunk" …}"`),
+   and a fragment of a `+` concatenation is not a translatable unit.
+
+3. **40 interpolated strings as format strings**, 49 call sites — `${expr}` to `%1$s`,
+   passed as arguments.
+
+**Compose Resources is not aapt, and a test caught that before a device did.** The first
+extraction escaped apostrophes as `\'` and doubled `%`, which is what android's resource
+compiler requires. Compose Resources does neither: `getString` returned `Don\'t sign`,
+backslash included, across 30-odd strings. Escape handling is *partial* rather than
+absent — `\n` **is** processed — so there is no family rule to lean on.
+`StringCatalogueJvmTest` asserts each escape it depends on.
+
+**Done:** literals in composables 334 → 39, `stringResource` 0 → 424, title case 0. Plus
+1101 inherited phoenix strings deleted (nothing referenced them), the product settled on
+one name, and the two destructive actions now state their consequences — read out of the
+repository rather than guessed, because "Delete group" with no qualifier invites the
+belief that the messages are gone from the relays, which is the opposite of true.
+
+**Left for later, and why it is not a script's job.** 83 literals that are terms of a `+`
+concatenation. Reassembling `"a " + x + " b"` into one format string means deciding what
+the whole sentence is, and several of them are pluralisations —
+`(if (n == 2) "event" else "events")` — which want a real plural resource rather than a
+format argument. `m3-extract-formatted.py --remaining` lists them.
+
+`UserAgent.APP_NAME` still says "Torch". It goes on the wire to relay operators, so it is
+a network identity question rather than a content one.
 
 ---
 

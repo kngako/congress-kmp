@@ -54,6 +54,7 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.be_the_first_to_comment
 import mantra.composeapp.generated.resources.post
 import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.reply_to
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -138,7 +139,7 @@ fun TextNoteEventDetail(
 
                         Text(
                             modifier = Modifier.weight(1f),
-                            text = "Reply to ${localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"}",
+                            text = stringResource(Res.string.reply_to, localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"),
                             maxLines = 1,
                         )
 

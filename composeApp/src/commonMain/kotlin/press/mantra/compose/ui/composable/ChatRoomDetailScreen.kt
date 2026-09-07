@@ -89,6 +89,9 @@ import mantra.composeapp.generated.resources.projects
 import mantra.composeapp.generated.resources.proposals
 import mantra.composeapp.generated.resources.reindex_events
 import mantra.composeapp.generated.resources.shared_key
+import mantra.composeapp.generated.resources.event_s_still_unreadable
+import mantra.composeapp.generated.resources.recovered_of_event_s
+import mantra.composeapp.generated.resources.recovered_of_still_unreadable
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -706,10 +709,10 @@ private fun ReindexMarmotGroupEventsButton(
                             "Nothing to reindex · ${report.stored - report.predatingMembership} " +
                                 "event(s) all read$beforeJoining"
                         report.recovered > 0 && report.failed > 0 ->
-                            "Recovered ${report.recovered} of ${report.unresolved} · ${report.failed} still unreadable$beforeJoining"
+                            stringResource(Res.string.recovered_of_still_unreadable, report.recovered, report.unresolved, report.failed, beforeJoining)
                         report.recovered > 0 ->
-                            "Recovered ${report.recovered} of ${report.unresolved} event(s)$beforeJoining"
-                        else -> "${report.failed} event(s) still unreadable$beforeJoining"
+                            stringResource(Res.string.recovered_of_event_s, report.recovered, report.unresolved, beforeJoining)
+                        else -> stringResource(Res.string.event_s_still_unreadable, report.failed, beforeJoining)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center

@@ -32,6 +32,10 @@ import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.nostr
+import mantra.composeapp.generated.resources.nostr_2
 
 @Composable
 fun RichContent(
@@ -284,7 +288,7 @@ fun RichContent(
                                 )
                             } else {
                                 Text(
-                                    text = "nostr:${segment.eventId.take(8)}..",
+                                    text = stringResource(Res.string.nostr, segment.eventId.take(8)),
                                     style = style,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -308,7 +312,7 @@ fun RichContent(
                                         )
                                     } else {
                                         Text(
-                                            text = "nostr:${segment.dTag.take(12)}...",
+                                            text = stringResource(Res.string.nostr_2, segment.dTag.take(12)),
                                             style = style,
                                             color = MaterialTheme.colorScheme.primary
                                         )

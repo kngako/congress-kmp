@@ -5,6 +5,9 @@ import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.currently_no_messages_have_been_shared
 import mantra.composeapp.generated.resources.don_t_sign
 import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.add_chapter_to
+import mantra.composeapp.generated.resources.chapter_words_characters
+import mantra.composeapp.generated.resources.sent_a_private_message_to
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,5 +47,32 @@ class StringCatalogueJvmTest {
     @Test
     fun `a plain string comes back unchanged`() = runBlocking {
         assertEquals("Something went wrong", getString(Res.string.something_went_wrong))
+    }
+
+    @Test
+    fun `a format string substitutes its arguments in order`() = runBlocking {
+        // The interpolated strings became `%1$s` format strings, and the argument order
+        // is decided by where each `${…}` sat in the template. A transposition compiles
+        // and reads plausibly -- "Recovered 3 of 12" against "Recovered 12 of 3" -- so
+        // the ordering is worth asserting on a multi-argument one.
+        assertEquals(
+            "Add chapter to Genesis",
+            getString(Res.string.add_chapter_to, "Genesis"),
+        )
+        assertEquals(
+            "Ada sent a private message to Grace",
+            getString(Res.string.sent_a_private_message_to, "Ada", "Grace"),
+        )
+    }
+
+    @Test
+    fun `a unicode escape was decoded into the catalogue`() = runBlocking {
+        // `·` is Kotlin source syntax with no meaning in XML, so the extractor
+        // decodes it and the resource holds the character. If it had been left alone the
+        // app would render the six characters of the escape.
+        assertEquals(
+            "Chapter 3 · 900 words · 4800 characters",
+            getString(Res.string.chapter_words_characters, "3", "900", "4800"),
+        )
     }
 }

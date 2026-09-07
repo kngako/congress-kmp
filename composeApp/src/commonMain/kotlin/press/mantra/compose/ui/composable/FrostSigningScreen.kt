@@ -68,6 +68,7 @@ import mantra.composeapp.generated.resources.ready_to_sign
 import mantra.composeapp.generated.resources.sign
 import mantra.composeapp.generated.resources.sign_with_the_group_s_key
 import mantra.composeapp.generated.resources.signed_their_part
+import mantra.composeapp.generated.resources.events_signed_together
 
 /**
  * One signing session, and the member's decision about it.
@@ -352,7 +353,7 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)) {
         if (events.size > 1) {
             Text(
-                text = "${events.size} events, signed together",
+                text = stringResource(Res.string.events_signed_together, events.size),
                 style = MaterialTheme.typography.labelMedium
             )
         }

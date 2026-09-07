@@ -55,6 +55,8 @@ import mantra.composeapp.generated.resources.no_chapters
 import mantra.composeapp.generated.resources.propose
 import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_cannot
 import mantra.composeapp.generated.resources.translation_detail
+import mantra.composeapp.generated.resources.chapter
+import mantra.composeapp.generated.resources.chunks_translated
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -217,9 +219,9 @@ fun TranslationArtifactVersionDetailScreen(
                                             contentDescription = "Chapter"
                                         )
                                     },
-                                    headlineContent = { Text("Chapter ${progress.chapter.index}") },
+                                    headlineContent = { Text(stringResource(Res.string.chapter, progress.chapter.index)) },
                                     supportingContent = {
-                                        Text("${progress.translatedChunks}/${progress.totalChunks} chunks translated")
+                                        Text(stringResource(Res.string.chunks_translated, progress.translatedChunks, progress.totalChunks))
                                     }
                                 )
                             }

@@ -50,6 +50,9 @@ import mantra.composeapp.generated.resources.no_one_selected_yet
 import mantra.composeapp.generated.resources.no_one_to_add_yet
 import mantra.composeapp.generated.resources.search_for_people_and_chat_with_them_first
 import mantra.composeapp.generated.resources.you_can_still_carry_on_and_invite_people
+import mantra.composeapp.generated.resources.add_people_to
+import mantra.composeapp.generated.resources.next_with
+import mantra.composeapp.generated.resources.selected
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -101,7 +104,7 @@ fun SelectChatRoomMembersScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                text = "Add people to $name",
+                                text = stringResource(Res.string.add_people_to, name),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -125,7 +128,7 @@ fun SelectChatRoomMembersScreen(
 
                                 Text(
                                     text = if (selectedCount > 0) {
-                                        "Next with $selectedCount"
+                                        stringResource(Res.string.next_with, selectedCount)
                                     } else {
                                         stringResource(Res.string.next)
                                     }
@@ -136,7 +139,7 @@ fun SelectChatRoomMembersScreen(
                             Text(
                                 modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
                                 text = if (selectedCount > 0) {
-                                    "$selectedCount selected"
+                                    stringResource(Res.string.selected, selectedCount)
                                 } else {
                                     stringResource(Res.string.no_one_selected_yet)
                                 },
@@ -247,7 +250,7 @@ fun SelectChatRoomMembersScreen(
                 )
 
                 Text(
-                    text = "Add people to $name",
+                    text = stringResource(Res.string.add_people_to, name),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

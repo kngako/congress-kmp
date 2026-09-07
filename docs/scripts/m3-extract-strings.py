@@ -193,6 +193,18 @@ def xml_escape(text):
     return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 
+
+def has_import(source, statement):
+    """Whole-line match.
+
+    `statement in source` is wrong here and silently so: the accessors are named after
+    their strings, so `...resources.translate` is a prefix of
+    `...resources.translate_into_which_dialect`, and a substring test decides the import
+    is already present. The compiler then reports "Unresolved reference 'translate'" in a
+    file whose imports look complete.
+    """
+    return any(line.strip() == statement for line in source.split('\n'))
+
 def main():
     occurrences = collections.defaultdict(list)
     for root, _, files in os.walk(UI):
@@ -233,7 +245,7 @@ def main():
             if changed:
                 for imp in ('import mantra.composeapp.generated.resources.Res',
                             'import org.jetbrains.compose.resources.stringResource'):
-                    if imp not in src:
+                    if not has_import(src, imp):
                         lines = src.split('\n')
                         idx = max(i for i, l in enumerate(lines) if l.startswith('import '))
                         lines.insert(idx + 1, imp)
@@ -245,7 +257,7 @@ def main():
                 idx = max(i for i, l in enumerate(lines) if l.startswith('import '))
                 for nm in reversed(need):
                     imp = f'import mantra.composeapp.generated.resources.{nm}'
-                    if imp not in src:
+                    if not has_import(src, imp):
                         lines.insert(idx + 1, imp)
                 src = '\n'.join(lines)
                 io.open(path, 'w', encoding='utf-8').write(src)

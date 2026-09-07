@@ -104,6 +104,10 @@ import mantra.composeapp.generated.resources.review
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.waiting_for_your_signature
 import mantra.composeapp.generated.resources.you
+import mantra.composeapp.generated.resources.private_to
+import mantra.composeapp.generated.resources.proposals_are_waiting_for_your_signature
+import mantra.composeapp.generated.resources.reply_privately_to
+import mantra.composeapp.generated.resources.sent_a_private_message_to
 
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
@@ -668,7 +672,7 @@ class ChatMessageListViewModel(
                                                             )
                                                             Text(
                                                                 text = if (localChatMessage.chatMessage.isUserMessage) {
-                                                                    "Private to ${nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey)}"
+                                                                    stringResource(Res.string.private_to, nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey))
                                                                 } else {
                                                                     stringResource(Res.string.private_to_you)
                                                                 },
@@ -733,7 +737,7 @@ class ChatMessageListViewModel(
                                             ) {
                                                 DropdownMenuItem(
                                                     text = {
-                                                        Text("Reply privately to ${nameFor(localChatMessage.chatMessage.senderPublicKey)}")
+                                                        Text(stringResource(Res.string.reply_privately_to, nameFor(localChatMessage.chatMessage.senderPublicKey)))
                                                     },
                                                     leadingIcon = {
                                                         Icon(Icons.Default.Lock, contentDescription = Decorative)
@@ -887,7 +891,7 @@ private fun ProposalsAwaitingYouNotice(
                     text = if (single != null) {
                         stringResource(Res.string.waiting_for_your_signature)
                     } else {
-                        "${proposals.size} proposals are waiting for your signature"
+                        stringResource(Res.string.proposals_are_waiting_for_your_signature, proposals.size)
                     },
                     style = MaterialTheme.typography.labelMedium
                 )
@@ -948,7 +952,7 @@ private fun PrivateMessageNotice(
         )
 
         Text(
-            text = "$sender sent a private message to $recipient",
+            text = stringResource(Res.string.sent_a_private_message_to, sender, recipient),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall
         )
