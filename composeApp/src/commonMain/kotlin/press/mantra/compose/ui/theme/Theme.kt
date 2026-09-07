@@ -50,6 +50,27 @@ internal val lightScheme = lightColorScheme(
     surfaceContainer = surfaceContainerLight,
     surfaceContainerHigh = surfaceContainerHighLight,
     surfaceContainerHighest = surfaceContainerHighestLight,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryLight,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixed,
+    onPrimaryFixedVariant = onPrimaryFixedVariant,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixed,
+    onSecondaryFixedVariant = onSecondaryFixedVariant,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixed,
+    onTertiaryFixedVariant = onTertiaryFixedVariant,
 )
 
 internal val darkScheme = darkColorScheme(
@@ -88,6 +109,27 @@ internal val darkScheme = darkColorScheme(
     surfaceContainer = surfaceContainerDark,
     surfaceContainerHigh = surfaceContainerHighDark,
     surfaceContainerHighest = surfaceContainerHighestDark,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryDark,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixed,
+    onPrimaryFixedVariant = onPrimaryFixedVariant,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixed,
+    onSecondaryFixedVariant = onSecondaryFixedVariant,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixed,
+    onTertiaryFixedVariant = onTertiaryFixedVariant,
 )
 
 internal val mediumContrastLightColorScheme = lightColorScheme(
@@ -126,6 +168,28 @@ internal val mediumContrastLightColorScheme = lightColorScheme(
     surfaceContainer = surfaceContainerLightMediumContrast,
     surfaceContainerHigh = surfaceContainerHighLightMediumContrast,
     surfaceContainerHighest = surfaceContainerHighestLightMediumContrast,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryLightMediumContrast,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    // Content darkens with the contrast setting; the containers hold.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixedMediumContrast,
+    onPrimaryFixedVariant = onPrimaryFixedVariantMediumContrast,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixedMediumContrast,
+    onSecondaryFixedVariant = onSecondaryFixedVariantMediumContrast,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixedMediumContrast,
+    onTertiaryFixedVariant = onTertiaryFixedVariantMediumContrast,
 )
 
 internal val highContrastLightColorScheme = lightColorScheme(
@@ -164,6 +228,28 @@ internal val highContrastLightColorScheme = lightColorScheme(
     surfaceContainer = surfaceContainerLightHighContrast,
     surfaceContainerHigh = surfaceContainerHighLightHighContrast,
     surfaceContainerHighest = surfaceContainerHighestLightHighContrast,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryLightHighContrast,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    // Content darkens with the contrast setting; the containers hold.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixedHighContrast,
+    onPrimaryFixedVariant = onPrimaryFixedVariantHighContrast,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixedHighContrast,
+    onSecondaryFixedVariant = onSecondaryFixedVariantHighContrast,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixedHighContrast,
+    onTertiaryFixedVariant = onTertiaryFixedVariantHighContrast,
 )
 
 internal val mediumContrastDarkColorScheme = darkColorScheme(
@@ -202,6 +288,28 @@ internal val mediumContrastDarkColorScheme = darkColorScheme(
     surfaceContainer = surfaceContainerDarkMediumContrast,
     surfaceContainerHigh = surfaceContainerHighDarkMediumContrast,
     surfaceContainerHighest = surfaceContainerHighestDarkMediumContrast,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryDarkMediumContrast,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    // Content darkens with the contrast setting; the containers hold.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixedMediumContrast,
+    onPrimaryFixedVariant = onPrimaryFixedVariantMediumContrast,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixedMediumContrast,
+    onSecondaryFixedVariant = onSecondaryFixedVariantMediumContrast,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixedMediumContrast,
+    onTertiaryFixedVariant = onTertiaryFixedVariantMediumContrast,
 )
 
 internal val highContrastDarkColorScheme = darkColorScheme(
@@ -240,6 +348,28 @@ internal val highContrastDarkColorScheme = darkColorScheme(
     surfaceContainer = surfaceContainerDarkHighContrast,
     surfaceContainerHigh = surfaceContainerHighDarkHighContrast,
     surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
+    // Explicit only so that no role is left to a default. This is the value
+    // lightColorScheme()/darkColorScheme() would have supplied anyway, and it is
+    // right: surfaceColorAtElevation composites surfaceTint over surface at 2-8%
+    // alpha, so an elevated light surface darkens toward primary and an elevated
+    // dark one lightens toward it, which is M3's own behaviour. Nothing reads it
+    // today -- the app sets no elevations anywhere.
+    surfaceTint = primaryDarkHighContrast,
+    // Theme-independent by definition -- these carry no Light/Dark variant. See the
+    // "Fixed colour roles" block in Color.kt for how the tones were derived.
+    // Content darkens with the contrast setting; the containers hold.
+    primaryFixed = primaryFixed,
+    primaryFixedDim = primaryFixedDim,
+    onPrimaryFixed = onPrimaryFixedHighContrast,
+    onPrimaryFixedVariant = onPrimaryFixedVariantHighContrast,
+    secondaryFixed = secondaryFixed,
+    secondaryFixedDim = secondaryFixedDim,
+    onSecondaryFixed = onSecondaryFixedHighContrast,
+    onSecondaryFixedVariant = onSecondaryFixedVariantHighContrast,
+    tertiaryFixed = tertiaryFixed,
+    tertiaryFixedDim = tertiaryFixedDim,
+    onTertiaryFixed = onTertiaryFixedHighContrast,
+    onTertiaryFixedVariant = onTertiaryFixedVariantHighContrast,
 )
 
 @Immutable

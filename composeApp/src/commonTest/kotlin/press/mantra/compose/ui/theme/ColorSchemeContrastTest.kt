@@ -117,6 +117,83 @@ class ColorSchemeContrastTest {
     }
 
     @Test
+    fun `both content roles read on both fixed containers at 4_5 to 1`() {
+        // `onXFixedVariant` is the lower-emphasis of the two and `xFixedDim` the darker
+        // container, so onVariant-on-Dim is the corner that decides the family. It is
+        // 5.44:1 in the default schemes -- real headroom, but not much, and a tone
+        // chosen by eye rather than computed would land under it.
+        val failures = mutableListOf<String>()
+
+        schemes.forEach { (schemeName, scheme) ->
+            listOf(
+                "primary" to Quad(scheme.primaryFixed, scheme.primaryFixedDim, scheme.onPrimaryFixed, scheme.onPrimaryFixedVariant),
+                "secondary" to Quad(scheme.secondaryFixed, scheme.secondaryFixedDim, scheme.onSecondaryFixed, scheme.onSecondaryFixedVariant),
+                "tertiary" to Quad(scheme.tertiaryFixed, scheme.tertiaryFixedDim, scheme.onTertiaryFixed, scheme.onTertiaryFixedVariant),
+            ).forEach { (family, roles) ->
+                listOf(
+                    "on${family}Fixed on ${family}Fixed" to contrastRatio(roles.fixed, roles.on),
+                    "on${family}FixedVariant on ${family}Fixed" to contrastRatio(roles.fixed, roles.onVariant),
+                    "on${family}Fixed on ${family}FixedDim" to contrastRatio(roles.dim, roles.on),
+                    "on${family}FixedVariant on ${family}FixedDim" to contrastRatio(roles.dim, roles.onVariant),
+                ).forEach { (pairName, ratio) ->
+                    if (ratio < SMALL_TEXT_MINIMUM) {
+                        failures += "$schemeName: $pairName is ${ratio.format()}:1"
+                    }
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), "below 4.5:1 —\n" + failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `the fixed roles are the same colour in light and dark`() {
+        // What "fixed" means. A fixed container that shifted with the theme would be an
+        // ordinary container with a misleading name, and the bug would only show on a
+        // screen that puts one beside a themed surface.
+        val failures = mutableListOf<String>()
+
+        listOf(
+            "default" to (lightScheme to darkScheme),
+            "medium-contrast" to (mediumContrastLightColorScheme to mediumContrastDarkColorScheme),
+            "high-contrast" to (highContrastLightColorScheme to highContrastDarkColorScheme),
+        ).forEach { (level, pair) ->
+            val (light, dark) = pair
+            fixedRoles.forEach { (roleName, role) ->
+                if (role(light) != role(dark)) {
+                    failures += "$level: $roleName is ${role(light)} light, ${role(dark)} dark"
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), "fixed roles differ across themes —\n" + failures.joinToString("\n"))
+    }
+
+    @Test
+    fun `no role is left at the Material baseline palette`() {
+        // A role omitted from lightColorScheme() takes its baseline default, which for
+        // the twelve *Fixed* roles is PaletteTokens.Primary90 and friends -- lavender,
+        // in an app whose primary is pure black. Nothing in the tree reads a fixed role
+        // yet, so this cannot be caught by looking at the app; it has to be asserted.
+        val baselineFixed = setOf(
+            Color(0xFFEADDFF), Color(0xFFD0BCFF), Color(0xFF21005D), Color(0xFF4F378B), // primary
+            Color(0xFFE8DEF8), Color(0xFFCCC2DC), Color(0xFF1D192B), Color(0xFF4A4458), // secondary
+            Color(0xFFFFD8E4), Color(0xFFEFB8C8), Color(0xFF31111D), Color(0xFF633B48), // tertiary
+        )
+        val failures = mutableListOf<String>()
+
+        schemes.forEach { (schemeName, scheme) ->
+            fixedRoles.forEach { (roleName, role) ->
+                if (role(scheme) in baselineFixed) {
+                    failures += "$schemeName: $roleName is still the baseline ${role(scheme)}"
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), "unassigned roles —\n" + failures.joinToString("\n"))
+    }
+
+    @Test
     fun `outline separates from every surface it is drawn on at 3 to 1`() {
         val failures = mutableListOf<String>()
 
@@ -154,6 +231,25 @@ class ColorSchemeContrastTest {
 
         assertTrue(failures.isEmpty(), "below 3:1 —\n" + failures.joinToString("\n"))
     }
+
+    /** The twelve theme-independent roles, by name, for the two tests that walk them all. */
+    private val fixedRoles: List<Pair<String, (ColorScheme) -> Color>> = listOf(
+        "primaryFixed" to { s: ColorScheme -> s.primaryFixed },
+        "primaryFixedDim" to { s: ColorScheme -> s.primaryFixedDim },
+        "onPrimaryFixed" to { s: ColorScheme -> s.onPrimaryFixed },
+        "onPrimaryFixedVariant" to { s: ColorScheme -> s.onPrimaryFixedVariant },
+        "secondaryFixed" to { s: ColorScheme -> s.secondaryFixed },
+        "secondaryFixedDim" to { s: ColorScheme -> s.secondaryFixedDim },
+        "onSecondaryFixed" to { s: ColorScheme -> s.onSecondaryFixed },
+        "onSecondaryFixedVariant" to { s: ColorScheme -> s.onSecondaryFixedVariant },
+        "tertiaryFixed" to { s: ColorScheme -> s.tertiaryFixed },
+        "tertiaryFixedDim" to { s: ColorScheme -> s.tertiaryFixedDim },
+        "onTertiaryFixed" to { s: ColorScheme -> s.onTertiaryFixed },
+        "onTertiaryFixedVariant" to { s: ColorScheme -> s.onTertiaryFixedVariant },
+    )
+
+    /** One fixed family: the two containers and the two content roles that sit on them. */
+    private data class Quad(val fixed: Color, val dim: Color, val on: Color, val onVariant: Color)
 
     private companion object {
         /** WCAG 2.x, small text. */

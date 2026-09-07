@@ -31,7 +31,7 @@ BUDGET_BARE_CLICKABLE=33       # phase 3 drives to 0
 BUDGET_NULL_DESCRIPTION=18     # phase 3 triages each one
 BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
 BUDGET_TITLE_CASE=-1           # phase 4 drives to 0
-BUDGET_UNSET_COLOR_ROLES=12    # phase 1 drives to 0
+BUDGET_UNSET_COLOR_ROLES=0     # phase 1: reached 2026-09-07
 
 # The M3 spacing scale: docs/material-design-conformance.md, "The numbers".
 # space0..space900. Anything outside this set is off-scale.
