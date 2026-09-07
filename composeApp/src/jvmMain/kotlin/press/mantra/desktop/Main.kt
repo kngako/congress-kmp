@@ -28,6 +28,9 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.security.JvmKeyStore
 import kotlinx.coroutines.Dispatchers
@@ -108,6 +111,13 @@ private fun PassphraseGate(appDir: File, onUnlocked: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    // The first screen of a desktop app, whose entire content is one field. M3 asks for
+    // an initial focus to be defined per screen; here there is only one candidate, and on
+    // a desktop there is no tap to give it focus -- somebody who opens the app and starts
+    // typing their passphrase should not have to reach for the mouse first.
+    val passphraseFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { passphraseFocus.requestFocus() }
+
     fun submit() {
         if (busy || passphrase.isEmpty()) return
         busy = true
@@ -156,7 +166,7 @@ private fun PassphraseGate(appDir: File, onUnlocked: () -> Unit) {
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { submit() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(passphraseFocus),
             )
             error?.let {
                 Text(

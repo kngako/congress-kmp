@@ -550,66 +550,59 @@ visible.
 
 ### Phase 3 — the accessibility floor
 
-**Why here.** These are defects, not polish, and one of them hides the app's
-most important rows. It goes before the adaptive work so the fixes are made once
-rather than per breakpoint.
+**Why here.** These are defects, not polish, and one of them hides the app's most
+important rows. It goes before the adaptive work so the fixes are made once rather than
+per breakpoint.
 
-**Work.**
+**Built.** Four commits.
 
-1. **Fix the seven measured pairings.** Take them in the order of the table.
-   `ProposalListScreen.kt:228` needs the `ListItem` colours derived from the
-   card's container, not left at `onSurface`:
+1. **Nine contrast failures**, all of them colour reached for at the call site rather
+   than derived from what it sits on. The worst was `ProposalListScreen`: a `ListItem`
+   inside a `Card` with only the container overridden, so the headline took
+   `ListTokens.ItemLabelTextColor` (`onSurface`) against `primaryContainer` — both
+   `#1B1B1B` in the light scheme, **1.00:1**, on exactly the proposals awaiting your
+   signature. Four of five colours on that card were under the floor.
 
-   ```kotlin
-   ListItemDefaults.colors(
-       containerColor = Color.Transparent,
-       headlineColor = contentColorFor(cardContainer),
-       supportingColor = contentColorFor(cardContainer),
-       leadingIconColor = contentColorFor(cardContainer),
-   )
-   ```
+   Also `HomeScreen`'s top bar at 1.22:1 (override removed), five
+   `onSurfaceVariant.copy(alpha = …)` sites, the LIVE badge's hand-mixed red, and the
+   avatar picker's selection tint. Three colours stay hardcoded behind a
+   `// m3-color-exempt:` marker with a reason at the site: a QR code's modules, a
+   control over an arbitrary photograph, a spinner over a blurhash.
 
-   `HomeScreen.kt:113` should drop its `topAppBarColors` override entirely —
-   the default is `surface`/`onSurface` and is correct. The four
-   `onSurfaceVariant.copy(alpha = 0.5f)` sites should use `onSurfaceVariant` at
-   full opacity, which is already the role for secondary text.
+2. **Every `.clickable` chain got `minimumInteractiveComponentSize()`** — a no-op above
+   48dp, so applying it everywhere makes the rule checkable rather than measurable. Three
+   of the nineteen were text-sized. `Clickable.kt` got it built in and left
+   `com.machankura`.
 
-2. **Extend the contrast test to call sites.** Every non-default
-   `containerColor`/`contentColor` pairing in the tree gets a row in a table the
-   test walks. This is what stops the class of bug rather than the instance —
-   the `ListItem`-inside-`Card` case is invisible to a reviewer and obvious to
-   an assertion.
+3. **Eighteen `contentDescription = null` became a decision.** Fifteen say `Decorative`
+   — same null, but recording that somebody looked. Three carried state the text did not
+   repeat and got real descriptions, including `ProposalListScreen`'s stage icon, which
+   the previous commit had made the *only* cue for a failed proposal on the highlighted
+   card.
 
-3. **Guarantee the 48dp minimum.** The 33 bare `.clickable` sites either become
-   a real component (`ArticleCard.kt:143`'s author name is a `TextButton`) or
-   gain `Modifier.minimumInteractiveComponentSize()`. `Clickable.kt` gets it
-   built in, moves into `press.mantra`, and its `RectangleShape` default is
-   reconsidered so state layers read.
+4. **Eight text-field screens lift above the keyboard.** `Scaffold`'s
+   `contentWindowInsets` is `systemBars` and excludes the ime, so a Scaffold alone does
+   nothing about it. `ChatRoomMessagingScreen` is deliberately excluded — its composer
+   already reserves the bottom inset by hand, and combining the two needs a device.
 
-4. **Triage the 18 null content descriptions.** Each is either genuinely
-   decorative — and then says so with `Modifier.clearAndSetSemantics {}` or a
-   comment — or gets a label. The spec's rule for the labels themselves: name
-   the purpose, not the picture, and never include the role ("Search", not
-   "magnifying glass", never "Search button").
+5. **Initial focus** on the npub dialog's field and the desktop passphrase field — M3's
+   flow rule that a dialog takes focus on open, and that every screen defines one. Those
+   are the two places where a single field *is* the screen; auto-focusing elsewhere would
+   pop the keyboard over content somebody wants to read first.
 
-5. **Survive a large font scale.** Test every screen at 200% text size. The
-   pattern to look for is a fixed `height` on a container of text; the 49
-   `height(50.dp)` spacers are safe, but `Modifier.height(…)` around a `Text`
-   is not.
+**Font scale verified, not assumed.** A static pass found no fixed-height container
+holding text — all 23 fixed vertical dimensions are icons, images and progress
+indicators. Then at 200% text size on an API 36 emulator: onboarding, the message list
+and a chat room all reflow without clipping, system messages wrapping to two lines with
+their timestamps and chevrons still aligned.
 
-6. **Keyboard flow for the desktop target.** Initial focus per screen, focus
-   into and back out of the four `ModalBottomSheet`s and the `AlertDialog`, and
-   `Tab` order verified on the nine screens with text fields. The foundations
-   page is explicit that when a dialog opens, focus moves into it, and when it
-   closes, focus returns to what opened it.
-
-7. `imePadding()` on all nine text-field screens and the npub dialog, not one.
-
-**Done when** the extended contrast test passes over both scheme families; the
-audit reports zero unguarded `.clickable`; every `Icon` either has a description
-or a recorded reason; and every screen is legible at 200% text scale.
-
-**Risk:** low. Each fix is local and independently verifiable.
+**Left undone, and why.** Full keyboard traversal on desktop — tab order across the four
+`ModalBottomSheet`s and the `AlertDialog`, and focus returning to what opened them — is
+not verified. Compose restores focus on dismissal by default, so the gap is evidence
+rather than known breakage, and checking it means driving the desktop build by keyboard.
+The avatar picker's selected state is `secondaryContainer` at 1.65:1 against the surface,
+which M3 accepts only because its own selected states carry a second cue; this grid has
+neither an outline nor a checkmark, and adding one is component work.
 
 ---
 

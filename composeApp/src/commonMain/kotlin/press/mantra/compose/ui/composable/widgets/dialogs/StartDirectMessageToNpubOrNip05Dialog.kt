@@ -43,6 +43,9 @@ import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import press.mantra.compose.ui.theme.spacing
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
@@ -67,6 +70,15 @@ fun StartDirectMessageToNpubOrNip05Dialog(
             shape = RoundedCornerShape(16.dp),
         ) {
             val textFieldState = rememberTextFieldState()
+
+            // M3's flow guidance for a dialog: "Focus is set to the dialog component,
+            // likely to a specific interactive element within the dialog such as a text
+            // input field." This dialog is one field and two buttons, so the field is
+            // unambiguous -- and without this the whole dialog opens with nothing
+            // focused, which for a keyboard or switch user means tabbing in from
+            // wherever focus happened to be.
+            val npubFieldFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { npubFieldFocus.requestFocus() }
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -84,6 +96,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                     textAlign = TextAlign.Center
                 )
                 TextField(
+                    modifier = Modifier.focusRequester(npubFieldFocus),
                     state = textFieldState,
                     placeholder = {
                         Text("Input npub... or nip05")
