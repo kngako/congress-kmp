@@ -1,6 +1,7 @@
 package press.mantra.compose.database.dao
 
 import androidx.room3.Room
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
@@ -224,6 +225,39 @@ class ChatMessageDaoJvmTest {
         line(eventId, content = "newer", createdAt = Instant.fromEpochSeconds(2_000))
 
         assertEquals("newer", db.chatMessageDao().getChatMessagesByMarmotGroupEventId(eventId)?.content)
+    }
+
+    /**
+     * Timestamps are stored to the second, so a burst written in one second ties -- a ceremony
+     * puts a dozen lines into a room faster than that, and a request with the answer it triggers
+     * routinely lands inside one. With nothing to break the tie the transcript came back in
+     * whatever order SQLite's sorter produced, which under a descending query drew a same-second
+     * burst backwards and was free to change between two reads of the same room.
+     *
+     * `id DESC` is the key `ChatRoomDao` already breaks its last-message tie on, so the chat
+     * list's preview and the bottom of the room it opens name the same line.
+     */
+    @Test
+    fun `lines written in the same second come back in write order`() = runBlocking {
+        seedRooms()
+        val burst = Instant.fromEpochSeconds(1_000)
+        line(groupEventId = null, content = "first", createdAt = burst)
+        line(groupEventId = null, content = "second", createdAt = burst)
+        line(groupEventId = null, content = "third", createdAt = burst)
+
+        // Newest first, which is the order `reverseLayout` draws from the bottom up.
+        assertEquals(
+            listOf("third", "second", "first"),
+            db.chatMessageDao().getChatMessagesByChatRoomId(roomOne).map { it.chatMessage.content }
+        )
+
+        // The flow is what the open room actually reads, and it must not order differently
+        // from the snapshot the same screen loads with.
+        assertEquals(
+            listOf("third", "second", "first"),
+            db.chatMessageDao().observeChatMessagesByChatRoomId(roomOne).first()
+                .map { it.chatMessage.content }
+        )
     }
 
     @Test
