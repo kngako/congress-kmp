@@ -134,6 +134,28 @@ data class DkgSession(
      */
     val approvalRequestedThrough: DkgApprovalStep? = null,
 
+    /**
+     * The group this ceremony is being run to make a subgroup of, as the
+     * proposal claimed -- or null for an ordinary ceremony.
+     *
+     * **This authenticates nothing.** It is read off a tag on the proposal, and
+     * anybody can claim any parent. It exists for two things and neither of them
+     * decides anything: the ritual screen saying "a subgroup of Ekklesia" rather
+     * than "a shared key ceremony", and a member finding their way back into a
+     * flow they closed the app halfway through.
+     *
+     * The load-bearing claim is the birth certificate, two steps later, which the
+     * parent's own quorum signs and which any device can check against the
+     * parent's room id alone. Nothing may be granted on the strength of this
+     * column that would not be granted without it.
+     *
+     * Not a foreign key, for the reason `ChatRoom.parentChatRoomId` gives, and
+     * with one more of its own: the room named here need never exist on this
+     * device at all, since the claim is a stranger's until a certificate backs
+     * it.
+     */
+    val parentChatRoomId: HexKey? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = createdAt,

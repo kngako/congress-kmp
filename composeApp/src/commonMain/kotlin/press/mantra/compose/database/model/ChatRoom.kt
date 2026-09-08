@@ -112,6 +112,29 @@ data class ChatRoom(
      */
     val chronicleRequestedAt: Instant? = null,
 
+    /**
+     * The group this room is a subgroup of, or null for a room that is nobody's
+     * child.
+     *
+     * A copy of the verified `GroupKeyState.parentChatRoomId`, kept here so the
+     * room list and the room's own screen can answer "whose child is this"
+     * without a second read. It is written as the room is created or adopts its
+     * key state, and only from a state whose certificate passed
+     * `SubgroupBirthCertificateEvent.certifies`.
+     *
+     * **Never a foreign key onto `ChatRoom`.** Every other reference to a room in
+     * this schema cascades, and a self-referential cascade would mean deleting a
+     * parent silently deletes its subgroups -- and then, by their own cascades,
+     * those rooms' messages, participants, key states, signing sessions and
+     * signed events. A user tidying up a group they left would destroy a group
+     * they are still in. `RESTRICT` would be no better: it would make a parent
+     * undeletable while a child row exists, which is a foreign key deciding a
+     * product question. This routinely names a room this device does not have --
+     * see `GroupKeyState.parentChatRoomId` -- so a dangling value is the normal,
+     * expected state.
+     */
+    val parentChatRoomId: HexKey? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = createdAt,

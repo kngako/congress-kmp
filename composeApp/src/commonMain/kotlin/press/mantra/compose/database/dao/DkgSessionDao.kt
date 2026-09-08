@@ -37,6 +37,22 @@ interface DkgSessionDao {
     @Query("SELECT * FROM DkgSession WHERE thresholdPublicKey IS NOT NULL AND secretShare IS NOT NULL ORDER BY createdAt DESC")
     suspend fun getKeyHoldingSessions(): List<DkgSession>
 
+    /**
+     * Ceremonies opened to make a subgroup of [parentChatRoomId], newest first.
+     *
+     * How a member gets back into a subgroup flow they closed the app during:
+     * the child's room does not exist yet and its certificate may not be signed,
+     * so the ceremony is the only thing on this device that knows the flow was
+     * ever started.
+     *
+     * The parent named here is an unverified claim off the proposal -- see
+     * `DkgSession.parentChatRoomId` -- so nothing may be granted on the strength
+     * of appearing in this list. It decides which screen to offer, not who may
+     * do what.
+     */
+    @Query("SELECT * FROM DkgSession WHERE parentChatRoomId = :parentChatRoomId ORDER BY createdAt DESC")
+    suspend fun getByParentChatRoomId(parentChatRoomId: String): List<DkgSession>
+
     @Upsert
     suspend fun upsert(dkgSession: DkgSession)
 

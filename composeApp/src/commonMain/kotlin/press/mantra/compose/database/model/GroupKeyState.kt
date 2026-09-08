@@ -93,6 +93,42 @@ data class GroupKeyState(
     /** The signed event's own timestamp, so the newest state per room wins. */
     val announcedAt: Instant,
 
+    /**
+     * The group this one is a subgroup of, or null for a group that is nobody's
+     * child -- which is every group made before subgroups existed.
+     *
+     * **Not a foreign key, and that is deliberate.** The three tables around this
+     * one cascade off `ChatRoom`, and a self-referential cascade here would mean
+     * deleting a parent room deletes every subgroup's state beneath it. It could
+     * not be `RESTRICT` either: this routinely names a room the device does not
+     * have at all -- a member of a subgroup who was never in its parent holds the
+     * id and nothing else -- so a dangling value is the normal state and readers
+     * resolve it with a lookup allowed to return null.
+     *
+     * Written only from a state whose [birthCertificateJson] passed
+     * `SubgroupBirthCertificateEvent.certifies`, so a row carrying this is a row
+     * where the parent's quorum really did sign for this room. See
+     * `GroupKeyStateManager.stateFrom`, which drops the whole state rather than
+     * keeping a parentage it could not check.
+     */
+    val parentChatRoomId: HexKey? = null,
+
+    /**
+     * The parent's signed certificate, whole, as JSON -- or null when this group
+     * has no parent.
+     *
+     * The claim itself, where [parentChatRoomId] is only an index into it. Kept
+     * as the event rather than as its signature so that a reader can check it
+     * again from the row alone: a signature plus a rule for rebuilding the event
+     * it covers is a rule that breaks silently the first time the certificate's
+     * shape changes, and a rebuild differing by one byte hashes to an id whose
+     * signature fails and is indistinguishable from a forgery.
+     *
+     * Always set together with [parentChatRoomId]. One without the other is a
+     * state that never reached this table.
+     */
+    val birthCertificateJson: String? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = createdAt,

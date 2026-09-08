@@ -66,6 +66,26 @@ interface ChatRoomDao {
     )
     fun observeChatRoomListByUserPublicKey(userPublicKey: String): Flow<List<LocalChatRoom>>
 
+    /**
+     * The subgroups of [parentChatRoomId] this device actually holds rooms for.
+     *
+     * Deliberately not the answer to "what subgroups does this group have" --
+     * that is `SubgroupManager.subgroupsOf`, which reads the parent's signed
+     * certificates and so can name a child whose room has not been created, or
+     * was created for somebody else. This names the ones there is something to
+     * open.
+     *
+     * Soft-deleted rooms are excluded like everywhere else: a room the user has
+     * cleared away should not reappear because its parent lists it.
+     */
+    @Transaction
+    @Query(
+        CHAT_ROOM_WITH_LAST_MESSAGE +
+            "WHERE ChatRoom.parentChatRoomId = :parentChatRoomId AND ChatRoom.deletedAt IS NULL " +
+            ORDER_BY_LAST_ACTIVITY
+    )
+    fun observeByParentChatRoomId(parentChatRoomId: String): Flow<List<LocalChatRoom>>
+
     @Upsert
     suspend fun upsert(chatRoom: ChatRoom)
 

@@ -19,6 +19,25 @@ abstract class GroupKeyStateDao {
     @Query("SELECT * FROM GroupKeyState WHERE dkgSessionId = :dkgSessionId")
     abstract suspend fun getByDkgSessionId(dkgSessionId: String): List<GroupKeyState>
 
+    /**
+     * Every subgroup of [parentChatRoomId] this device holds a verified state
+     * for.
+     *
+     * Verified is the whole of what these rows are: a state only reaches the
+     * table with a parent on it once its birth certificate has been checked
+     * against that parent's signature, so this is a list of children the parent
+     * really did certify rather than a list of rooms claiming a parent.
+     *
+     * It is not the whole list. A subgroup whose room this device does not have
+     * leaves no state here at all, and the certificates in `GroupSignedEvent` are
+     * the fuller answer -- see `SubgroupManager.subgroupsOf`.
+     */
+    @Query("SELECT * FROM GroupKeyState WHERE parentChatRoomId = :parentChatRoomId ORDER BY announcedAt DESC")
+    abstract suspend fun getByParentChatRoomId(parentChatRoomId: String): List<GroupKeyState>
+
+    @Query("SELECT * FROM GroupKeyState WHERE parentChatRoomId = :parentChatRoomId ORDER BY announcedAt DESC")
+    abstract fun observeByParentChatRoomId(parentChatRoomId: String): Flow<List<GroupKeyState>>
+
     @Upsert
     abstract suspend fun upsert(groupKeyState: GroupKeyState)
 

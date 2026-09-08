@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 16,
+    version = 17,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -269,6 +269,25 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // without the index that lookup reads every message on the device. Room
         // creates an index on its own.
         AutoMigration(from = 15, to = 16),
+        // v17 adds four nullable columns for subgroups -- a group made by
+        // another group, which certifies it with its own quorum. See
+        // docs/subgroups.md.
+        //
+        // GroupKeyState gains `parentChatRoomId` and `birthCertificateJson`, the
+        // parent's signature over this room's id and the index into it. ChatRoom
+        // gains `parentChatRoomId`, a copy of the same verified value so the room
+        // list needs no second read. DkgSession gains one too, which is an
+        // unverified claim off a ceremony proposal and is read for nothing but a
+        // screen's title.
+        //
+        // **None of the three is a foreign key.** A self-referential cascade on
+        // ChatRoom would mean deleting a parent room deletes its subgroups and,
+        // by their own cascades, those rooms' messages, participants, key states
+        // and signed events. Each column also routinely names a room this device
+        // does not have, since a subgroup member need never have been in the
+        // parent, so a dangling value is the normal state. Adding nullable
+        // columns is a shape Room migrates itself.
+        AutoMigration(from = 16, to = 17),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
