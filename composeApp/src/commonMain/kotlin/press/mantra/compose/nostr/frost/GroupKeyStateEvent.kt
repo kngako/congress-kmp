@@ -10,6 +10,10 @@ import com.vitorpamplona.quartz.nip01Core.tags.dTag.DTag
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.tags.FrostDerivationPathTag
 import press.mantra.compose.nostr.frost.tags.FrostKeyTag
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupParentage
+import press.mantra.compose.nostr.subgroup.tags.SubgroupBirthCertificateTag
+import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
 
 /**
  * What key a Marmot room signs with, signed by the group whose key it is.
@@ -105,12 +109,53 @@ object GroupKeyStateEvent {
     fun assembleTags(
         chatRoomId: String,
         dkgSessionId: String,
-        path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+        path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+        parent: SubgroupParentage? = null
     ): Array<Array<String>> = arrayOf(
         DTag.assemble(chatRoomId),
         FrostKeyTag.assemble(dkgSessionId),
         FrostDerivationPathTag.assemble(path)
+    ) + (
+        parent?.let {
+            // Both or neither, which is why this arrives as one value rather
+            // than as two nullable parameters a caller could half-fill. A state
+            // carrying one without the other is dropped on read; emitting one is
+            // therefore only a way to make a state nobody will believe.
+            arrayOf(
+                SubgroupParentTag.assemble(it.parentChatRoomId),
+                SubgroupBirthCertificateTag.assemble(it.certificate)
+            )
+        } ?: emptyArray()
     )
+
+    /**
+     * The group this one claims to be a subgroup of, or null if it claims none.
+     *
+     * A *claim* until [SubgroupBirthCertificateEvent.certifies] says otherwise.
+     * Read alongside [parseBirthCertificate] and never on its own -- see
+     * `GroupKeyStateManager.stateFrom`.
+     */
+    fun parseParentChatRoomId(tags: Array<Array<String>>): HexKey? =
+        tags.firstNotNullOfOrNull(SubgroupParentTag::parse)?.parentChatRoomId
+
+    /** The parent's signed certificate, as it signed it, or null if it carries none. */
+    fun parseBirthCertificate(tags: Array<Array<String>>): Event? =
+        tags.firstNotNullOfOrNull(SubgroupBirthCertificateTag::parse)?.certificate
+
+    /**
+     * Whether the tags carry either half of a parentage.
+     *
+     * The question [parseParentChatRoomId] and [parseBirthCertificate] cannot
+     * answer between them: a tag that is present and unparseable reads as absent
+     * through both. A state claiming a parent in a form nothing can check must be
+     * refused rather than quietly filed as an ordinary top-level group, so this
+     * looks at the tag names alone.
+     */
+    fun claimsParentage(tags: Array<Array<String>>): Boolean =
+        tags.any {
+            it.isNotEmpty() &&
+                (it[0] == SubgroupParentTag.TAG_NAME || it[0] == SubgroupBirthCertificateTag.TAG_NAME)
+        }
 
     /** The room this state is about, or null if it names none. */
     fun parseChatRoomId(tags: Array<Array<String>>): String? =

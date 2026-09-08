@@ -24,6 +24,8 @@ import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupParentage
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
@@ -737,5 +739,172 @@ class GroupKeyStateTest {
         assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), "z".repeat(66), path))
         assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), "", path))
         assertFalse(GroupKeyStateEvent.isSignedByGroup(signedKeyState(), thresholdPublicKey, emptyList()))
+    }
+
+    // ---- a state that names a parent --------------------------------------
+    //
+    // A subgroup's key state carries the parent group's signature over this very
+    // room's id. Everything above judges a state against the room it describes,
+    // which the event alone settles; a parentage is a statement about a *second*
+    // group, so it is the one claim on a key state that needs somebody else's
+    // signature to mean anything.
+    //
+    // The rule these pin down is that a claim which cannot be backed takes the
+    // whole state with it. Filing it as a parentless group would be worse than
+    // dropping it: the group would be recorded as top-level on this device and as
+    // a subgroup on every device that could check the certificate.
+
+    /** The parent group's room, which is `otherKeyMaterial` wearing a second hat. */
+    private val parentChatRoomId get() = identityOf(otherKeyMaterial).hex
+
+    /** A certificate by [author]'s room saying [subgroupChatRoomId] is its child. */
+    private fun birthCertificate(
+        subgroupChatRoomId: String = chatRoomId,
+        parent: String = parentChatRoomId,
+        subgroupKey: String = thresholdPublicKey,
+        certificatePath: List<Long> = path,
+        author: KeyMaterial = otherKeyMaterial
+    ): Event = signedByRoom(
+        kind = SubgroupBirthCertificateEvent.KIND,
+        content = subgroupChatRoomId,
+        tags = SubgroupBirthCertificateEvent.assembleTags(
+            subgroupChatRoomId = subgroupChatRoomId,
+            parentChatRoomId = parent,
+            thresholdPublicKey = subgroupKey,
+            adminPublicKeys = listOf("a".repeat(64), "b".repeat(64), "c".repeat(64)),
+            name = "Translation team",
+            path = certificatePath
+        ),
+        author = author
+    )
+
+    private fun keyStateWithParent(
+        parent: String = parentChatRoomId,
+        certificate: Event = birthCertificate()
+    ): Event = signedKeyState(
+        tags = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            parent = SubgroupParentage(parentChatRoomId = parent, certificate = certificate)
+        )
+    )
+
+    @Test
+    fun `a state whose parent certified it keeps the parent and the certificate`() {
+        val state = GroupKeyStateManager.stateFrom(chatRoomId, keyStateWithParent())
+
+        assertEquals(parentChatRoomId, state?.parentChatRoomId)
+        assertEquals(birthCertificate().toJson(), state?.birthCertificateJson)
+    }
+
+    @Test
+    fun `a state claiming no parent keeps both fields null`() {
+        // Every group made before subgroups existed, and every top-level group
+        // made after. Null here is the ordinary case, not missing data.
+        val state = GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState())
+
+        assertNull(state?.parentChatRoomId)
+        assertNull(state?.birthCertificateJson)
+    }
+
+    @Test
+    fun `a state naming a parent with no certificate is dropped`() {
+        // Not filed as a parentless state. A claim with the checkable part
+        // removed is not a weaker claim, it is one this device cannot judge, and
+        // guessing that the member meant nothing by it is still a guess.
+        val halfClaim = signedKeyState(
+            tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path) +
+                arrayOf(arrayOf("parent_group", parentChatRoomId))
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, halfClaim))
+    }
+
+    @Test
+    fun `a state carrying a certificate but naming no parent is dropped`() {
+        val halfClaim = signedKeyState(
+            tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path) +
+                arrayOf(arrayOf("birth_certificate", birthCertificate().toJson()))
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, halfClaim))
+    }
+
+    @Test
+    fun `a state whose certificate will not parse is dropped`() {
+        // The tag is there and unreadable, which reads as absent through the
+        // parser and must not read as absent through the decision.
+        val unreadable = signedKeyState(
+            tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path) +
+                arrayOf(
+                    arrayOf("parent_group", parentChatRoomId),
+                    arrayOf("birth_certificate", "{not json")
+                )
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, unreadable))
+    }
+
+    @Test
+    fun `a state whose certificate is for another child is dropped`() {
+        // The attack: take a real certificate the parent signed for one subgroup
+        // and staple it to another group's key state, so a group the parent never
+        // certified inherits a lineage it was not given.
+        val elsewhere = birthCertificate(subgroupChatRoomId = otherKey)
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, keyStateWithParent(certificate = elsewhere)))
+    }
+
+    @Test
+    fun `a state whose certificate was signed by a room that is not the named parent is dropped`() {
+        // Signed by this room's own group, which is a real quorum with a real
+        // signature and no standing to say anything about its own parentage.
+        assertNull(
+            GroupKeyStateManager.stateFrom(
+                chatRoomId,
+                keyStateWithParent(certificate = birthCertificate(author = keyMaterial))
+            )
+        )
+    }
+
+    @Test
+    fun `a state whose parent tag disagrees with its certificate is dropped`() {
+        // The index and the claim have to agree. Completing one from the other
+        // would be this device deciding what the group meant.
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, keyStateWithParent(parent = otherKey)))
+    }
+
+    @Test
+    fun `a state whose certificate names a different key is dropped`() {
+        // Belt and braces over the derivation: the certificate's own id has to
+        // derive from the key it names, so this is a certificate for a room that
+        // is not this one wearing this room's address.
+        val wrongKey = birthCertificate(subgroupKey = otherKey)
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, keyStateWithParent(certificate = wrongKey)))
+    }
+
+    @Test
+    fun `a parentage survives the trip through the tags`() {
+        val certificate = birthCertificate()
+        val tags = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            parent = SubgroupParentage(parentChatRoomId, certificate)
+        )
+
+        assertTrue(GroupKeyStateEvent.claimsParentage(tags))
+        assertEquals(parentChatRoomId, GroupKeyStateEvent.parseParentChatRoomId(tags))
+        assertEquals(certificate.toJson(), GroupKeyStateEvent.parseBirthCertificate(tags)?.toJson())
+
+        // And the tags a top-level group is proposed on carry neither, so every
+        // state signed before subgroups existed reads exactly as it did.
+        val plain = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path)
+
+        assertFalse(GroupKeyStateEvent.claimsParentage(plain))
+        assertNull(GroupKeyStateEvent.parseParentChatRoomId(plain))
+        assertNull(GroupKeyStateEvent.parseBirthCertificate(plain))
     }
 }

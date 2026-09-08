@@ -12,6 +12,8 @@ import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupParentage
 
 /**
  * Puts what key a room signs with to the group, and files what the group says.
@@ -110,6 +112,7 @@ object GroupKeyStateManager {
         userPublicKey: HexKey,
         key: DkgSession,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+        parent: SubgroupParentage? = null,
         createdAt: Long = Clock.System.now().epochSeconds
     ): FrostSigningSession {
         val signingRoomId = localChatRoom.chatRoom.id
@@ -134,11 +137,29 @@ object GroupKeyStateManager {
             thresholdPublicKey = thresholdPublicKey,
             derivationPath = SharedKeyDerivation.formatPath(path),
             announcedBy = userPublicKey,
-            announcedAt = Instant.fromEpochSeconds(createdAt)
+            announcedAt = Instant.fromEpochSeconds(createdAt),
+            parentChatRoomId = parent?.parentChatRoomId,
+            birthCertificateJson = parent?.certificate?.toJson()
         )
 
         check(state.verifies()) {
             "Room $chatRoomId is not derived from $thresholdPublicKey at ${state.derivationPath}"
+        }
+
+        // Refused here rather than discovered by the group. Every device that
+        // receives this state runs the same check in `parentageOf` and drops the
+        // state when it fails, so proposing one this device would not believe
+        // spends a quorum's attention on a statement nobody will keep.
+        if (parent != null) {
+            check(
+                SubgroupBirthCertificateEvent.certifies(
+                    event = parent.certificate,
+                    subgroupChatRoomId = chatRoomId,
+                    parentChatRoomId = parent.parentChatRoomId
+                )
+            ) {
+                "Room ${parent.parentChatRoomId} has not certified $chatRoomId as its subgroup"
+            }
         }
 
         logger.i(
@@ -154,7 +175,8 @@ object GroupKeyStateManager {
             tags = GroupKeyStateEvent.assembleTags(
                 chatRoomId = chatRoomId,
                 dkgSessionId = key.id,
-                path = path
+                path = path,
+                parent = parent
             ),
             content = thresholdPublicKey,
             key = key,
@@ -322,6 +344,90 @@ object GroupKeyStateManager {
      * [chatRoomId] -- where it arrived -- is only the fallback for a state that
      * names no room at all, and appears in the logs.
      */
+    /**
+     * A parentage that was checked, wrapping a value that is allowed to be
+     * absent.
+     *
+     * Three outcomes have to be told apart and a bare nullable can only carry
+     * two. A state may claim no parent, which is every group made before
+     * subgroups and every top-level group made after; it may claim one and prove
+     * it; or it may claim one it cannot prove, which is not a state with a field
+     * missing but a device asserting a relationship the parent never agreed to.
+     * The third has to stop [stateFrom] rather than be flattened into the first.
+     *
+     * So `null` here means refused, and a present [value] of `null` means none
+     * claimed.
+     */
+    private class Parentage(val value: SubgroupParentage?)
+
+    /**
+     * The parentage an event actually establishes, or null if it claims one it
+     * cannot back.
+     *
+     * Four checks, and they exist because a parent link is the one thing on a key
+     * state that is not self-evident from the room it describes. The rest of
+     * [stateFrom] is answerable from the event and the room's own id; this is a
+     * statement about a *second* group, so it needs that group's own signature.
+     *
+     * A failure drops the whole state. Keeping it as a parentless one was the
+     * alternative and is worse: a state claiming a parentage it cannot back is
+     * not a state with one field wrong, and half-believing it would file a group
+     * as top-level that its own members will see as a subgroup.
+     */
+    private fun parentageOf(
+        announced: String,
+        thresholdPublicKey: HexKey,
+        innerEvent: Event
+    ): Parentage? {
+        if (!GroupKeyStateEvent.claimsParentage(innerEvent.tags)) return Parentage(null)
+
+        // Both or neither. A parent named with no certificate is a claim with the
+        // checkable part removed; a certificate with no parent named beside it
+        // has nothing to be an index of. Either alone is refused rather than
+        // completed from the other, because completing it would be this device
+        // deciding what the group meant.
+        val parentChatRoomId = GroupKeyStateEvent.parseParentChatRoomId(innerEvent.tags)
+        val certificate = GroupKeyStateEvent.parseBirthCertificate(innerEvent.tags)
+
+        if (parentChatRoomId == null || certificate == null) {
+            logger.w(
+                "Key state for $announced claims a parent in a form that cannot be read " +
+                    "(parent=${parentChatRoomId != null}, certificate=${certificate != null}); dropping"
+            )
+            return null
+        }
+
+        // The parent's own quorum, over this very room's id. Everything that
+        // makes a lineage worth anything is in here -- see
+        // `SubgroupBirthCertificateEvent.certifies`, which needs no lookup and no
+        // key it has to be told.
+        if (!SubgroupBirthCertificateEvent.certifies(certificate, announced, parentChatRoomId)) {
+            logger.w(
+                "Key state for $announced carries no certificate by $parentChatRoomId for " +
+                    "that room; dropping"
+            )
+            return null
+        }
+
+        // Belt and braces: the id already derives from this key, and the
+        // certificate's id already derives from the key it names, so two
+        // certificates for one room cannot name two keys. Stated anyway because
+        // the two facts live in different places and a future change to either
+        // should have to notice this.
+        val certifiedKey = SubgroupBirthCertificateEvent.parseThresholdPublicKey(certificate.tags)
+        if (!thresholdPublicKey.equals(certifiedKey, ignoreCase = true)) {
+            logger.w(
+                "Key state for $announced names $thresholdPublicKey and its certificate names " +
+                    "$certifiedKey; dropping"
+            )
+            return null
+        }
+
+        return Parentage(
+            SubgroupParentage(parentChatRoomId = parentChatRoomId, certificate = certificate)
+        )
+    }
+
     fun stateFrom(chatRoomId: String, innerEvent: Event): GroupKeyState? {
         val announced = GroupKeyStateEvent.parseChatRoomId(innerEvent.tags) ?: chatRoomId
 
@@ -355,13 +461,17 @@ object GroupKeyStateManager {
             return null
         }
 
+        val parent = parentageOf(announced, thresholdPublicKey, innerEvent) ?: return null
+
         val state = GroupKeyState(
             chatRoomId = announced,
             dkgSessionId = dkgSessionId,
             thresholdPublicKey = thresholdPublicKey,
             derivationPath = SharedKeyDerivation.formatPath(path),
             announcedBy = innerEvent.pubKey,
-            announcedAt = Instant.fromEpochSeconds(innerEvent.createdAt)
+            announcedAt = Instant.fromEpochSeconds(innerEvent.createdAt),
+            parentChatRoomId = parent.value?.parentChatRoomId,
+            birthCertificateJson = parent.value?.certificate?.toJson()
         )
 
         // Half the trust model, in one line, and the half that does not care who
