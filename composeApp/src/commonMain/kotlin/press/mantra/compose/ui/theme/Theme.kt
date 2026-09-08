@@ -489,6 +489,11 @@ fun TorchTheme(
     contrast: ThemeContrast = platformThemeContrast(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    // A parameter with a platform default, the same shape as `contrast` and for the same
+    // reason: the platform's answer is the right starting point and the wrong final word.
+    // A desktop cannot see what its desktop environment was told, and a settings screen
+    // will eventually want to override this on every platform.
+    reducedMotion: Boolean = platformReducedMotion(),
     content: @Composable () -> Unit
 ) {
     // Dynamic colour wins when the platform offers it, because it is the user's own
@@ -513,6 +518,9 @@ fun TorchTheme(
     CompositionLocalProvider(
         LocalExtendedColors provides extendedColorsFor(darkTheme),
         LocalBreakpoint provides breakpoint,
+        // Provided once here rather than read per animation, so a screen cannot animate
+        // against a setting a neighbouring screen is honouring.
+        LocalReducedMotion provides reducedMotion,
         // The payoff for tokenising spacing in phase 2: the screen margin widens from
         // 16dp to 24dp at medium and above without a single call site changing.
         LocalSpacing provides spacingFor(breakpoint),

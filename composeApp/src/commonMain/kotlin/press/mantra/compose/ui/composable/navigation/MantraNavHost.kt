@@ -102,6 +102,7 @@ import press.mantra.compose.ui.view.model.SynchronizationViewModel
 import press.mantra.compose.ui.view.state.NavigationUIState
 import press.mantra.compose.ui.view.state.NostrEventDetailUIState
 import press.mantra.compose.ui.view.state.SearchUIState
+import press.mantra.compose.ui.theme.NavigationMotion
 import press.mantra.compose.ui.theme.breakpoint
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
@@ -403,7 +404,17 @@ fun MantraNavHost(
     ) {
         NavHost(
             navController = navController,
-            startDestination = LoadingRoute()
+            startDestination = LoadingRoute(),
+            // All 43 routes at once, which is the point: navigation-compose's default is
+            // `fadeIn(tween(700))` in its own internals, so before this the app's
+            // transitions were a library's literal rather than a decision, and roughly
+            // three times M3's duration for a full-screen change. These come from the
+            // theme's MotionScheme and collapse to a fade when the platform asks for
+            // reduced motion.
+            enterTransition = NavigationMotion.enter(),
+            exitTransition = NavigationMotion.exit(),
+            popEnterTransition = NavigationMotion.popEnter(),
+            popExitTransition = NavigationMotion.popExit(),
         ) {
             composable<SovereignWalletStartupRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
