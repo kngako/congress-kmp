@@ -28,6 +28,42 @@ interface DkgSessionDao {
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
     /**
+     * The room's newest ceremony *for one purpose*: the group's own when
+     * [parentChatRoomId] is null, or the subgroup of that parent when it is not.
+     *
+     * A room can hold more than one. The ceremony room for a set of admins is
+     * derived from those admins, so a subgroup whose admins are everybody lands
+     * in the room the group's own ceremony was held in -- and that is a legitimate
+     * subgroup rather than a mistake, because a subgroup is a logical division and
+     * not a smaller membership.
+     *
+     * `DkgSession.parentChatRoomId` is what tells them apart, and it is enough
+     * because it is the only thing that differs: two ceremonies in one room are
+     * either one group's and one subgroup's, or two subgroups' of different
+     * parents. Two subgroups of the *same* parent over the *same* admins would
+     * still collide, and that pair is one subgroup asked for twice.
+     *
+     * Everything else about a ceremony is already keyed by session id -- the
+     * messages, the approvals, the transcript -- so nothing below this needed to
+     * learn about the second one.
+     */
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
+            "(parentChatRoomId = :parentChatRoomId OR " +
+            "(:parentChatRoomId IS NULL AND parentChatRoomId IS NULL)) " +
+            "ORDER BY createdAt DESC LIMIT 1"
+    )
+    suspend fun getLatestSessionFor(chatRoomId: String, parentChatRoomId: String?): DkgSession?
+
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
+            "(parentChatRoomId = :parentChatRoomId OR " +
+            "(:parentChatRoomId IS NULL AND parentChatRoomId IS NULL)) " +
+            "ORDER BY createdAt DESC LIMIT 1"
+    )
+    fun observeLatestSessionFor(chatRoomId: String, parentChatRoomId: String?): Flow<DkgSession?>
+
+    /**
      * Every ceremony this device came out of holding a share, newest first.
      *
      * Signing happens in the #admins room, whose id is derived from the key

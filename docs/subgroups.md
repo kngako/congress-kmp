@@ -398,11 +398,16 @@ comment:
 - Selecting an admin set that already holds a completed ceremony returns that
   ceremony (`proposeRitual` hands back anything not `FAILED`), which would make
   the "new" subgroup the old group under a new name — same key, same room id.
-- Selecting *every* member of the parent is the pathological case of that: the
-  parent's own ceremony room is the room over all its members, so the child would
-  come out as the parent itself.
+- Selecting *every* member of the parent lands in the parent's own ceremony room,
+  which is the room over all its members.
 
-Refused in Phase 8, on both readings, before the button is offered.
+The second is **not** refused, and the first is refused more narrowly than it
+first shipped. A subgroup over everybody is legitimate -- a subgroup is a logical
+division rather than a smaller membership -- and sharing a room was never the
+problem; sharing a *ceremony* was. `DkgSession.parentChatRoomId` tells two
+ceremonies in one room apart, and `DkgSessionDao.getLatestSessionFor` is scoped by
+it, so what Phase 8 refuses is only the same parent asking twice over the same
+admins. See [that phase](#phase-8--the-refusals).
 
 ### Why not the parent's Marmot room
 
@@ -784,16 +789,43 @@ a room nobody can replace.
 | a threshold outside `ChatRoomType.quorumRange(adminCount)` | `t = 1` is a threshold key any one member signs with, and ChillDKG will happily generate one. `acceptProposal` already refuses such a proposal, so an unchecked one produces a ceremony every invitee silently drops |
 | an empty or blank name | Phase 6 has nothing to put in `MarmotGroupData.name`, and the parent's admins would be certifying an unnamed hash |
 | a selected member with no unconsumed key package | they cannot be welcomed into the room at step 4, and finding that out at step 4 wastes three ceremonies. Checked at the picker and again at confirm |
-| the selection is not a proper subset of the parent's members | selecting everybody derives the parent's own ceremony room, and the "child" comes out as the parent |
-| the ceremony room already holds a non-`FAILED` `DkgSession` | `proposeRitual` would return that ceremony, and the "new" subgroup would be the old one — same key, same id |
+| ~~the selection is not a proper subset of the parent's members~~ | **withdrawn.** A subgroup is a logical division, not a smaller membership, so "everybody" is a normal answer. What this was standing in for is the row below, checked precisely rather than by set size |
+| the ceremony room already holds a non-`FAILED` `DkgSession` **for this same parent** | `proposeRitual` would return that ceremony, and the "new" subgroup would be the old one — same key, same id. Scoped by `DkgSession.parentChatRoomId`, so a room may hold the group's own ceremony *and* a subgroup's |
 | this device holds no share of the parent's key | it cannot open the certificate session; `proposeSigningBatch` throws, and throwing at the button is not a UI |
 | this device is not an admin of the parent | a non-admin proposing the parent's signature is a proposal the parent's admins have to decline by hand |
 | the parent has no signed key state and no resolvable key | there is nothing for the certificate to be signed with |
 | a certificate already stands for this child | one certificate per child; a second is a `d`-tag replacement of the first, not a second subgroup |
 
-The first and the third are the ones a user will actually meet, so both say what
-to do: "pick at least two more people" and "a subgroup cannot be the whole group
-— leave at least one member out".
+The first is the one a user will actually meet, and it says what to do: "pick at
+least two more people".
+
+### Why "a subgroup cannot be the whole group" was withdrawn
+
+It shipped, and it was wrong twice.
+
+It refused something legitimate. A subgroup is a group deciding that some of its
+work belongs to a differently-keyed room, not a group carving out a smaller
+membership — so every member being in it is an ordinary case, and no rule here had
+any business deciding otherwise.
+
+And it was a proxy rather than a check. The thing it stood in for is real: a
+ceremony room is derived from its admins, so a subgroup over everybody lands in
+the room the group's *own* ceremony was held in, and `proposeRitual` handing back
+that ceremony would make the child the parent. But set size does not detect that.
+A parent whose membership has changed since its own ceremony derives a different
+room, so the sizes can match with no collision and differ with one.
+
+**Sharing the room was never the problem; sharing a ceremony was.**
+`DkgSession.parentChatRoomId` already told them apart, so the fix was to scope the
+lookup by it — `DkgSessionDao.getLatestSessionFor(room, parent)` — rather than to
+forbid the selection. A room may now hold two ceremonies, and everything below
+that lookup already keyed off the session id, so nothing else had to learn about
+the second one.
+
+One collision survives, and it is degenerate: the same parent, over the same
+admins, twice. Those two have nothing left to distinguish them, which is another
+way of saying they are one subgroup asked for twice, and that is what the message
+now says.
 
 ## Phase 9 — the tests that prove it
 
@@ -871,12 +903,16 @@ about whether the child's chronicle may carry an event its own key did not sign,
 which no chroniclable kind does today. That last one is the real work, and it is
 why this is a follow-up rather than a line in Phase 5.
 
-**One admin set, one subgroup.** Phase 4's collision is refused, not solved. Two
-subgroups with exactly the same admins need the NIP-17 ceremony room to be
-distinguishable by something other than its members, and
-`ChatRoom.deriveChatRoomId` is a pure aggregate of member keys that the inbound
-path recomputes. Changing it is a change to how every NIP-17 room in the app is
-addressed, and it is not worth making for this.
+**One parent, one admin set, one subgroup.** Narrower than it first shipped: a
+room may hold two ceremonies, told apart by `DkgSession.parentChatRoomId`, so a
+group's own ceremony and a subgroup over the same people coexist. What is still
+refused is the same parent asking twice over the same admins, which have nothing
+left to distinguish them.
+
+Widening that further needs the NIP-17 ceremony room to be distinguishable by
+something other than its members, and `ChatRoom.deriveChatRoomId` is a pure
+aggregate of member keys that the inbound path recomputes. Changing it is a change
+to how every NIP-17 room in the app is addressed.
 
 It is also the limitation that disappears on its own: move the ceremony into the
 parent's Marmot room, as [Phase 4](#why-not-the-parents-marmot-room) defers doing,

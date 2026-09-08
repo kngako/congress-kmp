@@ -157,21 +157,26 @@ object SubgroupManager {
             return "Everyone in a subgroup has to be in this group first."
         }
 
-        // A proper subset, and this is not fussiness. The ceremony room is derived
-        // from its members, so selecting the whole group derives the room this
-        // group's own ceremony was held in -- and `proposeRitual` would hand back
-        // that ceremony, making the "child" this very group.
-        if (admins.size == members.size) {
-            return "A subgroup cannot be the whole group. Leave at least one member out."
-        }
-
-        // Any completed or running ceremony in the room these admins derive is the
-        // same trap one step removed: two subgroups with exactly the same admins
-        // would share a key and therefore a room id.
+        // A subgroup *may* be the whole group. It is a logical division -- a group
+        // deciding that some of its work belongs to a differently-keyed room --
+        // rather than a smaller membership, so "everybody" is a normal answer and
+        // was never this function's business to refuse.
+        //
+        // What the old rule was standing in for is real and is checked below,
+        // precisely: the ceremony room is derived from its admins, so a subgroup
+        // over everybody lands in the room the group's own ceremony was held in.
+        // Sharing the room is fine; sharing a *ceremony* is not, and
+        // `DkgSession.parentChatRoomId` is what keeps them apart.
+        //
+        // Checking on set size was wrong twice over. It refused a legitimate
+        // subgroup, and it refused it on a proxy: a parent whose membership has
+        // changed since its own ceremony derives a different room, so the sizes
+        // could match with no collision at all, and could differ with one.
         val ceremonyRoomId = ceremonyRoomIdFor(adminPublicKeys, coordinatorPublicKey)
-        val running = database.dkgSessionDao().getLatestSessionForChatRoom(ceremonyRoomId)
+        val running = database.dkgSessionDao()
+            .getLatestSessionFor(ceremonyRoomId, parentChatRoomId)
         if (running != null && running.stage != DkgRitualStage.FAILED) {
-            return "These members already hold a shared key together. Change who is in the subgroup."
+            return "This group already has a subgroup run by exactly these members."
         }
 
         return null

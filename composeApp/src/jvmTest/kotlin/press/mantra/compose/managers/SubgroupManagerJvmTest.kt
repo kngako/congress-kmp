@@ -330,56 +330,60 @@ class SubgroupManagerJvmTest {
     }
 
     @Test
-    fun `a subgroup that is the whole group is refused`(): Unit = runBlocking {
-        // The trap this exists for: the ceremony room is derived from its members,
-        // so selecting everybody derives the room this group's own ceremony was
-        // held in -- and `proposeRitual` would hand that ceremony back, making the
-        // "child" this very group.
+    fun `a subgroup may be the whole group`(): Unit = runBlocking {
+        // A subgroup is a logical division -- a group deciding that some of its
+        // work belongs to a differently-keyed room -- not a smaller membership.
+        // "Everybody" is a normal answer.
+        //
+        // This used to be refused on set size, which was wrong twice: it turned
+        // down a legitimate subgroup, and it did so on a proxy for a collision
+        // that a parent whose membership has changed would not even have.
         val parent = parentWith(listOf(alice, bob))
 
-        assertNotNull(refusal(parent, setOf(alice, bob)))
+        assertNull(refusal(parent, setOf(alice, bob)))
     }
 
     @Test
-    fun `an admin set that already holds a ceremony is refused`(): Unit = runBlocking {
+    fun `the group's own ceremony does not block a subgroup in the same room`(): Unit =
+        runBlocking {
+            // The collision the size rule was standing in for, made concrete. A
+            // subgroup over everybody derives the room the group's own ceremony was
+            // held in -- so the room is shared, and only `parentChatRoomId` keeps
+            // the two ceremonies apart. Without that scoping `proposeRitual` would
+            // hand back the *group's* key and quietly make the child the parent.
+            val parent = parentWith(listOf(alice, bob))
+            val ceremonyRoomId = SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user)
+
+            seedCeremonyRoom(ceremonyRoomId, listOf(alice, bob, user))
+            db.dkgSessionDao().upsert(ownCeremony(ceremonyRoomId))
+
+            assertNull(
+                refusal(parent, setOf(alice, bob)),
+                "the group's own ceremony is not this subgroup's",
+            )
+        }
+
+    @Test
+    fun `the same parent cannot have two subgroups over the same admins`(): Unit = runBlocking {
         val parent = parentWith(listOf(alice, bob, carol))
 
         assertNull(refusal(parent, setOf(alice, bob)))
 
-        // One admin set, one ceremony room, forever -- the id is a pure function
-        // of the members. A second subgroup with the same admins would come back
-        // with the first one's key and therefore the first one's room id.
-        //
-        // Room first, the way the picker stands one up: the ceremony room is a
-        // real NIP-17 room and `DkgSession.chatRoomId` is a foreign key onto it.
-        val ceremonyRoom = assertNotNull(
-            db.nostrNip17Dao().createNip17ChatRoom(
-                userPublicKey = user,
-                participantPublicKeys = listOf(alice, bob),
-                subject = "Translation team",
-            )
-        )
-        assertEquals(
-            SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user),
-            ceremonyRoom.chatRoom.id,
-            "the derived ceremony room is the one createNip17ChatRoom lands on",
-        )
-
+        // The one collision that survives, and it is degenerate: same parent,
+        // same admins. The ceremony room is derived from the admins and the
+        // ceremonies in it are told apart by their parent, so this pair has
+        // nothing left to distinguish them -- which is another way of saying it
+        // is one subgroup asked for twice.
+        val ceremonyRoomId = SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user)
+        seedCeremonyRoom(ceremonyRoomId, listOf(alice, bob, user))
         db.dkgSessionDao().upsert(
-            DkgSession(
-                id = "s1",
-                chatRoomId = ceremonyRoom.chatRoom.id,
-                coordinatorPublicKey = user,
-                userPublicKey = user,
-                threshold = 2,
-                participantCount = 3,
-                hostPublicKey = user,
-                round1Random = "aa".repeat(32),
-                round2AuxRandom = "bb".repeat(32),
-            )
+            ownCeremony(ceremonyRoomId).copy(id = "s1", parentChatRoomId = parentRoomId)
         )
 
         assertNotNull(refusal(parent, setOf(alice, bob)))
+
+        // And a different admin set is a different room, so it is untouched.
+        assertNull(refusal(parent, setOf(alice, carol)))
     }
 
     @Test
@@ -444,6 +448,41 @@ class SubgroupManagerJvmTest {
     }
 
     // ---- fixtures ----------------------------------------------------------
+
+    /**
+     * The NIP-17 room a ceremony runs in, stood up the way the picker does it --
+     * room first, because `DkgSession.chatRoomId` is a foreign key onto it.
+     */
+    private suspend fun seedCeremonyRoom(expectedId: String, members: List<String>) {
+        members.forEach { seedProfile(it) }
+
+        val room = assertNotNull(
+            db.nostrNip17Dao().createNip17ChatRoom(
+                userPublicKey = user,
+                participantPublicKeys = members.filterNot { it == user },
+                subject = "Translation team",
+            )
+        )
+
+        assertEquals(
+            expectedId,
+            room.chatRoom.id,
+            "the derived ceremony room is the one createNip17ChatRoom lands on",
+        )
+    }
+
+    /** A ceremony held in [chatRoomId] for no subgroup: the group's own. */
+    private fun ownCeremony(chatRoomId: String) = DkgSession(
+        id = "own-ceremony",
+        chatRoomId = chatRoomId,
+        coordinatorPublicKey = user,
+        userPublicKey = user,
+        threshold = 2,
+        participantCount = 3,
+        hostPublicKey = user,
+        round1Random = "aa".repeat(32),
+        round2AuxRandom = "bb".repeat(32),
+    )
 
     /** A finished ceremony for the child, as far as these guards can tell. */
     private fun completedChildCeremony() = DkgSession(

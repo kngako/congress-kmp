@@ -125,17 +125,24 @@ object ChillDkgRitualManager {
         threshold: Int,
         parentChatRoomId: HexKey? = null
     ): DkgSession {
-        // A room runs one ceremony at a time, and this is reachable twice now that
-        // a robust group opens one as it is created: the room id is derived from
-        // its members, so making the same group again lands back in the same room
-        // and asks again. A second proposal is a second participant set for every
-        // member to reconcile, and the key the first one produced would be left
-        // with nothing pointing at it. A failed ritual is not running, and is
-        // there to be replaced.
+        // A room runs one ceremony at a time *for one purpose*, and this is
+        // reachable twice now that a robust group opens one as it is created: the
+        // room id is derived from its members, so making the same group again
+        // lands back in the same room and asks again. A second proposal for the
+        // same purpose is a second participant set for every member to reconcile,
+        // and the key the first one produced would be left with nothing pointing
+        // at it. A failed ritual is not running, and is there to be replaced.
+        //
+        // Scoped by [parentChatRoomId] rather than by room alone. A subgroup's
+        // ceremony room is derived from its admins, so a subgroup whose admins are
+        // the whole group lands in the room the group's own ceremony was held in
+        // -- and that is a legitimate subgroup, since a subgroup is a logical
+        // division rather than a smaller membership. Refusing it on the room would
+        // hand back the *group's* key and quietly make the child the parent.
         //
         // Checked before the arguments are, because a running ritual makes the
         // requested threshold moot -- it settled that question when it opened.
-        database.dkgSessionDao().getLatestSessionForChatRoom(localChatRoom.chatRoom.id)
+        database.dkgSessionDao().getLatestSessionFor(localChatRoom.chatRoom.id, parentChatRoomId)
             ?.takeIf { it.stage != DkgRitualStage.FAILED }
             ?.let { running ->
                 logger.i(

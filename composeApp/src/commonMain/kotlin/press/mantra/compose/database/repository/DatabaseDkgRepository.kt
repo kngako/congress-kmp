@@ -28,8 +28,11 @@ class DatabaseDkgRepository(
 ): DkgRepository {
     private val logger = Logger.withTag(TAG)
 
-    override fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?> =
-        database.dkgSessionDao().observeLatestSessionForChatRoom(chatRoomId)
+    override fun observeLatestSessionForChatRoom(
+        chatRoomId: String,
+        parentChatRoomId: String?,
+    ): Flow<DkgSession?> =
+        database.dkgSessionDao().observeLatestSessionFor(chatRoomId, parentChatRoomId)
 
     override fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>> =
         database.dkgSessionDao().observeMessages(sessionId)
@@ -86,7 +89,10 @@ class DatabaseDkgRepository(
     ): Flow<List<LocalFrostSigningSession>> =
         database.frostSigningSessionDao().observeSessionsForChatRoom(chatRoomId)
 
-    override fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?> =
+    override fun observeSignedGroupKeyState(
+        chatRoomId: String,
+        parentChatRoomId: String?,
+    ): Flow<GroupKeyState?> =
         database.groupSignedEventDao()
             .observeByKind(GroupKeyStateEvent.KIND)
             .map { signedEvents ->
@@ -94,7 +100,7 @@ class DatabaseDkgRepository(
                 // rather than once: the ceremony has no key until it finishes,
                 // and this flow is running before it does.
                 val adminRoomId = database.dkgSessionDao()
-                    .getLatestSessionForChatRoom(chatRoomId)
+                    .getLatestSessionFor(chatRoomId, parentChatRoomId)
                     ?.thresholdPublicKey
                     ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
 
@@ -149,7 +155,7 @@ class DatabaseDkgRepository(
                 // rather than once: the ceremony has no key until it finishes,
                 // and this flow is running before it does.
                 val subgroupChatRoomId = database.dkgSessionDao()
-                    .getLatestSessionForChatRoom(ceremonyChatRoomId)
+                    .getLatestSessionFor(ceremonyChatRoomId, parentChatRoomId)
                     ?.thresholdPublicKey
                     ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
                     ?: return@map null

@@ -134,7 +134,8 @@ class DkgRitualViewModel(
 
             observeKeyState()
 
-            dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { session ->
+            dkgRepository.observeLatestSessionForChatRoom(chatRoomId, parentChatRoomId)
+                .collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
                     ?: DkgRitualUIState.Loaded(
                         localChatRoom = localChatRoom,
@@ -212,7 +213,8 @@ class DkgRitualViewModel(
             }
 
             launch {
-                dkgRepository.observeSignedGroupKeyState(chatRoomId).collect { state ->
+                dkgRepository.observeSignedGroupKeyState(chatRoomId, parentChatRoomId)
+                    .collect { state ->
                     val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
 
                     dkgRitualUIState = loaded.copy(isKeyStateSigned = state != null)

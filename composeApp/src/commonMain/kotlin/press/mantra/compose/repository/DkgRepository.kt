@@ -20,8 +20,19 @@ import kotlinx.coroutines.flow.flowOf
  * not publish on their behalf until they say so.
  */
 interface DkgRepository {
-    /** The room's current ritual — abandoned attempts are superseded by the newest. */
-    fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?>
+    /**
+     * The room's current ritual for one purpose — the group's own when
+     * [parentChatRoomId] is null, or that parent's subgroup when it is not.
+     * Abandoned attempts are superseded by the newest.
+     *
+     * A room can hold two: a subgroup whose admins are the whole group derives
+     * the room the group's own ceremony ran in. See
+     * `DkgSessionDao.getLatestSessionFor`.
+     */
+    fun observeLatestSessionForChatRoom(
+        chatRoomId: String,
+        parentChatRoomId: String? = null,
+    ): Flow<DkgSession?>
 
     fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>>
 
@@ -92,7 +103,10 @@ interface DkgRepository {
      * changes is the moment there is a room to make -- and the state it is
      * about does not exist as a row until somebody makes one.
      */
-    fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?>
+    fun observeSignedGroupKeyState(
+        chatRoomId: String,
+        parentChatRoomId: String? = null,
+    ): Flow<GroupKeyState?>
 
     /** Files the state the group signed for a room that now exists. */
     suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
@@ -140,7 +154,10 @@ interface DkgRepository {
 
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
-            override fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?> = flowOf(null)
+            override fun observeLatestSessionForChatRoom(
+                chatRoomId: String,
+                parentChatRoomId: String?,
+            ): Flow<DkgSession?> = flowOf(null)
 
             override fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>> = flowOf(emptyList())
 
@@ -173,7 +190,10 @@ interface DkgRepository {
                 chatRoomId: String
             ): Flow<List<LocalFrostSigningSession>> = flowOf(emptyList())
 
-            override fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?> =
+            override fun observeSignedGroupKeyState(
+                chatRoomId: String,
+                parentChatRoomId: String?,
+            ): Flow<GroupKeyState?> =
                 flowOf(null)
 
             override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
