@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.machankura.compose.ui.composable.widgets.buttons
+package press.mantra.compose.ui.composable.widgets.buttons
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Indication
@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -36,7 +37,23 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
+/**
+ * A tappable surface with no chrome of its own -- vendored from ACINQ's phoenix app.
+ *
+ * Two things were changed when it moved into `press.mantra` from the `com.machankura`
+ * package it was still declaring:
+ *
+ *  - **`minimumInteractiveComponentSize()` is applied unconditionally.** Its defaults are
+ *    `RectangleShape` and `PaddingValues(0.dp)`, so a `Clickable` is exactly as big as
+ *    whatever is inside it, and the call sites here wrap a 20dp emoji and a row of wallet
+ *    text. The modifier reserves 48x48dp of *layout* -- touch expansion happens at the
+ *    input layer regardless -- which is what keeps adjacent targets from overlapping and
+ *    is what a pointer on desktop has to hit.
+ *  - The modifier ordering. It comes before `.padding(internalPadding)`, since a size
+ *    modifier after it would re-impose the smaller constraint.
+ */
 @Composable
 fun Clickable(
     onClick: () -> Unit,
@@ -48,7 +65,7 @@ fun Clickable(
     backgroundColor: Color = Color.Unspecified, // transparent by default!
     shape: Shape = RectangleShape,
     clickDescription: String = "",
-    internalPadding: PaddingValues = PaddingValues(0.dp),
+    internalPadding: PaddingValues = PaddingValues(MaterialTheme.spacing.space0),
     indication: Indication? = LocalIndication.current,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable () -> Unit,
@@ -60,6 +77,7 @@ fun Clickable(
         border = border,
         contentColor = contentColor,
         modifier = modifier
+            .minimumInteractiveComponentSize()
             .clip(shape)
             .combinedClickable(
                 onClick = onClick,

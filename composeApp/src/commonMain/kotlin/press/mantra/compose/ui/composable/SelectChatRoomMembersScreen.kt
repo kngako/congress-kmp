@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.Profile
@@ -42,6 +41,22 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.no_one_selected_yet
+import mantra.composeapp.generated.resources.no_one_to_add_yet
+import mantra.composeapp.generated.resources.search_for_people_and_chat_with_them_first
+import mantra.composeapp.generated.resources.you_can_still_carry_on_and_invite_people
+import mantra.composeapp.generated.resources.add_people_to
+import mantra.composeapp.generated.resources.next_with
+import mantra.composeapp.generated.resources.selected
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -70,187 +85,190 @@ fun SelectChatRoomMembersScreen(
         )
     )
 
-    when (val selectChatRoomMembersUIState = selectChatRoomMembersViewModel.selectChatRoomMembersUIState) {
-        is SelectChatRoomMembersUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(50.dp)
-                )
-                Text(
-                    text = selectChatRoomMembersUIState.message,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        is SelectChatRoomMembersUIState.Loaded -> {
-            val selectedCount = selectChatRoomMembersViewModel.selectedPublicKeys.size
-
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Add people to $name",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+    ScreenStateTransition(selectChatRoomMembersViewModel.selectChatRoomMembersUIState) { uiState ->
+    when (val selectChatRoomMembersUIState = uiState) {
+            is SelectChatRoomMembersUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
                     )
-                },
-                bottomBar = {
-                    BottomAppBar(
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                onClick = {
-                                    selectChatRoomMembersViewModel.selectChatRoomType(
-                                        onNavigateToRoute = onNavigateToRoute
+                    Text(
+                        text = selectChatRoomMembersUIState.message,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            is SelectChatRoomMembersUIState.Loaded -> {
+                val selectedCount = selectChatRoomMembersViewModel.selectedPublicKeys.size
+
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = stringResource(Res.string.add_people_to, name),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        BottomAppBar(
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    onClick = {
+                                        selectChatRoomMembersViewModel.selectChatRoomType(
+                                            onNavigateToRoute = onNavigateToRoute
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.NavigateNext,
+                                        contentDescription = "Next"
+                                    )
+
+                                    Text(
+                                        text = if (selectedCount > 0) {
+                                            stringResource(Res.string.next_with, selectedCount)
+                                        } else {
+                                            stringResource(Res.string.next)
+                                        }
                                     )
                                 }
+                            },
+                            actions = {
+                                Text(
+                                    modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
+                                    text = if (selectedCount > 0) {
+                                        stringResource(Res.string.selected, selectedCount)
+                                    } else {
+                                        stringResource(Res.string.no_one_selected_yet)
+                                    },
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    ) {
+                        if (selectChatRoomMembersUIState.profiles.isEmpty()) {
+                            Column(
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                             ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.NavigateNext,
-                                    contentDescription = "Next"
+                                Spacer(
+                                    modifier = Modifier.weight(1f)
                                 )
 
                                 Text(
-                                    text = if (selectedCount > 0) {
-                                        "Next with $selectedCount"
-                                    } else {
-                                        "Next"
-                                    }
+                                    text = stringResource(Res.string.no_one_to_add_yet),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Text(
+                                    text = stringResource(Res.string.search_for_people_and_chat_with_them_first),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Text(
+                                    text = stringResource(Res.string.you_can_still_carry_on_and_invite_people),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Spacer(
+                                    modifier = Modifier.weight(2f)
                                 )
                             }
-                        },
-                        actions = {
-                            Text(
-                                modifier = Modifier.padding(start = 15.dp),
-                                text = if (selectedCount > 0) {
-                                    "$selectedCount selected"
-                                } else {
-                                    "No one selected yet"
-                                },
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
-                ) {
-                    if (selectChatRoomMembersUIState.profiles.isEmpty()) {
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Spacer(
-                                modifier = Modifier.weight(1f)
-                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space50),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                            ) {
+                                items(
+                                    items = selectChatRoomMembersUIState.profiles,
+                                    key = { it.publicKey }
+                                ) { profile ->
+                                    val isSelected = selectChatRoomMembersViewModel.isSelected(profile.publicKey)
 
-                            Text(
-                                text = "No one to add yet.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Text(
-                                text = "Search for people and chat with them first — everyone you know locally shows up here.",
-                                style = MaterialTheme.typography.bodySmall,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Text(
-                                text = "You can still carry on and invite people later.",
-                                style = MaterialTheme.typography.bodySmall,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Spacer(
-                                modifier = Modifier.weight(2f)
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f).fillMaxWidth().padding(5.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(
-                                items = selectChatRoomMembersUIState.profiles,
-                                key = { it.publicKey }
-                            ) { profile ->
-                                val isSelected = selectChatRoomMembersViewModel.isSelected(profile.publicKey)
-
-                                Card(
-                                    onClick = {
-                                        selectChatRoomMembersViewModel.toggleMember(profile.publicKey)
-                                    }
-                                ) {
-                                    ListItem(
-                                        leadingContent = {
-                                            ProfileAvatar(
-                                                profile = profile
-                                            )
-                                        },
-                                        headlineContent = {
-                                            Text(
-                                                profile.humanReadableNameOrPubkey()
-                                            )
-                                        },
-                                        supportingContent = {
-                                            profile.about?.let {
+                                    Card(
+                                        onClick = {
+                                            selectChatRoomMembersViewModel.toggleMember(profile.publicKey)
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                ProfileAvatar(
+                                                    profile = profile
+                                                )
+                                            },
+                                            headlineContent = {
                                                 Text(
-                                                    text = it,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    maxLines = 1
+                                                    profile.humanReadableNameOrPubkey()
+                                                )
+                                            },
+                                            supportingContent = {
+                                                profile.about?.let {
+                                                    Text(
+                                                        text = it,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                            },
+                                            trailingContent = {
+                                                Checkbox(
+                                                    checked = isSelected,
+                                                    onCheckedChange = {
+                                                        selectChatRoomMembersViewModel.toggleMember(profile.publicKey)
+                                                    }
                                                 )
                                             }
-                                        },
-                                        trailingContent = {
-                                            Checkbox(
-                                                checked = isSelected,
-                                                onCheckedChange = {
-                                                    selectChatRoomMembersViewModel.toggleMember(profile.publicKey)
-                                                }
-                                            )
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        SelectChatRoomMembersUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
+            SelectChatRoomMembersUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
 
-                Text(
-                    text = "Add people to $name",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.add_people_to, name),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }
@@ -262,7 +280,7 @@ fun SelectChatRoomMembersScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SelectChatRoomMembersScreenPreview() {
     TorchTheme {
@@ -271,7 +289,7 @@ private fun SelectChatRoomMembersScreenPreview() {
         ) {
             SelectChatRoomMembersScreen(
                 activeUserPublicKey = "",
-                name = "Group Discussions",
+                name = "Group discussions",
                 description = "See something... say something.",
                 initialSelectChatRoomMembersUIState = SelectChatRoomMembersUIState.Loaded(
                     profiles = listOf(

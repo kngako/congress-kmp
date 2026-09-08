@@ -2,10 +2,14 @@ package press.mantra.compose.ui.composable.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import press.mantra.compose.AppLifecycle
@@ -16,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.database.repository.DatabaseChatRepository
@@ -97,6 +102,8 @@ import press.mantra.compose.ui.view.model.SynchronizationViewModel
 import press.mantra.compose.ui.view.state.NavigationUIState
 import press.mantra.compose.ui.view.state.NostrEventDetailUIState
 import press.mantra.compose.ui.view.state.SearchUIState
+import press.mantra.compose.ui.theme.NavigationMotion
+import press.mantra.compose.ui.theme.breakpoint
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -363,802 +370,843 @@ fun MantraNavHost(
         }
     }
 
-    NavHost(
+    // The navigation component's three items, and the two facts it needs to build their
+    // routes.
+    //
+    // `activeUserPublicKey` is read off whichever top-level route is current -- all three
+    // carry it -- rather than held here, so it cannot drift from the screen underneath.
+    // The profile's metadata event id has no such source: `ActiveProfileRoute` is addressed
+    // by event id and only the home screen ever knew one, so it is observed here for as
+    // long as a key is signed in. One flow, cancelled and restarted when the key changes.
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val activeUserPublicKey = currentBackStackEntry?.destination?.let { destination ->
+        when (TopLevelDestination.of(destination)) {
+            TopLevelDestination.Messages -> currentBackStackEntry?.toRoute<HomeRoute>()?.activeUserPublicKey
+            TopLevelDestination.Search -> currentBackStackEntry?.toRoute<SearchRoute>()?.activeUserPublicKey
+            TopLevelDestination.Profile -> currentBackStackEntry?.toRoute<ActiveProfileRoute>()?.activeUserPublicKey
+            null -> null
+        }
+    }
+
+    var activeProfileNostrEventId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(activeUserPublicKey) {
+        val publicKey = activeUserPublicKey ?: return@LaunchedEffect
+        databaseNostrRepository.observeProfileWithFollowing(publicKey).collect { profile ->
+            activeProfileNostrEventId = profile?.nostrEvent?.id
+        }
+    }
+
+    MantraNavigationSuite(
         navController = navController,
-        startDestination = LoadingRoute()
+        breakpoint = MaterialTheme.breakpoint,
+        activeUserPublicKey = activeUserPublicKey,
+        activeProfileNostrEventId = activeProfileNostrEventId,
     ) {
-        composable<SovereignWalletStartupRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
+        NavHost(
+            navController = navController,
+            startDestination = LoadingRoute(),
+            // All 43 routes at once, which is the point: navigation-compose's default is
+            // `fadeIn(tween(700))` in its own internals, so before this the app's
+            // transitions were a library's literal rather than a decision, and roughly
+            // three times M3's duration for a full-screen change. These come from the
+            // theme's MotionScheme and collapse to a fade when the platform asks for
+            // reduced motion.
+            enterTransition = NavigationMotion.enter(),
+            exitTransition = NavigationMotion.exit(),
+            popEnterTransition = NavigationMotion.popEnter(),
+            popExitTransition = NavigationMotion.popExit(),
+        ) {
+            composable<SovereignWalletStartupRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SovereignWalletStartupRoute>()
 
-            SovereignWalletStartupScreen(
-                sovereignWalletViewModel = sovereignWalletViewModel,
-                // No seed on this device, so there is no wallet to start: the user has to make or
-                // restore one, and that lives behind the landing screen. This used to park them on
-                // a loading screen with nothing left to load.
-                onNavigateToWalletLandingPage = {
-                    navController.navigate(
-                        route = LandingRoute
-                    ) {
-                        popUpTo(0)
-                    }
-                },
-                onSuccessfulStartup = {
-                    applicationIOScope.launch {
-                        navigationViewModel.loadNostrProfile(route)
-                    }
-                },
-                forceWalletId = null,
-            )
-        }
-        composable<LoadingRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<LoadingRoute>()
-
-            LoadingScreen(
-                text = route.text
-            )
-        }
-        composable<LandingRoute> {
-            LandingScreen(
-                onNavigateToLearnMore = {
-                    navController.navigate(
-                        route = ImplementationPendingRoute(
-                            "Learn more"
-                        )
-                    )
-                },
-                onNavigateToSignIn = {
-                    navController.navigate(
-                        route = SignInRoute
-                    )
-                },
-                onNavigateToCreateProfile = {
-                    navController.navigate(
-                        route = CreateProfileRoute()
-                    )
-                }
-            )
-        }
-        composable<CreateProfileRoute> {
-            CreateProfileScreen(
-                onNavigateToEndThis = {
-                    navController.navigate(
-                        route = BlankRoute
-                    ) {
-                        popUpTo(0)
-                    }
-                },
-                nostrRepository = databaseNostrRepository,
-                marmotRepository = databaseMarmotRepository,
-                writeSeed = { words, onSeedWritten, onSeedWriteError ->
-                    sovereignWalletViewModel.writeSeed(
-                        words,
-                        isRestoringWallet = false,
-                        onSeedWritten = { walletId ->
-                            onSeedWritten()
-
-                            sovereignWalletViewModel.loadSovereignData(walletId)
-                            sovereignWalletViewModel.listAvailableWallets {
-                                sovereignWalletViewModel.switchToWallet(walletId)
-                                navController.navigate(
-                                    route = SovereignWalletStartupRoute
-                                )
-                            }
-                        },
-                        onSeedWriteError = { onSeedWriteError() }
-                    )
-                }
-            )
-
-        }
-        composable<ChatRoomCreationRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
-
-            ChatRoomCreationScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                onNavigateToRoute = { selectMembersRoute ->
-                    navController.navigate(
-                        selectMembersRoute
-                    )
-                }
-            )
-        }
-        composable<SelectChatRoomMembersRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SelectChatRoomMembersRoute>()
-
-            SelectChatRoomMembersScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                name = route.name,
-                description = route.description,
-                nostrRepository = databaseNostrRepository,
-                onNavigateToRoute = { selectChatRoomTypeRoute ->
-                    navController.navigate(
-                        selectChatRoomTypeRoute
-                    )
-                }
-            )
-        }
-        composable<DkgRitualRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<DkgRitualRoute>()
-
-            DkgRitualScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
-                chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository,
-                onNavigateToRoute = { approvalRoute ->
-                    navController.navigate(route = approvalRoute)
-                }
-            )
-        }
-        composable<DkgJoinApprovalRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<DkgJoinApprovalRoute>()
-
-            DkgJoinApprovalScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
-                chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository,
-                onDone = { navController.popBackStack() }
-            )
-        }
-        composable<DkgRound1ApprovalRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<DkgRound1ApprovalRoute>()
-
-            DkgRound1ApprovalScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
-                chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository,
-                onDone = { navController.popBackStack() }
-            )
-        }
-        composable<DkgRound2ApprovalRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<DkgRound2ApprovalRoute>()
-
-            DkgRound2ApprovalScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
-                chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository,
-                onDone = { navController.popBackStack() }
-            )
-        }
-        composable<SelectChatRoomTypeRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SelectChatRoomTypeRoute>()
-
-            SelectChatRoomTypeScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                name = route.name,
-                description = route.description,
-                memberPublicKeys = route.memberPublicKeys,
-                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                dkgRepository = databaseDkgRepository,
-                onNavigateToRoute = { chatRoomResultRoute ->
-                    navController.navigate(
-                        chatRoomResultRoute
-                    ) {
-                        // Drop every creation step: backing out of the new chat should land
-                        // on whatever the user was doing before, not back in the form.
-                        popUpTo(
-                            ChatRoomCreationRoute(
-                                activeUserPublicKey = route.activeUserPublicKey
-                            )
+                SovereignWalletStartupScreen(
+                    sovereignWalletViewModel = sovereignWalletViewModel,
+                    // No seed on this device, so there is no wallet to start: the user has to make or
+                    // restore one, and that lives behind the landing screen. This used to park them on
+                    // a loading screen with nothing left to load.
+                    onNavigateToWalletLandingPage = {
+                        navController.navigate(
+                            route = LandingRoute
                         ) {
-                            inclusive = true
+                            popUpTo(0)
                         }
-                    }
-                }
-            )
-        }
-        composable<WriteNewNoteRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<WriteNewNoteRoute>()
-            WriteNewNoteScreen(
-                replyToNostrEventId = route.inReplyToEventId,
-                activeUserPublicKey = route.activeUserPublicKey,
-                quotedNostrEventId = route.quotedEventId,
-                onNostrEventPublished = {
-                    applicationMainScope.launch {
-                        navController.popBackStack()
-                    }
-                },
-                onNavigateToNostrEvent = { hexKey ->
-                    navController.navigate(
-                        route = NostrEventDetailRoute(
-                            activeUserPublicKey = route.activeUserPublicKey,
-                            nostrEventId = hexKey
-                        )
-                    )
-                },
-                nostrRepository = databaseNostrRepository
-            )
-        }
-        composable<SignInRoute> {
-            SignInToProfileScreen(
-                nostrRepository = databaseNostrRepository
-            )
-        }
-        composable<UnsignedProfileRoute> { backStackEntry ->
-            backStackEntry.toRoute<UnsignedProfileRoute>()
+                    },
+                    onSuccessfulStartup = {
+                        applicationIOScope.launch {
+                            navigationViewModel.loadNostrProfile(route)
+                        }
+                    },
+                    forceWalletId = null,
+                )
+            }
+            composable<LoadingRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<LoadingRoute>()
 
-            UnsignedProfileScreen()
-        }
-        composable<UnsyncedProfileRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
-            UnsyncedProfileScreen(
-                unsyncedProfilePublicKey = route.publicKey
-            )
-        }
-        composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<UnqueuedProfileSynchronizationRoute>()
-            UnqueuedProfileSynchronizationScreen(
-                unsignedNostrEventId = route.unsignedNostrEventId,
-                profilePublicKey = route.publicKey,
-                nostrRepository = databaseNostrRepository
-            )
-        }
-        composable<UnindexedProfileRoute> {
-            UnindexedProfileScreen()
-        }
-        composable<UnqueuedProfileRoute> {
-            UnqueuedProfileScreen()
-        }
-        composable<UnannouncedProfileRoute> { backStackEntry ->
-            backStackEntry.toRoute<UnannouncedProfileRoute>()
+                LoadingScreen(
+                    text = route.text
+                )
+            }
+            composable<LandingRoute> {
+                LandingScreen(
+                    onNavigateToLearnMore = {
+                        navController.navigate(
+                            route = ImplementationPendingRoute(
+                                "Learn more"
+                            )
+                        )
+                    },
+                    onNavigateToSignIn = {
+                        navController.navigate(
+                            route = SignInRoute
+                        )
+                    },
+                    onNavigateToCreateProfile = {
+                        navController.navigate(
+                            route = CreateProfileRoute()
+                        )
+                    }
+                )
+            }
+            composable<CreateProfileRoute> {
+                CreateProfileScreen(
+                    onNavigateToEndThis = {
+                        navController.navigate(
+                            route = BlankRoute
+                        ) {
+                            popUpTo(0)
+                        }
+                    },
+                    nostrRepository = databaseNostrRepository,
+                    marmotRepository = databaseMarmotRepository,
+                    writeSeed = { words, onSeedWritten, onSeedWriteError ->
+                        sovereignWalletViewModel.writeSeed(
+                            words,
+                            isRestoringWallet = false,
+                            onSeedWritten = { walletId ->
+                                onSeedWritten()
 
-            UnannouncedProfileScreen()
-        }
-        composable<SocialPreconditionRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SocialPreconditionRoute>()
-            SocialPreconditionScreen(
-                onNavigateToSkipForNow = {
-                    navController.navigate(
-                        route = HomeRoute(
-                            activeUserPublicKey = route.activeUserPubkey
+                                sovereignWalletViewModel.loadSovereignData(walletId)
+                                sovereignWalletViewModel.listAvailableWallets {
+                                    sovereignWalletViewModel.switchToWallet(walletId)
+                                    navController.navigate(
+                                        route = SovereignWalletStartupRoute
+                                    )
+                                }
+                            },
+                            onSeedWriteError = { onSeedWriteError() }
                         )
-                    )
-                },
-                onNavigateToInviteFriend = {
-                    navController.navigate(
-                        route = ImplementationPendingRoute(
-                            "Invite Friend"
-                        )
-                    )
-                },
-                onNavigateToViewInvites = {
-                    navController.navigate(
-                        route = ImplementationPendingRoute(
-                            "View invites"
-                        )
-                    )
-                }
-            )
-        }
-        composable<HomeRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<HomeRoute>()
-            HomeScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                onNavigateToRoute = { eventRoute ->
-                    navController.navigate(
-                        route = eventRoute
-                    )
-                },
-                onNavigateToChatRoomCreation = {
-                    navController.navigate(
-                        route = ChatRoomCreationRoute(
-                            activeUserPublicKey = route.activeUserPublicKey
-                        )
-                    )
-                },
-                onNavigateToSearch = {
-                    navController.navigate(
-                        route = SearchRoute(
-                            activeUserPublicKey = route.activeUserPublicKey
-                        )
-                    )
-                },
-                onNavigateToDirectMessageDetail = { chatRoomDetailRoute ->
-                    navController.navigate(
-                        route = chatRoomDetailRoute
-                    )
-                },
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository
-            )
-        }
-        composable<BlankRoute> {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = Color.Black
-            ) {
+                    }
+                )
 
             }
-        }
-        composable<ActiveProfileRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ActiveProfileRoute>()
+            composable<ChatRoomCreationRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
 
-            ActiveProfileScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                nostrEventId = route.nostrEventId,
-                nostrRepository = databaseNostrRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToRoute = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                }
-            )
-        }
-        composable<ShareProfileRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ShareProfileRoute>()
-
-            ShareProfileScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                nostrEventId = route.nostrEventId,
-                nostrRepository = databaseNostrRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToRoute = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                }
-            )
-        }
-        composable<KeyPackageManagementRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<KeyPackageManagementRoute>()
-
-            KeyPackageManagementScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                nostrEventId = route.nostrEventId,
-                marmotRepository = databaseMarmotRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToRoute = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                }
-            )
-        }
-        composable<ChatRoomMessagingRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ChatRoomMessagingRoute>()
-
-            ChatRoomMessagingScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
-                    navController.navigate(
-                        route = chatRoomDetailRoute
-                    ) {
-                        popUpTo(route) {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                }
-            )
-        }
-        composable<ChatRoomDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
-
-            ChatRoomDetailScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                mantraRepository = databaseMantraRepository,
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onPopBackToRoute = { popRoute ->
-                    navController.popBackStack(
-                        route = popRoute,
-                        inclusive = false
-                    )
-                }
-            )
-        }
-        composable<SearchMemberToAddToChatRoomRoute> {  backStackEntry ->
-            val route = backStackEntry.toRoute<SearchMemberToAddToChatRoomRoute>()
-
-            SearchMemberToAddToChatRoomScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                onNavigateToRoute = { chatRoomDetailRoute ->
-                    navController.navigate(
-                        route = chatRoomDetailRoute
-                    )
-                },
-            )
-        }
-        composable<AddMemberToChatRoomConfirmationRoute> {  backStackEntry ->
-            val route = backStackEntry.toRoute<AddMemberToChatRoomConfirmationRoute>()
-
-            AddMemberToChatRoomConfirmationScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                profilePublicKey = route.profilePublicKey,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                onInviteSent = {
-                    navController.popBackStack(
-                        route = SearchMemberToAddToChatRoomRoute(
-                            activeUserPublicKey = route.activeUserPublicKey,
-                            chatRoomId = route.chatRoomId,
-                            relayHint = route.relayHint
-                        ),
-                        inclusive = true
-                    )
-                },
-            )
-        }
-        composable<AddArtifactRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<AddArtifactRoute>()
-
-            AddArtifactScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                mantraRepository = databaseMantraRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                    // Replace this add screen so back returns to the group rather
-                    // than to a form whose proposal has already gone out.
-                    navController.navigate(
-                        route = signingRoute
-                    ) {
-                        popUpTo(route) {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                }
-            )
-        }
-        composable<AddDialectRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<AddDialectRoute>()
-
-            AddDialectScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                nostrRepository = databaseNostrRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                    // Replace this add screen so back returns to the group rather
-                    // than to a form whose proposal has already gone out.
-                    navController.navigate(route = signingRoute) {
-                        popUpTo<AddDialectRoute> {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                }
-            )
-        }
-        composable<FrostSigningRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<FrostSigningRoute>()
-
-            FrostSigningScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                sessionId = route.sessionId,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<ProposalListRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ProposalListRoute>()
-
-            ProposalListScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chatRoomId = route.chatRoomId,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToRoute = { signingRoute ->
-                    navController.navigate(route = signingRoute)
-                }
-            )
-        }
-        composable<ArtifactDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ArtifactDetailRoute>()
-
-            ArtifactDetailScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                artifactId = route.artifactId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<ChapterDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<ChapterDetailRoute>()
-
-            ChapterDetailScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                chapterId = route.chapterId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<TranslationArtifactVersionDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TranslationArtifactVersionDetailRoute>()
-
-            TranslationArtifactVersionDetailScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                translationArtifactVersionId = route.translationArtifactVersionId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<TranslationChapterRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TranslationChapterRoute>()
-
-            TranslationChapterScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                translationChapterId = route.translationChapterId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<TranslateChunkRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TranslateChunkRoute>()
-
-            TranslateChunkScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                translationChapterId = route.translationChapterId,
-                chunkId = route.chunkId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                    // Replace this editor so back returns to the chapter table
-                    // rather than to a form whose proposal has already gone out.
-                    // The table itself is left alone: nothing is translated until
-                    // the group signs, so there is nothing new for it to show.
-                    navController.navigate(route = signingRoute) {
-                        popUpTo<TranslateChunkRoute> {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(route = actionRoute)
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<AddTranslationRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<AddTranslationRoute>()
-
-            AddTranslationArtifactVersionScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                artifactId = route.artifactId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                    // Replace this screen so back returns to the artifact rather
-                    // than to a form whose proposal has already gone out.
-                    navController.navigate(route = signingRoute) {
-                        popUpTo<AddTranslationRoute> {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<AddChapterRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<AddChapterRoute>()
-
-            AddChapterScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                artifactId = route.artifactId,
-                chatRoomId = route.chatRoomId,
-                relayHint = route.relayHint,
-                mantraRepository = databaseMantraRepository,
-                chatRepository = databaseChatRepository,
-                frostSigningRepository = databaseFrostSigningRepository,
-                onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                    // Replace this add screen so back returns to the artifact
-                    // rather than to a form whose proposal has already gone out.
-                    navController.navigate(route = signingRoute) {
-                        popUpTo<AddChapterRoute> {
-                            inclusive = true
-                        }
-                    }
-                },
-                onNavigateToRoute = { actionRoute ->
-                    navController.navigate(
-                        route = actionRoute
-                    )
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable<SearchRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SearchRoute>()
-
-            SearchScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                initialSearchUIState = SearchUIState.Prompt,
-                nostrRepository = databaseNostrRepository,
-                searchRepository = searchRepository,
-                onNavigateToProfile = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                },
-                onNavigateToSearchResult = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                }
-            )
-        }
-        composable<SearchResultRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<SearchResultRoute>()
-
-            SearchResultScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                searchQuery = route.query,
-                nostrRepository = databaseNostrRepository,
-                searchRepository = searchRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToEvent = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                }
-            )
-        }
-        composable<NostrEventDetailRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<NostrEventDetailRoute>()
-
-            NostrEventDetailScreen(
-                activeUserPublicKey = route.activeUserPublicKey,
-                initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
-                nostrEventId = route.nostrEventId,
-                nostrRepository = databaseNostrRepository,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToEvent = { route ->
-                    navController.navigate(
-                        route = route
-                    )
-                },
-                onNavigateToWriteAReply = { nostrEventId ->
-                    navController.navigate(
-                        route = WriteNewNoteRoute(
-                            activeUserPublicKey = route.activeUserPublicKey,
-                            inReplyToEventId = nostrEventId
+                ChatRoomCreationScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    onNavigateToRoute = { selectMembersRoute ->
+                        navController.navigate(
+                            selectMembersRoute
                         )
-                    )
-                },
-                onNavigateToEditProfile = {
-                    navController.navigate(
-                        route = ImplementationPendingRoute(
-                            "Edit Profile"
+                    }
+                )
+            }
+            composable<SelectChatRoomMembersRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SelectChatRoomMembersRoute>()
+
+                SelectChatRoomMembersScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    name = route.name,
+                    description = route.description,
+                    nostrRepository = databaseNostrRepository,
+                    onNavigateToRoute = { selectChatRoomTypeRoute ->
+                        navController.navigate(
+                            selectChatRoomTypeRoute
                         )
-                    )
-                },
-                onNavigateToQuoteNostrEvent = { nostrEventId ->
-                    navController.navigate(
-                        route = WriteNewNoteRoute(
-                            activeUserPublicKey = route.activeUserPublicKey,
-                            quotedEventId = nostrEventId
-                        )
-                    )
-                },
-                onNavigateToDirectMessage = { chatRoom ->
-                    navController.navigate(
-                        route = chatRoom
-                    ) {
-                        popUpTo(route) {
-                            inclusive = true
+                    }
+                )
+            }
+            composable<DkgRitualRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgRitualRoute>()
+
+                DkgRitualScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onNavigateToRoute = { approvalRoute ->
+                        navController.navigate(route = approvalRoute)
+                    }
+                )
+            }
+            composable<DkgJoinApprovalRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgJoinApprovalRoute>()
+
+                DkgJoinApprovalScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onDone = { navController.popBackStack() }
+                )
+            }
+            composable<DkgRound1ApprovalRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgRound1ApprovalRoute>()
+
+                DkgRound1ApprovalScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onDone = { navController.popBackStack() }
+                )
+            }
+            composable<DkgRound2ApprovalRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgRound2ApprovalRoute>()
+
+                DkgRound2ApprovalScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onDone = { navController.popBackStack() }
+                )
+            }
+            composable<SelectChatRoomTypeRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SelectChatRoomTypeRoute>()
+
+                SelectChatRoomTypeScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    name = route.name,
+                    description = route.description,
+                    memberPublicKeys = route.memberPublicKeys,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onNavigateToRoute = { chatRoomResultRoute ->
+                        navController.navigate(
+                            chatRoomResultRoute
+                        ) {
+                            // Drop every creation step: backing out of the new chat should land
+                            // on whatever the user was doing before, not back in the form.
+                            popUpTo(
+                                ChatRoomCreationRoute(
+                                    activeUserPublicKey = route.activeUserPublicKey
+                                )
+                            ) {
+                                inclusive = true
+                            }
                         }
                     }
-                },
-            )
-        }
-        composable<ImplementationPendingRoute> { backStackEntry ->
-            val route: ImplementationPendingRoute = backStackEntry.toRoute()
-            ImplementationPendingScreen(
-                route.name
-            )
+                )
+            }
+            composable<WriteNewNoteRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<WriteNewNoteRoute>()
+                WriteNewNoteScreen(
+                    replyToNostrEventId = route.inReplyToEventId,
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    quotedNostrEventId = route.quotedEventId,
+                    onNostrEventPublished = {
+                        applicationMainScope.launch {
+                            navController.popBackStack()
+                        }
+                    },
+                    onNavigateToNostrEvent = { hexKey ->
+                        navController.navigate(
+                            route = NostrEventDetailRoute(
+                                activeUserPublicKey = route.activeUserPublicKey,
+                                nostrEventId = hexKey
+                            )
+                        )
+                    },
+                    nostrRepository = databaseNostrRepository
+                )
+            }
+            composable<SignInRoute> {
+                SignInToProfileScreen(
+                    nostrRepository = databaseNostrRepository
+                )
+            }
+            composable<UnsignedProfileRoute> { backStackEntry ->
+                backStackEntry.toRoute<UnsignedProfileRoute>()
+
+                UnsignedProfileScreen()
+            }
+            composable<UnsyncedProfileRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
+                UnsyncedProfileScreen(
+                    unsyncedProfilePublicKey = route.publicKey
+                )
+            }
+            composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<UnqueuedProfileSynchronizationRoute>()
+                UnqueuedProfileSynchronizationScreen(
+                    unsignedNostrEventId = route.unsignedNostrEventId,
+                    profilePublicKey = route.publicKey,
+                    nostrRepository = databaseNostrRepository
+                )
+            }
+            composable<UnindexedProfileRoute> {
+                UnindexedProfileScreen()
+            }
+            composable<UnqueuedProfileRoute> {
+                UnqueuedProfileScreen()
+            }
+            composable<UnannouncedProfileRoute> { backStackEntry ->
+                backStackEntry.toRoute<UnannouncedProfileRoute>()
+
+                UnannouncedProfileScreen()
+            }
+            composable<SocialPreconditionRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SocialPreconditionRoute>()
+                SocialPreconditionScreen(
+                    onNavigateToSkipForNow = {
+                        navController.navigate(
+                            route = HomeRoute(
+                                activeUserPublicKey = route.activeUserPubkey
+                            )
+                        )
+                    },
+                    onNavigateToInviteFriend = {
+                        navController.navigate(
+                            route = ImplementationPendingRoute(
+                                "Invite friend"
+                            )
+                        )
+                    },
+                    onNavigateToViewInvites = {
+                        navController.navigate(
+                            route = ImplementationPendingRoute(
+                                "View invites"
+                            )
+                        )
+                    }
+                )
+            }
+            composable<HomeRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<HomeRoute>()
+                HomeScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    onNavigateToRoute = { eventRoute ->
+                        navController.navigate(
+                            route = eventRoute
+                        )
+                    },
+                    onNavigateToChatRoomCreation = {
+                        navController.navigate(
+                            route = ChatRoomCreationRoute(
+                                activeUserPublicKey = route.activeUserPublicKey
+                            )
+                        )
+                    },
+                    onNavigateToDirectMessageDetail = { chatRoomDetailRoute ->
+                        navController.navigate(
+                            route = chatRoomDetailRoute
+                        )
+                    },
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                )
+            }
+            composable<BlankRoute> {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    // Nothing is drawn on it, so this is a backdrop rather than a surface
+                    // carrying content. `scrim` is the role for that, and is #000000 in every
+                    // one of this app's schemes -- so the pixels are unchanged and the value
+                    // now moves with the theme instead of standing outside it.
+                    color = MaterialTheme.colorScheme.scrim
+                ) {
+
+                }
+            }
+            composable<ActiveProfileRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ActiveProfileRoute>()
+
+                ActiveProfileScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    nostrEventId = route.nostrEventId,
+                    nostrRepository = databaseNostrRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    }
+                )
+            }
+            composable<ShareProfileRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ShareProfileRoute>()
+
+                ShareProfileScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    nostrEventId = route.nostrEventId,
+                    nostrRepository = databaseNostrRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    }
+                )
+            }
+            composable<KeyPackageManagementRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<KeyPackageManagementRoute>()
+
+                KeyPackageManagementScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    nostrEventId = route.nostrEventId,
+                    marmotRepository = databaseMarmotRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    }
+                )
+            }
+            composable<ChatRoomMessagingRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ChatRoomMessagingRoute>()
+
+                ChatRoomMessagingScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
+                        navController.navigate(
+                            route = chatRoomDetailRoute
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    }
+                )
+            }
+            composable<ChatRoomDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ChatRoomDetailRoute>()
+
+                ChatRoomDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onPopBackToRoute = { popRoute ->
+                        navController.popBackStack(
+                            route = popRoute,
+                            inclusive = false
+                        )
+                    }
+                )
+            }
+            composable<SearchMemberToAddToChatRoomRoute> {  backStackEntry ->
+                val route = backStackEntry.toRoute<SearchMemberToAddToChatRoomRoute>()
+
+                SearchMemberToAddToChatRoomScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    onNavigateToRoute = { chatRoomDetailRoute ->
+                        navController.navigate(
+                            route = chatRoomDetailRoute
+                        )
+                    },
+                )
+            }
+            composable<AddMemberToChatRoomConfirmationRoute> {  backStackEntry ->
+                val route = backStackEntry.toRoute<AddMemberToChatRoomConfirmationRoute>()
+
+                AddMemberToChatRoomConfirmationScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    profilePublicKey = route.profilePublicKey,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    onInviteSent = {
+                        navController.popBackStack(
+                            route = SearchMemberToAddToChatRoomRoute(
+                                activeUserPublicKey = route.activeUserPublicKey,
+                                chatRoomId = route.chatRoomId,
+                                relayHint = route.relayHint
+                            ),
+                            inclusive = true
+                        )
+                    },
+                )
+            }
+            composable<AddArtifactRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddArtifactRoute>()
+
+                AddArtifactScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this add screen so back returns to the group rather
+                        // than to a form whose proposal has already gone out.
+                        navController.navigate(
+                            route = signingRoute
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    }
+                )
+            }
+            composable<AddDialectRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddDialectRoute>()
+
+                AddDialectScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this add screen so back returns to the group rather
+                        // than to a form whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddDialectRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    }
+                )
+            }
+            composable<FrostSigningRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<FrostSigningRoute>()
+
+                FrostSigningScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    sessionId = route.sessionId,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<ProposalListRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ProposalListRoute>()
+
+                ProposalListScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { signingRoute ->
+                        navController.navigate(route = signingRoute)
+                    }
+                )
+            }
+            composable<ArtifactDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ArtifactDetailRoute>()
+
+                ArtifactDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    artifactId = route.artifactId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<ChapterDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ChapterDetailRoute>()
+
+                ChapterDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chapterId = route.chapterId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<TranslationArtifactVersionDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<TranslationArtifactVersionDetailRoute>()
+
+                TranslationArtifactVersionDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    translationArtifactVersionId = route.translationArtifactVersionId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<TranslationChapterRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<TranslationChapterRoute>()
+
+                TranslationChapterScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    translationChapterId = route.translationChapterId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<TranslateChunkRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<TranslateChunkRoute>()
+
+                TranslateChunkScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    translationChapterId = route.translationChapterId,
+                    chunkId = route.chunkId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this editor so back returns to the chapter table
+                        // rather than to a form whose proposal has already gone out.
+                        // The table itself is left alone: nothing is translated until
+                        // the group signs, so there is nothing new for it to show.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<TranslateChunkRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(route = actionRoute)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<AddTranslationRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddTranslationRoute>()
+
+                AddTranslationArtifactVersionScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    artifactId = route.artifactId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this screen so back returns to the artifact rather
+                        // than to a form whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddTranslationRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<AddChapterRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddChapterRoute>()
+
+                AddChapterScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    artifactId = route.artifactId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this add screen so back returns to the artifact
+                        // rather than to a form whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddChapterRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<SearchRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SearchRoute>()
+
+                SearchScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    initialSearchUIState = SearchUIState.Prompt,
+                    nostrRepository = databaseNostrRepository,
+                    searchRepository = searchRepository,
+                    onNavigateToProfile = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    },
+                    onNavigateToSearchResult = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    }
+                )
+            }
+            composable<SearchResultRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SearchResultRoute>()
+
+                SearchResultScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    searchQuery = route.query,
+                    nostrRepository = databaseNostrRepository,
+                    searchRepository = searchRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToEvent = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    }
+                )
+            }
+            composable<NostrEventDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<NostrEventDetailRoute>()
+
+                NostrEventDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    initialNostrEventDetailUIState = NostrEventDetailUIState.Loading,
+                    nostrEventId = route.nostrEventId,
+                    nostrRepository = databaseNostrRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToEvent = { route ->
+                        navController.navigate(
+                            route = route
+                        )
+                    },
+                    onNavigateToWriteAReply = { nostrEventId ->
+                        navController.navigate(
+                            route = WriteNewNoteRoute(
+                                activeUserPublicKey = route.activeUserPublicKey,
+                                inReplyToEventId = nostrEventId
+                            )
+                        )
+                    },
+                    onNavigateToEditProfile = {
+                        navController.navigate(
+                            route = ImplementationPendingRoute(
+                                "Edit profile"
+                            )
+                        )
+                    },
+                    onNavigateToQuoteNostrEvent = { nostrEventId ->
+                        navController.navigate(
+                            route = WriteNewNoteRoute(
+                                activeUserPublicKey = route.activeUserPublicKey,
+                                quotedEventId = nostrEventId
+                            )
+                        )
+                    },
+                    onNavigateToDirectMessage = { chatRoom ->
+                        navController.navigate(
+                            route = chatRoom
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                )
+            }
+            composable<ImplementationPendingRoute> { backStackEntry ->
+                val route: ImplementationPendingRoute = backStackEntry.toRoute()
+                ImplementationPendingScreen(
+                    route.name
+                )
+            }
         }
     }
 

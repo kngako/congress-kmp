@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +49,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.repository.NostrRepository
@@ -61,6 +61,17 @@ import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.SearchViewModel
 import press.mantra.compose.ui.view.state.SearchUIState
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.profiles
+import mantra.composeapp.generated.resources.recents
+import mantra.composeapp.generated.resources.search
+import mantra.composeapp.generated.resources.search_hashtags
+import mantra.composeapp.generated.resources.trending_notes_functionality_coming_soon_in
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -83,7 +94,7 @@ fun SearchScreen(
     // Controls expansion state of the search bar
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -115,7 +126,7 @@ fun SearchScreen(
                             },
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
-                            placeholder = { Text("Search") },
+                            placeholder = { Text(stringResource(Res.string.search)) },
                             leadingIcon = {
                                 if (expanded) {
                                     IconButton(
@@ -154,7 +165,7 @@ fun SearchScreen(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = "Search"
+                                            text = stringResource(Res.string.search)
                                         )
                                     },
                                     leadingContent = {
@@ -175,6 +186,7 @@ fun SearchScreen(
                                         }
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
@@ -193,7 +205,7 @@ fun SearchScreen(
                                     headlineContent = { Text(textFieldState.text.toString()) },
                                     supportingContent = {
                                         Text(
-                                            text = "Search hashtags"
+                                            text = stringResource(Res.string.search_hashtags)
                                         )
                                     },
                                     leadingContent = {
@@ -217,6 +229,7 @@ fun SearchScreen(
                                         }
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
@@ -256,6 +269,7 @@ fun SearchScreen(
                                         )
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToProfile.invoke(
                                                 NostrEventDetailRoute(
@@ -277,14 +291,14 @@ fun SearchScreen(
                                     if (searchableProfiles.isNotEmpty()) {
                                         Column(
                                             modifier = Modifier.fillMaxWidth(),
-                                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                             horizontalAlignment = Alignment.Start
                                         ) {
                                             Column(
-                                                modifier = Modifier.padding(10.dp),
+                                                modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                             ) {
                                                 Text(
-                                                    text = "Profiles",
+                                                    text = stringResource(Res.string.profiles),
                                                     style = MaterialTheme.typography.titleMedium
                                                 )
                                             }
@@ -292,7 +306,7 @@ fun SearchScreen(
                                             LazyRow {
                                                 items(searchViewModel.searchableProfiles) { profile ->
                                                     Column(
-                                                        modifier = Modifier.padding(10.dp).width(70.dp),
+                                                        modifier = Modifier.padding(MaterialTheme.spacing.space125).width(70.dp),
                                                         horizontalAlignment = Alignment.CenterHorizontally,
                                                         verticalArrangement = Arrangement.Center
                                                     ) {
@@ -336,10 +350,10 @@ fun SearchScreen(
                             item {
                                 if (searchViewModel.recentSearches.isNotEmpty()) {
                                     Column(
-                                        modifier = Modifier.padding(10.dp),
+                                        modifier = Modifier.padding(MaterialTheme.spacing.space125),
                                     ) {
                                         Text(
-                                            text = "Recents",
+                                            text = stringResource(Res.string.recents),
                                             style = MaterialTheme.typography.titleMedium
                                         )
                                     }
@@ -361,6 +375,7 @@ fun SearchScreen(
                                         )
                                     },
                                     modifier = Modifier
+                                        .minimumInteractiveComponentSize()
                                         .clickable {
                                             onNavigateToSearchResult.invoke(
                                                 SearchResultRoute(
@@ -389,7 +404,7 @@ fun SearchScreen(
                 }
 
                 Column(
-                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space250).fillMaxWidth(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -398,7 +413,7 @@ fun SearchScreen(
                         title = {}
                     )
                     Text(
-                        text = "Trending notes functionality coming soon. In the meantime search for what you are looking for.",
+                        text = stringResource(Res.string.trending_notes_functionality_coming_soon_in),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
@@ -408,12 +423,12 @@ fun SearchScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SearchScreenPreview() {
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SearchScreen(
                 activeUserPublicKey = "",

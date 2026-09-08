@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -36,13 +37,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.time.Clock
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to_3
+import mantra.composeapp.generated.resources.the_above_will_be_your_new_note
+import mantra.composeapp.generated.resources.transmit_note
+import mantra.composeapp.generated.resources.type_out_what_you_would_like_to_publish
+import mantra.composeapp.generated.resources.what_s_your_comment_on_the_below
+import mantra.composeapp.generated.resources.what_s_your_reply_to_the_above
+import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send_out
+import mantra.composeapp.generated.resources.replying_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -64,17 +80,22 @@ fun WriteNewNoteScreen(
             nostrRepository
         )
     )
-    Scaffold { innerPadding ->
+    // imePadding: this screen has a text field, and without it the software
+    // keyboard covers whatever is being typed into.
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
 
                 when (val writeNewNoteUIState = writeNewNoteViewModel.writeNewNoteUIState) {
@@ -97,8 +118,10 @@ fun WriteNewNoteScreen(
                                         onNavigateToEvent = onNavigateToNostrEvent
                                     )
                                 } else {
+                                    // Nothing to show, but the LazyColumn item has to
+                                    // render something. 1dp was standing in for zero.
                                     Spacer(
-                                        modifier = Modifier.height(1.dp)
+                                        modifier = Modifier.height(MaterialTheme.spacing.space0)
                                     )
                                 }
                             }
@@ -110,11 +133,11 @@ fun WriteNewNoteScreen(
                                     if (writeNewNoteUIState.inReplyToNostrEvent != null) {
                                         Text(
                                             modifier = Modifier.padding(
-                                                start = 50.dp,
-                                                bottom = 10.dp,
+                                                start = MaterialTheme.spacing.space600,
+                                                bottom = MaterialTheme.spacing.space125,
 
                                             ),
-                                            text = "replying To ${writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"}",
+                                            text = stringResource(Res.string.replying_to, writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -131,7 +154,7 @@ fun WriteNewNoteScreen(
                                                 Text(
                                                     text = it,
                                                     modifier = Modifier.padding(
-                                                        bottom = 8.dp
+                                                        bottom = MaterialTheme.spacing.compactPadding
                                                     )
                                                 )
                                             }
@@ -142,18 +165,18 @@ fun WriteNewNoteScreen(
                                         label = {
                                             Text(
                                                 text = if (writeNewNoteUIState.inReplyToNostrEvent != null) {
-                                                    "What's your reply to the above"
+                                                    stringResource(Res.string.what_s_your_reply_to_the_above)
                                                 } else if (writeNewNoteUIState.quotedNostrEvent != null) {
-                                                    "What's your comment on the below"
+                                                    stringResource(Res.string.what_s_your_comment_on_the_below)
                                                 } else {
-                                                    "What vibrations do you want to send out?"
+                                                    stringResource(Res.string.what_vibrations_do_you_want_to_send_out)
                                                 },
                                                 maxLines = 1,
                                             )
                                         },
                                         placeholder = {
                                             Text(
-                                                text = "Type out what you would like to publish",
+                                                text = stringResource(Res.string.type_out_what_you_would_like_to_publish),
                                                 maxLines = 1,
                                             )
                                         },
@@ -233,8 +256,8 @@ fun WriteNewNoteScreen(
                                     if (writeNewNoteUIState.quotedNostrEvent?.nostrEvent?.kind == TextNoteEvent.KIND) {
                                         Card(
                                             modifier = Modifier.padding(
-                                                start = 50.dp,
-                                                top = 10.dp
+                                                start = MaterialTheme.spacing.space600,
+                                                top = MaterialTheme.spacing.space125
                                             )
                                         ) {
                                             writeNewNoteUIState.quotedNostrEvent.RenderNotePreview(
@@ -265,7 +288,7 @@ fun WriteNewNoteScreen(
                             },
                         ) {
                             Text(
-                                "Next"
+                                stringResource(Res.string.next)
                             )
                             Icon(
                                 Icons.Default.NavigateNext,
@@ -293,11 +316,13 @@ fun WriteNewNoteScreen(
 
 
                                     HorizontalDivider(
-                                        modifier = Modifier.padding(20.dp)
+                                        modifier = Modifier.padding(MaterialTheme.spacing.space250)
                                     )
                                 } else {
+                                    // Nothing to show, but the LazyColumn item has to
+                                    // render something. 1dp was standing in for zero.
                                     Spacer(
-                                        modifier = Modifier.height(1.dp)
+                                        modifier = Modifier.height(MaterialTheme.spacing.space0)
                                     )
                                 }
                             }
@@ -305,10 +330,10 @@ fun WriteNewNoteScreen(
                             item {
                                 Column(
                                     modifier = Modifier.fillParentMaxHeight().fillMaxWidth().padding(
-                                        10.dp
+                                        MaterialTheme.spacing.space125
                                     ),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                                 ) {
                                     Text(
                                         text = writeNewNoteUIState.localProfile.profile.humanReadableNameOrPubkey(),
@@ -328,7 +353,7 @@ fun WriteNewNoteScreen(
 
                                     if (writeNewNoteUIState.inReplyToNostrEvent != null) {
                                         Text(
-                                            text = "replying To ${writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"}",
+                                            text = stringResource(Res.string.replying_to, writeNewNoteUIState.inReplyToNostrEvent.profile?.humanReadableNameOrPubkey() ?: "note"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -391,7 +416,7 @@ fun WriteNewNoteScreen(
                         }
 
                         Text(
-                            text = "The above will be your new note.",
+                            text = stringResource(Res.string.the_above_will_be_your_new_note),
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -411,7 +436,7 @@ fun WriteNewNoteScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Transmit Note"
+                                    text = stringResource(Res.string.transmit_note)
                                 )
                             }
                         }
@@ -422,7 +447,7 @@ fun WriteNewNoteScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Something went wrong and we were unable to write a new note. Please try again later.",
+                            text = stringResource(Res.string.something_went_wrong_and_we_were_unable_to_3),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
@@ -440,7 +465,7 @@ fun WriteNewNoteScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun WriteNewNoteScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

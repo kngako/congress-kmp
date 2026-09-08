@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -29,6 +30,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.not_following_anyone_yet
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import press.mantra.compose.ui.composable.widgets.EmptyState
 
 class FollowingListViewModel(
     initialFollowingListUIState: press.mantra.compose.ui.view.state.FollowingListUIState,
@@ -104,36 +113,16 @@ class FollowingListViewModel(
         ) {
             when (val feedListUIState = followingListUIState) {
                 press.mantra.compose.ui.view.state.FollowingListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(50.dp)
-                        )
-                        Text(
-                            text = "Something went wrong",
-                        )
-                    }
+                    ErrorState()
                 }
                 is press.mantra.compose.ui.view.state.FollowingListUIState.Loaded -> {
                     if (feedListUIState.following.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        )  {
-                            Spacer(
-                                modifier = Modifier.height(50.dp)
-                            )
-                            Text(
-                                text = "No events were found",
-                            )
-                        }
+                        EmptyState(message = stringResource(Res.string.not_following_anyone_yet))
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
                             items(
                                 items = feedListUIState.following,
@@ -154,14 +143,14 @@ class FollowingListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     )  {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Loading",
+                            text = stringResource(Res.string.loading),
                             textAlign = TextAlign.Center
                         )
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
 
                         LoadingIndicator()

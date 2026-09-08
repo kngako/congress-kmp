@@ -26,11 +26,16 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.nostr
+import mantra.composeapp.generated.resources.nostr_2
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun RichContent(
@@ -283,7 +288,7 @@ fun RichContent(
                                 )
                             } else {
                                 Text(
-                                    text = "nostr:${segment.eventId.take(8)}..",
+                                    text = stringResource(Res.string.nostr, segment.eventId.take(8)),
                                     style = style,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -307,7 +312,7 @@ fun RichContent(
                                         )
                                     } else {
                                         Text(
-                                            text = "nostr:${segment.dTag.take(12)}...",
+                                            text = stringResource(Res.string.nostr_2, segment.dTag.take(12)),
                                             style = style,
                                             color = MaterialTheme.colorScheme.primary
                                         )
@@ -393,18 +398,18 @@ fun RichContent(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun RichContentPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             Card(
-                modifier = Modifier.padding(10.dp)
+                modifier = Modifier.padding(MaterialTheme.spacing.space125)
             ) {
                 RichContent(
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     nostrEvent = press.mantra.compose.database.model.NostrEvent(
                         id = "e5e3ad0272d1fbeead8e439a4ad3453374ca4969c8d2be84025ba4ef8ae5a520",
                         content = "Something something something nostr:npub1uh366qnj68a7atvwgwdy4569xd6v5jtferftapqztwjwlzh9553q47pqsx\nhttps://www.brainyquote.com/authors/steven-biko-quotes\nnostr:nevent1qqspcusnzxx5u97xht2udvg3yhcq2cvmc0jrxa90lwwdvjplve0atespzpmhxue69uhkummnw3ezuamfdejsyg8h5g639qhuv803hzwexfwhyud6t6suxfu364anddqvrmn9j4cahvxksr8q",

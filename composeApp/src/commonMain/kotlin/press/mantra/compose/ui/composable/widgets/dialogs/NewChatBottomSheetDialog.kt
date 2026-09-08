@@ -28,6 +28,13 @@ import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.close
+import mantra.composeapp.generated.resources.create_new_chat
+import mantra.composeapp.generated.resources.direct_message_via_npub
+import mantra.composeapp.generated.resources.start_a_group_chat
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,12 +56,12 @@ fun NewChatBottomSheetDialog(
     ) {
         // Sheet content
         Column(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Create new chat",
+                text = stringResource(Res.string.create_new_chat),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -69,16 +76,16 @@ fun NewChatBottomSheetDialog(
                     leadingContent = {
                         Icon(
                             Icons.Default.Key,
-                            contentDescription = "Direct Message via npub"
+                            contentDescription = "Direct message via npub"
                         )
                     },
                     headlineContent = {
-                        Text("Direct Message via npub")
+                        Text(stringResource(Res.string.direct_message_via_npub))
                     },
                     trailingContent = {
                         Icon(
                             Icons.Default.ChevronRight,
-                            contentDescription = "Direct Message via npub"
+                            contentDescription = "Direct message via npub"
                         )
                     }
                 )
@@ -100,7 +107,7 @@ fun NewChatBottomSheetDialog(
                     },
                     headlineContent = {
                         Text(
-                            text = "Start a group chat"
+                            text = stringResource(Res.string.start_a_group_chat)
                         )
                     },
                     trailingContent = {
@@ -126,9 +133,9 @@ fun NewChatBottomSheetDialog(
                     contentDescription = "Close new chat"
                 )
                 Spacer(
-                    modifier = Modifier.width(10.dp)
+                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                 )
-                Text("Close")
+                Text(stringResource(Res.string.close))
             }
         }
 

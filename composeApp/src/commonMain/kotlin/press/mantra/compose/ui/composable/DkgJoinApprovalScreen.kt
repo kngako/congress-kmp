@@ -14,6 +14,7 @@ import press.mantra.compose.repository.DkgRepository
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Asks whether to join a shared key ceremony somebody else opened.
@@ -58,7 +59,7 @@ fun DkgJoinApprovalScreen(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             DkgApprovalPoint("Your device publishes the key it will be identified by for the rest of the ceremony.")
             DkgApprovalPoint("You will be asked twice more before anything of your key material goes out.")

@@ -14,6 +14,11 @@ import press.mantra.compose.repository.DkgRepository
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.taking_part_with_these_members
+import mantra.composeapp.generated.resources.you
 
 /**
  * Asks whether to contribute to the key itself.
@@ -57,7 +62,7 @@ fun DkgRound1ApprovalScreen(
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             DkgApprovalPoint(
                 "Your device publishes its contribution to the key. Every member's is mixed in, " +
@@ -68,20 +73,20 @@ fun DkgRound1ApprovalScreen(
         }
 
         Text(
-            text = "Taking part with these members",
+            text = stringResource(Res.string.taking_part_with_these_members),
             style = MaterialTheme.typography.titleSmall
         )
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
         ) {
             state.ritualMembers.forEach { member ->
                 val key = member.participant.participantPublicKey
 
                 Text(
                     text = if (key == activeUserPublicKey) {
-                        "You"
+                        stringResource(Res.string.you)
                     } else {
                         member.profile?.humanReadableNameOrPubkey() ?: key.take(12)
                     },

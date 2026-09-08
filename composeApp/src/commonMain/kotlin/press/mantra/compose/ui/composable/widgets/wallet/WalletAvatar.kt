@@ -44,8 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machankura.compose.ui.composable.widgets.buttons.Clickable
+import press.mantra.compose.ui.composable.widgets.buttons.Clickable
 import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
+import press.mantra.compose.ui.theme.spacing
 
 object WalletAvatars {
     val list = listOf(
@@ -61,7 +62,7 @@ object WalletAvatars {
 }
 
 @Composable
-fun WalletAvatar(avatar: String, fontSize: TextUnit = 28.sp, borderColor: Color = Color.Transparent, backgroundColor: Color = MaterialTheme.colorScheme.surface, internalPadding: PaddingValues = PaddingValues(10.dp)) {
+fun WalletAvatar(avatar: String, fontSize: TextUnit = 28.sp, borderColor: Color = Color.Transparent, backgroundColor: Color = MaterialTheme.colorScheme.surface, internalPadding: PaddingValues = PaddingValues(MaterialTheme.spacing.space125)) {
     Box(modifier = Modifier.clip(CircleShape).background(backgroundColor).border(1.dp, color = borderColor, shape = CircleShape).padding(internalPadding), contentAlignment = Alignment.Center) {
         Text(
             text = avatar,
@@ -79,20 +80,20 @@ fun ColumnScope.AvatarPicker(
     var showPickerDialog by remember { mutableStateOf(false) }
 
     Clickable(onClick = { showPickerDialog = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-        WalletAvatar(avatar, fontSize = 48.sp, internalPadding = PaddingValues(16.dp))
+        WalletAvatar(avatar, fontSize = 48.sp, internalPadding = PaddingValues(MaterialTheme.spacing.containerPadding))
     }
 
     if (showPickerDialog) {
         ModalBottomSheet(
             onDismiss = { showPickerDialog = false },
             horizontalAlignment = Alignment.CenterHorizontally,
-            internalPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+            internalPadding = PaddingValues(horizontal = MaterialTheme.spacing.space300, vertical = MaterialTheme.spacing.space0),
             isContentScrollable = false,
         ) {
 //            val s = stringResource(Res.string.wallet_edit_pick_avatar)
             val s = "Edit avatar"
             Text(s, style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.space300))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(6),
                 modifier = Modifier.fillMaxWidth()
@@ -102,8 +103,22 @@ fun ColumnScope.AvatarPicker(
                         showPickerDialog = false
                         onAvatarChange(emoji)
                     }) {
-                        val mutedBgColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        WalletAvatar(emoji, backgroundColor = if (emoji == avatar) mutedBgColor else Color.Transparent)
+                        // `secondaryContainer` is M3's role for a selected item, and it
+                        // replaces `onSurface` at 50% -- a content colour used as a
+                        // background, which composited to a mid grey 2.49:1 from the
+                        // unselected cells beside it.
+                        //
+                        // The tonal container is not itself high-contrast against the
+                        // surface in this palette (1.65:1), which M3 accepts because its
+                        // own selected states carry a second cue -- an outline or a
+                        // checkmark. This grid has neither, and adding one is component
+                        // work rather than a colour fix. Recorded in
+                        // docs/material-design-conformance.md.
+                        val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
+                        WalletAvatar(
+                            emoji,
+                            backgroundColor = if (emoji == avatar) selectedBackground else Color.Transparent
+                        )
                     }
                 }
             }

@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import press.mantra.compose.ui.theme.BluePill
+import press.mantra.compose.ui.theme.LocalExtendedColors
 import io.github.alexzhirkevich.qrose.options.QrBrush
 import io.github.alexzhirkevich.qrose.options.QrLogoPadding
 import io.github.alexzhirkevich.qrose.options.QrLogoShape
@@ -26,7 +26,11 @@ import mantra.composeapp.generated.resources.compose_multiplatform
 
 class QRCodeBackgroundPainter(
     private val painter: Painter,
-    private val backgroundColor: Color = BluePill,
+    // No default. It used to be the `BluePill` literal, which meant a colour chosen
+    // outside the theme for a surface that is almost never seen: at the default padding
+    // of 0.dp the logo painter covers the rect it fills. Making the one call site pass
+    // it keeps that visible rather than buried in a constructor default.
+    private val backgroundColor: Color,
     private val padding: Dp = 0.dp,
 ): Painter() {
     override val intrinsicSize: Size = painter.intrinsicSize
@@ -61,6 +65,10 @@ class QRCodeBackgroundPainter(
 fun QRCodeView(
     data: String,
 ) {
+    // m3-color-exempt: a QR code is read by a camera, not a person. Scanners need
+    // maximum luminance contrast between the modules and their background, so these
+    // are black and white rather than onSurface and surface -- which in a dynamic
+    // colour scheme could be two mid tones and unscannable.
     val qrCodeColor = if (isSystemInDarkTheme()) {
         Color.White
     } else {
@@ -71,6 +79,7 @@ fun QRCodeView(
         painter = painterResource(
             Res.drawable.compose_multiplatform
         ),
+        backgroundColor = LocalExtendedColors.current.bluePill.color,
     )
 
     val painter = rememberQrCodePainter(

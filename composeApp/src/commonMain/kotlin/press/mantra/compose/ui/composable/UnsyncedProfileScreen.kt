@@ -15,38 +15,47 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.we_are_looking_for_your_profile_on_as_many
+import mantra.composeapp.generated.resources.we_are_searching_the_internet_to_find_your
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnsyncedProfileScreen(
     unsyncedProfilePublicKey: String
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "We are searching the internet to find your profile and complete sign in.",
+                    text = stringResource(Res.string.we_are_searching_the_internet_to_find_your),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "We are looking for your profile on as many relays as possible. Nostr aims to be decentralized by distributing data to multiple nodse.",
+                    text = stringResource(Res.string.we_are_looking_for_your_profile_on_as_many),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -63,7 +72,7 @@ fun UnsyncedProfileScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnsyncedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

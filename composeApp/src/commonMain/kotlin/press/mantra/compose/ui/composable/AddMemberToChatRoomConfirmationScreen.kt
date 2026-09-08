@@ -23,7 +23,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
@@ -37,6 +36,20 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.AddMemberToChatRoomConfirmationViewModel
 import press.mantra.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.invite
+import mantra.composeapp.generated.resources.invite_2
+import mantra.composeapp.generated.resources.once_invited_will_be_able_to_receive_and
+import mantra.composeapp.generated.resources.to_join_the_chat_room
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -62,131 +75,134 @@ fun AddMemberToChatRoomConfirmationScreen(
         )
     )
 
-    when (val addMemberToChatRoomConfirmationUIState = addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) {
-        is AddMemberToChatRoomConfirmationUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(50.dp)
-                )
-                Text(
-                    text = addMemberToChatRoomConfirmationUIState.message,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        is AddMemberToChatRoomConfirmationUIState.Loaded -> {
-            Scaffold(
-//                topBar = {
-//                    TopAppBar(
-//                        title = {
-//                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
-//                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
-//                            } else {
-//                                "Invite new member to chat"
-//                            }
-//                            Text(
-//                                text = title,
-//                            )
-//                        },
-//                        actions = {
-//                        }
-//                    )
-//                }
-                bottomBar = {
-                    BottomAppBar(
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                onClick = {
-                                    addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
-                                        localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
-                                        peerPublicKey = addMemberToChatRoomConfirmationUIState.profile.publicKey,
-                                        peerKeyPackage = addMemberToChatRoomConfirmationUIState.marmotKeyPackage,
-                                        onInviteSent = onInviteSent
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Invite new member"
-                                )
-
-                                Text("Invite ${addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()}")
-                            }
-                        },
-                        actions = {
-
-                        }
+    ScreenStateTransition(addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) { uiState ->
+    when (val addMemberToChatRoomConfirmationUIState = uiState) {
+            is AddMemberToChatRoomConfirmationUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
+                    )
+                    Text(
+                        text = addMemberToChatRoomConfirmationUIState.message,
+                        textAlign = TextAlign.Center
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
-                ) {
+            }
+            is AddMemberToChatRoomConfirmationUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+    //                topBar = {
+    //                    TopAppBar(
+    //                        title = {
+    //                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
+    //                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
+    //                            } else {
+    //                                "Invite new member to chat"
+    //                            }
+    //                            Text(
+    //                                text = title,
+    //                            )
+    //                        },
+    //                        actions = {
+    //                        }
+    //                    )
+    //                }
+                    bottomBar = {
+                        BottomAppBar(
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    onClick = {
+                                        addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
+                                            localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
+                                            peerPublicKey = addMemberToChatRoomConfirmationUIState.profile.publicKey,
+                                            peerKeyPackage = addMemberToChatRoomConfirmationUIState.marmotKeyPackage,
+                                            onInviteSent = onInviteSent
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Invite new member"
+                                    )
+
+                                    Text(stringResource(Res.string.invite_2, addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()))
+                                }
+                            },
+                            actions = {
+
+                            }
+                        )
+                    }
+                ) { innerPadding ->
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth().padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                     ) {
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                        ) {
+                            Spacer(
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        Text("Invite")
+                            Text(stringResource(Res.string.invite))
 
-                        Text(
-                            text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
-                        )
+                            Text(
+                                text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
+                            )
 
-                        Text(
-                            text = "to join the ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: ""} chat room."
-                        )
+                            Text(
+                                text = stringResource(Res.string.to_join_the_chat_room, addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: "")
+                            )
 
-                        Text(
-                            text = "Once invited will be able to receive and send private message sent to all the ${addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size} members in the chat room.",
-                            textAlign = TextAlign.Center
-                        )
+                            Text(
+                                text = stringResource(Res.string.once_invited_will_be_able_to_receive_and, addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size),
+                                textAlign = TextAlign.Center
+                            )
 
-                        Spacer(
-                            modifier = Modifier.weight(3f)
-                        )
+                            Spacer(
+                                modifier = Modifier.weight(3f)
+                            )
+                        }
                     }
                 }
             }
-        }
-        AddMemberToChatRoomConfirmationUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
+            AddMemberToChatRoomConfirmationUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Direct Message Detail",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.direct_message_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = "Direct message functionality will be here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.direct_message_functionality_will_be_here),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }
@@ -198,7 +214,7 @@ fun AddMemberToChatRoomConfirmationScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun ChatRoomDetailScreenPreview() {
     TorchTheme {
@@ -217,7 +233,7 @@ private fun ChatRoomDetailScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "hex",
                             userPublicKey = "hex",
-                            subject = "Room Title",
+                            subject = "Room title",
                             description = "See something... say something.",
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null

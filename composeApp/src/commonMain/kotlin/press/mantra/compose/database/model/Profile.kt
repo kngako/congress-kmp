@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
@@ -27,6 +26,7 @@ import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.TorchTheme
 import kotlin.time.Clock
 import kotlin.time.Instant
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Entity(
     foreignKeys = [
@@ -170,7 +170,7 @@ data class Profile(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 fun ProfileRenderAsListItemPreview() {
     val profile = Profile(

@@ -37,6 +37,15 @@ import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.back
+import mantra.composeapp.generated.resources.not_now
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -78,6 +87,7 @@ internal fun DkgApprovalScaffold(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         topBar = {
             TopAppBar(
                 title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -86,18 +96,18 @@ internal fun DkgApprovalScaffold(
     ) { padding ->
         when (val state = dkgRitualViewModel.dkgRitualUIState) {
             is DkgRitualUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 CircularProgressIndicator()
             }
 
             is DkgRitualUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = state.message, textAlign = TextAlign.Center)
             }
 
@@ -109,10 +119,10 @@ internal fun DkgApprovalScaffold(
                 // on the way in, which looks exactly like the screen not working.
                 if (state.session == null) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                        modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(modifier = Modifier.height(50.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                         CircularProgressIndicator()
                     }
 
@@ -129,14 +139,15 @@ internal fun DkgApprovalScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(padding)
-                            .padding(20.dp),
+                            .readableContent()
+                            .padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space150)
                     ) {
-                        Spacer(modifier = Modifier.height(40.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.space500))
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
+                            contentDescription = Decorative,
                             modifier = Modifier.size(40.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -147,7 +158,7 @@ internal fun DkgApprovalScaffold(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
-                        TextButton(onClick = onDone) { Text(text = "Back") }
+                        TextButton(onClick = onDone) { Text(text = stringResource(Res.string.back)) }
                     }
 
                     return@Scaffold
@@ -159,15 +170,16 @@ internal fun DkgApprovalScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(padding)
+                        .readableContent()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.containerPadding),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
                     body(state)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space150),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Declining is deliberately not a button that refuses on the
@@ -179,7 +191,7 @@ internal fun DkgApprovalScaffold(
                             onClick = onDone,
                             enabled = !isActionPending
                         ) {
-                            Text(text = "Not now")
+                            Text(text = stringResource(Res.string.not_now))
                         }
 
                         Button(
@@ -208,7 +220,7 @@ internal fun DkgApprovalScaffold(
 internal fun DkgApprovalPoint(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
     ) {
         Text(text = "•", style = MaterialTheme.typography.bodyMedium)
         Text(

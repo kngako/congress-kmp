@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
@@ -56,6 +55,22 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChatRoomMessagingViewModel
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.composable.widgets.chat.ChatTranscript
+import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.creating_new_chat
+import mantra.composeapp.generated.resources.direct_message_detail
+import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
+import mantra.composeapp.generated.resources.say_what_now
+import mantra.composeapp.generated.resources.private_message_to
+import mantra.composeapp.generated.resources.private_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -81,347 +96,357 @@ fun ChatRoomMessagingScreen(
         )
     )
 
-    when (val chatRoomDetailUIState = chatRoomMessagingViewModel.chatRoomMessagingUIState) {
-        is ChatRoomMessagingUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(50.dp)
-                )
-                Text(
-                    text = chatRoomDetailUIState.message,
-                )
-            }
-        }
-        is ChatRoomMessagingUIState.Loaded -> {
-            val textFieldState = rememberTextFieldState()
-
-            val chatMessageListViewModel: press.mantra.compose.ui.view.model.ChatMessageListViewModel = viewModel(
-                factory = press.mantra.compose.ui.view.model.ChatMessageListViewModel.factory(
-                    localChatRoom = chatRoomDetailUIState.localChatRoom,
-                    nostrRepository = nostrRepository,
-                    chatRepository = chatRepository,
-                    frostSigningRepository = frostSigningRepository
-                )
-            )
-
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
-                        },
-                        actions = {
-                            IconButton(
-                                onClick = {
-                                    // Navigate to the invite user screen...
-                                    onNavigateToRoute.invoke(
-                                        ChatRoomDetailRoute(
-                                            chatRoomId = chatRoomId,
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            relayHint = relayHint
-                                        )
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "View details..."
-                                )
-                            }
-                        }
+    ScreenStateTransition(chatRoomMessagingViewModel.chatRoomMessagingUIState) { uiState ->
+    when (val chatRoomDetailUIState = uiState) {
+            is ChatRoomMessagingUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
+                    )
+                    Text(
+                        text = chatRoomDetailUIState.message,
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth()
-                    ) {
-                        key(true) {
-                            chatMessageListViewModel.RenderMessages(
-                                onOpenSharedKey = {
-                                    onNavigateToRoute.invoke(
-                                        DkgRitualRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = chatRoomId
+            }
+            is ChatRoomMessagingUIState.Loaded -> {
+                val textFieldState = rememberTextFieldState()
+
+                val chatMessageListViewModel: press.mantra.compose.ui.view.model.ChatMessageListViewModel = viewModel(
+                    factory = press.mantra.compose.ui.view.model.ChatMessageListViewModel.factory(
+                        localChatRoom = chatRoomDetailUIState.localChatRoom,
+                        nostrRepository = nostrRepository,
+                        chatRepository = chatRepository,
+                        frostSigningRepository = frostSigningRepository
+                    )
+                )
+
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        // Navigate to the invite user screen...
+                                        onNavigateToRoute.invoke(
+                                            ChatRoomDetailRoute(
+                                                chatRoomId = chatRoomId,
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                relayHint = relayHint
+                                            )
                                         )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.MoreVert,
+                                        contentDescription = "View details..."
                                     )
-                                },
-                                onOpenSigning = { sessionId ->
-                                    // Two reasons to open the queue instead of the one
-                                    // proposal. A line written before chat rows named
-                                    // their session cannot say which proposal it is
-                                    // about, and the room may have several -- the list
-                                    // is the honest answer there, showing all of them
-                                    // with their own state rather than guessing at one.
-                                    //
-                                    // The other is that the proposal they tapped is
-                                    // not the only one waiting on them, in which case
-                                    // it is not the whole of what is being asked and a
-                                    // screen showing only it would say it was.
-                                    onNavigateToRoute.invoke(
-                                        if (sessionId == null ||
-                                            chatMessageListViewModel.hidesOtherDecisions(sessionId)
-                                        ) {
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxWidth()
+                        ) {
+                            key(true) {
+                                ChatTranscript(
+                                    viewModel = chatMessageListViewModel,
+                                    onOpenSharedKey = {
+                                        onNavigateToRoute.invoke(
+                                            DkgRitualRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        )
+                                    },
+                                    onOpenSigning = { sessionId ->
+                                        // Two reasons to open the queue instead of the one
+                                        // proposal. A line written before chat rows named
+                                        // their session cannot say which proposal it is
+                                        // about, and the room may have several -- the list
+                                        // is the honest answer there, showing all of them
+                                        // with their own state rather than guessing at one.
+                                        //
+                                        // The other is that the proposal they tapped is
+                                        // not the only one waiting on them, in which case
+                                        // it is not the whole of what is being asked and a
+                                        // screen showing only it would say it was.
+                                        onNavigateToRoute.invoke(
+                                            if (sessionId == null ||
+                                                chatMessageListViewModel.hidesOtherDecisions(sessionId)
+                                            ) {
+                                                ProposalListRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId
+                                                )
+                                            } else {
+                                                FrostSigningRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId,
+                                                    sessionId = sessionId
+                                                )
+                                            }
+                                        )
+                                    },
+                                    onOpenProposals = {
+                                        onNavigateToRoute.invoke(
                                             ProposalListRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 chatRoomId = chatRoomId
                                             )
-                                        } else {
-                                            FrostSigningRoute(
-                                                activeUserPublicKey = activeUserPublicKey,
-                                                chatRoomId = chatRoomId,
-                                                sessionId = sessionId
-                                            )
-                                        }
-                                    )
-                                },
-                                onOpenProposals = {
-                                    onNavigateToRoute.invoke(
-                                        ProposalListRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chatRoomId = chatRoomId
                                         )
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    key(true) {
-                        chatMessageListViewModel.initiate()
-                    }
-
-                    // TODO: Check that we have direct message relays for this user...
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(BottomAppBarDefaults.containerColor)
-                            .navigationBarsPadding()
-                    ) {
-                        // An armed composer has to be impossible to miss. The whole risk
-                        // of this feature is somebody sending to the room what they meant
-                        // for one person, or the reverse, and by the time either is on the
-                        // wire it cannot be taken back. Hence three signals at once: the
-                        // chip, the placeholder, and the tinted field.
-                        val directMessageRecipient = chatMessageListViewModel.directMessageRecipient
-
-                        if (directMessageRecipient != null) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Lock,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    }
                                 )
-
-                                Text(
-                                    modifier = Modifier.weight(1f),
-                                    text = "Private to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}",
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-
-                                // The one way back to the room, and it has to be one tap.
-                                IconButton(
-                                    onClick = { chatMessageListViewModel.cancelDirectMessage() }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Send to the whole group instead",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
                             }
                         }
 
-                        Box(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                modifier = Modifier.fillMaxWidth(),
-                                state = textFieldState,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent,
-                                    focusedContainerColor = if (directMessageRecipient != null) {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                    } else {
-                                        Color.Transparent
-                                    },
-                                    unfocusedContainerColor = if (directMessageRecipient != null) {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                    } else {
-                                        Color.Transparent
-                                    }
-                                ),
-                                placeholder = {
-                                    Text(
-                                        text = if (directMessageRecipient != null) {
-                                            "Private message to ${chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)}"
-                                        } else {
-                                            "Say what now?"
-                                        }
-                                    )
-                                },
-                                trailingIcon = {
-                                    if (textFieldState.text.isEmpty()) {
-                                        IconButton(
-                                            onClick = {
-
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Mic,
-                                                contentDescription = "Voice"
-                                            )
-                                        }
-
-                                    } else {
-                                        IconButton(
-                                            onClick = {
-                                                chatMessageListViewModel.sendMessage(
-                                                    textFieldState = textFieldState
-                                                )
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.Send,
-                                                contentDescription = "Send"
-                                            )
-                                        }
-                                    }
-                                }
-                            )
+                        key(true) {
+                            chatMessageListViewModel.initiate()
                         }
 
-//                        Row(
-//                            modifier = Modifier.padding(4.dp),
-//                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-//                        ) {
-//                            IconButton(
-//                                onClick = {
-//
-//                                }
-//                            ) {
-//                                Icon(
-//                                    Icons.Default.InsertEmoticon,
-//                                    contentDescription = "Add emoji"
-//                                )
-//                            }
-//
-//                            IconButton(
-//                                onClick = {
-//
-//                                }
-//                            ) {
-//                                Icon(
-//                                    Icons.Default.AlternateEmail,
-//                                    contentDescription = "Mention profile"
-//                                )
-//                            }
-//
-//                            IconButton(
-//                                onClick = {
-//
-//                                }
-//                            ) {
-//                                Icon(
-//                                    Icons.Default.Collections,
-//                                    contentDescription = "Attach media"
-//                                )
-//                            }
-//
-//                            IconButton(
-//                                onClick = {
-//
-//                                }
-//                            ) {
-//                                Icon(
-//                                    Icons.Default.LocationOn,
-//                                    contentDescription = "Send location"
-//                                )
-//                            }
-//                        }
+                        // TODO: Check that we have direct message relays for this user...
+
+                        // The composer handles its own bottom inset, which is why this
+                        // screen is the one text-field screen without `imePadding()` on its
+                        // Scaffold. Adding it here would pad twice while the keyboard is up:
+                        // the ime inset already covers the navigation bar area this row is
+                        // separately reserving. Getting the combination right wants a device
+                        // with a keyboard open, not a compiler.
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                                .background(BottomAppBarDefaults.containerColor)
+                                .navigationBarsPadding()
+                        ) {
+                            // An armed composer has to be impossible to miss. The whole risk
+                            // of this feature is somebody sending to the room what they meant
+                            // for one person, or the reverse, and by the time either is on the
+                            // wire it cannot be taken back. Hence three signals at once: the
+                            // chip, the placeholder, and the tinted field.
+                            val directMessageRecipient = chatMessageListViewModel.directMessageRecipient
+
+                            if (directMessageRecipient != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.primaryContainer)
+                                        .padding(horizontal = MaterialTheme.spacing.containerPadding, vertical = MaterialTheme.spacing.space75),
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Lock,
+                                        contentDescription = Decorative,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+
+                                    Text(
+                                        modifier = Modifier.weight(1f),
+                                        text = stringResource(Res.string.private_to, chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey)),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+
+                                    // The one way back to the room, and it has to be one tap.
+                                    IconButton(
+                                        onClick = { chatMessageListViewModel.cancelDirectMessage() }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Send to the whole group instead",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    state = textFieldState,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.Transparent,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        disabledBorderColor = Color.Transparent,
+                                        focusedContainerColor = if (directMessageRecipient != null) {
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        } else {
+                                            Color.Transparent
+                                        },
+                                        unfocusedContainerColor = if (directMessageRecipient != null) {
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        } else {
+                                            Color.Transparent
+                                        }
+                                    ),
+                                    placeholder = {
+                                        Text(
+                                            text = if (directMessageRecipient != null) {
+                                                stringResource(Res.string.private_message_to, chatMessageListViewModel.nameFor(directMessageRecipient.participantPublicKey))
+                                            } else {
+                                                stringResource(Res.string.say_what_now)
+                                            }
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (textFieldState.text.isEmpty()) {
+                                            IconButton(
+                                                onClick = {
+
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Mic,
+                                                    contentDescription = "Voice"
+                                                )
+                                            }
+
+                                        } else {
+                                            IconButton(
+                                                onClick = {
+                                                    chatMessageListViewModel.sendMessage(
+                                                        textFieldState = textFieldState
+                                                    )
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Send,
+                                                    contentDescription = "Send"
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+
+    //                        Row(
+    //                            modifier = Modifier.padding(4.dp),
+    //                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+    //                        ) {
+    //                            IconButton(
+    //                                onClick = {
+    //
+    //                                }
+    //                            ) {
+    //                                Icon(
+    //                                    Icons.Default.InsertEmoticon,
+    //                                    contentDescription = "Add emoji"
+    //                                )
+    //                            }
+    //
+    //                            IconButton(
+    //                                onClick = {
+    //
+    //                                }
+    //                            ) {
+    //                                Icon(
+    //                                    Icons.Default.AlternateEmail,
+    //                                    contentDescription = "Mention profile"
+    //                                )
+    //                            }
+    //
+    //                            IconButton(
+    //                                onClick = {
+    //
+    //                                }
+    //                            ) {
+    //                                Icon(
+    //                                    Icons.Default.Collections,
+    //                                    contentDescription = "Attach media"
+    //                                )
+    //                            }
+    //
+    //                            IconButton(
+    //                                onClick = {
+    //
+    //                                }
+    //                            ) {
+    //                                Icon(
+    //                                    Icons.Default.LocationOn,
+    //                                    contentDescription = "Send location"
+    //                                )
+    //                            }
+    //                        }
+                        }
                     }
                 }
             }
-        }
-        ChatRoomMessagingUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
+            ChatRoomMessagingUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Direct Message Detail",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = "Direct message functionality will be here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
-
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
-            }
-        }
-        ChatRoomMessagingUIState.InitiatingNewChat -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    20.dp
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-
-                Text(
-                    text = "Creating new chat.",
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
-
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
-
-                LaunchedEffect(true) {
-                    chatRoomMessagingViewModel.initiateNewChat(
-                        onNavigateToRouteAndPopUpInclusive
+                    Spacer(
+                        modifier = Modifier.weight(1f)
                     )
+                    Text(
+                        text = stringResource(Res.string.direct_message_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = stringResource(Res.string.direct_message_functionality_will_be_here),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
+
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
+            }
+            ChatRoomMessagingUIState.InitiatingNewChat -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Text(
+                        text = stringResource(Res.string.creating_new_chat),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
+
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+
+                    LaunchedEffect(true) {
+                        chatRoomMessagingViewModel.initiateNewChat(
+                            onNavigateToRouteAndPopUpInclusive
+                        )
+                    }
                 }
             }
         }
@@ -434,7 +459,7 @@ fun ChatRoomMessagingScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun ChatRoomMessagingScreenPreview() {
     TorchTheme {

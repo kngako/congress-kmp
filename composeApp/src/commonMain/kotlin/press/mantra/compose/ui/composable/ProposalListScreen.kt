@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -54,6 +53,19 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ProposalListViewModel
 import press.mantra.compose.ui.view.state.ProposalListUIState
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.everything_else
+import mantra.composeapp.generated.resources.proposals
+import mantra.composeapp.generated.resources.review
+import mantra.composeapp.generated.resources.this_group_has_not_been_asked_to_sign
+import mantra.composeapp.generated.resources.waiting_for_you
+import mantra.composeapp.generated.resources.of_them_could_not_be_read
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -97,11 +109,12 @@ fun ProposalListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Proposals",
+                        text = stringResource(Res.string.proposals),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -116,18 +129,18 @@ fun ProposalListScreen(
     ) { padding ->
         when (val state = proposalListViewModel.proposalListUIState) {
             is ProposalListUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 CircularProgressIndicator()
             }
 
             is ProposalListUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(50.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
                 Text(text = state.message, textAlign = TextAlign.Center)
             }
 
@@ -143,14 +156,14 @@ fun ProposalListScreen(
                 }
 
                 LazyColumn(
-                    modifier = Modifier.padding(padding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(padding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (state.proposals.isEmpty()) {
                         item {
                             Text(
-                                modifier = Modifier.fillMaxWidth().padding(top = 50.dp),
-                                text = "This group has not been asked to sign anything yet.",
+                                modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space600),
+                                text = stringResource(Res.string.this_group_has_not_been_asked_to_sign),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -159,7 +172,7 @@ fun ProposalListScreen(
                     if (state.waitingForYou.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Waiting for you",
+                                text = stringResource(Res.string.waiting_for_you),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -180,7 +193,7 @@ fun ProposalListScreen(
                         if (state.waitingForYou.isNotEmpty()) {
                             item {
                                 Text(
-                                    text = "Everything else",
+                                    text = stringResource(Res.string.everything_else),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }
@@ -225,18 +238,40 @@ private fun ProposalCard(
             "None of its events could be read"
         }
 
+    // Every colour inside this card is derived from the card, rather than reached for
+    // independently, because ListItem does not inherit LocalContentColor -- its headline
+    // comes from ListTokens.ItemLabelTextColor, which is `onSurface`. With the container
+    // at `primaryContainer` and the headline at `onSurface`, the light scheme drew
+    // #1B1B1B on #1B1B1B: 1.00:1, invisible, and applied to exactly the proposals that
+    // await your signature. The icon tint (`primary`) was 1.22:1, the supporting text
+    // 1.84:1 and the error line 2.67:1. Only the dark scheme was legible, because there
+    // `primaryContainer` is black.
+    val cardColors = if (proposal.awaitsYou) {
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
+    // `primaryContainer` is kept as the highlight so this stays a fix rather than a
+    // restyle. It is a near-black card in the light scheme, and `secondaryContainer` --
+    // the brand gold, 4.56:1 against its own content -- would read more like "this needs
+    // you". That is a design call, not an accessibility one.
+    val cardContentColor = cardColors.contentColor
+
     Card(
         onClick = onClick,
-        colors = if (proposal.awaitsYou) {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        } else {
-            CardDefaults.cardColors()
-        }
+        colors = cardColors
     ) {
         ListItem(
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = cardContentColor,
+                overlineColor = cardContentColor,
+                supportingColor = cardContentColor,
+                leadingIconColor = cardContentColor,
+                trailingIconColor = cardContentColor,
+            ),
             leadingContent = {
                 Icon(
                     imageVector = when {
@@ -247,12 +282,22 @@ private fun ProposalCard(
                             Icons.Default.ErrorOutline
                         else -> Icons.Default.HourglassEmpty
                     },
-                    contentDescription = null,
+                    // Carries the stage on its own, and carries it alone on the
+                    // highlighted card where the failure state has no colour to spare.
+                    contentDescription = when {
+                        proposal.awaitsYou -> "Awaiting your signature"
+                        proposal.session.stage == FrostSigningStage.COMPLETE -> "Signed"
+                        proposal.session.stage == FrostSigningStage.FAILED -> "Failed"
+                        else -> "Waiting on others"
+                    },
                     tint = when {
-                        proposal.session.stage == FrostSigningStage.FAILED ->
-                            MaterialTheme.colorScheme.error
-                        proposal.awaitsYou -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        // `error` is 2.67:1 on the highlighted card, so on that one the
+                        // failure is carried by the icon shape and the supporting line
+                        // rather than by colour -- which is the more robust signal
+                        // anyway, and the only one available to a monochrome display.
+                        proposal.session.stage == FrostSigningStage.FAILED &&
+                            !proposal.awaitsYou -> MaterialTheme.colorScheme.error
+                        else -> cardContentColor
                     }
                 )
             },
@@ -263,9 +308,9 @@ private fun ProposalCard(
                     // it saying what it said there.
                     if (proposal.awaitsYou) {
                         Text(
-                            text = "Review",
+                            text = stringResource(Res.string.review),
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
+                            color = cardContentColor
                         )
                     }
 
@@ -286,7 +331,7 @@ private fun ProposalCard(
                 )
             },
             supportingContent = {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space25)) {
                     if (proposal.eventCount > 1) {
                         Text(
                             text = "with ${proposal.eventCount - 1} more " +
@@ -300,8 +345,12 @@ private fun ProposalCard(
                     // rather than left for the screen behind it.
                     if (proposal.unreadable > 0) {
                         Text(
-                            text = "${proposal.unreadable} of them could not be read",
-                            color = MaterialTheme.colorScheme.error
+                            text = stringResource(Res.string.of_them_could_not_be_read, proposal.unreadable),
+                            color = if (proposal.awaitsYou) {
+                                cardContentColor
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
                         )
                     }
 
@@ -355,7 +404,7 @@ private fun statusOf(proposal: ProposalListUIState.Proposal): String {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun ProposalListScreenPreview() {
     val session = FrostSigningSession(

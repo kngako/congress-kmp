@@ -46,7 +46,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -75,6 +74,35 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.composable.widgets.Decorative
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.create_the_admins_group
+import mantra.composeapp.generated.resources.how_many_members_will_it_take_to_sign
+import mantra.composeapp.generated.resources.key
+import mantra.composeapp.generated.resources.members
+import mantra.composeapp.generated.resources.nothing_was_created_and_no_key_exists_it_is
+import mantra.composeapp.generated.resources.review_and_confirm
+import mantra.composeapp.generated.resources.review_and_contribute
+import mantra.composeapp.generated.resources.review_and_join
+import mantra.composeapp.generated.resources.shared_key
+import mantra.composeapp.generated.resources.start_key_ceremony
+import mantra.composeapp.generated.resources.the_ceremony_was_abandoned
+import mantra.composeapp.generated.resources.the_group_can_hold_one_key_together_split_so
+import mantra.composeapp.generated.resources.the_group_has_a_shared_key
+import mantra.composeapp.generated.resources.this_is_fixed_once_the_ceremony_runs
+import mantra.composeapp.generated.resources.try_again
+import mantra.composeapp.generated.resources.your_share_of_it_is_on_this_device_only_your
+import mantra.composeapp.generated.resources.everyone_has_to_be_online_at_the_same_time
+import mantra.composeapp.generated.resources.of
+import mantra.composeapp.generated.resources.of_members_will_be_needed_to_sign_with_this
+import mantra.composeapp.generated.resources.shared_key_for
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -107,175 +135,179 @@ fun DkgRitualScreen(
         )
     )
 
-    when (val dkgRitualUIState = dkgRitualViewModel.dkgRitualUIState) {
-        is DkgRitualUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(50.dp))
-                Text(text = dkgRitualUIState.message, textAlign = TextAlign.Center)
+    ScreenStateTransition(dkgRitualViewModel.dkgRitualUIState) { uiState ->
+    when (val dkgRitualUIState = uiState) {
+            is DkgRitualUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = dkgRitualUIState.message, textAlign = TextAlign.Center)
+                }
             }
-        }
-        is DkgRitualUIState.Loaded -> {
-            val session = dkgRitualUIState.session
-            val participantCount = dkgRitualUIState.participantCount
-            val canStartRitual = dkgRitualViewModel.canStartRitual()
-            val isActionPending = dkgRitualViewModel.isActionPending.value
+            is DkgRitualUIState.Loaded -> {
+                val session = dkgRitualUIState.session
+                val participantCount = dkgRitualUIState.participantCount
+                val canStartRitual = dkgRitualViewModel.canStartRitual()
+                val isActionPending = dkgRitualViewModel.isActionPending.value
 
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Shared key for ${dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"}",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    )
-                },
-                bottomBar = {
-                    val pending = dkgRitualUIState.pendingApproval
-
-                    // The ceremony is stopped, waiting on this member, and will stay
-                    // stopped until they act -- so this outranks everything else the
-                    // bar could offer.
-                    if (pending != null) {
-                        BottomAppBar(
-                            floatingActionButton = {
-                                ExtendedFloatingActionButton(
-                                    onClick = {
-                                        onNavigateToRoute(
-                                            when (pending) {
-                                                DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                                DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                                DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                            }
-                                        )
-                                    }
-                                ) {
-                                    Icon(Icons.Default.Key, contentDescription = null)
-                                    Text(
-                                        text = when (pending) {
-                                            DkgApprovalStep.HOST_KEY -> "Review and join"
-                                            DkgApprovalStep.ROUND_1 -> "Review and contribute"
-                                            DkgApprovalStep.ROUND_2 -> "Review and confirm"
-                                        }
-                                    )
-                                }
-                            },
-                            actions = {}
-                        )
-
-                        return@Scaffold
-                    }
-
-                    // Any member can open a ritual — the coordinator has no say in
-                    // the key — but only when there isn't one already running.
-                    if (canStartRitual) {
-                        BottomAppBar(
-                            floatingActionButton = {
-                                ExtendedFloatingActionButton(
-                                    onClick = { dkgRitualViewModel.startRitual() }
-                                ) {
-                                    if (isActionPending) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                                    } else {
-                                        Icon(Icons.Default.Key, contentDescription = "Start")
-                                    }
-
-                                    Text(
-                                        text = if (session == null) "Start key ceremony" else "Try again"
-                                    )
-                                }
-                            },
-                            actions = {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
                                 Text(
-                                    modifier = Modifier.padding(start = 15.dp),
-                                    text = "${dkgRitualViewModel.threshold.value} of $participantCount",
-                                    style = MaterialTheme.typography.labelLarge
+                                    text = stringResource(Res.string.shared_key_for, dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         )
-                    }
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (session == null) {
-                        Text(
-                            text = "The group can hold one key together, split so that no single member holds it. Signing with it takes a quorum.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    },
+                    bottomBar = {
+                        val pending = dkgRitualUIState.pendingApproval
 
-                        Text(
-                            text = "Everyone has to be online at the same time — the ceremony can only finish once all $participantCount of you have taken part.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        if (canStartRitual) {
-                            QuorumStepper(
-                                threshold = dkgRitualViewModel.threshold.value,
-                                participantCount = participantCount,
-                                quorumRange = dkgRitualViewModel.quorumRange(),
-                                onThresholdChange = dkgRitualViewModel::setThreshold
+                        // The ceremony is stopped, waiting on this member, and will stay
+                        // stopped until they act -- so this outranks everything else the
+                        // bar could offer.
+                        if (pending != null) {
+                            BottomAppBar(
+                                floatingActionButton = {
+                                    ExtendedFloatingActionButton(
+                                        onClick = {
+                                            onNavigateToRoute(
+                                                when (pending) {
+                                                    DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                    DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                    DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Key, contentDescription = Decorative)
+                                        Text(
+                                            text = when (pending) {
+                                                DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
+                                                DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
+                                                DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
+                                            }
+                                        )
+                                    }
+                                },
+                                actions = {}
                             )
-                        } else {
-                            Text(
-                                text = "A shared key needs at least " +
-                                    "${ChillDkgRitualManager.MINIMUM_PARTICIPANTS} members to split it between.",
-                                style = MaterialTheme.typography.labelLarge
+
+                            return@Scaffold
+                        }
+
+                        // Any member can open a ritual — the coordinator has no say in
+                        // the key — but only when there isn't one already running.
+                        if (canStartRitual) {
+                            BottomAppBar(
+                                floatingActionButton = {
+                                    ExtendedFloatingActionButton(
+                                        onClick = { dkgRitualViewModel.startRitual() }
+                                    ) {
+                                        if (isActionPending) {
+                                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                        } else {
+                                            Icon(Icons.Default.Key, contentDescription = "Start")
+                                        }
+
+                                        Text(
+                                            text = if (session == null) stringResource(Res.string.start_key_ceremony) else stringResource(Res.string.try_again)
+                                        )
+                                    }
+                                },
+                                actions = {
+                                    Text(
+                                        modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
+                                        text = stringResource(Res.string.of, dkgRitualViewModel.threshold.value, participantCount),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
                             )
                         }
-                    } else {
-                        RitualProgress(
-                            session = session,
-                            participantCount = participantCount,
-                            activeUserPublicKey = activeUserPublicKey,
-                            members = dkgRitualUIState.ritualMembers,
-                            hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
-                            round1Participants = dkgRitualUIState.round1Participants,
-                            round2Participants = dkgRitualUIState.round2Participants,
-                            isActionPending = isActionPending,
-                            adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
-                            onCreateAdminGroup = {
-                                dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .readableContent()
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(MaterialTheme.spacing.space125),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                    ) {
+                        if (session == null) {
+                            Text(
+                                text = stringResource(Res.string.the_group_can_hold_one_key_together_split_so),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Text(
+                                text = stringResource(Res.string.everyone_has_to_be_online_at_the_same_time, participantCount),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            if (canStartRitual) {
+                                QuorumStepper(
+                                    threshold = dkgRitualViewModel.threshold.value,
+                                    participantCount = participantCount,
+                                    quorumRange = dkgRitualViewModel.quorumRange(),
+                                    onThresholdChange = dkgRitualViewModel::setThreshold
+                                )
+                            } else {
+                                Text(
+                                    text = "A shared key needs at least " +
+                                        "${ChillDkgRitualManager.MINIMUM_PARTICIPANTS} members to split it between.",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
                             }
-                        )
+                        } else {
+                            RitualProgress(
+                                session = session,
+                                participantCount = participantCount,
+                                activeUserPublicKey = activeUserPublicKey,
+                                members = dkgRitualUIState.ritualMembers,
+                                hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
+                                round1Participants = dkgRitualUIState.round1Participants,
+                                round2Participants = dkgRitualUIState.round2Participants,
+                                isActionPending = isActionPending,
+                                adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
+                                onCreateAdminGroup = {
+                                    dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
-        DkgRitualUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "Shared key",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            DkgRitualUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.shared_key),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }
@@ -328,18 +360,18 @@ private fun RitualProgress(
             )
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(15.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.ErrorOutline, contentDescription = null)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("The ceremony was abandoned.", style = MaterialTheme.typography.titleSmall)
+                Icon(Icons.Default.ErrorOutline, contentDescription = Decorative)
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)) {
+                    Text(stringResource(Res.string.the_ceremony_was_abandoned), style = MaterialTheme.typography.titleSmall)
                     session.failureReason?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium)
                     }
                     Text(
-                        "Nothing was created and no key exists. It is safe to run it again.",
+                        stringResource(Res.string.nothing_was_created_and_no_key_exists_it_is),
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -349,7 +381,7 @@ private fun RitualProgress(
     }
 
     Text(
-        text = "${session.threshold} of $participantCount members will be needed to sign with this key.",
+        text = stringResource(Res.string.of_members_will_be_needed_to_sign_with_this, session.threshold, participantCount),
         style = MaterialTheme.typography.bodyMedium
     )
 
@@ -396,25 +428,25 @@ private fun RitualProgress(
             )
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                    Text("The group has a shared key.", style = MaterialTheme.typography.titleSmall)
+                    Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
+                    Text(stringResource(Res.string.the_group_has_a_shared_key), style = MaterialTheme.typography.titleSmall)
                 }
 
                 session.thresholdPublicKey?.let { thresholdPublicKey ->
                     val clipboardManager = LocalClipboardManager.current
 
-                    Text(text = "Key", style = MaterialTheme.typography.labelMedium)
+                    Text(text = stringResource(Res.string.key), style = MaterialTheme.typography.labelMedium)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // In full, and wrapping rather than ellipsised. This is the
@@ -443,7 +475,7 @@ private fun RitualProgress(
                 }
 
                 Text(
-                    text = "Your share of it is on this device only. Your wallet backup restores it — nobody else's share can.",
+                    text = stringResource(Res.string.your_share_of_it_is_on_this_device_only_your),
                     style = MaterialTheme.typography.labelMedium
                 )
 
@@ -472,9 +504,9 @@ private fun RitualProgress(
                         if (isActionPending) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp))
                         } else {
-                            Icon(Icons.Default.Groups, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Create the #admins group")
+                            Icon(Icons.Default.Groups, contentDescription = Decorative)
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
+                            Text(text = stringResource(Res.string.create_the_admins_group))
                         }
                     }
                 }
@@ -501,10 +533,10 @@ private fun RitualRoster(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
         ) {
-            Text(text = "Members", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(Res.string.members), style = MaterialTheme.typography.titleSmall)
 
             members
                 .sortedBy { it.participant.participantPublicKey }
@@ -522,16 +554,22 @@ private fun RitualRoster(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Not decorative: the name beside it says who, and only the
+                        // icon says whether they have contributed.
                         Icon(
                             imageVector = if (publicKey in hostKeyParticipants) {
                                 Icons.Default.CheckCircle
                             } else {
                                 Icons.Default.RadioButtonUnchecked
                             },
-                            contentDescription = null
+                            contentDescription = if (publicKey in hostKeyParticipants) {
+                                "Contributed"
+                            } else {
+                                "Not yet contributed"
+                            }
                         )
 
                         Text(
@@ -563,22 +601,24 @@ private fun RitualStep(
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space200),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Not decorative: the title says which round, the count says how far
+                // along, and only the icon says whether it has finished.
                 Icon(
                     imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = null
+                    contentDescription = if (isDone) "Complete" else "In progress"
                 )
                 Text(text = title, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = "$count of $total",
+                    text = stringResource(Res.string.of, count, total),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -602,17 +642,17 @@ private fun QuorumStepper(
     onThresholdChange: (Int) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.space50),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)
     ) {
         Text(
-            text = "How many members will it take to sign?",
+            text = stringResource(Res.string.how_many_members_will_it_take_to_sign),
             style = MaterialTheme.typography.titleSmall
         )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilledIconButton(
@@ -623,7 +663,7 @@ private fun QuorumStepper(
             }
 
             Text(
-                text = "$threshold of $participantCount",
+                text = stringResource(Res.string.of, threshold, participantCount),
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -636,13 +676,13 @@ private fun QuorumStepper(
         }
 
         Text(
-            text = "This is fixed once the ceremony runs. Changing it later means generating a new key.",
+            text = stringResource(Res.string.this_is_fixed_once_the_ceremony_runs),
             style = MaterialTheme.typography.labelMedium
         )
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun DkgRitualScreenPreview() {
     TorchTheme {
@@ -655,7 +695,7 @@ private fun DkgRitualScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "",
                             userPublicKey = "",
-                            subject = "Group Discussions",
+                            subject = "Group discussions",
                             description = "See something... say something.",
                             initialGiftWrapPayloadId = null,
                             mlsGroupState = null

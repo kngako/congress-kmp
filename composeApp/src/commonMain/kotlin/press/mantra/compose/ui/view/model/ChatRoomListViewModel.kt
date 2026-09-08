@@ -40,6 +40,13 @@ import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading
+import mantra.composeapp.generated.resources.no_messages_go_to_a_profile_and_send_them_a
+import mantra.composeapp.generated.resources.something_went_wrong
+import press.mantra.compose.ui.composable.widgets.ErrorState
 
 class ChatRoomListViewModel(
     initialChatRoomListUIState: ChatRoomListUIState,
@@ -145,33 +152,23 @@ class ChatRoomListViewModel(
         ) {
             when (val chatRoomListUIState = chatRoomListUIState) {
                 ChatRoomListUIState.Error -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(
-                            modifier = Modifier.height(50.dp)
-                        )
-                        Text(
-                            text = "Something went wrong",
-                        )
-                    }
+                    ErrorState()
                 }
                 is ChatRoomListUIState.Loaded -> {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
 
                         if (chatRoomListUIState.chatRoomList.isEmpty()) {
                             Text(
-                                text = "No messages. Go to a profile and send them a message."
+                                text = stringResource(Res.string.no_messages_go_to_a_profile_and_send_them_a)
                             )
                         } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                             ) {
                                 items(
                                     items = chatRoomListUIState.chatRoomList,
@@ -190,8 +187,8 @@ class ChatRoomListViewModel(
                                         }
                                     ) {
                                         Row(
-                                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             // Both lines are clipped to one, so the name
@@ -200,7 +197,7 @@ class ChatRoomListViewModel(
                                             // the clock off the row.
                                             Column(
                                                 modifier = Modifier.weight(1f),
-                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                                             ) {
                                                 localChatRoom.RenderChatRoomTitleText()
                                                 localChatRoom.RenderChatRoomLastMessageText()
@@ -232,14 +229,14 @@ class ChatRoomListViewModel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     )  {
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
                         Text(
-                            text = "Loading",
+                            text = stringResource(Res.string.loading),
                             textAlign = TextAlign.Center
                         )
                         Spacer(
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                         )
 
                         LoadingIndicator()

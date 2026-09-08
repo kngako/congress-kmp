@@ -86,6 +86,8 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
+            implementation(libs.compose.material3.adaptive)
+            implementation(libs.compose.material3.adaptive.navigation.suite)
             implementation (libs.compose.material.icons.core)
             implementation (libs.compose.material.icons.extended)
             implementation(libs.compose.ui)
@@ -130,6 +132,15 @@ kotlin {
             // needs a coroutine, and a scheduler, to assert it in.
             implementation(libs.kotlinx.coroutinesTest)
         }
+        jvmTest.dependencies {
+            // A layout modifier cannot be asserted by reading it. `readableContent()` is
+            // three modifiers whose order decides whether the content is capped, centred,
+            // both or neither, and every ordering compiles and renders something -- so the
+            // check has to be a measurement of a real composition. Pinned to the same
+            // version as the rest of Compose Multiplatform; test-only.
+            implementation(compose.desktop.uiTestJUnit4)
+            implementation(libs.kotlin.testJunit)
+        }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
@@ -158,8 +169,8 @@ android {
         applicationId = "press.mantra.android"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
     packaging {
         resources {
@@ -209,6 +220,69 @@ dependencies {
 room3 {
     schemaDirectory("$projectDir/schemas")
 }
+
+/**
+ * The Material Design conformance audit, as a build task.
+ *
+ * `docs/scripts/m3-audit.sh --check` counts what the phases in
+ * docs/material-design-conformance.md drove to zero -- hardcoded colours, dp literals in
+ * spacing positions, bare `.clickable`, title case, untriaged `contentDescription = null`
+ * -- and exits 1 when one of them has come back. It also holds two floors, for the
+ * adaptive and navigation work, which regress by being *removed*.
+ *
+ * Wired into `check` rather than left as a script somebody remembers to run: the whole
+ * point of a budget is that it is enforced at the moment the number moves, and a number
+ * that is only checked when a person thinks to look is a number that drifts.
+ *
+ * It reads the source tree with grep and needs no gradle, no android SDK and no
+ * submodules, so it is also the one part of this build that a bare CI runner can do.
+ */
+val m3Audit = tasks.register("m3Audit") {
+    group = "verification"
+    description = "Checks the Material Design conformance budgets in docs/material-design-conformance.md."
+
+    val script = rootProject.layout.projectDirectory.file("docs/scripts/m3-audit.sh").asFile
+    val uiSources = rootProject.layout.projectDirectory
+        .dir("composeApp/src/commonMain/kotlin/press/mantra/compose/ui")
+    val projectDirectory = rootProject.layout.projectDirectory.asFile
+
+    inputs.file(script).withPropertyName("auditScript")
+    inputs.dir(uiSources).withPropertyName("uiSources")
+    // No outputs, so this would run every time. A marker file is what makes it
+    // up-to-date-able, and it is the only thing the task writes.
+    val marker = layout.buildDirectory.file("m3-audit/passed.txt")
+    outputs.file(marker)
+
+    doLast {
+        // Windows has no bash unless somebody installed one. Skipping loudly beats
+        // failing a build for a reason that has nothing to do with the change under it;
+        // the CI runner and every developer machine here are unix.
+        val bash = listOf("/bin/bash", "/usr/bin/bash").firstOrNull { File(it).canExecute() }
+        if (bash == null) {
+            logger.warn("m3Audit: no bash found, skipping. Run docs/scripts/m3-audit.sh --check by hand.")
+            marker.get().asFile.apply { parentFile.mkdirs() }.writeText("skipped: no bash\n")
+            return@doLast
+        }
+
+        val result = providers.exec {
+            commandLine(bash, script.absolutePath, "--check")
+            workingDir = projectDirectory
+            isIgnoreExitValue = true
+        }
+        val text = result.standardOutput.asText.get()
+        val exit = result.result.get().exitValue
+        logger.lifecycle(text)
+        if (exit != 0) {
+            throw GradleException(
+                "Material Design conformance budgets exceeded. See the report above and " +
+                    "docs/material-design-conformance.md."
+            )
+        }
+        marker.get().asFile.apply { parentFile.mkdirs() }.writeText(text)
+    }
+}
+
+tasks.named("check") { dependsOn(m3Audit) }
 
 compose.desktop {
     application {
