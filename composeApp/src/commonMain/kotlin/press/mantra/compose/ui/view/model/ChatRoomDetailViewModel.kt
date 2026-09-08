@@ -80,6 +80,10 @@ class ChatRoomDetailViewModel(
                     dialects = mantraRepository.getDialects(chatRoomId),
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
+                    subgroups = chatRepository.subgroupsOf(chatRoomId),
+                    parentChatRoomId = chatRepository.parentOf(chatRoomId),
+                    canAddSubgroup = localChatRoom.chatRoom.mlsGroupState != null &&
+                        chatRepository.canSign(chatRoomId),
                 )
             }
         }

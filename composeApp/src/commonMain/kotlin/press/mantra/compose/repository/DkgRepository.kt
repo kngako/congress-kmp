@@ -4,6 +4,7 @@ import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.DkgApprovalStep
@@ -96,6 +97,47 @@ interface DkgRepository {
     /** Files the state the group signed for a room that now exists. */
     suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
 
+    /**
+     * Asks the parent's quorum to certify the subgroup this ceremony produced.
+     *
+     * Runs in the **parent's** room, not the ceremony's, so what comes back is
+     * signed by the parent's key and authored by the parent's own room id -- the
+     * one thing a lineage can be checked against. See
+     * `SubgroupManager.proposeBirthCertificate`.
+     */
+    suspend fun proposeBirthCertificate(
+        parentChatRoomId: String,
+        userPublicKey: HexKey,
+        session: DkgSession,
+        adminPublicKeys: List<HexKey>,
+        name: String,
+    ): FrostSigningSession?
+
+    /**
+     * Whether the parent has certified the room this ceremony's key derives.
+     *
+     * Answerable before that room exists, which is the point: it is what gates
+     * the key state, which is itself signed before the room is created.
+     */
+    fun observeBirthCertificate(
+        ceremonyChatRoomId: String,
+        parentChatRoomId: String,
+    ): Flow<GroupSignedEvent?>
+
+    /**
+     * Asks the subgroup's own quorum to sign its key state, carrying the
+     * certificate.
+     *
+     * Refuses without one, because every device that receives the state runs the
+     * same check and drops it -- see `GroupKeyStateManager.stateFrom`.
+     */
+    suspend fun proposeSubgroupKeyState(
+        ceremonyRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        session: DkgSession,
+        parentChatRoomId: HexKey,
+    ): FrostSigningSession?
+
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
             override fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?> = flowOf(null)
@@ -135,6 +177,26 @@ interface DkgRepository {
                 flowOf(null)
 
             override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
+
+            override suspend fun proposeBirthCertificate(
+                parentChatRoomId: String,
+                userPublicKey: HexKey,
+                session: DkgSession,
+                adminPublicKeys: List<HexKey>,
+                name: String,
+            ): FrostSigningSession? = null
+
+            override fun observeBirthCertificate(
+                ceremonyChatRoomId: String,
+                parentChatRoomId: String,
+            ): Flow<GroupSignedEvent?> = flowOf(null)
+
+            override suspend fun proposeSubgroupKeyState(
+                ceremonyRoom: LocalChatRoom,
+                userPublicKey: HexKey,
+                session: DkgSession,
+                parentChatRoomId: HexKey,
+            ): FrostSigningSession? = null
         }
     }
 }

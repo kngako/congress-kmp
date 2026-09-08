@@ -85,6 +85,18 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.run_by_members
+import mantra.composeapp.generated.resources.parent_group
+import mantra.composeapp.generated.resources.a_subgroup
+import mantra.composeapp.generated.resources.created_you_are_not_a_member
+import mantra.composeapp.generated.resources.certified_not_yet_created
+import mantra.composeapp.generated.resources.no_subgroups_have_been_made_by_this_group
+import mantra.composeapp.generated.resources.add_subgroup
+import mantra.composeapp.generated.resources.subgroups
+import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
+import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
+import press.mantra.compose.managers.SubgroupManager
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.add_artifact_to_library
@@ -225,6 +237,57 @@ fun ChatRoomDetailScreen(
                                                 // it can be compared.
                                                 Text(
                                                     text = groupKeyState.announcedBy
+                                                        .take(16)
+                                                        .inComparableGroups(),
+                                                    fontFamily = FontFamily.Monospace,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.MiddleEllipsis
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Directly under the signing key, because between them
+                            // they are what the room *is*: the identity it signs as
+                            // and whose child it is. Absent on a group that is
+                            // nobody's child, and absent -- rather than guessed --
+                            // on a subgroup this device holds no key state for,
+                            // since an unverified lineage is not one worth showing.
+                            chatRoomDetailUIState.parentChatRoomId?.let { parentChatRoomId ->
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ChatRoomDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = parentChatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.AccountTree,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(text = stringResource(Res.string.parent_group))
+                                            },
+                                            supportingContent = {
+                                                Text(
+                                                    text = parentChatRoomId
                                                         .take(16)
                                                         .inComparableGroups(),
                                                     fontFamily = FontFamily.Monospace,
@@ -437,6 +500,82 @@ fun ChatRoomDetailScreen(
                                     )
 
                                     Text(stringResource(Res.string.create_project))
+                                }
+                            }
+
+                            item {
+                                HorizontalDivider()
+                            }
+
+                            item {
+                                Text(
+                                    text = stringResource(Res.string.subgroups),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+
+                            if (chatRoomDetailUIState.subgroups.isEmpty()) {
+                                item {
+                                    Text(stringResource(Res.string.no_subgroups_have_been_made_by_this_group))
+                                }
+                            } else {
+                                items(
+                                    items = chatRoomDetailUIState.subgroups,
+                                    key = { subgroup -> subgroup.chatRoomId }
+                                ) { subgroup ->
+                                    SubgroupCard(
+                                        subgroup = subgroup,
+                                        onOpen = {
+                                            // Into the child where this device has
+                                            // it; at the certificate where it does
+                                            // not, since that is the whole of what
+                                            // is known and it is checkable.
+                                            onNavigateToRoute.invoke(
+                                                subgroup.room?.let {
+                                                    ChatRoomDetailRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = it.chatRoom.id,
+                                                        relayHint = relayHint
+                                                    )
+                                                } ?: NostrEventDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    nostrEventId = subgroup.certificate.id
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Offered only where it can work: this device holds a
+                            // share of the group's key, so it can open the
+                            // certificate session, and the room is a Marmot one, so
+                            // there is a group with admins to be a parent. Hidden
+                            // rather than disabled, the way the shared key entry is.
+                            if (chatRoomDetailUIState.canAddSubgroup) {
+                                item {
+                                    TextButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                SelectSubgroupAdminsRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    parentChatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AccountTree,
+                                            contentDescription = Decorative
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+
+                                        Text(stringResource(Res.string.add_subgroup))
+                                    }
                                 }
                             }
 
@@ -911,6 +1050,56 @@ internal fun GroupKeyStateSheetContent(
  * signed event, which is not grouped -- so the display can be shaped for reading
  * without a paste losing the value.
  */
+/**
+ * One subgroup, as the parent's record and this device's rooms together have it.
+ *
+ * **The title comes from the room where there is one, and only otherwise from the
+ * certificate.** The certificate's name and `p` tags are what the parent approved
+ * at founding, frozen: the child may since have been renamed or have gained
+ * members, and none of that reaches a signature already made. So where this
+ * device holds the room, the room is the live answer; where it does not, the
+ * certificate is all there is and the supporting line says which of the two
+ * absences this is.
+ */
+@Composable
+private fun SubgroupCard(
+    subgroup: SubgroupManager.Subgroup,
+    onOpen: () -> Unit
+) {
+    Card(onClick = onOpen) {
+        ListItem(
+            leadingContent = {
+                Icon(Icons.Default.AccountTree, contentDescription = Decorative)
+            },
+            trailingContent = {
+                Icon(Icons.Default.ChevronRight, contentDescription = Decorative)
+            },
+            headlineContent = {
+                Text(
+                    text = subgroup.room?.chatRoom?.subject
+                        ?: subgroup.name
+                        ?: stringResource(Res.string.a_subgroup)
+                )
+            },
+            supportingContent = {
+                Text(
+                    text = when {
+                        subgroup.isJoined -> stringResource(
+                            Res.string.run_by_members,
+                            subgroup.adminPublicKeys.size.toString()
+                        )
+                        // The room does not exist anywhere yet: the parent has
+                        // certified it and nobody has created it. Between steps 2
+                        // and 4 of docs/subgroups.md this is every member's view.
+                        subgroup.keyState == null -> stringResource(Res.string.certified_not_yet_created)
+                        else -> stringResource(Res.string.created_you_are_not_a_member)
+                    }
+                )
+            }
+        )
+    }
+}
+
 private fun String.inComparableGroups(): String = chunked(8).joinToString(" ")
 
 /** One labelled value of a key state, whole and comparable. */

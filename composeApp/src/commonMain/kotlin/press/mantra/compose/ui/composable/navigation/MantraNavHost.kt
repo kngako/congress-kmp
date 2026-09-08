@@ -87,6 +87,8 @@ import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToC
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomMembersRoute
+import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
+import press.mantra.compose.ui.composable.SelectSubgroupAdminsScreen
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomTypeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.SignInRoute
@@ -530,12 +532,27 @@ fun MantraNavHost(
                     }
                 )
             }
+            composable<SelectSubgroupAdminsRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SelectSubgroupAdminsRoute>()
+
+                SelectSubgroupAdminsScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    parentChatRoomId = route.parentChatRoomId,
+                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onNavigateToRoute = { nextRoute ->
+                        navController.navigate(route = nextRoute)
+                    }
+                )
+            }
             composable<DkgRitualRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<DkgRitualRoute>()
 
                 DkgRitualScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
+                    parentChatRoomId = route.parentChatRoomId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,

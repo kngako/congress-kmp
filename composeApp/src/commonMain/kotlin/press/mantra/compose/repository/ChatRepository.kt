@@ -8,6 +8,7 @@ import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.managers.MarmotGroupCreation
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -57,6 +58,50 @@ interface ChatRepository {
      * see or check what the group actually put its key to.
      */
     suspend fun signedGroupKeyStateEvent(chatRoomId: String): GroupSignedEvent?
+
+    /**
+     * Every subgroup this room has certified, as far as this device knows.
+     *
+     * Read off the parent's own signed certificates rather than off a table, so
+     * it includes children whose room this device does not have -- which is the
+     * normal position of a member who is not in the subgroup. See
+     * `SubgroupManager.subgroupsOf`.
+     */
+    suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup>
+
+    /**
+     * The group this room is a subgroup of, verified, or null if it is nobody's
+     * child.
+     *
+     * Off the room's `GroupKeyState`, which only carries a parent whose
+     * certificate was checked. A member welcomed in after the founding holds no
+     * state and gets null here even when the room really is a subgroup.
+     */
+    suspend fun parentOf(chatRoomId: String): HexKey?
+
+    /**
+     * Whether this device holds a share of the group's key, and so could take
+     * part in signing for it.
+     *
+     * Read by the UI so nothing is offered that would throw:
+     * `FrostSigningManager.proposeSigningBatch` refuses outright for a device
+     * with no share, and a button that throws is not a button.
+     */
+    suspend fun canSign(chatRoomId: String): Boolean
+
+    /**
+     * Why these members cannot hold a subgroup ceremony together, or null when
+     * they can.
+     *
+     * Read by the picker so a subgroup that could only fail is never offered, and
+     * again on confirm, because a screen not drawing something is not a guard.
+     * See `SubgroupManager.refuseCeremonyRoom`.
+     */
+    suspend fun refuseSubgroup(
+        parentChatRoomId: String,
+        adminPublicKeys: Set<HexKey>,
+        coordinatorPublicKey: HexKey,
+    ): String?
 
     suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
 
@@ -209,6 +254,19 @@ interface ChatRepository {
             override suspend fun signedGroupKeyStateEvent(
                 chatRoomId: String
             ): GroupSignedEvent? = null
+
+            override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
+                emptyList()
+
+            override suspend fun parentOf(chatRoomId: String): HexKey? = null
+
+            override suspend fun canSign(chatRoomId: String): Boolean = false
+
+            override suspend fun refuseSubgroup(
+                parentChatRoomId: String,
+                adminPublicKeys: Set<HexKey>,
+                coordinatorPublicKey: HexKey,
+            ): String? = "No database"
 
             override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
                 return flow {  }

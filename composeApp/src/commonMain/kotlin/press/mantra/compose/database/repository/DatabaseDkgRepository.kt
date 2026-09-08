@@ -5,13 +5,16 @@ import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.GroupKeyStateManager
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.repository.DkgRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -105,6 +108,78 @@ class DatabaseDkgRepository(
         // from room to ceremony, and `FrostSigningManager.completedKey` still
         // rederives its way to the same key.
         logger.e("Error adopting the signed key state for $chatRoomId", e)
+        null
+    }
+
+    override suspend fun proposeBirthCertificate(
+        parentChatRoomId: String,
+        userPublicKey: HexKey,
+        session: DkgSession,
+        adminPublicKeys: List<HexKey>,
+        name: String,
+    ): FrostSigningSession? = try {
+        val parentRoom = database.chatRoomDao().findChatRoomById(parentChatRoomId)
+            ?: throw IllegalStateException("No parent room $parentChatRoomId to certify from")
+
+        SubgroupManager.proposeBirthCertificate(
+            database = database,
+            parentRoom = parentRoom,
+            userPublicKey = userPublicKey,
+            key = session,
+            adminPublicKeys = adminPublicKeys,
+            name = name,
+        )
+    } catch (e: Throwable) {
+        // A device with no share of the parent's key cannot open this session,
+        // and a ceremony with no key yet is a caller that got ahead of itself.
+        // Neither is worth failing anything over: nothing was published, and the
+        // screen reports it by leaving the rung unfinished with the button there.
+        logger.e("Error proposing a birth certificate in $parentChatRoomId", e)
+        null
+    }
+
+    override fun observeBirthCertificate(
+        ceremonyChatRoomId: String,
+        parentChatRoomId: String,
+    ): Flow<GroupSignedEvent?> =
+        database.groupSignedEventDao()
+            .observeByKind(SubgroupBirthCertificateEvent.KIND)
+            .map { signedEvents ->
+                // The room the ceremony's key derives, resolved per emission
+                // rather than once: the ceremony has no key until it finishes,
+                // and this flow is running before it does.
+                val subgroupChatRoomId = database.dkgSessionDao()
+                    .getLatestSessionForChatRoom(ceremonyChatRoomId)
+                    ?.thresholdPublicKey
+                    ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
+                    ?: return@map null
+
+                signedEvents
+                    .filter {
+                        SubgroupBirthCertificateEvent.certifies(
+                            event = it.toEvent(),
+                            subgroupChatRoomId = subgroupChatRoomId,
+                            parentChatRoomId = parentChatRoomId,
+                        )
+                    }
+                    .maxByOrNull { it.createdAt }
+            }
+
+    override suspend fun proposeSubgroupKeyState(
+        ceremonyRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        session: DkgSession,
+        parentChatRoomId: HexKey,
+    ): FrostSigningSession? = try {
+        SubgroupManager.proposeSubgroupKeyState(
+            database = database,
+            ceremonyRoom = ceremonyRoom,
+            userPublicKey = userPublicKey,
+            key = session,
+            parentChatRoomId = parentChatRoomId,
+        )
+    } catch (e: Throwable) {
+        logger.e("Error proposing the subgroup key state from ${ceremonyRoom.chatRoom.id}", e)
         null
     }
 

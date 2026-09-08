@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers.Main
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.view.state.DkgRitualUIState
@@ -49,6 +50,11 @@ import kotlinx.coroutines.launch
 class DkgRitualViewModel(
     val chatRoomId: String,
     val activeUserPublicKey: HexKey,
+    /**
+     * The group this ceremony is making a subgroup of, or null for an ordinary
+     * one. Off the route, which got it off the proposal -- a claim either way.
+     */
+    val parentChatRoomId: HexKey? = null,
     initialDkgRitualUIState: DkgRitualUIState,
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val chatRepository: ChatRepository,
@@ -118,7 +124,10 @@ class DkgRitualViewModel(
                 return@launch
             }
 
-            dkgRitualUIState = DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
+            dkgRitualUIState = DkgRitualUIState.Loaded(
+                localChatRoom = localChatRoom,
+                parentChatRoomId = parentChatRoomId
+            )
             threshold.value = ChatRoomType
                 .defaultQuorum(ChillDkgRitualManager.memberPublicKeys(localChatRoom).size)
                 .coerceIn(quorumRange())
@@ -127,7 +136,10 @@ class DkgRitualViewModel(
 
             dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
-                    ?: DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
+                    ?: DkgRitualUIState.Loaded(
+                        localChatRoom = localChatRoom,
+                        parentChatRoomId = parentChatRoomId
+                    )
 
                 dkgRitualUIState = loaded.copy(
                     session = session,
@@ -206,6 +218,37 @@ class DkgRitualViewModel(
                     dkgRitualUIState = loaded.copy(isKeyStateSigned = state != null)
                 }
             }
+
+            // Only for a subgroup, and off the *parent's* signed events rather
+            // than this room's -- the certificate is made where the parent's key
+            // can sign it, which is never the ceremony's room.
+            parentChatRoomId?.let { parent ->
+                launch {
+                    dkgRepository.observeBirthCertificate(chatRoomId, parent)
+                        .collect { certificate ->
+                            val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded
+                                ?: return@collect
+
+                            dkgRitualUIState = loaded.copy(isCertified = certificate != null)
+                        }
+                }
+
+                launch {
+                    dkgRepository.observeSigningSessions(parent).collect { sessions ->
+                        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
+
+                        dkgRitualUIState = loaded.copy(
+                            certificateSession = sessions.firstOrNull { local ->
+                                local.items.any { item ->
+                                    runCatching {
+                                        Event.fromJson(item.unsignedEventJson).kind
+                                    }.getOrNull() == SubgroupBirthCertificateEvent.KIND
+                                }
+                            }?.session
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -236,11 +279,24 @@ class DkgRitualViewModel(
         isActionPending.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
-            val signing = dkgRepository.proposeGroupKeyState(
-                localChatRoom = loaded.localChatRoom,
-                userPublicKey = activeUserPublicKey,
-                session = session
-            )
+            // A subgroup's state carries the parent's certificate, and refuses
+            // to be proposed without one -- every device that receives it runs
+            // the same check and drops it, so proposing one this device would not
+            // believe spends a quorum's attention on nothing.
+            val signing = if (parentChatRoomId != null) {
+                dkgRepository.proposeSubgroupKeyState(
+                    ceremonyRoom = loaded.localChatRoom,
+                    userPublicKey = activeUserPublicKey,
+                    session = session,
+                    parentChatRoomId = parentChatRoomId
+                )
+            } else {
+                dkgRepository.proposeGroupKeyState(
+                    localChatRoom = loaded.localChatRoom,
+                    userPublicKey = activeUserPublicKey,
+                    session = session
+                )
+            }
 
             isActionPending.value = false
 
@@ -252,6 +308,58 @@ class DkgRitualViewModel(
             }
             // On success the session flow above delivers the new row; no need to
             // set it here and risk racing the observer.
+        }
+    }
+
+    /**
+     * Asks the parent's quorum to certify the subgroup this ceremony produced.
+     *
+     * Step 2 of four, and the only one that runs somewhere else: the certificate
+     * is signed in the *parent's* room, because it is the parent's signature.
+     * Offered to whoever holds a share of the parent's key, which the coordinator
+     * does by construction -- they are a parent admin, that is how they got here.
+     *
+     * Nothing waits for the answer. The session runs on arriving messages like
+     * every other, and [observeKeyState] follows it.
+     */
+    fun proposeBirthCertificate() {
+        if (isActionPending.value) return
+
+        val parent = parentChatRoomId ?: return
+        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return
+        val session = loaded.session ?: return
+        if (session.thresholdPublicKey == null) return
+
+        // Nothing to ask for, and nobody to ask twice. A failed session is the
+        // one case a second proposal is right, and it has to be a new session
+        // rather than that one resumed.
+        if (loaded.isCertified) return
+        loaded.certificateSession?.let { if (it.stage != FrostSigningStage.FAILED) return }
+
+        isActionPending.value = true
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val signing = dkgRepository.proposeBirthCertificate(
+                parentChatRoomId = parent,
+                userPublicKey = activeUserPublicKey,
+                session = session,
+                adminPublicKeys = ChillDkgRitualManager
+                    .memberPublicKeys(loaded.localChatRoom)
+                    .toList(),
+                // The ceremony room was created with the name the coordinator
+                // typed, and the proposal carried it to everyone else -- so this
+                // is the same name every admin has been looking at.
+                name = loaded.localChatRoom.chatRoom.subject ?: "Subgroup"
+            )
+
+            isActionPending.value = false
+
+            if (signing == null) {
+                logger.e("Failed to propose a birth certificate in $parent")
+                dkgRitualUIState = DkgRitualUIState.Error(
+                    "Couldn't ask the group to certify this subgroup. Please try again."
+                )
+            }
         }
     }
 
@@ -367,7 +475,15 @@ class DkgRitualViewModel(
         // admins: the whole point of the room is that the members who hold shares of
         // the key can all act in it.
         val members = ChillDkgRitualManager.memberPublicKeys(loaded.localChatRoom)
-        val name = "${loaded.localChatRoom.chatRoom.subject ?: "Group"} (#admins)"
+
+        // A subgroup is called what the coordinator called it; an admin room is
+        // called after the group it administers, because it has no name of its
+        // own to be given.
+        val name = if (parentChatRoomId != null) {
+            loaded.localChatRoom.chatRoom.subject ?: "Subgroup"
+        } else {
+            "${loaded.localChatRoom.chatRoom.subject ?: "Group"} (#admins)"
+        }
 
         isActionPending.value = true
         dkgRitualUIState = loaded.copy(adminGroupBlockedOn = emptyList())
@@ -376,10 +492,18 @@ class DkgRitualViewModel(
             val outcome = chatRepository.createMarmotGroup(
                 groupId = groupId,
                 name = name,
-                purpose = "Admins of ${loaded.localChatRoom.chatRoom.subject ?: "the group"}.",
+                purpose = if (parentChatRoomId != null) {
+                    "A subgroup of the group that certified it."
+                } else {
+                    "Admins of ${loaded.localChatRoom.chatRoom.subject ?: "the group"}."
+                },
                 adminPublicKeys = members,
                 userPublicKey = activeUserPublicKey,
-                keyPair = keyPair
+                keyPair = keyPair,
+                // Verified by the time it is written: the key state this room was
+                // gated on carries the certificate, and `stateFrom` refused it
+                // otherwise.
+                parentChatRoomId = parentChatRoomId
             )
 
             isActionPending.value = false
@@ -442,6 +566,7 @@ class DkgRitualViewModel(
         fun factory(
             chatRoomId: String,
             activeUserPublicKey: HexKey,
+            parentChatRoomId: HexKey? = null,
             initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
             chatRepository: ChatRepository,
@@ -451,6 +576,7 @@ class DkgRitualViewModel(
                 DkgRitualViewModel(
                     chatRoomId = chatRoomId,
                     activeUserPublicKey = activeUserPublicKey,
+                    parentChatRoomId = parentChatRoomId,
                     initialDkgRitualUIState = initialDkgRitualUIState,
                     activeWalletStateFlow = activeWalletStateFlow,
                     chatRepository = chatRepository,

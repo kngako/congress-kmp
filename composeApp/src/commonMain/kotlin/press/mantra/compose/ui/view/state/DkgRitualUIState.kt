@@ -63,6 +63,25 @@ sealed interface DkgRitualUIState {
          * signed first. It is what gates creating the room.
          */
         val isKeyStateSigned: Boolean = false,
+        /**
+         * The group this ceremony is making a subgroup of, or null for an
+         * ordinary one.
+         *
+         * A claim off the route and the proposal, not evidence. It decides which
+         * ladder the screen draws and nothing else -- what makes a lineage real
+         * is [isCertified] below, which is a signature by that group's quorum.
+         */
+        val parentChatRoomId: HexKey? = null,
+        /** Whether the parent has certified the room this ceremony's key derives. */
+        val isCertified: Boolean = false,
+        /**
+         * The session asking the parent to certify, while it is running.
+         *
+         * Runs in the *parent's* room rather than this one, so it is watched
+         * separately from [keyStateSession] and cannot be read off this room's
+         * sessions at all.
+         */
+        val certificateSession: FrostSigningSession? = null,
     ): DkgRitualUIState {
         val hostKeyCount: Int get() = hostKeyParticipants.size
         val round1Count: Int get() = round1Participants.size

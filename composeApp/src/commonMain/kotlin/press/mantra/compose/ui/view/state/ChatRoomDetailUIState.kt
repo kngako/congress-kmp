@@ -1,6 +1,8 @@
 package press.mantra.compose.ui.view.state
 
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
@@ -29,6 +31,39 @@ sealed interface ChatRoomDetailUIState {
          * checked. Null on a device that holds the reading and not the event.
          */
         val signedGroupKeyStateEvent: GroupSignedEvent? = null,
+        /**
+         * The groups this one has certified as its children.
+         *
+         * Off the parent's own signed certificates, so it lists a subgroup this
+         * device holds no room for -- which is the normal position of a member
+         * who is not in it, and of everybody between the certificate being
+         * signed and the room being created.
+         */
+        val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
+        /**
+         * The group this room is a subgroup of, or null when it is nobody's
+         * child.
+         *
+         * Verified: it comes off the room's key state, which only carries a
+         * parent whose certificate was checked. A member welcomed in after the
+         * founding holds no state and so sees nothing here, even in a room that
+         * really is a subgroup.
+         */
+        val parentChatRoomId: HexKey? = null,
+        /**
+         * Whether this device could open a subgroup here at all.
+         *
+         * Two conditions and both are about capability rather than permission.
+         * The room has to be a Marmot one, since a NIP-17 room has no admins to
+         * be a parent's. And this device has to hold a share of the group's key,
+         * because certifying a child is a signature by the parent and
+         * `FrostSigningManager.proposeSigningBatch` throws for a device that
+         * cannot make one -- throwing at a button is not a UI.
+         *
+         * The rest of the refusals are the picker's, where they can name who is
+         * missing and what to do about it.
+         */
+        val canAddSubgroup: Boolean = false,
     ): ChatRoomDetailUIState
 
     data class Error(

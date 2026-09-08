@@ -81,6 +81,13 @@ import press.mantra.compose.ui.composable.widgets.Decorative
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.create_the_admins_group
+import androidx.compose.material.icons.filled.AccountTree
+import mantra.composeapp.generated.resources.create_the_subgroup
+import mantra.composeapp.generated.resources.ask_the_parent_group_to_certify
+import mantra.composeapp.generated.resources.before_the_subgroup_exists_its_parent_signs
+import mantra.composeapp.generated.resources.the_parent_group_is_certifying_this_subgroup
+import mantra.composeapp.generated.resources.the_parent_group_could_not_certify_this_subgroup
+import mantra.composeapp.generated.resources.the_parent_group_has_certified_this_subgroup
 import mantra.composeapp.generated.resources.how_many_members_will_it_take_to_sign
 import mantra.composeapp.generated.resources.key
 import mantra.composeapp.generated.resources.members
@@ -125,6 +132,11 @@ import press.mantra.compose.ui.theme.ConformancePreviews
 fun DkgRitualScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
+    /**
+     * Set when this ceremony is making a subgroup, which grows the ladder by one
+     * rung: the parent's birth certificate, between the key and the key state.
+     */
+    parentChatRoomId: String? = null,
     initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
@@ -135,6 +147,7 @@ fun DkgRitualScreen(
         factory = DkgRitualViewModel.factory(
             chatRoomId = chatRoomId,
             activeUserPublicKey = activeUserPublicKey,
+            parentChatRoomId = parentChatRoomId,
             initialDkgRitualUIState = initialDkgRitualUIState,
             activeWalletStateFlow = activeWalletStateFlow,
             chatRepository = chatRepository,
@@ -294,6 +307,10 @@ fun DkgRitualScreen(
                                 adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
                                 keyStateSession = dkgRitualUIState.keyStateSession,
                                 isKeyStateSigned = dkgRitualUIState.isKeyStateSigned,
+                                parentChatRoomId = dkgRitualUIState.parentChatRoomId,
+                                isCertified = dkgRitualUIState.isCertified,
+                                certificateSession = dkgRitualUIState.certificateSession,
+                                onProposeBirthCertificate = dkgRitualViewModel::proposeBirthCertificate,
                                 onProposeKeyState = dkgRitualViewModel::proposeKeyState,
                                 onCreateAdminGroup = {
                                     dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
@@ -343,6 +360,10 @@ private fun RitualProgress(
     adminGroupBlockedOn: List<String>,
     keyStateSession: FrostSigningSession?,
     isKeyStateSigned: Boolean,
+    parentChatRoomId: String?,
+    isCertified: Boolean,
+    certificateSession: FrostSigningSession?,
+    onProposeBirthCertificate: () -> Unit,
     onProposeKeyState: () -> Unit,
     onCreateAdminGroup: () -> Unit,
 ) {
@@ -500,6 +521,71 @@ private fun RitualProgress(
                 // Shown to every member, not only the coordinator, because every
                 // member has to sign it -- the request itself is a line in this
                 // chat, which is where they answer it.
+                // A subgroup has one more thing to settle than a group does, and
+                // it comes first: the parent's signature over this room's id. The
+                // key state carries that certificate, so it cannot be proposed
+                // until this rung is done -- which is why the order on screen is
+                // the order the steps actually happen in rather than a layout
+                // choice.
+                if (parentChatRoomId != null) {
+                    val certificateFailed = certificateSession?.stage == FrostSigningStage.FAILED
+
+                    when {
+                        isCertified -> Row(
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
+                            Text(
+                                text = stringResource(Res.string.the_parent_group_has_certified_this_subgroup),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+
+                        certificateFailed -> Text(
+                            text = stringResource(Res.string.the_parent_group_could_not_certify_this_subgroup),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        certificateSession != null -> Text(
+                            text = stringResource(
+                                Res.string.the_parent_group_is_certifying_this_subgroup,
+                                certificateSession.threshold,
+                                certificateSession.participantCount
+                            ),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+
+                        else -> Text(
+                            text = stringResource(Res.string.before_the_subgroup_exists_its_parent_signs),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+
+                    // Offered to whoever holds a share of the parent's key, which
+                    // the coordinator does by construction -- being a parent admin
+                    // is how they got here. The other subgroup admins answer it in
+                    // the parent's room, where the proposal lands, so there is
+                    // nothing for them to press here.
+                    if (session.isCoordinator() && !isCertified) {
+                        Button(
+                            onClick = { onProposeBirthCertificate() },
+                            enabled = !isActionPending &&
+                                (certificateSession == null || certificateFailed),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isActionPending) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(Icons.Default.AccountTree, contentDescription = Decorative)
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
+                                Text(text = stringResource(Res.string.ask_the_parent_group_to_certify))
+                            }
+                        }
+                    }
+                }
+
                 val keyStateFailed = keyStateSession?.stage == FrostSigningStage.FAILED
 
                 when {
@@ -567,7 +653,13 @@ private fun RitualProgress(
                             } else {
                                 Icon(Icons.Default.Groups, contentDescription = Decorative)
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
-                                Text(text = stringResource(Res.string.create_the_admins_group))
+                                Text(
+                                    text = if (parentChatRoomId != null) {
+                                        stringResource(Res.string.create_the_subgroup)
+                                    } else {
+                                        stringResource(Res.string.create_the_admins_group)
+                                    }
+                                )
                             }
                         }
                     } else {
@@ -579,7 +671,13 @@ private fun RitualProgress(
                         // this is the safe retry by construction.
                         Button(
                             onClick = { onProposeKeyState() },
-                            enabled = !isActionPending && (keyStateSession == null || keyStateFailed),
+                            // A subgroup's key state carries the certificate and
+                            // is refused without one, so this stays shut until the
+                            // rung above it is done rather than opening a session
+                            // that would throw.
+                            enabled = !isActionPending &&
+                                (keyStateSession == null || keyStateFailed) &&
+                                (parentChatRoomId == null || isCertified),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (isActionPending) {

@@ -5,8 +5,10 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.managers.ChronicleManager
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MarmotGroupCreation
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -101,6 +103,50 @@ class DatabaseChatRepository(
         null
     }
 
+
+    override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> = try {
+        SubgroupManager.subgroupsOf(database, chatRoomId)
+    } catch (e: Throwable) {
+        // A room that shows no subgroups is wrong and survivable; one that will
+        // not open because reading them threw is neither.
+        logger.e("Error reading the subgroups of $chatRoomId", e)
+        emptyList()
+    }
+
+    override suspend fun parentOf(chatRoomId: String): HexKey? = try {
+        SubgroupManager.parentOf(database, chatRoomId)
+    } catch (e: Throwable) {
+        logger.e("Error reading the parent of $chatRoomId", e)
+        null
+    }
+
+    override suspend fun canSign(chatRoomId: String): Boolean = try {
+        FrostSigningManager.canSign(database, chatRoomId)
+    } catch (e: Throwable) {
+        logger.e("Error reading whether $chatRoomId can sign", e)
+        false
+    }
+
+    override suspend fun refuseSubgroup(
+        parentChatRoomId: String,
+        adminPublicKeys: Set<HexKey>,
+        coordinatorPublicKey: HexKey,
+    ): String? = try {
+        val parentRoom = database.chatRoomDao().findChatRoomById(parentChatRoomId)
+            ?: return "Couldn't load this group."
+
+        SubgroupManager.refuseCeremonyRoom(
+            database = database,
+            parentRoom = parentRoom,
+            adminPublicKeys = adminPublicKeys,
+            coordinatorPublicKey = coordinatorPublicKey,
+        )
+    } catch (e: Throwable) {
+        // A refusal that cannot be computed has to refuse. The alternative is
+        // opening a ceremony whose guards never ran.
+        logger.e("Error checking whether $parentChatRoomId can take a subgroup", e)
+        "Couldn't check this subgroup. Please try again."
+    }
     override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
         return database.participantDao().findParticipantByPublicKey(publicKey)
     }
