@@ -70,6 +70,7 @@ import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -91,296 +92,298 @@ fun ActiveProfileScreen(
         ),
     )
 
-    when(val activeProfileUIState = activeProfileViewModel.activeProfileUIState) {
-        ActiveProfileUIState.Error -> {
-            ErrorState()
-        }
-        is ActiveProfileUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(Res.string.profile)
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateBack.invoke()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Back"
+    ScreenStateTransition(activeProfileViewModel.activeProfileUIState) { uiState ->
+    when (val activeProfileUIState = uiState) {
+            ActiveProfileUIState.Error -> {
+                ErrorState()
+            }
+            is ActiveProfileUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = stringResource(Res.string.profile)
                                 )
-                            }
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding)
-                    .readableContent()
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
-                            ) {
-                                ProfileAvatar(
-                                    profile = activeProfileUIState.localNostrEvent.profile,
-                                    publicKey = activeUserPublicKey
-                                )
-
-                                Column {
-                                    activeProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
-                                        Text(
-                                            text = humanReadableNameOrPubkey,
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                    }
-                                    activeProfileUIState.localNostrEvent.profile?.about?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-
-                                    Spacer(
-                                        modifier = Modifier.height(MaterialTheme.spacing.space125)
-                                    )
-
-                                    Text(
-                                        text = activeUserPublicKey.hexToNpubHrp(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125)
-                            ) {
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                TextButton(
+                            },
+                            navigationIcon = {
+                                IconButton(
                                     onClick = {
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Edit profile")
-                                        )
+                                        onNavigateBack.invoke()
                                     }
                                 ) {
                                     Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Edit profile"
-                                    )
-
-                                    Spacer(
-                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                    )
-
-                                    Text(
-                                        stringResource(Res.string.edit_profile)
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Back"
                                     )
                                 }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding)
+                        .readableContent()
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                                ) {
+                                    ProfileAvatar(
+                                        profile = activeProfileUIState.localNostrEvent.profile,
+                                        publicKey = activeUserPublicKey
+                                    )
 
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
+                                    Column {
+                                        activeProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
+                                            Text(
+                                                text = humanReadableNameOrPubkey,
+                                                style = MaterialTheme.typography.titleLarge
+                                            )
+                                        }
+                                        activeProfileUIState.localNostrEvent.profile?.about?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
 
-                                // The list this sits in is otherwise TextButtons --
-                                // edit profile, key packages, change account, profile
-                                // keys, network relays. Two of the seven were filled
-                                // Buttons, which is M3's highest emphasis and is meant
-                                // for one action per screen. Sharing is the useful one,
-                                // so it keeps medium emphasis rather than maximum.
-                                FilledTonalButton(
+                                        Spacer(
+                                            modifier = Modifier.height(MaterialTheme.spacing.space125)
+                                        )
+
+                                        Text(
+                                            text = activeUserPublicKey.hexToNpubHrp(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125)
+                                ) {
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    TextButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ImplementationPendingRoute("Edit profile")
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit profile"
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+
+                                        Text(
+                                            stringResource(Res.string.edit_profile)
+                                        )
+                                    }
+
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    // The list this sits in is otherwise TextButtons --
+                                    // edit profile, key packages, change account, profile
+                                    // keys, network relays. Two of the seven were filled
+                                    // Buttons, which is M3's highest emphasis and is meant
+                                    // for one action per screen. Sharing is the useful one,
+                                    // so it keeps medium emphasis rather than maximum.
+                                    FilledTonalButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ShareProfileRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    nostrEventId = nostrEventId
+                                                )
+                                            )
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.QrCode,
+                                            contentDescription = "QR code"
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+                                        Text(
+                                            stringResource(Res.string.share_profile)
+                                        )
+                                    }
+
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            item {
+                                TextButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ShareProfileRoute(
+                                            KeyPackageManagementRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
                                         )
-                                    },
+                                    }
                                 ) {
+
                                     Icon(
-                                        Icons.Default.QrCode,
-                                        contentDescription = "QR code"
+                                        Icons.Default.Bento,
+                                        contentDescription = "Key packages"
                                     )
 
                                     Spacer(
                                         modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
+
                                     Text(
-                                        stringResource(Res.string.share_profile)
+                                        stringResource(Res.string.key_package_management)
                                     )
                                 }
-
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
                             }
-                        }
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        KeyPackageManagementRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            nostrEventId = nostrEventId
+
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Change account")
                                         )
+                                    }
+                                ) {
+
+                                    Icon(
+                                        Icons.Default.ImportExport,
+                                        contentDescription = "Change profile"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        stringResource(Res.string.change_account)
                                     )
                                 }
-                            ) {
-
-                                Icon(
-                                    Icons.Default.Bento,
-                                    contentDescription = "Key packages"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                )
-
-                                Text(
-                                    stringResource(Res.string.key_package_management)
-                                )
                             }
-                        }
 
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Change account")
+                            item {
+                                TextButton(
+                                    onClick = {
+
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Profile keys")
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Key,
+                                        contentDescription = "Profile keys"
                                     )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.profile_keys))
                                 }
-                            ) {
-
-                                Icon(
-                                    Icons.Default.ImportExport,
-                                    contentDescription = "Change profile"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                )
-
-                                Text(
-                                    stringResource(Res.string.change_account)
-                                )
                             }
-                        }
 
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Network relays")
+                                        )
 
-                        item {
-                            TextButton(
-                                onClick = {
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Hub,
+                                        contentDescription = "Network relays"
+                                    )
 
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Profile keys")
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        stringResource(Res.string.network_relays)
                                     )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Key,
-                                    contentDescription = "Profile keys"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                )
-
-                                Text(stringResource(Res.string.profile_keys))
                             }
-                        }
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Network relays")
+                            item {
+                                // Signing out was the *other* filled Button -- the most
+                                // prominent control on the screen given to its most
+                                // destructive action. It now matches how leaving and
+                                // deleting a group are already treated in
+                                // ChatRoomDetailScreen: a TextButton in the error colour.
+                                TextButton(
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Sign out")
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Logout,
+                                        contentDescription = "Logout"
                                     )
 
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Hub,
-                                    contentDescription = "Network relays"
-                                )
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
 
-                                Spacer(
-                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                )
-
-                                Text(
-                                    stringResource(Res.string.network_relays)
-                                )
-                            }
-                        }
-
-                        item {
-                            // Signing out was the *other* filled Button -- the most
-                            // prominent control on the screen given to its most
-                            // destructive action. It now matches how leaving and
-                            // deleting a group are already treated in
-                            // ChatRoomDetailScreen: a TextButton in the error colour.
-                            TextButton(
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                ),
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Sign out")
+                                    Text(
+                                        stringResource(Res.string.sign_out)
                                     )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Logout,
-                                    contentDescription = "Logout"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                )
-
-                                Text(
-                                    stringResource(Res.string.sign_out)
-                                )
                             }
                         }
                     }
                 }
             }
-        }
-        ActiveProfileUIState.Loading -> {
-            LoadingDataIndicator()
+            ActiveProfileUIState.Loading -> {
+                LoadingDataIndicator()
 
-            LaunchedEffect(true) {
-                activeProfileViewModel.loadNostrFeed()
+                LaunchedEffect(true) {
+                    activeProfileViewModel.loadNostrFeed()
+                }
             }
-        }
-        ActiveProfileUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+            ActiveProfileUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+                }
             }
         }
     }

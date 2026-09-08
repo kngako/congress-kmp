@@ -65,6 +65,7 @@ import mantra.composeapp.generated.resources.translation
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,163 +97,165 @@ fun TranslateChunkScreen(
         )
     )
 
-    when (val translateChunkUIState = translateChunkViewModel.translateChunkUIState) {
-        is TranslateChunkUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
-                Text(text = translateChunkUIState.message)
+    ScreenStateTransition(translateChunkViewModel.translateChunkUIState) { uiState ->
+    when (val translateChunkUIState = uiState) {
+            is TranslateChunkUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = translateChunkUIState.message)
+                }
             }
-        }
 
-        is TranslateChunkUIState.Loaded -> {
-            val translationFieldState = rememberTextFieldState(translateChunkUIState.existingTranslationText)
+            is TranslateChunkUIState.Loaded -> {
+                val translationFieldState = rememberTextFieldState(translateChunkUIState.existingTranslationText)
 
-            // M3 gives a FAB no `enabled`, so borrow the disabled colours every
-            // other button in the app uses rather than inventing a shade here.
-            val buttonColors = ButtonDefaults.buttonColors()
+                // M3 gives a FAB no `enabled`, so borrow the disabled colours every
+                // other button in the app uses rather than inventing a shade here.
+                val buttonColors = ButtonDefaults.buttonColors()
 
-            // imePadding: this screen has a text field, and without it the software
-            // keyboard covers whatever is being typed into.
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                modifier = Modifier.imePadding(),
-                topBar = {
-                    TopAppBar(
-                        title = { Text(stringResource(Res.string.translate_chunk)) },
-                        navigationIcon = {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        },
-                    )
-                },
-                bottomBar = {
-                    BottomAppBar(
-                        actions = {},
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                modifier = if (translateChunkUIState.canSign) {
-                                    Modifier
-                                } else {
-                                    // Looking unavailable is not being unavailable:
-                                    // without this a screen reader still announces
-                                    // a button it is happy to press.
-                                    Modifier.semantics { disabled() }
-                                },
-                                containerColor = if (translateChunkUIState.canSign) {
-                                    FloatingActionButtonDefaults.containerColor
-                                } else {
-                                    buttonColors.disabledContainerColor
-                                },
-                                contentColor = if (translateChunkUIState.canSign) {
-                                    contentColorFor(FloatingActionButtonDefaults.containerColor)
-                                } else {
-                                    buttonColors.disabledContentColor
-                                },
-                                onClick = {
-                                    if (!translateChunkUIState.canSign) return@ExtendedFloatingActionButton
-
-                                    translateChunkViewModel.proposeTranslation(
-                                        localChatRoom = translateChunkUIState.localChatRoom,
-                                        originalChunk = translateChunkUIState.originalChunk,
-                                        translationField = translationFieldState,
-                                        onSuccess = { sessionId ->
-                                            // Onto the session rather than back to
-                                            // the chapter table. Nothing has been
-                                            // translated yet -- the chunk is
-                                            // translated when enough members sign --
-                                            // so a table still showing it untranslated
-                                            // would read as a failure.
-                                            onNavigateToRouteAndPopUpInclusive.invoke(
-                                                FrostSigningRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId,
-                                                    sessionId = sessionId
-                                                )
-                                            )
-                                        },
-                                        onFailure = {
-                                            onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed translation")
-                                            )
-                                        }
+                // imePadding: this screen has a text field, and without it the software
+                // keyboard covers whatever is being typed into.
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    modifier = Modifier.imePadding(),
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(stringResource(Res.string.translate_chunk)) },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
                                     )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Propose translation"
-                                )
-                                Text(stringResource(Res.string.propose_translation))
+                            },
+                        )
+                    },
+                    bottomBar = {
+                        BottomAppBar(
+                            actions = {},
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    modifier = if (translateChunkUIState.canSign) {
+                                        Modifier
+                                    } else {
+                                        // Looking unavailable is not being unavailable:
+                                        // without this a screen reader still announces
+                                        // a button it is happy to press.
+                                        Modifier.semantics { disabled() }
+                                    },
+                                    containerColor = if (translateChunkUIState.canSign) {
+                                        FloatingActionButtonDefaults.containerColor
+                                    } else {
+                                        buttonColors.disabledContainerColor
+                                    },
+                                    contentColor = if (translateChunkUIState.canSign) {
+                                        contentColorFor(FloatingActionButtonDefaults.containerColor)
+                                    } else {
+                                        buttonColors.disabledContentColor
+                                    },
+                                    onClick = {
+                                        if (!translateChunkUIState.canSign) return@ExtendedFloatingActionButton
+
+                                        translateChunkViewModel.proposeTranslation(
+                                            localChatRoom = translateChunkUIState.localChatRoom,
+                                            originalChunk = translateChunkUIState.originalChunk,
+                                            translationField = translationFieldState,
+                                            onSuccess = { sessionId ->
+                                                // Onto the session rather than back to
+                                                // the chapter table. Nothing has been
+                                                // translated yet -- the chunk is
+                                                // translated when enough members sign --
+                                                // so a table still showing it untranslated
+                                                // would read as a failure.
+                                                onNavigateToRouteAndPopUpInclusive.invoke(
+                                                    FrostSigningRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId,
+                                                        sessionId = sessionId
+                                                    )
+                                                )
+                                            },
+                                            onFailure = {
+                                                onNavigateToRoute.invoke(
+                                                    ImplementationPendingRoute("Failed translation")
+                                                )
+                                            }
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Propose translation"
+                                    )
+                                    Text(stringResource(Res.string.propose_translation))
+                                }
                             }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .readableContent()
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(MaterialTheme.spacing.space250),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                    ) {
+                        if (!translateChunkUIState.canSign) {
+                            Text(
+                                text = "This group has no shared key, so it cannot sign a " +
+                                    "translation. Run a shared key ceremony first.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .readableContent()
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(MaterialTheme.spacing.space250),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
-                ) {
-                    if (!translateChunkUIState.canSign) {
+
                         Text(
-                            text = "This group has no shared key, so it cannot sign a " +
-                                "translation. Run a shared key ceremony first.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            text = stringResource(Res.string.original),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Card {
+                            Text(
+                                modifier = Modifier.padding(MaterialTheme.spacing.containerPadding),
+                                text = translateChunkUIState.originalChunk.text,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Text(
+                            text = stringResource(Res.string.translation),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        OutlinedTextField(
+                            modifier = Modifier.fillMaxWidth(),
+                            state = translationFieldState,
+                            label = { Text(stringResource(Res.string.translated_text)) },
+                            placeholder = { Text(stringResource(Res.string.enter_the_translation_for_this_chunk)) },
                         )
                     }
-
-                    Text(
-                        text = stringResource(Res.string.original),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Card {
-                        Text(
-                            modifier = Modifier.padding(MaterialTheme.spacing.containerPadding),
-                            text = translateChunkUIState.originalChunk.text,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(Res.string.translation),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    OutlinedTextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        state = translationFieldState,
-                        label = { Text(stringResource(Res.string.translated_text)) },
-                        placeholder = { Text(stringResource(Res.string.enter_the_translation_for_this_chunk)) },
-                    )
                 }
             }
-        }
 
-        TranslateChunkUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = stringResource(Res.string.translate_chunk),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            TranslateChunkUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.translate_chunk),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }

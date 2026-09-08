@@ -74,6 +74,7 @@ import press.mantra.compose.ui.theme.breakpoint
 import press.mantra.compose.ui.theme.listPaneWidthFor
 import press.mantra.compose.ui.theme.readableContent
 import mantra.composeapp.generated.resources.pick_a_conversation_to_read_it_here
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -126,213 +127,215 @@ fun HomeScreen(
         ),
     )
 
-    when(val homeScreenUIState = homeScreenViewModel.homeScreenUIState) {
-        HomeScreenUIState.Error -> {
-            Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    ErrorState()
-                }
-            }
-
-        }
-        is HomeScreenUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                modifier = Modifier,
-                topBar = {
-                    // No colour override. It was `containerColor = primaryContainer` with
-                    // `titleContentColor = primary`, which in the light scheme is #000000
-                    // on #1B1B1B -- 1.22:1, a black title on a near-black bar. The
-                    // default is `surface`/`onSurface` and needs no help.
-                    TopAppBar(
-                        title = {
-                            // "Mantra". The launcher label, the desktop window title, the
-                            // landing screen and the package name all say so; this bar was
-                            // the last place still saying "Torch". `UserAgent.APP_NAME` is
-                            // the other, and is left alone -- it goes on the wire to relay
-                            // operators, so it is a network identity question rather than
-                            // a content one.
-                            Text(stringResource(Res.string.mantra))
-                        },
-                        // No navigation icon and no actions. The avatar in the leading
-                        // slot and the search icon in the trailing one were the app's only
-                        // two peer surfaces, and they are now items in the navigation
-                        // component -- a bar on a phone, a rail on a wide window. Leaving
-                        // them here as well would be two routes to one destination, which
-                        // is the thing M3's "swap only functionally equivalent components"
-                        // caution is about.
-                    )
-
-                },
-                floatingActionButton = {
-                    // Only while there is one pane. With two, the scaffold's FAB slot is
-                    // the bottom-right of the *window*, which is on top of the
-                    // transcript's send button; M3 puts a list-detail layout's primary
-                    // action in the list pane, and so does the branch below.
-                    if (listPaneWidth == null) NewChatButton { showBottomSheet = true }
-                }
-            ) { innerPadding ->
-                @Composable
-                fun ChatRoomListPane(modifier: Modifier) = Column(
-                    modifier = modifier
-                ) {
-                    PrimaryScrollableTabRow(
-                        modifier = Modifier.padding(MaterialTheme.spacing.space125),
-                        edgePadding = 10.dp,
-                        selectedTabIndex = homeScreenViewModel.pagerState.currentPage,
+    ScreenStateTransition(homeScreenViewModel.homeScreenUIState) { uiState ->
+    when (val homeScreenUIState = uiState) {
+            HomeScreenUIState.Error -> {
+                Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
                     ) {
-                        HomeScreenType.entries.forEachIndexed { index, destination ->
-                            Tab(
-                                selected = homeScreenViewModel.pagerState.currentPage == index,
-                                onClick = {
-                                    scope.launch {
-                                        homeScreenViewModel.pagerState.animateScrollToPage(destination.ordinal)
+                        ErrorState()
+                    }
+                }
+
+            }
+            is HomeScreenUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    modifier = Modifier,
+                    topBar = {
+                        // No colour override. It was `containerColor = primaryContainer` with
+                        // `titleContentColor = primary`, which in the light scheme is #000000
+                        // on #1B1B1B -- 1.22:1, a black title on a near-black bar. The
+                        // default is `surface`/`onSurface` and needs no help.
+                        TopAppBar(
+                            title = {
+                                // "Mantra". The launcher label, the desktop window title, the
+                                // landing screen and the package name all say so; this bar was
+                                // the last place still saying "Torch". `UserAgent.APP_NAME` is
+                                // the other, and is left alone -- it goes on the wire to relay
+                                // operators, so it is a network identity question rather than
+                                // a content one.
+                                Text(stringResource(Res.string.mantra))
+                            },
+                            // No navigation icon and no actions. The avatar in the leading
+                            // slot and the search icon in the trailing one were the app's only
+                            // two peer surfaces, and they are now items in the navigation
+                            // component -- a bar on a phone, a rail on a wide window. Leaving
+                            // them here as well would be two routes to one destination, which
+                            // is the thing M3's "swap only functionally equivalent components"
+                            // caution is about.
+                        )
+
+                    },
+                    floatingActionButton = {
+                        // Only while there is one pane. With two, the scaffold's FAB slot is
+                        // the bottom-right of the *window*, which is on top of the
+                        // transcript's send button; M3 puts a list-detail layout's primary
+                        // action in the list pane, and so does the branch below.
+                        if (listPaneWidth == null) NewChatButton { showBottomSheet = true }
+                    }
+                ) { innerPadding ->
+                    @Composable
+                    fun ChatRoomListPane(modifier: Modifier) = Column(
+                        modifier = modifier
+                    ) {
+                        PrimaryScrollableTabRow(
+                            modifier = Modifier.padding(MaterialTheme.spacing.space125),
+                            edgePadding = 10.dp,
+                            selectedTabIndex = homeScreenViewModel.pagerState.currentPage,
+                        ) {
+                            HomeScreenType.entries.forEachIndexed { index, destination ->
+                                Tab(
+                                    selected = homeScreenViewModel.pagerState.currentPage == index,
+                                    onClick = {
+                                        scope.launch {
+                                            homeScreenViewModel.pagerState.animateScrollToPage(destination.ordinal)
+                                        }
+                                    },
+                                    text = {
+                                        Text(
+                                            text = destination.name,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
-                                },
-                                text = {
-                                    Text(
-                                        text = destination.name,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            HorizontalPager(
+                                state = homeScreenViewModel.pagerState,
+                            ) { pageIndex ->
+                                when (val homeScreenTypeType = HomeScreenType.entries[pageIndex]) {
+                                    HomeScreenType.Messages -> {
+                                        val chatRoomListViewModel: ChatRoomListViewModel = viewModel(
+                                            key = homeScreenTypeType.name,
+                                            factory = ChatRoomListViewModel.factory(
+                                                initialChatRoomListUIState = press.mantra.compose.ui.view.state.ChatRoomListUIState.Loading,
+                                                publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
+                                                nostrRepository = nostrRepository,
+                                                chatRepository = chatRepository
+                                            ),
+                                        )
+
+                                        key(true) {
+                                            chatRoomListViewModel.RenderFeed(
+                                                onNavigateToDirectMessageDetail = onOpenChatRoom
+                                            )
+                                        }
+
+                                        key(true) {
+                                            chatRoomListViewModel.initiate()
+                                        }
+                                    }
                                 }
+                            }
+                        }
+                    }
+
+                    if (listPaneWidth == null) {
+                        // Compact and medium: the list is the screen, and a room is a route.
+                        // Byte for byte the layout this screen has always had.
+                        ChatRoomListPane(
+                            Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                        )
+                    } else {
+                        // Expanded and up: the list keeps a fixed width and the room fills the
+                        // rest. No `readableContent()` on the pair -- capping the two panes
+                        // together to one column's measure is the opposite of what a second
+                        // pane is for. Each pane holds its own content to a measure instead,
+                        // and `ChatRoomMessagingScreen` already does.
+                        Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .width(listPaneWidth)
+                                    .fillMaxHeight()
+                                    // The pane's width is the one thing about this layout that
+                                    // is a number rather than a rule, and the only way to check
+                                    // a number is to measure it in a composition.
+                                    .testTag(ChatListPaneTag)
+                            ) {
+                                ChatRoomListPane(Modifier.fillMaxSize())
+
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(MaterialTheme.spacing.containerPadding)
+                                ) {
+                                    NewChatButton { showBottomSheet = true }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.paneGap))
+
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                val chatRoomId = selectedChatRoomId
+                                if (chatRoomId == null) {
+                                    EmptyState(
+                                        message = stringResource(Res.string.pick_a_conversation_to_read_it_here)
+                                    )
+                                } else {
+                                    // Keyed on the room, so switching rooms rebuilds the
+                                    // screen's view models rather than feeding a new id to
+                                    // ones already subscribed to another room's relay.
+                                    key(chatRoomId) {
+                                    ChatRoomMessagingScreen(
+                                        activeUserPublicKey = activeUserPublicKey,
+                                        chatRoomId = chatRoomId,
+                                        relayHint = selectedRelayHint,
+                                        nostrRepository = nostrRepository,
+                                        chatRepository = chatRepository,
+                                        frostSigningRepository = frostSigningRepository,
+                                        // "Replace what is on screen" is a route push on a
+                                        // phone and a change of selection here. It fires when
+                                        // a conversation that did not exist yet has just been
+                                        // created and has an id at last.
+                                        onNavigateToRouteAndPopUpInclusive = onOpenChatRoom,
+                                        onNavigateToRoute = onNavigateToRoute,
+                                    )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (showBottomSheet) {
+                        NewChatBottomSheetDialog(
+                            scope = scope,
+                            sheetState = sheetState,
+                            onSetShowBottomSheetUpdate = { toggle ->
+                                showBottomSheet = toggle
+                            },
+                            onNavigateToRoute = onNavigateToRoute,
+                            onNavigateToChatRoomCreation = onNavigateToChatRoomCreation,
+                            onStartDirectMessageChatWithNpub = {
+                                openNpubDialog.value = true
+                            }
+                        )
+                    }
+
+                    when {
+                        openNpubDialog.value -> {
+                            StartDirectMessageToNpubOrNip05Dialog(
+                                activeUserPublicKey = activeUserPublicKey,
+                                scope = scope,
+                                toggleOpenDialogSetting = {
+                                    openNpubDialog.value = false
+                                },
+                                onNavigateToRoute = onNavigateToRoute
                             )
                         }
                     }
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        HorizontalPager(
-                            state = homeScreenViewModel.pagerState,
-                        ) { pageIndex ->
-                            when (val homeScreenTypeType = HomeScreenType.entries[pageIndex]) {
-                                HomeScreenType.Messages -> {
-                                    val chatRoomListViewModel: ChatRoomListViewModel = viewModel(
-                                        key = homeScreenTypeType.name,
-                                        factory = ChatRoomListViewModel.factory(
-                                            initialChatRoomListUIState = press.mantra.compose.ui.view.state.ChatRoomListUIState.Loading,
-                                            publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey,
-                                            nostrRepository = nostrRepository,
-                                            chatRepository = chatRepository
-                                        ),
-                                    )
-
-                                    key(true) {
-                                        chatRoomListViewModel.RenderFeed(
-                                            onNavigateToDirectMessageDetail = onOpenChatRoom
-                                        )
-                                    }
-
-                                    key(true) {
-                                        chatRoomListViewModel.initiate()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (listPaneWidth == null) {
-                    // Compact and medium: the list is the screen, and a room is a route.
-                    // Byte for byte the layout this screen has always had.
-                    ChatRoomListPane(
-                        Modifier.padding(innerPadding).readableContent().fillMaxSize()
-                    )
-                } else {
-                    // Expanded and up: the list keeps a fixed width and the room fills the
-                    // rest. No `readableContent()` on the pair -- capping the two panes
-                    // together to one column's measure is the opposite of what a second
-                    // pane is for. Each pane holds its own content to a measure instead,
-                    // and `ChatRoomMessagingScreen` already does.
-                    Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                        Box(
-                            modifier = Modifier
-                                .width(listPaneWidth)
-                                .fillMaxHeight()
-                                // The pane's width is the one thing about this layout that
-                                // is a number rather than a rule, and the only way to check
-                                // a number is to measure it in a composition.
-                                .testTag(ChatListPaneTag)
-                        ) {
-                            ChatRoomListPane(Modifier.fillMaxSize())
-
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(MaterialTheme.spacing.containerPadding)
-                            ) {
-                                NewChatButton { showBottomSheet = true }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.paneGap))
-
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            val chatRoomId = selectedChatRoomId
-                            if (chatRoomId == null) {
-                                EmptyState(
-                                    message = stringResource(Res.string.pick_a_conversation_to_read_it_here)
-                                )
-                            } else {
-                                // Keyed on the room, so switching rooms rebuilds the
-                                // screen's view models rather than feeding a new id to
-                                // ones already subscribed to another room's relay.
-                                key(chatRoomId) {
-                                ChatRoomMessagingScreen(
-                                    activeUserPublicKey = activeUserPublicKey,
-                                    chatRoomId = chatRoomId,
-                                    relayHint = selectedRelayHint,
-                                    nostrRepository = nostrRepository,
-                                    chatRepository = chatRepository,
-                                    frostSigningRepository = frostSigningRepository,
-                                    // "Replace what is on screen" is a route push on a
-                                    // phone and a change of selection here. It fires when
-                                    // a conversation that did not exist yet has just been
-                                    // created and has an id at last.
-                                    onNavigateToRouteAndPopUpInclusive = onOpenChatRoom,
-                                    onNavigateToRoute = onNavigateToRoute,
-                                )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (showBottomSheet) {
-                    NewChatBottomSheetDialog(
-                        scope = scope,
-                        sheetState = sheetState,
-                        onSetShowBottomSheetUpdate = { toggle ->
-                            showBottomSheet = toggle
-                        },
-                        onNavigateToRoute = onNavigateToRoute,
-                        onNavigateToChatRoomCreation = onNavigateToChatRoomCreation,
-                        onStartDirectMessageChatWithNpub = {
-                            openNpubDialog.value = true
-                        }
-                    )
-                }
-
-                when {
-                    openNpubDialog.value -> {
-                        StartDirectMessageToNpubOrNip05Dialog(
-                            activeUserPublicKey = activeUserPublicKey,
-                            scope = scope,
-                            toggleOpenDialogSetting = {
-                                openNpubDialog.value = false
-                            },
-                            onNavigateToRoute = onNavigateToRoute
-                        )
-                    }
                 }
             }
-        }
-        HomeScreenUIState.Loading -> {
-            LoadingDataIndicator()
+            HomeScreenUIState.Loading -> {
+                LoadingDataIndicator()
+            }
         }
     }
 

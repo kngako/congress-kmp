@@ -70,6 +70,7 @@ import mantra.composeapp.generated.resources.propose_dialect
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -96,233 +97,235 @@ fun AddDialectScreen(
         )
     )
 
-    when (val addDialectUIState = addDialectViewModel.addDialectUIState) {
-        is AddDialectUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(MaterialTheme.spacing.space600)
-                )
-                Text(
-                    text = addDialectUIState.message,
-                )
-            }
-        }
-        is AddDialectUIState.Loaded -> {
-            val nameFieldState = rememberTextFieldState()
-            val countryFieldState = rememberTextFieldState()
-            val languageFieldState = rememberTextFieldState()
-
-            // M3 gives a FAB no `enabled`, so borrow the disabled colours every
-            // other button in the app uses rather than inventing a shade here.
-            val buttonColors = ButtonDefaults.buttonColors()
-
-            // imePadding: this screen has a text field, and without it the software
-            // keyboard covers whatever is being typed into.
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                modifier = Modifier.imePadding(),
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            addDialectUIState.localChatRoom.RenderChatRoomTitleText()
-                        },
-                        actions = {
-
-                        }
+    ScreenStateTransition(addDialectViewModel.addDialectUIState) { uiState ->
+    when (val addDialectUIState = uiState) {
+            is AddDialectUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
                     )
-                },
-                bottomBar = {
-                    BottomAppBar(
-                        actions = {},
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                modifier = if (addDialectUIState.canSign) {
-                                    Modifier
-                                } else {
-                                    // Looking unavailable is not being unavailable.
-                                    Modifier.semantics { disabled() }
-                                },
-                                containerColor = if (addDialectUIState.canSign) {
-                                    FloatingActionButtonDefaults.containerColor
-                                } else {
-                                    buttonColors.disabledContainerColor
-                                },
-                                contentColor = if (addDialectUIState.canSign) {
-                                    contentColorFor(FloatingActionButtonDefaults.containerColor)
-                                } else {
-                                    buttonColors.disabledContentColor
-                                },
-                                onClick = {
-                                    if (!addDialectUIState.canSign) return@ExtendedFloatingActionButton
-
-                                    addDialectViewModel.addDialect(
-                                        localChatRoom = addDialectUIState.localChatRoom,
-                                        nameField = nameFieldState,
-                                        countryField = countryFieldState,
-                                        languageField = languageFieldState,
-                                        onSuccess = { sessionId ->
-                                            // Onto the session rather than back to
-                                            // the group. Nothing has been created
-                                            // yet -- the dialect appears when enough
-                                            // members sign -- so landing on the list
-                                            // it is not in would read as a failure.
-                                            onNavigateToRouteAndPopUpInclusive.invoke(
-                                                FrostSigningRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId,
-                                                    sessionId = sessionId
-                                                )
-                                            )
-                                        },
-                                        onFailure = {
-                                            onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed dialect")
-                                            )
-                                        }
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Propose dialect"
-                                )
-                                Text(stringResource(Res.string.propose_dialect))
-                            }
-                        }
+                    Text(
+                        text = addDialectUIState.message,
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(stringResource(Res.string.add_a_dialect_the_group_can_translate_into))
+            }
+            is AddDialectUIState.Loaded -> {
+                val nameFieldState = rememberTextFieldState()
+                val countryFieldState = rememberTextFieldState()
+                val languageFieldState = rememberTextFieldState()
 
-                        if (!addDialectUIState.canSign) {
-                            Text(
-                                text = "This group has no shared key, so it cannot sign a " +
-                                    "dialect into existence. Run a shared key ceremony first.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
+                // M3 gives a FAB no `enabled`, so borrow the disabled colours every
+                // other button in the app uses rather than inventing a shade here.
+                val buttonColors = ButtonDefaults.buttonColors()
+
+                // imePadding: this screen has a text field, and without it the software
+                // keyboard covers whatever is being typed into.
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    modifier = Modifier.imePadding(),
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                addDialectUIState.localChatRoom.RenderChatRoomTitleText()
+                            },
+                            actions = {
+
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        BottomAppBar(
+                            actions = {},
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    modifier = if (addDialectUIState.canSign) {
+                                        Modifier
+                                    } else {
+                                        // Looking unavailable is not being unavailable.
+                                        Modifier.semantics { disabled() }
+                                    },
+                                    containerColor = if (addDialectUIState.canSign) {
+                                        FloatingActionButtonDefaults.containerColor
+                                    } else {
+                                        buttonColors.disabledContainerColor
+                                    },
+                                    contentColor = if (addDialectUIState.canSign) {
+                                        contentColorFor(FloatingActionButtonDefaults.containerColor)
+                                    } else {
+                                        buttonColors.disabledContentColor
+                                    },
+                                    onClick = {
+                                        if (!addDialectUIState.canSign) return@ExtendedFloatingActionButton
+
+                                        addDialectViewModel.addDialect(
+                                            localChatRoom = addDialectUIState.localChatRoom,
+                                            nameField = nameFieldState,
+                                            countryField = countryFieldState,
+                                            languageField = languageFieldState,
+                                            onSuccess = { sessionId ->
+                                                // Onto the session rather than back to
+                                                // the group. Nothing has been created
+                                                // yet -- the dialect appears when enough
+                                                // members sign -- so landing on the list
+                                                // it is not in would read as a failure.
+                                                onNavigateToRouteAndPopUpInclusive.invoke(
+                                                    FrostSigningRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId,
+                                                        sessionId = sessionId
+                                                    )
+                                                )
+                                            },
+                                            onFailure = {
+                                                onNavigateToRoute.invoke(
+                                                    ImplementationPendingRoute("Failed dialect")
+                                                )
+                                            }
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Propose dialect"
+                                    )
+                                    Text(stringResource(Res.string.propose_dialect))
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(stringResource(Res.string.add_a_dialect_the_group_can_translate_into))
+
+                            if (!addDialectUIState.canSign) {
+                                Text(
+                                    text = "This group has no shared key, so it cannot sign a " +
+                                        "dialect into existence. Run a shared key ceremony first.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = nameFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Title,
+                                        contentDescription = "Name of the dialect"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.dialect_name)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_sesotho)
+                                    )
+                                },
+                            )
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = countryFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Public,
+                                        contentDescription = "Country of the dialect"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.country)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_lesotho)
+                                    )
+                                },
+                            )
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = languageFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Translate,
+                                        contentDescription = "Language of the dialect"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.language)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_st)
+                                    )
+                                },
                             )
                         }
-
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = nameFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Title,
-                                    contentDescription = "Name of the dialect"
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.dialect_name)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_sesotho)
-                                )
-                            },
-                        )
-
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = countryFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Public,
-                                    contentDescription = "Country of the dialect"
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.country)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_lesotho)
-                                )
-                            },
-                        )
-
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = languageFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Translate,
-                                    contentDescription = "Language of the dialect"
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.language)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_st)
-                                )
-                            },
-                        )
                     }
                 }
             }
-        }
-        AddDialectUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    MaterialTheme.spacing.space250
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
+            AddDialectUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(Res.string.add_dialect),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.add_dialect),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }

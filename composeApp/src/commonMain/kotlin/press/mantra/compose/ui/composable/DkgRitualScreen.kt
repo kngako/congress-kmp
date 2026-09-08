@@ -102,6 +102,7 @@ import mantra.composeapp.generated.resources.shared_key_for
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -134,177 +135,179 @@ fun DkgRitualScreen(
         )
     )
 
-    when (val dkgRitualUIState = dkgRitualViewModel.dkgRitualUIState) {
-        is DkgRitualUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
-                Text(text = dkgRitualUIState.message, textAlign = TextAlign.Center)
+    ScreenStateTransition(dkgRitualViewModel.dkgRitualUIState) { uiState ->
+    when (val dkgRitualUIState = uiState) {
+            is DkgRitualUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = dkgRitualUIState.message, textAlign = TextAlign.Center)
+                }
             }
-        }
-        is DkgRitualUIState.Loaded -> {
-            val session = dkgRitualUIState.session
-            val participantCount = dkgRitualUIState.participantCount
-            val canStartRitual = dkgRitualViewModel.canStartRitual()
-            val isActionPending = dkgRitualViewModel.isActionPending.value
+            is DkgRitualUIState.Loaded -> {
+                val session = dkgRitualUIState.session
+                val participantCount = dkgRitualUIState.participantCount
+                val canStartRitual = dkgRitualViewModel.canStartRitual()
+                val isActionPending = dkgRitualViewModel.isActionPending.value
 
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(Res.string.shared_key_for, dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    )
-                },
-                bottomBar = {
-                    val pending = dkgRitualUIState.pendingApproval
-
-                    // The ceremony is stopped, waiting on this member, and will stay
-                    // stopped until they act -- so this outranks everything else the
-                    // bar could offer.
-                    if (pending != null) {
-                        BottomAppBar(
-                            floatingActionButton = {
-                                ExtendedFloatingActionButton(
-                                    onClick = {
-                                        onNavigateToRoute(
-                                            when (pending) {
-                                                DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                                DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                                DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId
-                                                )
-                                            }
-                                        )
-                                    }
-                                ) {
-                                    Icon(Icons.Default.Key, contentDescription = Decorative)
-                                    Text(
-                                        text = when (pending) {
-                                            DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
-                                            DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
-                                            DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
-                                        }
-                                    )
-                                }
-                            },
-                            actions = {}
-                        )
-
-                        return@Scaffold
-                    }
-
-                    // Any member can open a ritual — the coordinator has no say in
-                    // the key — but only when there isn't one already running.
-                    if (canStartRitual) {
-                        BottomAppBar(
-                            floatingActionButton = {
-                                ExtendedFloatingActionButton(
-                                    onClick = { dkgRitualViewModel.startRitual() }
-                                ) {
-                                    if (isActionPending) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                                    } else {
-                                        Icon(Icons.Default.Key, contentDescription = "Start")
-                                    }
-
-                                    Text(
-                                        text = if (session == null) stringResource(Res.string.start_key_ceremony) else stringResource(Res.string.try_again)
-                                    )
-                                }
-                            },
-                            actions = {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
                                 Text(
-                                    modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
-                                    text = stringResource(Res.string.of, dkgRitualViewModel.threshold.value, participantCount),
-                                    style = MaterialTheme.typography.labelLarge
+                                    text = stringResource(Res.string.shared_key_for, dkgRitualUIState.localChatRoom.chatRoom.subject ?: "this group"),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         )
-                    }
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .readableContent()
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(MaterialTheme.spacing.space125),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
-                ) {
-                    if (session == null) {
-                        Text(
-                            text = stringResource(Res.string.the_group_can_hold_one_key_together_split_so),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    },
+                    bottomBar = {
+                        val pending = dkgRitualUIState.pendingApproval
 
-                        Text(
-                            text = stringResource(Res.string.everyone_has_to_be_online_at_the_same_time, participantCount),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        if (canStartRitual) {
-                            QuorumStepper(
-                                threshold = dkgRitualViewModel.threshold.value,
-                                participantCount = participantCount,
-                                quorumRange = dkgRitualViewModel.quorumRange(),
-                                onThresholdChange = dkgRitualViewModel::setThreshold
+                        // The ceremony is stopped, waiting on this member, and will stay
+                        // stopped until they act -- so this outranks everything else the
+                        // bar could offer.
+                        if (pending != null) {
+                            BottomAppBar(
+                                floatingActionButton = {
+                                    ExtendedFloatingActionButton(
+                                        onClick = {
+                                            onNavigateToRoute(
+                                                when (pending) {
+                                                    DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                    DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                    DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Key, contentDescription = Decorative)
+                                        Text(
+                                            text = when (pending) {
+                                                DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
+                                                DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
+                                                DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
+                                            }
+                                        )
+                                    }
+                                },
+                                actions = {}
                             )
-                        } else {
-                            Text(
-                                text = "A shared key needs at least " +
-                                    "${ChillDkgRitualManager.MINIMUM_PARTICIPANTS} members to split it between.",
-                                style = MaterialTheme.typography.labelLarge
+
+                            return@Scaffold
+                        }
+
+                        // Any member can open a ritual — the coordinator has no say in
+                        // the key — but only when there isn't one already running.
+                        if (canStartRitual) {
+                            BottomAppBar(
+                                floatingActionButton = {
+                                    ExtendedFloatingActionButton(
+                                        onClick = { dkgRitualViewModel.startRitual() }
+                                    ) {
+                                        if (isActionPending) {
+                                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                        } else {
+                                            Icon(Icons.Default.Key, contentDescription = "Start")
+                                        }
+
+                                        Text(
+                                            text = if (session == null) stringResource(Res.string.start_key_ceremony) else stringResource(Res.string.try_again)
+                                        )
+                                    }
+                                },
+                                actions = {
+                                    Text(
+                                        modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
+                                        text = stringResource(Res.string.of, dkgRitualViewModel.threshold.value, participantCount),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
                             )
                         }
-                    } else {
-                        RitualProgress(
-                            session = session,
-                            participantCount = participantCount,
-                            activeUserPublicKey = activeUserPublicKey,
-                            members = dkgRitualUIState.ritualMembers,
-                            hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
-                            round1Participants = dkgRitualUIState.round1Participants,
-                            round2Participants = dkgRitualUIState.round2Participants,
-                            isActionPending = isActionPending,
-                            adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
-                            onCreateAdminGroup = {
-                                dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .readableContent()
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(MaterialTheme.spacing.space125),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                    ) {
+                        if (session == null) {
+                            Text(
+                                text = stringResource(Res.string.the_group_can_hold_one_key_together_split_so),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Text(
+                                text = stringResource(Res.string.everyone_has_to_be_online_at_the_same_time, participantCount),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            if (canStartRitual) {
+                                QuorumStepper(
+                                    threshold = dkgRitualViewModel.threshold.value,
+                                    participantCount = participantCount,
+                                    quorumRange = dkgRitualViewModel.quorumRange(),
+                                    onThresholdChange = dkgRitualViewModel::setThreshold
+                                )
+                            } else {
+                                Text(
+                                    text = "A shared key needs at least " +
+                                        "${ChillDkgRitualManager.MINIMUM_PARTICIPANTS} members to split it between.",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
                             }
-                        )
+                        } else {
+                            RitualProgress(
+                                session = session,
+                                participantCount = participantCount,
+                                activeUserPublicKey = activeUserPublicKey,
+                                members = dkgRitualUIState.ritualMembers,
+                                hostKeyParticipants = dkgRitualUIState.hostKeyParticipants,
+                                round1Participants = dkgRitualUIState.round1Participants,
+                                round2Participants = dkgRitualUIState.round2Participants,
+                                isActionPending = isActionPending,
+                                adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
+                                onCreateAdminGroup = {
+                                    dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
-        DkgRitualUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = stringResource(Res.string.shared_key),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            DkgRitualUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.shared_key),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }

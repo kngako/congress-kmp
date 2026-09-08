@@ -49,6 +49,7 @@ import mantra.composeapp.generated.resources.to_join_the_chat_room
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -74,132 +75,134 @@ fun AddMemberToChatRoomConfirmationScreen(
         )
     )
 
-    when (val addMemberToChatRoomConfirmationUIState = addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) {
-        is AddMemberToChatRoomConfirmationUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(MaterialTheme.spacing.space600)
-                )
-                Text(
-                    text = addMemberToChatRoomConfirmationUIState.message,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        is AddMemberToChatRoomConfirmationUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-//                topBar = {
-//                    TopAppBar(
-//                        title = {
-//                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
-//                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
-//                            } else {
-//                                "Invite new member to chat"
-//                            }
-//                            Text(
-//                                text = title,
-//                            )
-//                        },
-//                        actions = {
-//                        }
-//                    )
-//                }
-                bottomBar = {
-                    BottomAppBar(
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                onClick = {
-                                    addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
-                                        localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
-                                        peerPublicKey = addMemberToChatRoomConfirmationUIState.profile.publicKey,
-                                        peerKeyPackage = addMemberToChatRoomConfirmationUIState.marmotKeyPackage,
-                                        onInviteSent = onInviteSent
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Invite new member"
-                                )
-
-                                Text(stringResource(Res.string.invite_2, addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()))
-                            }
-                        },
-                        actions = {
-
-                        }
+    ScreenStateTransition(addMemberToChatRoomConfirmationViewModel.addMemberToChatRoomConfirmationUIState) { uiState ->
+    when (val addMemberToChatRoomConfirmationUIState = uiState) {
+            is AddMemberToChatRoomConfirmationUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
+                    )
+                    Text(
+                        text = addMemberToChatRoomConfirmationUIState.message,
+                        textAlign = TextAlign.Center
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
-                ) {
+            }
+            is AddMemberToChatRoomConfirmationUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+    //                topBar = {
+    //                    TopAppBar(
+    //                        title = {
+    //                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
+    //                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
+    //                            } else {
+    //                                "Invite new member to chat"
+    //                            }
+    //                            Text(
+    //                                text = title,
+    //                            )
+    //                        },
+    //                        actions = {
+    //                        }
+    //                    )
+    //                }
+                    bottomBar = {
+                        BottomAppBar(
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    onClick = {
+                                        addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
+                                            localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
+                                            peerPublicKey = addMemberToChatRoomConfirmationUIState.profile.publicKey,
+                                            peerKeyPackage = addMemberToChatRoomConfirmationUIState.marmotKeyPackage,
+                                            onInviteSent = onInviteSent
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Invite new member"
+                                    )
+
+                                    Text(stringResource(Res.string.invite_2, addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()))
+                                }
+                            },
+                            actions = {
+
+                            }
+                        )
+                    }
+                ) { innerPadding ->
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                     ) {
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                        ) {
+                            Spacer(
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        Text(stringResource(Res.string.invite))
+                            Text(stringResource(Res.string.invite))
 
-                        Text(
-                            text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
-                        )
+                            Text(
+                                text = addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
+                            )
 
-                        Text(
-                            text = stringResource(Res.string.to_join_the_chat_room, addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: "")
-                        )
+                            Text(
+                                text = stringResource(Res.string.to_join_the_chat_room, addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject ?: "")
+                            )
 
-                        Text(
-                            text = stringResource(Res.string.once_invited_will_be_able_to_receive_and, addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size),
-                            textAlign = TextAlign.Center
-                        )
+                            Text(
+                                text = stringResource(Res.string.once_invited_will_be_able_to_receive_and, addMemberToChatRoomConfirmationUIState.localChatRoom.localParticipants.size),
+                                textAlign = TextAlign.Center
+                            )
 
-                        Spacer(
-                            modifier = Modifier.weight(3f)
-                        )
+                            Spacer(
+                                modifier = Modifier.weight(3f)
+                            )
+                        }
                     }
                 }
             }
-        }
-        AddMemberToChatRoomConfirmationUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    MaterialTheme.spacing.space250
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
+            AddMemberToChatRoomConfirmationUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(Res.string.direct_message_detail),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.direct_message_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.direct_message_functionality_will_be_here),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }

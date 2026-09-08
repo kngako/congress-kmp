@@ -73,6 +73,7 @@ import mantra.composeapp.generated.resources.you_and_others
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -106,208 +107,210 @@ fun SelectChatRoomTypeScreen(
         )
     )
 
-    when (val selectChatRoomTypeUIState = selectChatRoomTypeViewModel.selectChatRoomTypeUIState) {
-        is SelectChatRoomTypeUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(MaterialTheme.spacing.space600)
-                )
-                Text(
-                    text = selectChatRoomTypeUIState.message,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        is SelectChatRoomTypeUIState.Loaded -> {
-            val isActionPending = selectChatRoomTypeViewModel.isActionPending.value
-            val selectedChatRoomType = selectChatRoomTypeViewModel.selectedChatRoomType.value
-            val membersNotAdded = selectChatRoomTypeViewModel.membersNotAdded
-            val keyCeremonyNotStarted = selectChatRoomTypeViewModel.keyCeremonyNotStarted.value
-            val adminCount = selectChatRoomTypeViewModel.adminCount
-            val isRobustAvailable = selectChatRoomTypeViewModel.isRobustAvailable
-            val isRobustSelected = selectedChatRoomType == ChatRoomType.ROBUST
-
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(Res.string.how_should_be_run, name),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+    ScreenStateTransition(selectChatRoomTypeViewModel.selectChatRoomTypeUIState) { uiState ->
+    when (val selectChatRoomTypeUIState = uiState) {
+            is SelectChatRoomTypeUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
                     )
-                },
-                bottomBar = {
-                    BottomAppBar(
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                onClick = {
-                                    selectChatRoomTypeViewModel.createChatRoom(
-                                        onNavigateToRoute = onNavigateToRoute
-                                    )
-                                }
-                            ) {
-                                if (isActionPending) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = "Create chat"
-                                    )
-                                }
+                    Text(
+                        text = selectChatRoomTypeUIState.message,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            is SelectChatRoomTypeUIState.Loaded -> {
+                val isActionPending = selectChatRoomTypeViewModel.isActionPending.value
+                val selectedChatRoomType = selectChatRoomTypeViewModel.selectedChatRoomType.value
+                val membersNotAdded = selectChatRoomTypeViewModel.membersNotAdded
+                val keyCeremonyNotStarted = selectChatRoomTypeViewModel.keyCeremonyNotStarted.value
+                val adminCount = selectChatRoomTypeViewModel.adminCount
+                val isRobustAvailable = selectChatRoomTypeViewModel.isRobustAvailable
+                val isRobustSelected = selectedChatRoomType == ChatRoomType.ROBUST
 
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
                                 Text(
-                                    text = if (selectChatRoomTypeViewModel.createdChatRoomId.value != null) {
-                                        stringResource(Res.string.open_chat)
-                                    } else {
-                                        stringResource(Res.string.create_chat)
-                                    }
+                                    text = stringResource(Res.string.how_should_be_run, name),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
-                        },
-                        actions = {
-                            Text(
-                                modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
-                                text = when (selectChatRoomTypeUIState.members.size) {
-                                    0 -> stringResource(Res.string.just_you_for_now)
-                                    1 -> stringResource(Res.string.you_and_1_other)
-                                    else -> stringResource(Res.string.you_and_others, selectChatRoomTypeUIState.members.size)
-                                },
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .readableContent()
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(MaterialTheme.spacing.space125),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
-                ) {
-                    if (membersNotAdded.isNotEmpty()) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(MaterialTheme.spacing.space200),
-                                text = stringResource(Res.string.was_created_but_couldn_t_be_added_yet_invite, name, membersNotAdded.joinToString { selectChatRoomTypeViewModel.displayNameFor(it) }),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        )
+                    },
+                    bottomBar = {
+                        BottomAppBar(
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    onClick = {
+                                        selectChatRoomTypeViewModel.createChatRoom(
+                                            onNavigateToRoute = onNavigateToRoute
+                                        )
+                                    }
+                                ) {
+                                    if (isActionPending) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = "Create chat"
+                                        )
+                                    }
+
+                                    Text(
+                                        text = if (selectChatRoomTypeViewModel.createdChatRoomId.value != null) {
+                                            stringResource(Res.string.open_chat)
+                                        } else {
+                                            stringResource(Res.string.create_chat)
+                                        }
+                                    )
+                                }
+                            },
+                            actions = {
+                                Text(
+                                    modifier = Modifier.padding(start = MaterialTheme.spacing.space200),
+                                    text = when (selectChatRoomTypeUIState.members.size) {
+                                        0 -> stringResource(Res.string.just_you_for_now)
+                                        1 -> stringResource(Res.string.you_and_1_other)
+                                        else -> stringResource(Res.string.you_and_others, selectChatRoomTypeUIState.members.size)
+                                    },
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        )
                     }
-
-                    if (keyCeremonyNotStarted) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(MaterialTheme.spacing.space200),
-                                text = stringResource(Res.string.was_created_but_its_shared_key_ceremony, name),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = stringResource(Res.string.this_decides_who_can_change_the_group_later),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space125)
-                    )
-
-                    ChatRoomTypeCard(
-                        icon = Icons.Default.Bolt,
-                        title = "Convenient",
-                        summary = "You are the only admin.",
-                        detail = "You can add or remove people and change the group's name or description on your own, without waiting for anybody.",
-                        footnote = "Nothing about the group can change unless you do it — and nobody else can carry it on if you lose your keys.",
-                        isSelected = selectedChatRoomType == ChatRoomType.CONVENIENT,
-                        onClick = {
-                            selectChatRoomTypeViewModel.selectChatRoomType(ChatRoomType.CONVENIENT)
-                        }
-                    )
-
-                    ChatRoomTypeCard(
-                        icon = Icons.Default.Groups,
-                        title = "Robust",
-                        summary = "Every member is an admin.",
-                        detail = if (isRobustAvailable) {
-                            "All $adminCount of you administer the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of you before it takes effect."
-                        } else {
-                            "Everyone administers the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of the admins before it takes effect."
-                        },
-                        // Says what tapping create actually does, because it is the one
-                        // thing here that asks something of everybody else: the group's
-                        // first act is a ceremony each member has to approve their way
-                        // through before there is a key.
-                        footnote = "No single admin can change the group alone, and the group outlives any one of you. Creating the group starts a key ceremony every member takes part in.",
-                        isSelected = isRobustSelected,
-                        isEnabled = isRobustAvailable,
-                        disabledReason = selectChatRoomTypeViewModel.robustUnavailableReason,
-                        onClick = {
-                            selectChatRoomTypeViewModel.selectChatRoomType(ChatRoomType.ROBUST)
-                        }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .readableContent()
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(MaterialTheme.spacing.space125),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                     ) {
-                        // Ask for the quorum only once robust is the choice — before that
-                        // there is no decision to make.
-                        if (isRobustSelected) {
-                            QuorumPicker(
-                                quorum = selectChatRoomTypeViewModel.quorum.value,
-                                adminCount = adminCount,
-                                quorumRange = selectChatRoomTypeViewModel.quorumRange,
-                                explanation = selectChatRoomTypeViewModel.quorumExplanation(),
-                                onQuorumChange = selectChatRoomTypeViewModel::setQuorum
-                            )
+                        if (membersNotAdded.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Text(
+                                    modifier = Modifier.padding(MaterialTheme.spacing.space200),
+                                    text = stringResource(Res.string.was_created_but_couldn_t_be_added_yet_invite, name, membersNotAdded.joinToString { selectChatRoomTypeViewModel.displayNameFor(it) }),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
+                        if (keyCeremonyNotStarted) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Text(
+                                    modifier = Modifier.padding(MaterialTheme.spacing.space200),
+                                    text = stringResource(Res.string.was_created_but_its_shared_key_ceremony, name),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = stringResource(Res.string.this_decides_who_can_change_the_group_later),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space125)
+                        )
+
+                        ChatRoomTypeCard(
+                            icon = Icons.Default.Bolt,
+                            title = "Convenient",
+                            summary = "You are the only admin.",
+                            detail = "You can add or remove people and change the group's name or description on your own, without waiting for anybody.",
+                            footnote = "Nothing about the group can change unless you do it — and nobody else can carry it on if you lose your keys.",
+                            isSelected = selectedChatRoomType == ChatRoomType.CONVENIENT,
+                            onClick = {
+                                selectChatRoomTypeViewModel.selectChatRoomType(ChatRoomType.CONVENIENT)
+                            }
+                        )
+
+                        ChatRoomTypeCard(
+                            icon = Icons.Default.Groups,
+                            title = "Robust",
+                            summary = "Every member is an admin.",
+                            detail = if (isRobustAvailable) {
+                                "All $adminCount of you administer the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of you before it takes effect."
+                            } else {
+                                "Everyone administers the group together. Any change — adding or removing someone, renaming the group — has to be approved by a quorum of the admins before it takes effect."
+                            },
+                            // Says what tapping create actually does, because it is the one
+                            // thing here that asks something of everybody else: the group's
+                            // first act is a ceremony each member has to approve their way
+                            // through before there is a key.
+                            footnote = "No single admin can change the group alone, and the group outlives any one of you. Creating the group starts a key ceremony every member takes part in.",
+                            isSelected = isRobustSelected,
+                            isEnabled = isRobustAvailable,
+                            disabledReason = selectChatRoomTypeViewModel.robustUnavailableReason,
+                            onClick = {
+                                selectChatRoomTypeViewModel.selectChatRoomType(ChatRoomType.ROBUST)
+                            }
+                        ) {
+                            // Ask for the quorum only once robust is the choice — before that
+                            // there is no decision to make.
+                            if (isRobustSelected) {
+                                QuorumPicker(
+                                    quorum = selectChatRoomTypeViewModel.quorum.value,
+                                    adminCount = adminCount,
+                                    quorumRange = selectChatRoomTypeViewModel.quorumRange,
+                                    explanation = selectChatRoomTypeViewModel.quorumExplanation(),
+                                    onQuorumChange = selectChatRoomTypeViewModel::setQuorum
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-        SelectChatRoomTypeUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    MaterialTheme.spacing.space250
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
+            SelectChatRoomTypeUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
 
-                Text(
-                    text = stringResource(Res.string.how_should_be_run, name),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.how_should_be_run, name),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }

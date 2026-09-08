@@ -55,6 +55,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -76,149 +77,151 @@ fun ShareProfileScreen(
         ),
     )
 
-    when(val shareProfileUIState = shareProfileViewModel.shareProfileUIState) {
-        ShareProfileUIState.Error -> {
-            ErrorState()
-        }
-        is ShareProfileUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(Res.string.profile)
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateBack.invoke()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Back"
+    ScreenStateTransition(shareProfileViewModel.shareProfileUIState) { uiState ->
+    when (val shareProfileUIState = uiState) {
+            ShareProfileUIState.Error -> {
+                ErrorState()
+            }
+            is ShareProfileUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = stringResource(Res.string.profile)
                                 )
-                            }
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding)
-                    .readableContent()
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
-                            ) {
-                                ProfileAvatar(
-                                    profile = shareProfileUIState.localNostrEvent.profile,
-                                    publicKey = activeUserPublicKey
-                                )
-
-                                Column {
-                                    shareProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
-                                        Text(
-                                            text = humanReadableNameOrPubkey,
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                    }
-                                    shareProfileUIState.localNostrEvent.profile?.about?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        item {
-                            Row(
-                                modifier = Modifier.padding(MaterialTheme.spacing.space500)
-                            ) {
-                                QRCodeView(
-                                    activeUserPublicKey.hexToNpubHrp()
-                                )
-                            }
-                        }
-
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250)
-                            ) {
-                                val clipboardManager = LocalClipboardManager.current
-
-                                TextButton(
+                            },
+                            navigationIcon = {
+                                IconButton(
                                     onClick = {
-
-                                        clipboardManager.setText(
-                                            buildAnnotatedString {
-                                                append(activeUserPublicKey.hexToNpubHrp())
-                                            }
-                                        )
+                                        onNavigateBack.invoke()
                                     }
                                 ) {
                                     Icon(
-                                        Icons.Default.ContentCopy,
-                                        contentDescription = "Copy npub"
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding)
+                        .readableContent()
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                                ) {
+                                    ProfileAvatar(
+                                        profile = shareProfileUIState.localNostrEvent.profile,
+                                        publicKey = activeUserPublicKey
                                     )
 
-                                    Spacer(
-                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                    )
-                                    Text(
-                                        text = activeUserPublicKey.hexToNpubHrp(),
-                                        style = MaterialTheme.typography.labelSmall
+                                    Column {
+                                        shareProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
+                                            Text(
+                                                text = humanReadableNameOrPubkey,
+                                                style = MaterialTheme.typography.titleLarge
+                                            )
+                                        }
+                                        shareProfileUIState.localNostrEvent.profile?.about?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            item {
+                                Row(
+                                    modifier = Modifier.padding(MaterialTheme.spacing.space500)
+                                ) {
+                                    QRCodeView(
+                                        activeUserPublicKey.hexToNpubHrp()
                                     )
                                 }
                             }
 
-                        }
-                    }
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250)
+                                ) {
+                                    val clipboardManager = LocalClipboardManager.current
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(
-                            onClick = {
-                                shareProfileViewModel.rebroadcastProfile(
-                                    localNostrEvent = shareProfileUIState.localNostrEvent
+                                    TextButton(
+                                        onClick = {
+
+                                            clipboardManager.setText(
+                                                buildAnnotatedString {
+                                                    append(activeUserPublicKey.hexToNpubHrp())
+                                                }
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = "Copy npub"
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+                                        Text(
+                                            text = activeUserPublicKey.hexToNpubHrp(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Button(
+                                onClick = {
+                                    shareProfileViewModel.rebroadcastProfile(
+                                        localNostrEvent = shareProfileUIState.localNostrEvent
+                                    )
+                                }
+                            ) {
+                                Text(
+                                    stringResource(Res.string.re_broadcast)
                                 )
                             }
-                        ) {
-                            Text(
-                                stringResource(Res.string.re_broadcast)
-                            )
                         }
                     }
                 }
             }
-        }
-        ShareProfileUIState.Loading -> {
-            LoadingDataIndicator()
+            ShareProfileUIState.Loading -> {
+                LoadingDataIndicator()
 
-            LaunchedEffect(true) {
-                shareProfileViewModel.loadNostrFeed()
+                LaunchedEffect(true) {
+                    shareProfileViewModel.loadNostrFeed()
+                }
             }
-        }
-        ShareProfileUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+            ShareProfileUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+                }
             }
         }
     }

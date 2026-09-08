@@ -86,6 +86,7 @@ import mantra.composeapp.generated.resources.url
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -114,280 +115,282 @@ fun AddArtifactScreen(
         )
     )
 
-    when (val addArtifactUIState = addArtifactViewModel.addArtifactUIState) {
-        is AddArtifactUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(MaterialTheme.spacing.space600)
-                )
-                Text(
-                    text = addArtifactUIState.message,
-                )
-            }
-        }
-        is AddArtifactUIState.Loaded -> {
-            val nameFieldState = rememberTextFieldState()
-            val urlFieldState = rememberTextFieldState()
-            val versionLabelFieldState = rememberTextFieldState("1.0")
-
-            // The id of the group dialect this artifact is written in. Null until
-            // one is picked; dialects are defined from the group detail screen.
-            var selectedDialectId: String? by remember { mutableStateOf(null) }
-
-            // The two things the form cannot ask for again. A dialect has to
-            // already exist and nothing here can create one; a shared key has to
-            // have been ceremonied and this is not where that happens. Either
-            // missing is a dead end rather than something to propose and be told
-            // about afterwards, and the button says so.
-            val canAddArtifact = selectedDialectId != null && addArtifactUIState.canSign
-
-            // M3 gives a FAB no `enabled`, so borrow the disabled colours every
-            // other button in the app uses rather than inventing a shade here.
-            val buttonColors = ButtonDefaults.buttonColors()
-
-            // imePadding: this screen has a text field, and without it the software
-            // keyboard covers whatever is being typed into.
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                modifier = Modifier.imePadding(),
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            addArtifactUIState.localChatRoom.RenderChatRoomTitleText()
-                        },
-                        actions = {
-
-                        }
+    ScreenStateTransition(addArtifactViewModel.addArtifactUIState) { uiState ->
+    when (val addArtifactUIState = uiState) {
+            is AddArtifactUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
                     )
-                },
-                bottomBar = {
-                    BottomAppBar(
-                        actions = {},
-                        floatingActionButton = {
-                            ExtendedFloatingActionButton(
-                                modifier = if (canAddArtifact) {
-                                    Modifier
-                                } else {
-                                    // Looking unavailable is not being unavailable:
-                                    // without this a screen reader still announces
-                                    // a button it is happy to press.
-                                    Modifier.semantics { disabled() }
-                                },
-                                containerColor = if (canAddArtifact) {
-                                    FloatingActionButtonDefaults.containerColor
-                                } else {
-                                    buttonColors.disabledContainerColor
-                                },
-                                contentColor = if (canAddArtifact) {
-                                    contentColorFor(FloatingActionButtonDefaults.containerColor)
-                                } else {
-                                    buttonColors.disabledContentColor
-                                },
-                                onClick = {
-                                    if (!canAddArtifact) return@ExtendedFloatingActionButton
-
-                                    addArtifactViewModel.addArtifact(
-                                        localChatRoom = addArtifactUIState.localChatRoom,
-                                        nameField = nameFieldState,
-                                        urlField = urlFieldState,
-                                        versionLabelField = versionLabelFieldState,
-                                        dialectId = selectedDialectId,
-                                        onSuccess = { sessionId ->
-                                            // Onto the session rather than to the
-                                            // artifact. Nothing has been created yet
-                                            // -- the artifact appears when enough
-                                            // members sign -- so a detail screen for
-                                            // a row that does not exist would read as
-                                            // a failure.
-                                            onNavigateToRouteAndPopUpInclusive.invoke(
-                                                FrostSigningRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId,
-                                                    sessionId = sessionId
-                                                )
-                                            )
-                                        },
-                                        onFailure = {
-                                            onNavigateToRoute.invoke(
-                                                ImplementationPendingRoute("Failed artifact")
-                                            )
-                                        }
-                                    )
-
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Propose artifact"
-                                )
-                                Text(stringResource(Res.string.propose_artifact))
-                            }
-                        }
+                    Text(
+                        text = addArtifactUIState.message,
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
-                ) {
-                    // TODO: Check that we have direct message relays for this user...
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(stringResource(Res.string.add_artifact_to_the_group_library))
+            }
+            is AddArtifactUIState.Loaded -> {
+                val nameFieldState = rememberTextFieldState()
+                val urlFieldState = rememberTextFieldState()
+                val versionLabelFieldState = rememberTextFieldState("1.0")
 
-                        if (!addArtifactUIState.canSign) {
-                            Text(
-                                text = "This group has no shared key, so it cannot sign an " +
-                                    "artifact into its library. Run a shared key ceremony first.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                // The id of the group dialect this artifact is written in. Null until
+                // one is picked; dialects are defined from the group detail screen.
+                var selectedDialectId: String? by remember { mutableStateOf(null) }
 
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = nameFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.DriveFileRenameOutline,
-                                    contentDescription = "Name of the artifact"
-                                )
+                // The two things the form cannot ask for again. A dialect has to
+                // already exist and nothing here can create one; a shared key has to
+                // have been ceremonied and this is not where that happens. Either
+                // missing is a dead end rather than something to propose and be told
+                // about afterwards, and the button says so.
+                val canAddArtifact = selectedDialectId != null && addArtifactUIState.canSign
+
+                // M3 gives a FAB no `enabled`, so borrow the disabled colours every
+                // other button in the app uses rather than inventing a shade here.
+                val buttonColors = ButtonDefaults.buttonColors()
+
+                // imePadding: this screen has a text field, and without it the software
+                // keyboard covers whatever is being typed into.
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    modifier = Modifier.imePadding(),
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                addArtifactUIState.localChatRoom.RenderChatRoomTitleText()
                             },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.name_of_artifact)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_to_kill_a_mocking_bird)
-                                )
-                            },
+                            actions = {
+
+                            }
                         )
+                    },
+                    bottomBar = {
+                        BottomAppBar(
+                            actions = {},
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(
+                                    modifier = if (canAddArtifact) {
+                                        Modifier
+                                    } else {
+                                        // Looking unavailable is not being unavailable:
+                                        // without this a screen reader still announces
+                                        // a button it is happy to press.
+                                        Modifier.semantics { disabled() }
+                                    },
+                                    containerColor = if (canAddArtifact) {
+                                        FloatingActionButtonDefaults.containerColor
+                                    } else {
+                                        buttonColors.disabledContainerColor
+                                    },
+                                    contentColor = if (canAddArtifact) {
+                                        contentColorFor(FloatingActionButtonDefaults.containerColor)
+                                    } else {
+                                        buttonColors.disabledContentColor
+                                    },
+                                    onClick = {
+                                        if (!canAddArtifact) return@ExtendedFloatingActionButton
 
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = urlFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Link,
-                                    contentDescription = "Link to the artifact"
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.url)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_https_harper_com_2_kill_bird)
-                                )
-                            },
-                        )
+                                        addArtifactViewModel.addArtifact(
+                                            localChatRoom = addArtifactUIState.localChatRoom,
+                                            nameField = nameFieldState,
+                                            urlField = urlFieldState,
+                                            versionLabelField = versionLabelFieldState,
+                                            dialectId = selectedDialectId,
+                                            onSuccess = { sessionId ->
+                                                // Onto the session rather than to the
+                                                // artifact. Nothing has been created yet
+                                                // -- the artifact appears when enough
+                                                // members sign -- so a detail screen for
+                                                // a row that does not exist would read as
+                                                // a failure.
+                                                onNavigateToRouteAndPopUpInclusive.invoke(
+                                                    FrostSigningRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId,
+                                                        sessionId = sessionId
+                                                    )
+                                                )
+                                            },
+                                            onFailure = {
+                                                onNavigateToRoute.invoke(
+                                                    ImplementationPendingRoute("Failed artifact")
+                                                )
+                                            }
+                                        )
 
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth()
-                                .background(BottomAppBarDefaults.containerColor),
-                            state = versionLabelFieldState,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                disabledBorderColor = Color.Transparent
-                            ),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.LocalOffer,
-                                    contentDescription = "Verison label"
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(Res.string.initial_version_label)
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(Res.string.eg_first_edition)
-                                )
-                            },
-                        )
-
-                        Text(stringResource(Res.string.source_dialect))
-
-                        if (addArtifactUIState.dialects.isEmpty()) {
-                            Text(
-                                text = stringResource(Res.string.no_dialects_have_been_defined_in_this_group),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        } else {
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
-                            ) {
-                                addArtifactUIState.dialects.forEach { dialect ->
-                                    FilterChip(
-                                        selected = selectedDialectId == dialect.id,
-                                        onClick = { selectedDialectId = dialect.id },
-                                        label = { Text(dialect.name) }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Propose artifact"
                                     )
+                                    Text(stringResource(Res.string.propose_artifact))
                                 }
                             }
-                        }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    ) {
+                        // TODO: Check that we have direct message relays for this user...
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(stringResource(Res.string.add_artifact_to_the_group_library))
 
-                        // TODO: Add Visibility
+                            if (!addArtifactUIState.canSign) {
+                                Text(
+                                    text = "This group has no shared key, so it cannot sign an " +
+                                        "artifact into its library. Run a shared key ceremony first.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = nameFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.DriveFileRenameOutline,
+                                        contentDescription = "Name of the artifact"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.name_of_artifact)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_to_kill_a_mocking_bird)
+                                    )
+                                },
+                            )
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = urlFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Link,
+                                        contentDescription = "Link to the artifact"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.url)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_https_harper_com_2_kill_bird)
+                                    )
+                                },
+                            )
+
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(BottomAppBarDefaults.containerColor),
+                                state = versionLabelFieldState,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                                ),
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.LocalOffer,
+                                        contentDescription = "Verison label"
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = stringResource(Res.string.initial_version_label)
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(Res.string.eg_first_edition)
+                                    )
+                                },
+                            )
+
+                            Text(stringResource(Res.string.source_dialect))
+
+                            if (addArtifactUIState.dialects.isEmpty()) {
+                                Text(
+                                    text = stringResource(Res.string.no_dialects_have_been_defined_in_this_group),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            } else {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
+                                ) {
+                                    addArtifactUIState.dialects.forEach { dialect ->
+                                        FilterChip(
+                                            selected = selectedDialectId == dialect.id,
+                                            onClick = { selectedDialectId = dialect.id },
+                                            label = { Text(dialect.name) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // TODO: Add Visibility
+                        }
                     }
                 }
             }
-        }
-        AddArtifactUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    MaterialTheme.spacing.space250
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
+            AddArtifactUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(Res.string.direct_message_detail),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.direct_message_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = stringResource(Res.string.direct_message_functionality_will_be_here),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.direct_message_functionality_will_be_here),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }

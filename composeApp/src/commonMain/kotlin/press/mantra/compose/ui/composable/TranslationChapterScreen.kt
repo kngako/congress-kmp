@@ -55,6 +55,7 @@ import mantra.composeapp.generated.resources.this_chapter_has_no_chunks
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,105 +80,107 @@ fun TranslationChapterScreen(
         )
     )
 
-    when (val translationChapterUIState = translationChapterViewModel.translationChapterUIState) {
-        is TranslationChapterUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
-                Text(text = translationChapterUIState.message)
-            }
-        }
-
-        is TranslationChapterUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = { Text(stringResource(Res.string.chapter_translation)) },
-                        navigationIcon = {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        },
-                    )
-                }
-            ) { innerPadding ->
-                LazyColumn(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+    ScreenStateTransition(translationChapterViewModel.translationChapterUIState) { uiState ->
+    when (val translationChapterUIState = uiState) {
+            is TranslationChapterUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Header row: dialect names.
-                    item {
-                        TableRow(
-                            left = {
-                                Text(
-                                    text = translationChapterUIState.originalDialectName,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            right = {
-                                Text(
-                                    text = translationChapterUIState.translationDialectName,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                        )
-                        HorizontalDivider()
-                    }
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = translationChapterUIState.message)
+                }
+            }
 
-                    if (translationChapterUIState.rows.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.containerPadding),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(stringResource(Res.string.this_chapter_has_no_chunks))
-                            }
-                        }
-                    } else {
-                        items(
-                            items = translationChapterUIState.rows,
-                            key = { pair -> pair.originalChunk.id }
-                        ) { pair ->
-                            ChunkTranslationRow(
-                                pair = pair,
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        TranslateChunkRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            translationChapterId = translationChapterId,
-                                            chunkId = pair.originalChunk.id,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
+            is TranslationChapterUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(stringResource(Res.string.chapter_translation)) },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
                                     )
                                 }
+                            },
+                        )
+                    }
+                ) { innerPadding ->
+                    LazyColumn(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    ) {
+                        // Header row: dialect names.
+                        item {
+                            TableRow(
+                                left = {
+                                    Text(
+                                        text = translationChapterUIState.originalDialectName,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
+                                right = {
+                                    Text(
+                                        text = translationChapterUIState.translationDialectName,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
                             )
                             HorizontalDivider()
                         }
+
+                        if (translationChapterUIState.rows.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.containerPadding),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(stringResource(Res.string.this_chapter_has_no_chunks))
+                                }
+                            }
+                        } else {
+                            items(
+                                items = translationChapterUIState.rows,
+                                key = { pair -> pair.originalChunk.id }
+                            ) { pair ->
+                                ChunkTranslationRow(
+                                    pair = pair,
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            TranslateChunkRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                translationChapterId = translationChapterId,
+                                                chunkId = pair.originalChunk.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                )
+                                HorizontalDivider()
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        TranslationChapterUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = stringResource(Res.string.chapter_translation),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            TranslationChapterUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.chapter_translation),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }

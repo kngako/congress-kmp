@@ -49,6 +49,7 @@ import mantra.composeapp.generated.resources.search_message_functionality_will_b
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -72,104 +73,106 @@ fun SearchMemberToAddToChatRoomScreen(
         )
     )
 
-    when (val searchMemberToAddToChatRoomUIState = searchMemberToAddToChatRoomViewModel.searchMemberToAddToChatRoomUIState) {
-        is SearchMemberToAddToChatRoomUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(
-                    modifier = Modifier.height(MaterialTheme.spacing.space600)
-                )
-                Text(
-                    text = searchMemberToAddToChatRoomUIState.message,
-                )
-            }
-        }
-        is SearchMemberToAddToChatRoomUIState.Loaded -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            val title = if (searchMemberToAddToChatRoomUIState.localChatRoom.chatRoom.subject != null) {
-                                "Invite new member to ${searchMemberToAddToChatRoomUIState.localChatRoom.chatRoom.subject}"
-                            } else {
-                                "Invite new member to chat"
-                            }
-                            Text(
-                                text = title,
-                            )
-                        }
+    ScreenStateTransition(searchMemberToAddToChatRoomViewModel.searchMemberToAddToChatRoomUIState) { uiState ->
+    when (val searchMemberToAddToChatRoomUIState = uiState) {
+            is SearchMemberToAddToChatRoomUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(
+                        modifier = Modifier.height(MaterialTheme.spacing.space600)
+                    )
+                    Text(
+                        text = searchMemberToAddToChatRoomUIState.message,
                     )
                 }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
-                ) {
+            }
+            is SearchMemberToAddToChatRoomUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                val title = if (searchMemberToAddToChatRoomUIState.localChatRoom.chatRoom.subject != null) {
+                                    "Invite new member to ${searchMemberToAddToChatRoomUIState.localChatRoom.chatRoom.subject}"
+                                } else {
+                                    "Invite new member to chat"
+                                }
+                                Text(
+                                    text = title,
+                                )
+                            }
+                        )
+                    }
+                ) { innerPadding ->
                     Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                     ) {
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                        ) {
 
-                        if (searchMemberToAddToChatRoomUIState.contacts.isEmpty()) {
-                            Spacer(
-                                modifier = Modifier.height(MaterialTheme.spacing.space250)
-                            )
-                            Text(
-                                modifier = Modifier.padding(MaterialTheme.spacing.space250),
-                                text = stringResource(Res.string.currently_no_contacts_please_search_and_chat),
-                                textAlign = TextAlign.Center
-                            )
+                            if (searchMemberToAddToChatRoomUIState.contacts.isEmpty()) {
+                                Spacer(
+                                    modifier = Modifier.height(MaterialTheme.spacing.space250)
+                                )
+                                Text(
+                                    modifier = Modifier.padding(MaterialTheme.spacing.space250),
+                                    text = stringResource(Res.string.currently_no_contacts_please_search_and_chat),
+                                    textAlign = TextAlign.Center
+                                )
 
-                            Spacer(
-                                modifier = Modifier.height(MaterialTheme.spacing.space250)
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
-                                reverseLayout = true
-                            ) {
+                                Spacer(
+                                    modifier = Modifier.height(MaterialTheme.spacing.space250)
+                                )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
+                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                                    reverseLayout = true
+                                ) {
 
-                                items(
-                                    items = searchMemberToAddToChatRoomUIState.contacts,
-                                    key = { it.publicKey }
-                                ) { profile ->
-                                    Card(
-                                        onClick = {
-                                            onNavigateToRoute.invoke(
-                                                AddMemberToChatRoomConfirmationRoute(
-                                                    activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = chatRoomId,
-                                                    profilePublicKey = profile.publicKey,
-                                                    relayHint = relayHint,
+                                    items(
+                                        items = searchMemberToAddToChatRoomUIState.contacts,
+                                        key = { it.publicKey }
+                                    ) { profile ->
+                                        Card(
+                                            onClick = {
+                                                onNavigateToRoute.invoke(
+                                                    AddMemberToChatRoomConfirmationRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId,
+                                                        profilePublicKey = profile.publicKey,
+                                                        relayHint = relayHint,
+                                                    )
                                                 )
+                                            }
+                                        ) {
+                                            ListItem(
+                                                leadingContent = {
+                                                    ProfileAvatar(
+                                                        profile = profile
+                                                    )
+                                                },
+                                                headlineContent = {
+                                                    Text(
+                                                        profile.humanReadableNameOrPubkey()
+                                                    )
+                                                },
+                                                supportingContent = {
+                                                    profile.about?.let {
+                                                        Text(
+                                                            text = it,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            maxLines = 1
+                                                        )
+                                                    }
+                                                }
                                             )
                                         }
-                                    ) {
-                                        ListItem(
-                                            leadingContent = {
-                                                ProfileAvatar(
-                                                    profile = profile
-                                                )
-                                            },
-                                            headlineContent = {
-                                                Text(
-                                                    profile.humanReadableNameOrPubkey()
-                                                )
-                                            },
-                                            supportingContent = {
-                                                profile.about?.let {
-                                                    Text(
-                                                        text = it,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        maxLines = 1
-                                                    )
-                                                }
-                                            }
-                                        )
                                     }
                                 }
                             }
@@ -177,38 +180,38 @@ fun SearchMemberToAddToChatRoomScreen(
                     }
                 }
             }
-        }
-        SearchMemberToAddToChatRoomUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(
-                    MaterialTheme.spacing.space250
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
+            SearchMemberToAddToChatRoomUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(
+                        MaterialTheme.spacing.space250
+                    ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(Res.string.search_member_functionality),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.search_member_functionality),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = stringResource(Res.string.search_message_functionality_will_be_here),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = stringResource(Res.string.search_message_functionality_will_be_here),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
 
-                LoadingDataIndicator(
-                    fillScreen = false
-                )
+                    LoadingDataIndicator(
+                        fillScreen = false
+                    )
 
-                Spacer(
-                    modifier = Modifier.weight(2f)
-                )
+                    Spacer(
+                        modifier = Modifier.weight(2f)
+                    )
+                }
             }
         }
     }

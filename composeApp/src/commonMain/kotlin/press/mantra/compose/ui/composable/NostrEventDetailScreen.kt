@@ -42,6 +42,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,78 +67,80 @@ fun NostrEventDetailScreen(
         ),
     )
 
-    when(val feedListUIState = nostrEventDetailViewModel.nostrEventDetailUIState) {
-        NostrEventDetailUIState.Error -> {
-            ErrorState()
-        }
-        is NostrEventDetailUIState.Loaded -> {
+    ScreenStateTransition(nostrEventDetailViewModel.nostrEventDetailUIState) { uiState ->
+    when (val feedListUIState = uiState) {
+            NostrEventDetailUIState.Error -> {
+                ErrorState()
+            }
+            is NostrEventDetailUIState.Loaded -> {
 
-            when(feedListUIState.localNostrEvent.nostrEvent.kind) {
-                MetadataEvent.KIND -> {
-                    MetadataEventDetail(
-                        activeUserPublicKey = activeUserPublicKey,
-                        localNostrEvent = feedListUIState.localNostrEvent,
-                        onNavigateBack = onNavigateBack,
-                        onNavigateToEvent = onNavigateToEvent,
-                        onNavigateToChatRoom = onNavigateToDirectMessage,
-                        onNavigateToEditProfile = onNavigateToEditProfile,
-                        nostrRepository = nostrRepository
-                    )
-                }
-                TextNoteEvent.KIND -> {
-                    TextNoteEventDetail(
-                        feedListUIState.localNostrEvent,
-                        onNavigateBack = onNavigateBack,
-                        onNavigateToWriteAReply = onNavigateToWriteAReply,
-                        onNavigateToNostrEvent = onNavigateToQuoteNostrEvent,
-                        nostrRepository = nostrRepository
-                    )
-                }
-                RepostEvent.KIND -> {
-                    // TODO: RePost...
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(feedListUIState.localNostrEvent.nostrEvent.content)
-
-                        Text(stringResource(Res.string.post_functionality_coming_soon))
+                when(feedListUIState.localNostrEvent.nostrEvent.kind) {
+                    MetadataEvent.KIND -> {
+                        MetadataEventDetail(
+                            activeUserPublicKey = activeUserPublicKey,
+                            localNostrEvent = feedListUIState.localNostrEvent,
+                            onNavigateBack = onNavigateBack,
+                            onNavigateToEvent = onNavigateToEvent,
+                            onNavigateToChatRoom = onNavigateToDirectMessage,
+                            onNavigateToEditProfile = onNavigateToEditProfile,
+                            nostrRepository = nostrRepository
+                        )
                     }
-                }
-                else -> {
-                    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
+                    TextNoteEvent.KIND -> {
+                        TextNoteEventDetail(
+                            feedListUIState.localNostrEvent,
+                            onNavigateBack = onNavigateBack,
+                            onNavigateToWriteAReply = onNavigateToWriteAReply,
+                            onNavigateToNostrEvent = onNavigateToQuoteNostrEvent,
+                            nostrRepository = nostrRepository
+                        )
+                    }
+                    RepostEvent.KIND -> {
+                        // TODO: RePost...
                         Column(
-                            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(feedListUIState.localNostrEvent.nostrEvent.content)
+                            Text(feedListUIState.localNostrEvent.nostrEvent.content)
 
-                                Text(stringResource(Res.string.functionality_coming_soon))
+                            Text(stringResource(Res.string.post_functionality_coming_soon))
+                        }
+                    }
+                    else -> {
+                        Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
+                            Column(
+                                modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(feedListUIState.localNostrEvent.nostrEvent.content)
+
+                                    Text(stringResource(Res.string.functionality_coming_soon))
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        NostrEventDetailUIState.Loading -> {
-            LoadingDataIndicator()
+            NostrEventDetailUIState.Loading -> {
+                LoadingDataIndicator()
 
-            LaunchedEffect(true) {
-                nostrEventDetailViewModel.loadNostrFeed()
+                LaunchedEffect(true) {
+                    nostrEventDetailViewModel.loadNostrFeed()
+                }
             }
-        }
-        NostrEventDetailUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(stringResource(Res.string.we_couldn_t_find_your_nostr_event_please_try))
+            NostrEventDetailUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_your_nostr_event_please_try))
+                }
             }
         }
     }

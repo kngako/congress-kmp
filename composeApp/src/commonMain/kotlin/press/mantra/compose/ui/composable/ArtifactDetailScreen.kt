@@ -67,6 +67,7 @@ import mantra.composeapp.generated.resources.words_characters
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,231 +92,233 @@ fun ArtifactDetailScreen(
         )
     )
 
-    when (val artifactDetailUIState = artifactDetailViewModel.artifactDetailUIState) {
-        is ArtifactDetailUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
-                Text(text = artifactDetailUIState.message)
-            }
-        }
-
-        is ArtifactDetailUIState.Loaded -> {
-            val artifact = artifactDetailUIState.artifact
-            Scaffold(
-                snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-                topBar = {
-                    TopAppBar(
-                        title = { Text(artifact.name) },
-                        navigationIcon = {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        },
-                    )
-                }
-            ) { innerPadding ->
-                LazyColumn(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+    ScreenStateTransition(artifactDetailViewModel.artifactDetailUIState) { uiState ->
+    when (val artifactDetailUIState = uiState) {
+            is ArtifactDetailUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Chapters
-                    item {
-                        Text(
-                            text = stringResource(Res.string.chapters),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    if (artifactDetailUIState.chapters.isEmpty()) {
-                        item { Text(stringResource(Res.string.no_chapters_yet)) }
-                    } else {
-                        items(
-                            items = artifactDetailUIState.chapters,
-                            key = { chapter -> chapter.id }
-                        ) { chapter ->
-                            Card(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ChapterDetailRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            chapterId = chapter.id,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = artifactDetailUIState.message)
+                }
+            }
+
+            is ArtifactDetailUIState.Loaded -> {
+                val artifact = artifactDetailUIState.artifact
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(artifact.name) },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
                                     )
                                 }
-                            ) {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Article,
-                                            contentDescription = "Chapter"
+                            },
+                        )
+                    }
+                ) { innerPadding ->
+                    LazyColumn(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                    ) {
+                        // Chapters
+                        item {
+                            Text(
+                                text = stringResource(Res.string.chapters),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        if (artifactDetailUIState.chapters.isEmpty()) {
+                            item { Text(stringResource(Res.string.no_chapters_yet)) }
+                        } else {
+                            items(
+                                items = artifactDetailUIState.chapters,
+                                key = { chapter -> chapter.id }
+                            ) { chapter ->
+                                Card(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ChapterDetailRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chapterId = chapter.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
                                         )
-                                    },
-                                    overlineContent = { Text(stringResource(Res.string.chapter, chapter.index)) },
-                                    headlineContent = { Text(chapter.name) },
-                                    supportingContent = {
-                                        Text(stringResource(Res.string.words_characters, chapter.wordCount, chapter.characterCount))
                                     }
-                                )
-                            }
-                        }
-                    }
-
-                    item {
-                        TextButton(
-                            enabled = artifactDetailUIState.versions.isNotEmpty(),
-                            onClick = {
-                                onNavigateToRoute.invoke(
-                                    AddChapterRoute(
-                                        activeUserPublicKey = activeUserPublicKey,
-                                        artifactId = artifact.id,
-                                        chatRoomId = chatRoomId,
-                                        relayHint = relayHint
+                                ) {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.Article,
+                                                contentDescription = "Chapter"
+                                            )
+                                        },
+                                        overlineContent = { Text(stringResource(Res.string.chapter, chapter.index)) },
+                                        headlineContent = { Text(chapter.name) },
+                                        supportingContent = {
+                                            Text(stringResource(Res.string.words_characters, chapter.wordCount, chapter.characterCount))
+                                        }
                                     )
-                                )
+                                }
                             }
-                        ) {
-                            Icon(
-                                Icons.Default.PostAdd,
-                                contentDescription = "Add chapter"
-                            )
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text(stringResource(Res.string.add_chapter))
                         }
-                    }
 
-                    item { HorizontalDivider() }
-
-                    // Translations
-                    item {
-                        Text(
-                            text = stringResource(Res.string.translations),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    if (artifactDetailUIState.translations.isEmpty()) {
-                        item { Text(stringResource(Res.string.no_translations_yet)) }
-                    } else {
-                        items(
-                            items = artifactDetailUIState.translations,
-                            key = { translation -> translation.id }
-                        ) { translation ->
-                            Card(
+                        item {
+                            TextButton(
+                                enabled = artifactDetailUIState.versions.isNotEmpty(),
                                 onClick = {
                                     onNavigateToRoute.invoke(
-                                        TranslationArtifactVersionDetailRoute(
+                                        AddChapterRoute(
                                             activeUserPublicKey = activeUserPublicKey,
-                                            translationArtifactVersionId = translation.id,
+                                            artifactId = artifact.id,
                                             chatRoomId = chatRoomId,
                                             relayHint = relayHint
                                         )
                                     )
                                 }
                             ) {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Translate,
-                                            contentDescription = "Translation"
-                                        )
-                                    },
-                                    headlineContent = { Text(translation.name) },
-                                    supportingContent = { Text(translation.visibility) }
+                                Icon(
+                                    Icons.Default.PostAdd,
+                                    contentDescription = "Add chapter"
                                 )
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
+                                Text(stringResource(Res.string.add_chapter))
                             }
                         }
-                    }
 
-                    item {
-                        TextButton(
-                            enabled = artifactDetailUIState.versions.isNotEmpty(),
-                            onClick = {
-                                onNavigateToRoute.invoke(
-                                    AddTranslationRoute(
-                                        activeUserPublicKey = activeUserPublicKey,
-                                        artifactId = artifact.id,
-                                        chatRoomId = chatRoomId,
-                                        relayHint = relayHint
-                                    )
-                                )
-                            }
-                        ) {
-                            Icon(
-                                Icons.Default.Translate,
-                                contentDescription = "Add translation"
+                        item { HorizontalDivider() }
+
+                        // Translations
+                        item {
+                            Text(
+                                text = stringResource(Res.string.translations),
+                                style = MaterialTheme.typography.labelMedium
                             )
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                            Text(stringResource(Res.string.add_translation))
                         }
-                    }
-
-                    item { HorizontalDivider() }
-
-                    // Details
-                    item {
-                        Text(
-                            text = stringResource(Res.string.details),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    item {
-                        Card {
-                            DetailRow(label = "Name", value = artifact.name)
-                            DetailRow(label = "Url", value = artifact.url)
-                            DetailRow(label = "Visibility", value = artifact.visibility)
-                            DetailRow(label = "License", value = artifact.license)
-                            DetailRow(label = "Dialect", value = artifact.dialectId)
-                            DetailRow(label = "Author", value = artifact.publicKey)
-                            DetailRow(label = "Created", value = artifact.createdAt.toString())
+                        if (artifactDetailUIState.translations.isEmpty()) {
+                            item { Text(stringResource(Res.string.no_translations_yet)) }
+                        } else {
+                            items(
+                                items = artifactDetailUIState.translations,
+                                key = { translation -> translation.id }
+                            ) { translation ->
+                                Card(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            TranslationArtifactVersionDetailRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                translationArtifactVersionId = translation.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.Translate,
+                                                contentDescription = "Translation"
+                                            )
+                                        },
+                                        headlineContent = { Text(translation.name) },
+                                        supportingContent = { Text(translation.visibility) }
+                                    )
+                                }
+                            }
                         }
-                    }
 
-                    // Versions
-                    item {
-                        Text(
-                            text = stringResource(Res.string.versions),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    if (artifactDetailUIState.versions.isEmpty()) {
-                        item { Text(stringResource(Res.string.no_versions)) }
-                    } else {
-                        items(
-                            items = artifactDetailUIState.versions,
-                            key = { version -> version.id }
-                        ) { version ->
-                            Card {
-                                ListItem(
-                                    headlineContent = { Text(version.versionLabel) },
-                                    overlineContent = { Text(stringResource(Res.string.version)) }
+                        item {
+                            TextButton(
+                                enabled = artifactDetailUIState.versions.isNotEmpty(),
+                                onClick = {
+                                    onNavigateToRoute.invoke(
+                                        AddTranslationRoute(
+                                            activeUserPublicKey = activeUserPublicKey,
+                                            artifactId = artifact.id,
+                                            chatRoomId = chatRoomId,
+                                            relayHint = relayHint
+                                        )
+                                    )
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Translate,
+                                    contentDescription = "Add translation"
                                 )
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
+                                Text(stringResource(Res.string.add_translation))
+                            }
+                        }
+
+                        item { HorizontalDivider() }
+
+                        // Details
+                        item {
+                            Text(
+                                text = stringResource(Res.string.details),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        item {
+                            Card {
+                                DetailRow(label = "Name", value = artifact.name)
+                                DetailRow(label = "Url", value = artifact.url)
+                                DetailRow(label = "Visibility", value = artifact.visibility)
+                                DetailRow(label = "License", value = artifact.license)
+                                DetailRow(label = "Dialect", value = artifact.dialectId)
+                                DetailRow(label = "Author", value = artifact.publicKey)
+                                DetailRow(label = "Created", value = artifact.createdAt.toString())
+                            }
+                        }
+
+                        // Versions
+                        item {
+                            Text(
+                                text = stringResource(Res.string.versions),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        if (artifactDetailUIState.versions.isEmpty()) {
+                            item { Text(stringResource(Res.string.no_versions)) }
+                        } else {
+                            items(
+                                items = artifactDetailUIState.versions,
+                                key = { version -> version.id }
+                            ) { version ->
+                                Card {
+                                    ListItem(
+                                        headlineContent = { Text(version.versionLabel) },
+                                        overlineContent = { Text(stringResource(Res.string.version)) }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        ArtifactDetailUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = stringResource(Res.string.artifact_detail),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            ArtifactDetailUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.artifact_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }
