@@ -37,6 +37,7 @@ import mantra.composeapp.generated.resources.this_is_the_last_thing_the_ceremony
 fun DkgRound2ApprovalScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
+    dkgSessionId: String? = null,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
@@ -48,6 +49,7 @@ fun DkgRound2ApprovalScreen(
         approveLabel = "Confirm",
         activeUserPublicKey = activeUserPublicKey,
         chatRoomId = chatRoomId,
+        dkgSessionId = dkgSessionId,
         activeWalletStateFlow = activeWalletStateFlow,
         chatRepository = chatRepository,
         dkgRepository = dkgRepository,

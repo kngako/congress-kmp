@@ -13,5 +13,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DkgRound1ApprovalRoute(
     val activeUserPublicKey: String,
-    val chatRoomId: String
+    val chatRoomId: String,
+    /** The ceremony being approved; null takes the room's newest. */
+    val dkgSessionId: String? = null
 ): Route()

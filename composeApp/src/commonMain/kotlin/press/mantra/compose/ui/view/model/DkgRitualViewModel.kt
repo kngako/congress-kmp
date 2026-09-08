@@ -55,6 +55,11 @@ class DkgRitualViewModel(
      * one. Off the route, which got it off the proposal -- a claim either way.
      */
     val parentChatRoomId: HexKey? = null,
+    /**
+     * The ceremony to show, when the caller knew which. Null falls back to the
+     * room's newest -- see [DkgRitualRoute.dkgSessionId].
+     */
+    val dkgSessionId: String? = null,
     initialDkgRitualUIState: DkgRitualUIState,
     val activeWalletStateFlow: StateFlow<ActiveWallet?>,
     val chatRepository: ChatRepository,
@@ -154,7 +159,16 @@ class DkgRitualViewModel(
             // it. `getLatestSessionFor` is still scoped where scoping is the
             // question being asked -- "may I open another" -- in `proposeRitual`
             // and `refuseCeremonyRoom`.
-            dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { session ->
+            // The named ceremony where the caller knew which, and the room's
+            // newest otherwise. A room holds more than one the moment a subgroup's
+            // admins are the whole group, and then "the room's newest" is whichever
+            // ceremony was opened last -- routinely the group's own, already
+            // finished, while the subgroup's request goes unanswered underneath it.
+            val sessions = dkgSessionId
+                ?.let { dkgRepository.observeSessionById(it) }
+                ?: dkgRepository.observeLatestSessionForChatRoom(chatRoomId)
+
+            sessions.collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
                     ?: DkgRitualUIState.Loaded(
                         localChatRoom = localChatRoom,
@@ -632,6 +646,7 @@ class DkgRitualViewModel(
             chatRoomId: String,
             activeUserPublicKey: HexKey,
             parentChatRoomId: HexKey? = null,
+            dkgSessionId: String? = null,
             initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
             chatRepository: ChatRepository,
@@ -642,6 +657,7 @@ class DkgRitualViewModel(
                     chatRoomId = chatRoomId,
                     activeUserPublicKey = activeUserPublicKey,
                     parentChatRoomId = parentChatRoomId,
+                    dkgSessionId = dkgSessionId,
                     initialDkgRitualUIState = initialDkgRitualUIState,
                     activeWalletStateFlow = activeWalletStateFlow,
                     chatRepository = chatRepository,

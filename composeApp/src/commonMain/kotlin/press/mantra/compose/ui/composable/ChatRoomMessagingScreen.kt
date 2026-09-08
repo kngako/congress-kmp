@@ -161,11 +161,12 @@ fun ChatRoomMessagingScreen(
                             key(true) {
                                 ChatTranscript(
                                     viewModel = chatMessageListViewModel,
-                                    onOpenSharedKey = {
+                                    onOpenSharedKey = { dkgSessionId ->
                                         onNavigateToRoute.invoke(
                                             DkgRitualRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
-                                                chatRoomId = chatRoomId
+                                                chatRoomId = chatRoomId,
+                                                dkgSessionId = dkgSessionId
                                             )
                                         )
                                     },

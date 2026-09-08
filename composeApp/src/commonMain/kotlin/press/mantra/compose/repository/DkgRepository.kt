@@ -36,6 +36,14 @@ interface DkgRepository {
 
     fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>>
 
+    /**
+     * One named ceremony, however many the room holds.
+     *
+     * What a transcript line opens: the line knows which ceremony it is about,
+     * and the room does not.
+     */
+    fun observeSessionById(sessionId: String): Flow<DkgSession?>
+
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
     /**
@@ -160,6 +168,8 @@ interface DkgRepository {
             ): Flow<DkgSession?> = flowOf(null)
 
             override fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>> = flowOf(emptyList())
+
+            override fun observeSessionById(sessionId: String): Flow<DkgSession?> = flowOf(null)
 
             override suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession? = null
 

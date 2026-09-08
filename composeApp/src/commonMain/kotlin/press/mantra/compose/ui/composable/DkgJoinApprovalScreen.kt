@@ -32,6 +32,7 @@ import press.mantra.compose.ui.theme.spacing
 fun DkgJoinApprovalScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
+    dkgSessionId: String? = null,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
@@ -43,6 +44,7 @@ fun DkgJoinApprovalScreen(
         approveLabel = "Join the ceremony",
         activeUserPublicKey = activeUserPublicKey,
         chatRoomId = chatRoomId,
+        dkgSessionId = dkgSessionId,
         activeWalletStateFlow = activeWalletStateFlow,
         chatRepository = chatRepository,
         dkgRepository = dkgRepository,

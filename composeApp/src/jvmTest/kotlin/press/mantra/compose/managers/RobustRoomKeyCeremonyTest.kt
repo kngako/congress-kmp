@@ -369,4 +369,56 @@ class RobustRoomKeyCeremonyTest {
         assertEquals(subgroup.id, openCeremony(room, parentChatRoomId = parent).id)
         assertEquals(own.id, openCeremony(room).id)
     }
+
+    /**
+     * The failure the connected devices actually showed.
+     *
+     * A subgroup whose admins are the whole group runs in the room the group's
+     * own ceremony ran in. Ask that room for "its ceremony" and you get whichever
+     * was opened last -- on four real devices that was the group's own, already
+     * finished, while the subgroup's request for a host key sat underneath it
+     * unanswered. Every participant had the session, the room and the approval
+     * line, and the screen showed them a ceremony with nothing to do.
+     *
+     * Neither ordering fixes it, because the question is wrong: a room does not
+     * have *a* ceremony. The line a member taps knows which one it is about, so
+     * that is what the screen is opened with.
+     */
+    @Test
+    fun `a transcript line names the ceremony it belongs to`() = runBlocking {
+        val room = robustRoom()
+        val parent = "ab".repeat(32)
+
+        val subgroup = openCeremony(room, parentChatRoomId = parent)
+        val own = openCeremony(room)
+
+        // Asking the room hands back one of the two and cannot say which is
+        // wanted -- on the devices it was the group's own, already finished,
+        // while the subgroup's request sat underneath it. Not asserted on here
+        // because two ceremonies opened in the same second tie on `createdAt`;
+        // what matters is that nothing has to rely on that ordering at all.
+        assertNotEquals(own.id, subgroup.id)
+
+        // Every line says which ceremony it is about, so the subgroup's request
+        // opens the subgroup's ceremony however many the room holds.
+        val lines = chatMessages(room)
+
+        assertTrue(
+            lines.any { it.dkgSessionId == subgroup.id },
+            "the subgroup's ceremony has to have written lines of its own",
+        )
+        assertTrue(lines.any { it.dkgSessionId == own.id })
+        assertTrue(
+            lines.all { it.dkgSessionId != null },
+            "a line with no ceremony on it is a line that cannot be opened",
+        )
+
+        lines.filter { it.dkgSessionId == subgroup.id }.forEach {
+            assertEquals(
+                subgroup.id,
+                db.dkgSessionDao().observeSessionById(it.dkgSessionId!!).first()?.id,
+                "tapping a subgroup line reaches the subgroup's ceremony",
+            )
+        }
+    }
 }

@@ -1095,7 +1095,11 @@ object ChillDkgRitualManager {
                 marmotInnerEventId = null,
                 chatRoomId = session.chatRoomId,
                 content = content,
-                messageType = messageType
+                messageType = messageType,
+                // Which ceremony this line is about. A room can hold more than
+                // one -- see `ChatMessage.dkgSessionId` -- and the transcript is
+                // what a member taps to reach the one that wants them.
+                dkgSessionId = session.id
             )
         )
     }

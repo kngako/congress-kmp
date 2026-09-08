@@ -553,6 +553,7 @@ fun MantraNavHost(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
                     parentChatRoomId = route.parentChatRoomId,
+                    dkgSessionId = route.dkgSessionId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
@@ -567,6 +568,7 @@ fun MantraNavHost(
                 DkgJoinApprovalScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
+                    dkgSessionId = route.dkgSessionId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
@@ -579,6 +581,7 @@ fun MantraNavHost(
                 DkgRound1ApprovalScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
+                    dkgSessionId = route.dkgSessionId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
@@ -591,6 +594,7 @@ fun MantraNavHost(
                 DkgRound2ApprovalScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
+                    dkgSessionId = route.dkgSessionId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,

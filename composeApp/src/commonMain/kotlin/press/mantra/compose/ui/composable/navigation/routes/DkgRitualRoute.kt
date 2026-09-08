@@ -15,5 +15,15 @@ import kotlinx.serialization.Serializable
 data class DkgRitualRoute(
     val activeUserPublicKey: String,
     val chatRoomId: String,
-    val parentChatRoomId: String? = null
+    val parentChatRoomId: String? = null,
+    /**
+     * Which of the room's ceremonies to show, when the caller knows.
+     *
+     * A room can hold more than one -- a subgroup whose admins are the whole
+     * group runs in the room the group's own ceremony ran in -- so "the room's
+     * ceremony" does not name one thing. A transcript line knows which it is
+     * about and passes it; a caller with only a room passes null and gets the
+     * newest, which is the best answer available to it.
+     */
+    val dkgSessionId: String? = null
 ): Route()

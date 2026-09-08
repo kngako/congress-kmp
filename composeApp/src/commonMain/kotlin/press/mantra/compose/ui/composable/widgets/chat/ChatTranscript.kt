@@ -99,7 +99,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 @Composable
 fun ChatTranscript(
     viewModel: ChatMessageListViewModel,
-    onOpenSharedKey: () -> Unit,
+    onOpenSharedKey: (dkgSessionId: String?) -> Unit,
     /**
      * Opens the signing this line is about, by session id -- or the room's
      * whole list of proposals when the line predates [ChatMessage.frostSigningSessionId]
@@ -233,7 +233,13 @@ fun ChatTranscript(
                                         localChatMessage = localChatMessage,
                                         isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                         isSettled = localChatMessage.chatMessage.id in settledRequests,
-                                        onClick = onOpenSharedKey
+                                        // The line knows which ceremony it is
+                                        // about; the room does not. Passing it is
+                                        // what stops a subgroup's request opening
+                                        // the group's own finished ceremony.
+                                        onClick = {
+                                            onOpenSharedKey(localChatMessage.chatMessage.dkgSessionId)
+                                        }
                                     )
                                     return@items
                                 }

@@ -36,6 +36,7 @@ import mantra.composeapp.generated.resources.you
 fun DkgRound1ApprovalScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
+    dkgSessionId: String? = null,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
@@ -47,6 +48,7 @@ fun DkgRound1ApprovalScreen(
         approveLabel = "Contribute",
         activeUserPublicKey = activeUserPublicKey,
         chatRoomId = chatRoomId,
+        dkgSessionId = dkgSessionId,
         activeWalletStateFlow = activeWalletStateFlow,
         chatRepository = chatRepository,
         dkgRepository = dkgRepository,

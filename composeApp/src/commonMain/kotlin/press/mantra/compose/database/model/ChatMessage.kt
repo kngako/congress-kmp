@@ -122,6 +122,24 @@ data class ChatMessage(
      */
     val frostSigningSessionId: String? = null,
 
+    /**
+     * The ceremony a [DKG_TYPES] line belongs to, or null for anything else.
+     *
+     * The pair to [frostSigningSessionId], and added for the same reason one
+     * ceremony at a time stopped being true. A room's ceremony room is derived
+     * from its members, so a subgroup whose admins are the whole group runs in
+     * the room the group's own ceremony ran in -- and then "the room's ceremony"
+     * names two things. A screen opened from one of these lines has to reach the
+     * ceremony the line is *about*, not the newest one in the room, or a member
+     * asked to join a subgroup is shown a ceremony that finished last week and
+     * told there is nothing to do.
+     *
+     * Null on every line written before this column existed, which the readers
+     * below fall back to the clock for. Correct for those rooms too: nothing that
+     * predates subgroups ran two ceremonies at once.
+     */
+    val dkgSessionId: String? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = Clock.System.now(),
@@ -521,12 +539,19 @@ data class ChatMessage(
          * and it is what a line written before [frostSigningSessionId] existed
          * has to be read by.
          */
-        private fun ChatMessage.isAbout(request: ChatMessage): Boolean =
-            if (frostSigningSessionId != null && request.frostSigningSessionId != null) {
+        private fun ChatMessage.isAbout(request: ChatMessage): Boolean = when {
+            frostSigningSessionId != null && request.frostSigningSessionId != null ->
                 frostSigningSessionId == request.frostSigningSessionId
-            } else {
-                createdAt >= request.createdAt
-            }
+
+            // Ceremonies say which one they are now too. The clock used to be
+            // right here because a room ran one at a time; a room that holds a
+            // group's own ceremony and a subgroup's would otherwise credit an
+            // answer given to one as an answer to the other.
+            dkgSessionId != null && request.dkgSessionId != null ->
+                dkgSessionId == request.dkgSessionId
+
+            else -> createdAt >= request.createdAt
+        }
 
         /**
          * The signing requests that are no longer open, by row id.

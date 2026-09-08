@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 17,
+    version = 18,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -288,6 +288,16 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // parent, so a dangling value is the normal state. Adding nullable
         // columns is a shape Room migrates itself.
         AutoMigration(from = 16, to = 17),
+        // v18 adds the nullable ChatMessage.dkgSessionId, the pair to
+        // frostSigningSessionId, because "the room's ceremony" stopped naming one
+        // thing. A subgroup whose admins are the whole group runs in the room the
+        // group's own ceremony ran in, so a transcript line has to say which of
+        // the two it is about -- otherwise a member tapping "your approval is
+        // needed" is shown whichever ceremony is newest, which is routinely the
+        // wrong one. Rows written before it read back null and fall back to the
+        // clock, which is correct for them: nothing that predates subgroups ran
+        // two ceremonies in one room.
+        AutoMigration(from = 17, to = 18),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

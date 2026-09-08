@@ -64,6 +64,7 @@ internal fun DkgApprovalScaffold(
     approveLabel: String,
     activeUserPublicKey: HexKey,
     chatRoomId: String,
+    dkgSessionId: String? = null,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
@@ -73,6 +74,7 @@ internal fun DkgApprovalScaffold(
     val dkgRitualViewModel: DkgRitualViewModel = viewModel(
         factory = DkgRitualViewModel.factory(
             chatRoomId = chatRoomId,
+            dkgSessionId = dkgSessionId,
             activeUserPublicKey = activeUserPublicKey,
             activeWalletStateFlow = activeWalletStateFlow,
             chatRepository = chatRepository,

@@ -137,6 +137,8 @@ fun DkgRitualScreen(
      * rung: the parent's birth certificate, between the key and the key state.
      */
     parentChatRoomId: String? = null,
+    /** Which of the room's ceremonies to show; null takes the newest. */
+    dkgSessionId: String? = null,
     initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
     activeWalletStateFlow: StateFlow<ActiveWallet?>,
     chatRepository: ChatRepository,
@@ -148,6 +150,7 @@ fun DkgRitualScreen(
             chatRoomId = chatRoomId,
             activeUserPublicKey = activeUserPublicKey,
             parentChatRoomId = parentChatRoomId,
+            dkgSessionId = dkgSessionId,
             initialDkgRitualUIState = initialDkgRitualUIState,
             activeWalletStateFlow = activeWalletStateFlow,
             chatRepository = chatRepository,
@@ -200,15 +203,18 @@ fun DkgRitualScreen(
                                                 when (pending) {
                                                     DkgApprovalStep.HOST_KEY -> DkgJoinApprovalRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
-                                                        chatRoomId = chatRoomId
+                                                        chatRoomId = chatRoomId,
+                                                        dkgSessionId = dkgRitualUIState.session?.id
                                                     )
                                                     DkgApprovalStep.ROUND_1 -> DkgRound1ApprovalRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
-                                                        chatRoomId = chatRoomId
+                                                        chatRoomId = chatRoomId,
+                                                        dkgSessionId = dkgRitualUIState.session?.id
                                                     )
                                                     DkgApprovalStep.ROUND_2 -> DkgRound2ApprovalRoute(
                                                         activeUserPublicKey = activeUserPublicKey,
-                                                        chatRoomId = chatRoomId
+                                                        chatRoomId = chatRoomId,
+                                                        dkgSessionId = dkgRitualUIState.session?.id
                                                     )
                                                 }
                                             )

@@ -28,6 +28,9 @@ class DatabaseDkgRepository(
 ): DkgRepository {
     private val logger = Logger.withTag(TAG)
 
+    override fun observeSessionById(sessionId: String): Flow<DkgSession?> =
+        database.dkgSessionDao().observeSessionById(sessionId)
+
     override fun observeLatestSessionForChatRoom(
         chatRoomId: String,
         parentChatRoomId: String?,
