@@ -43,6 +43,7 @@ import press.mantra.compose.extensions.hexToNpubHrp
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
+import press.mantra.compose.ui.composable.navigation.routes.KeyRecoveryRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -269,22 +270,23 @@ fun ActiveProfileScreen(
                         item {
                             TextButton(
                                 onClick = {
-
                                     onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Profile Keys")
+                                        KeyRecoveryRoute(
+                                            activeUserPublicKey = activeUserPublicKey
+                                        )
                                     )
                                 }
                             ) {
                                 Icon(
                                     Icons.Default.Key,
-                                    contentDescription = "Profile Keys"
+                                    contentDescription = "Key Recovery"
                                 )
 
                                 Spacer(
                                     modifier = Modifier.width(10.dp)
                                 )
 
-                                Text("Profile Keys")
+                                Text("Key Recovery")
                             }
                         }
 

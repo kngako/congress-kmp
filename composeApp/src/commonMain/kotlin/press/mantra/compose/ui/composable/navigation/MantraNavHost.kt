@@ -38,9 +38,11 @@ import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
+import press.mantra.compose.ui.composable.KeyRecoveryScreen
 import press.mantra.compose.ui.composable.LandingScreen
 import press.mantra.compose.ui.composable.LoadingScreen
 import press.mantra.compose.ui.composable.NostrEventDetailScreen
+import press.mantra.compose.ui.composable.RecoveryPhraseScreen
 import press.mantra.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import press.mantra.compose.ui.composable.SearchResultScreen
 import press.mantra.compose.ui.composable.SearchScreen
@@ -71,9 +73,11 @@ import press.mantra.compose.ui.composable.navigation.routes.DkgRound2ApprovalRou
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.KeyPackageManagementRoute
+import press.mantra.compose.ui.composable.navigation.routes.KeyRecoveryRoute
 import press.mantra.compose.ui.composable.navigation.routes.LandingRoute
 import press.mantra.compose.ui.composable.navigation.routes.LoadingRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.RecoveryPhraseRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
@@ -727,6 +731,31 @@ fun MantraNavHost(
                     navController.navigate(
                         route = route
                     )
+                }
+            )
+        }
+        composable<KeyRecoveryRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<KeyRecoveryRoute>()
+
+            KeyRecoveryScreen(
+                activeUserPublicKey = route.activeUserPublicKey,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToRoute = { route ->
+                    navController.navigate(
+                        route = route
+                    )
+                }
+            )
+        }
+        composable<RecoveryPhraseRoute> {
+            RecoveryPhraseScreen(
+                phoenixGlobal = phoenixGlobal,
+                activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
