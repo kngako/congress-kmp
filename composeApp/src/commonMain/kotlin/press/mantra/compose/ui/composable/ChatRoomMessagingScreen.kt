@@ -56,6 +56,7 @@ import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChatRoomMessagingViewModel
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.composable.widgets.chat.ChatTranscript
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
 import mantra.composeapp.generated.resources.Res
@@ -155,7 +156,8 @@ fun ChatRoomMessagingScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
                         key(true) {
-                            chatMessageListViewModel.RenderMessages(
+                            ChatTranscript(
+                                viewModel = chatMessageListViewModel,
                                 onOpenSharedKey = {
                                     onNavigateToRoute.invoke(
                                         DkgRitualRoute(
