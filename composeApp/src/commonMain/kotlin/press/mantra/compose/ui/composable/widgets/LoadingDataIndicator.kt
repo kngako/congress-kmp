@@ -1,7 +1,9 @@
 package press.mantra.compose.ui.composable.widgets
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LoadingIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -14,10 +16,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
 
+/**
+ * The app's one loading state, used at 41 call sites.
+ *
+ * It draws M3's `LoadingIndicator` rather than a `CircularProgressIndicator`. That is the
+ * expressive component for exactly this -- an indeterminate wait with no progress to
+ * report -- and it is what `MaterialExpressiveTheme` expects to be paired with.
+ *
+ * The colour default moved from `secondary` to the component's own
+ * `LoadingIndicatorDefaults.indicatorColor`. `secondary` is the brand gold, which read as
+ * a warning rather than as a wait, and the previous version also hardcoded an 80dp width
+ * where the component has a size of its own.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadingDataIndicator(
     modifier: Modifier = Modifier.fillMaxWidth(),
-    color: Color = MaterialTheme.colorScheme.secondary,
+    color: Color = LoadingIndicatorDefaults.indicatorColor,
     fillScreen: Boolean = true,
     text: String? = null
 ) {
@@ -29,11 +44,7 @@ fun LoadingDataIndicator(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        CircularProgressIndicator(
-            modifier = Modifier.width(80.dp).aspectRatio(1f),
-            color = color,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        )
+        LoadingIndicator(color = color)
 
         text?.let {
 

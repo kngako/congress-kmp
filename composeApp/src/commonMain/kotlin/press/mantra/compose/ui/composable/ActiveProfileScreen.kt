@@ -67,6 +67,8 @@ import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -195,7 +197,13 @@ fun ActiveProfileScreen(
                                     modifier = Modifier.weight(1f)
                                 )
 
-                                Button(
+                                // The list this sits in is otherwise TextButtons --
+                                // edit profile, key packages, change account, profile
+                                // keys, network relays. Two of the seven were filled
+                                // Buttons, which is M3's highest emphasis and is meant
+                                // for one action per screen. Sharing is the useful one,
+                                // so it keeps medium emphasis rather than maximum.
+                                FilledTonalButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
                                             ShareProfileRoute(
@@ -324,7 +332,15 @@ fun ActiveProfileScreen(
                         }
 
                         item {
-                            Button(
+                            // Signing out was the *other* filled Button -- the most
+                            // prominent control on the screen given to its most
+                            // destructive action. It now matches how leaving and
+                            // deleting a group are already treated in
+                            // ChatRoomDetailScreen: a TextButton in the error colour.
+                            TextButton(
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
                                 onClick = {
                                     onNavigateToRoute.invoke(
                                         ImplementationPendingRoute("Sign out")

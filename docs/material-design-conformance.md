@@ -658,37 +658,47 @@ a network identity question rather than a content one.
 
 ### Phase 5 — every screen has four states
 
-**Why here.** It needs the tokens from Phase 2 and the strings from Phase 4, and
-it produces the components Phase 6 will lay out.
+**Why here.** It needs the tokens from phase 2 and the strings from phase 4, and it
+produces the components phase 6 will lay out.
 
-**Work.**
+**Built.** Two commits.
 
-1. **A `SnackbarHost` on every `Scaffold`**, and a single place to send messages
-   to it. 26 scaffolds, zero hosts, is why there is nowhere to report an invite
-   failing.
-2. **One empty-state composable, one error-state composable.** Icon, message,
-   and — for errors — a retry action. This replaces 16 copies of
-   `Text("Something went wrong")` and 5 of `Text("No events were found")`, and
-   absorbs the 49 spacer idioms. **None of the 16 sites offers a retry today**;
-   each one is a dead end for the user.
-3. **Loading gets the M3 component.** `LoadingDataIndicator` hardcodes an 80dp
-   `CircularProgressIndicator` in `colorScheme.secondary`. The pinned material3
-   ships `LoadingIndicator`, which is the expressive equivalent and themed.
-4. **Audit the disabled states.** Five screens compute a FAB container colour
-   by hand from a `can…` flag (`AddArtifactScreen.kt:156`,
-   `AddChapterScreen.kt:149`, `AddDialectScreen.kt:128`,
-   `TranslateChunkScreen.kt:131`, `AddTranslationArtifactVersionScreen.kt:155`).
-   Passing `enabled` and letting the component apply the 38% state layer is both
-   less code and the specified behaviour.
-5. **Give buttons a hierarchy.** 31 `Button` and 27 `TextButton`, and nothing in
-   between — no `FilledTonalButton`, `OutlinedButton` or `ElevatedButton`
-   anywhere. Every screen therefore reads as either maximum or minimum emphasis.
-   Assign one filled button per screen and demote the rest.
+1. **`ErrorState` and `EmptyState`** replace 21 hand-copied blocks — 16 saying "Something
+   went wrong", five saying "No events were found", **none of the sixteen with a retry**.
+   `EmptyState`'s message is required with no default, because that one sentence was shown
+   for five different absences and a shared default would have preserved exactly that.
 
-**Done when** every `Scaffold` has a host, every list has an empty state, every
-error offers a retry, and no screen computes a disabled colour by hand.
+2. **A snackbar host**, where there had been none across 43 `Scaffold`s. On a composition
+   local rather than a parameter, because a view model coroutine reporting an outcome sits
+   several composables below the `Scaffold` that owns the host. It throws rather than
+   defaulting to a detached state: a default would make `notify(…)` a silent no-op on any
+   screen that forgot the host, which is the failure the file exists to end. Wired to
+   `publishNewKeyPackage` and `rotateKeyPackage`, both of which were fire-and-forget, and
+   verified on a device.
 
-**Risk:** low. Additive.
+3. **`LoadingDataIndicator` draws `LoadingIndicator`** — the expressive component for an
+   indeterminate wait — instead of a `CircularProgressIndicator` hardcoded to 80dp in the
+   brand gold, which read as a warning rather than as a wait. One wrapper, 41 call sites.
+
+4. **The profile screen's hierarchy.** Seven actions in one list, five of them
+   `TextButton`s and two filled `Button`s — M3's highest emphasis, meant for one action per
+   screen. One of the two was **Sign out**: the most prominent control on the screen given
+   to its most destructive action. Sharing is now `FilledTonalButton`; signing out is a
+   `TextButton` in the error colour, matching how leaving and deleting a group are already
+   treated elsewhere in this app.
+
+**The plan was wrong about disabled FABs.** It said five screens should pass `enabled` and
+let the component apply the 38% state layer. No `FloatingActionButton` overload in
+material3 1.10 takes `enabled` — the spec's position is that an unavailable FAB should not
+appear at all — so hand-computing the colours is the only way to show one, and the existing
+code already pairs it with `Modifier.semantics { disabled() }` so a screen reader does not
+announce a button it is happy to press. Left alone.
+
+**Left for a person.** Eight more screens have two or more filled buttons competing:
+LandingScreen's "Sign in" beside "Create profile", SocialPreconditionScreen's "Invite a
+friend" beside "View invites", and six others. Which of a pair is primary is a product
+decision about what the screen is for, not something to infer from the source, and getting
+it wrong quietly weights a choice the user is supposed to make freely.
 
 ---
 
