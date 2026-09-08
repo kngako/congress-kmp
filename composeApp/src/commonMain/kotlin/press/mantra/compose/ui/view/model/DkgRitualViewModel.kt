@@ -88,6 +88,9 @@ class DkgRitualViewModel(
      */
     private var watchedParentChatRoomId: HexKey? = null
 
+    /** The ceremony [observeForCeremony] is currently watching. */
+    private var watchedSessionId: String? = null
+
     /**
      * The quorum the ritual will generate a key for. Pre-filled with the same
      * majority default the group-creation screen offers.
@@ -186,12 +189,14 @@ class DkgRitualViewModel(
                     pendingApproval = session?.let { dkgRepository.pendingApproval(it) }
                 )
 
-                // Re-point the certificate watchers whenever the purpose changes,
-                // which for a member arriving cold is once: from nothing to the
-                // parent the proposal named.
-                if (parent != watchedParentChatRoomId) {
+                // Re-point the per-ceremony watchers whenever the ceremony or its
+                // purpose changes, which for a member arriving cold is once.
+                // Everything downstream of this -- the key state, the certificate
+                // -- is about one ceremony, and the room cannot say which.
+                if (session?.id != watchedSessionId || parent != watchedParentChatRoomId) {
+                    watchedSessionId = session?.id
                     watchedParentChatRoomId = parent
-                    observeCertificate(parent)
+                    observeForCeremony(session?.id, parent)
                 }
 
                 // Re-point the message watcher at whatever session is current. An
@@ -259,21 +264,13 @@ class DkgRitualViewModel(
                 }
             }
 
-            launch {
-                dkgRepository.observeSignedGroupKeyState(chatRoomId)
-                    .collect { state ->
-                    val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
-
-                    dkgRitualUIState = loaded.copy(isKeyStateSigned = state != null)
-                }
-            }
 
         }
     }
 
     /**
-     * Follows the parent certifying this subgroup, once there is a parent to
-     * follow.
+     * Follows one ceremony: whether its key state has been signed, and -- for a
+     * subgroup -- whether its parent has certified it.
      *
      * Off the *parent's* signed events and sessions rather than this room's: the
      * certificate is made where the parent's key can sign it, which is never the
@@ -285,19 +282,38 @@ class DkgRitualViewModel(
      * message watcher is -- an ordinary ceremony passes null and gets nothing
      * watched, which is exactly right.
      */
-    private fun observeCertificate(parentChatRoomId: HexKey?) {
+    private fun observeForCeremony(dkgSessionId: String?, parentChatRoomId: HexKey?) {
         certificateObserver?.cancel()
 
-        if (parentChatRoomId == null) {
+        if (dkgSessionId == null) {
             dkgRitualUIState = (dkgRitualUIState as? DkgRitualUIState.Loaded)
-                ?.copy(isCertified = false, certificateSession = null)
+                ?.copy(isKeyStateSigned = false, isCertified = false, certificateSession = null)
                 ?: dkgRitualUIState
             return
         }
 
         certificateObserver = viewModelScope.launch(Dispatchers.IO) {
+            // Whether the group has agreed what the room this ceremony's key
+            // derives will sign with. Asked by ceremony rather than by room: the
+            // room holds however many ceremonies it holds, and the answer is
+            // about this one's key.
             launch {
-                dkgRepository.observeBirthCertificate(chatRoomId, parentChatRoomId)
+                dkgRepository.observeSignedGroupKeyState(dkgSessionId).collect { state ->
+                    val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
+
+                    dkgRitualUIState = loaded.copy(isKeyStateSigned = state != null)
+                }
+            }
+
+            if (parentChatRoomId == null) {
+                dkgRitualUIState = (dkgRitualUIState as? DkgRitualUIState.Loaded)
+                    ?.copy(isCertified = false, certificateSession = null)
+                    ?: dkgRitualUIState
+                return@launch
+            }
+
+            launch {
+                dkgRepository.observeBirthCertificate(dkgSessionId, parentChatRoomId)
                     .collect { certificate ->
                         val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
 

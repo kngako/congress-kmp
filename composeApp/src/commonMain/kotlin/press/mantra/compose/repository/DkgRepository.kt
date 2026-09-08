@@ -111,10 +111,17 @@ interface DkgRepository {
      * changes is the moment there is a room to make -- and the state it is
      * about does not exist as a row until somebody makes one.
      */
-    fun observeSignedGroupKeyState(
-        chatRoomId: String,
-        parentChatRoomId: String? = null,
-    ): Flow<GroupKeyState?>
+    /**
+     * Whether the group has signed a key state for the room [dkgSessionId]'s key
+     * derives.
+     *
+     * Named by ceremony rather than by room, because the room a ceremony runs in
+     * can hold more than one and re-deriving "the room's ceremony" here would
+     * answer about a different key than the screen is showing. That is what left
+     * a finished subgroup with its key state signed, its certificate signed, and
+     * no way to create the room -- the lookup found no ceremony at all.
+     */
+    fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?>
 
     /** Files the state the group signed for a room that now exists. */
     suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
@@ -142,7 +149,7 @@ interface DkgRepository {
      * the key state, which is itself signed before the room is created.
      */
     fun observeBirthCertificate(
-        ceremonyChatRoomId: String,
+        dkgSessionId: String,
         parentChatRoomId: String,
     ): Flow<GroupSignedEvent?>
 
@@ -200,10 +207,7 @@ interface DkgRepository {
                 chatRoomId: String
             ): Flow<List<LocalFrostSigningSession>> = flowOf(emptyList())
 
-            override fun observeSignedGroupKeyState(
-                chatRoomId: String,
-                parentChatRoomId: String?,
-            ): Flow<GroupKeyState?> =
+            override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?> =
                 flowOf(null)
 
             override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
@@ -217,7 +221,7 @@ interface DkgRepository {
             ): FrostSigningSession? = null
 
             override fun observeBirthCertificate(
-                ceremonyChatRoomId: String,
+                dkgSessionId: String,
                 parentChatRoomId: String,
             ): Flow<GroupSignedEvent?> = flowOf(null)
 

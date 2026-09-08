@@ -25,10 +25,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.builder.getRoomDatabase
+import press.mantra.compose.database.repository.DatabaseDkgRepository
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
@@ -1622,5 +1624,55 @@ class SignedGroupKeyStateTest {
             assertNull(state.parentChatRoomId)
             assertNull(state.birthCertificateJson)
         }
+    }
+
+    /**
+     * The state two real subgroups were left in: everything signed, and no way to
+     * create the room.
+     *
+     * "2.0" and "2.1" each finished a ChillDKG, got a birth certificate out of the
+     * parent's quorum, and got their key state signed by their own. The coordinator
+     * was then offered nothing, because the screen asked whether a key state was
+     * signed **by room** -- and a subgroup's ceremony room holds only that
+     * subgroup's ceremony, so the lookup for the room's *own* ceremony found
+     * nothing, derived no key, and reported "not signed" over a state sitting in
+     * the same database.
+     *
+     * Asked by ceremony it is answerable, and the answer does not depend on how
+     * many ceremonies the room holds.
+     */
+    @Test
+    fun `a signed key state is found by the ceremony that produced it`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        assertNotNull(creator.keyState(), "the group signed it")
+
+        // What the screen asks, and what it used to ask. The ceremony knows which
+        // key it made; the room it ran in does not.
+        assertNotNull(
+            DatabaseDkgRepository(creator.db, this)
+                .observeSignedGroupKeyState(ceremonyId)
+                .first(),
+            "the key state has to be reachable from the ceremony that produced it",
+        )
+
+        // And a ceremony that produced no key yet answers null rather than
+        // throwing -- this flow runs from before the ceremony finishes.
+        assertNull(
+            DatabaseDkgRepository(creator.db, this)
+                .observeSignedGroupKeyState("no-such-ceremony")
+                .first(),
+        )
     }
 }
