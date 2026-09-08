@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.room3.Embedded
 import androidx.room3.Relation
@@ -23,6 +22,7 @@ import press.mantra.compose.database.model.QuotedRelation
 import press.mantra.compose.ui.composable.widgets.content.RichContent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 data class LocalQuotedNostrEvent(
     @Embedded val quotedRelation: press.mantra.compose.database.model.QuotedRelation,
@@ -110,7 +110,7 @@ data class LocalQuotedNostrEvent(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun LocalQuotedNostrEventPreview() {
     TorchTheme {

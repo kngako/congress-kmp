@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.NostrEvent
@@ -57,6 +56,20 @@ import press.mantra.compose.ui.view.model.MetadataEventDetailViewModel
 import press.mantra.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.add_to_group
+import mantra.composeapp.generated.resources.block_user
+import mantra.composeapp.generated.resources.edit_profile
+import mantra.composeapp.generated.resources.follow
+import mantra.composeapp.generated.resources.follow_back
+import mantra.composeapp.generated.resources.send_message
+import mantra.composeapp.generated.resources.unfollow
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -84,6 +97,7 @@ fun MetadataEventDetail(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
@@ -110,11 +124,11 @@ fun MetadataEventDetail(
                         profile?.nip05?.let {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                             ) {
                                 Icon(
                                     Icons.Default.Bolt,
-                                    contentDescription = "Lightning Bolt",
+                                    contentDescription = "Lightning payment",
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
@@ -133,13 +147,13 @@ fun MetadataEventDetail(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 item {
                     Column(
@@ -148,8 +162,8 @@ fun MetadataEventDetail(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ProfileAvatar(
@@ -180,7 +194,7 @@ fun MetadataEventDetail(
                                                 onClick = onNavigateToEditProfile
                                             ) {
                                                 Text(
-                                                    "Edit Profile"
+                                                    stringResource(Res.string.edit_profile)
                                                 )
                                             }
 
@@ -194,7 +208,7 @@ fun MetadataEventDetail(
                                                 }
                                             ) {
                                                 Text(
-                                                    "Unfollow"
+                                                    stringResource(Res.string.unfollow)
                                                 )
                                             }
                                         } else {
@@ -206,9 +220,9 @@ fun MetadataEventDetail(
                                             ) {
                                                 Text(
                                                     text = if (metadataEventDetailUIState.followingActiveUserConnection != null) {
-                                                        "follow back"
+                                                        stringResource(Res.string.follow_back)
                                                     } else {
-                                                        "follow"
+                                                        stringResource(Res.string.follow)
                                                     }
                                                 )
                                             }
@@ -224,7 +238,7 @@ fun MetadataEventDetail(
                         }
                         Text(
                             modifier = Modifier.fillMaxWidth().padding(
-                                horizontal = 20.dp
+                                horizontal = MaterialTheme.spacing.space250
                             ),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -238,20 +252,20 @@ fun MetadataEventDetail(
                     TextButton(
                         onClick = {
                             onNavigateToEvent.invoke(
-                                ImplementationPendingRoute("Add to Group")
+                                ImplementationPendingRoute("Add to group")
                             )
                         }
                     ) {
                         Icon(
                             Icons.Default.GroupAdd,
-                            contentDescription = "Add to Group"
+                            contentDescription = "Add to group"
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Add To Group")
+                        Text(stringResource(Res.string.add_to_group))
                     }
                 }
 
@@ -259,7 +273,7 @@ fun MetadataEventDetail(
                     TextButton(
                         onClick = {
                             onNavigateToEvent.invoke(
-                                ImplementationPendingRoute("Block User")
+                                ImplementationPendingRoute("Block user")
                             )
                         }
                     ) {
@@ -269,10 +283,10 @@ fun MetadataEventDetail(
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
 
-                        Text("Block User")
+                        Text(stringResource(Res.string.block_user))
                     }
                 }
 
@@ -290,13 +304,13 @@ fun MetadataEventDetail(
                     ) {
                         Icon(
                             Icons.Default.Mail,
-                            contentDescription = "Direct Message"
+                            contentDescription = "Direct message"
                         )
 
                         Spacer(
-                            modifier = Modifier.width(10.dp)
+                            modifier = Modifier.width(MaterialTheme.spacing.space125)
                         )
-                        Text("Send Message")
+                        Text(stringResource(Res.string.send_message))
                     }
                 }
             }
@@ -308,13 +322,13 @@ fun MetadataEventDetail(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun MetadataEventEventDetailPreview() {
 
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             MetadataEventDetail(
                 activeUserPublicKey = "",

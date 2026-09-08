@@ -32,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.MarmotKeyPackageBundle
@@ -43,6 +42,24 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.view.model.KeyPackageManagementViewModel
 import press.mantra.compose.ui.view.state.KeyPackageManagementUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.key_package_management
+import mantra.composeapp.generated.resources.publish_new_key_package
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
+import mantra.composeapp.generated.resources.key_packages
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import mantra.composeapp.generated.resources.key_package_published
+import mantra.composeapp.generated.resources.key_package_rotated
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +72,12 @@ fun KeyPackageManagementScreen(
     marmotRepository: MarmotRepository
 ) {
 
+    // Read outside the click handlers: stringResource and rememberNotifier are both
+    // composable, and a lambda passed to onClick is not.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val publishedMessage = stringResource(Res.string.key_package_published)
+    val rotatedMessage = stringResource(Res.string.key_package_rotated)
+
     val keyPackageManagementViewModel: KeyPackageManagementViewModel = viewModel(
         factory = KeyPackageManagementViewModel.factory(
             nostrEventId = nostrEventId,
@@ -64,161 +87,163 @@ fun KeyPackageManagementScreen(
         ),
     )
 
-    when(val keyPackageManagementUIState = keyPackageManagementViewModel.keyPackageManagementUIState) {
-        KeyPackageManagementUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Something went wrong")
+    ScreenStateTransition(keyPackageManagementViewModel.keyPackageManagementUIState) { uiState ->
+    when (val keyPackageManagementUIState = uiState) {
+            KeyPackageManagementUIState.Error -> {
+                ErrorState()
             }
-        }
-        is KeyPackageManagementUIState.Loaded -> {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Key Package Management"
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateBack.invoke()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding)
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        item {
-                            Button(
-                                onClick = {
-                                    keyPackageManagementViewModel.publishNewKeyPackage()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.LockReset,
-                                    contentDescription = "Publish new key package"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
+            is KeyPackageManagementUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
                                 Text(
-                                    text = "Publish New Key Package"
+                                    text = stringResource(Res.string.key_package_management)
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(
+                                    onClick = {
+                                        onNavigateBack.invoke()
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding)
+                        .readableContent()
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            item {
+                                Button(
+                                    onClick = {
+                                        keyPackageManagementViewModel.publishNewKeyPackage {
+                                            notify(publishedMessage)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.LockReset,
+                                        contentDescription = "Publish new key package"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        text = stringResource(Res.string.publish_new_key_package)
+                                    )
+                                }
+                            }
+                            item {
+                                Text(
+                                    stringResource(Res.string.key_packages, keyPackageManagementUIState.keyPackageBundles.size)
                                 )
                             }
-                        }
-                        item {
-                            Text(
-                                "${keyPackageManagementUIState.keyPackageBundles.size} Key Packages"
-                            )
-                        }
 
-                        items(
-                            items = keyPackageManagementUIState.keyPackageBundles
-                        ) { marmotKeyPackageBundle ->
+                            items(
+                                items = keyPackageManagementUIState.keyPackageBundles
+                            ) { marmotKeyPackageBundle ->
 
-                            Card {
-                                ListItem(
-                                    leadingContent = {
-                                        if (marmotKeyPackageBundle.rotated) {
-                                            Icon(
-                                                Icons.Default.Unpublished,
-                                                contentDescription = "Key package rotated"
-                                            )
-                                        } else if (marmotKeyPackageBundle.consumed) {
-                                            Icon(
-                                                Icons.Default.DoneAll,
-                                                contentDescription = "Consumed key package event"
-                                            )
-                                        } else {
-                                            // TODO: Get broadcast status of key package...
-                                            Icon(
-                                                Icons.Default.VerifiedUser,
-                                                contentDescription = "Key package published"
-                                            )
-                                        }
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            text = marmotKeyPackageBundle.id,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.MiddleEllipsis
-                                        )
-                                    },
-                                    supportingContent = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(
-                                                text = marmotKeyPackageBundle.createdAt.toFormattedTimeAndDateString(),
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-
-                                            Spacer(
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-
-                                    },
-                                    trailingContent = {
-                                        if (marmotKeyPackageBundle.rotated.not() && marmotKeyPackageBundle.consumed.not()) {
-                                            IconButton(
-                                                onClick = {
-                                                    keyPackageManagementViewModel.rotateKeyPackage(
-                                                        marmotKeyPackageBundle
-                                                    )
-                                                }
-                                            ) {
+                                Card {
+                                    ListItem(
+                                        leadingContent = {
+                                            if (marmotKeyPackageBundle.rotated) {
                                                 Icon(
-                                                    Icons.Default.LockReset,
-                                                    contentDescription = "Rotate Key"
+                                                    Icons.Default.Unpublished,
+                                                    contentDescription = "Key package rotated"
+                                                )
+                                            } else if (marmotKeyPackageBundle.consumed) {
+                                                Icon(
+                                                    Icons.Default.DoneAll,
+                                                    contentDescription = "Consumed key package event"
+                                                )
+                                            } else {
+                                                // TODO: Get broadcast status of key package...
+                                                Icon(
+                                                    Icons.Default.VerifiedUser,
+                                                    contentDescription = "Key package published"
                                                 )
                                             }
-                                        }
+                                        },
+                                        headlineContent = {
+                                            Text(
+                                                text = marmotKeyPackageBundle.id,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.MiddleEllipsis
+                                            )
+                                        },
+                                        supportingContent = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(
+                                                    text = marmotKeyPackageBundle.createdAt.toFormattedTimeAndDateString(),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
 
-                                    }
-                                )
+                                                Spacer(
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                            }
+
+                                        },
+                                        trailingContent = {
+                                            if (marmotKeyPackageBundle.rotated.not() && marmotKeyPackageBundle.consumed.not()) {
+                                                IconButton(
+                                                    onClick = {
+                                                        keyPackageManagementViewModel.rotateKeyPackage(
+                                                            marmotKeyPackageBundle
+                                                        ) {
+                                                            notify(rotatedMessage)
+                                                        }
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.LockReset,
+                                                        contentDescription = "Rotate key"
+                                                    )
+                                                }
+                                            }
+
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        KeyPackageManagementUIState.Loading -> {
-            LoadingDataIndicator()
-        }
-        KeyPackageManagementUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("We couldn't find the local profile. Please try again later.")
+            KeyPackageManagementUIState.Loading -> {
+                LoadingDataIndicator()
+            }
+            KeyPackageManagementUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+                }
             }
         }
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

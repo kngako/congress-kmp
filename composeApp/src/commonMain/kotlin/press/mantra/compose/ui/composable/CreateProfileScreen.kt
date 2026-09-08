@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material.icons.Icons
@@ -28,12 +29,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.repository.MarmotRepository
+import press.mantra.compose.ui.theme.LocalExtendedColors
 import press.mantra.compose.ui.view.model.CreateProfileViewModel
 import press.mantra.compose.ui.view.state.CreateProfileUIState
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.after_this_there_is_no_turning_back
+import mantra.composeapp.generated.resources.bio
+import mantra.composeapp.generated.resources.create_profile
+import mantra.composeapp.generated.resources.end_this
+import mantra.composeapp.generated.resources.enter_the_name_you_want_to_use_for_your_2
+import mantra.composeapp.generated.resources.introduce_yourself
+import mantra.composeapp.generated.resources.it_is_cryptographical_secure_and
+import mantra.composeapp.generated.resources.name
+import mantra.composeapp.generated.resources.name_eg_alan_turing
+import mantra.composeapp.generated.resources.next
+import mantra.composeapp.generated.resources.profile_is_ready
+import mantra.composeapp.generated.resources.see_how_deep_the_rabbit_hole_goes
+import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to_2
+import mantra.composeapp.generated.resources.start
+import mantra.composeapp.generated.resources.the_above_will_be_your_profile
+import mantra.composeapp.generated.resources.this_will_be_shown_when_people_open_your
+import mantra.composeapp.generated.resources.this_will_be_the_display_name_for_your
+import mantra.composeapp.generated.resources.what_should_people_know_about_you
+import mantra.composeapp.generated.resources.you_are_about_to_create_a_nostr_profile
+import mantra.composeapp.generated.resources.you_will_be_in_full_control_of_this_profile
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -51,35 +79,40 @@ fun CreateProfileScreen(
             marmotRepository = marmotRepository
         )
     )
-    Scaffold { innerPadding ->
+    // imePadding: this screen has a text field, and without it the software
+    // keyboard covers whatever is being typed into.
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 when (val createAccountUIState = createProfileViewModel.createProfileUIState.value) {
                     is CreateProfileUIState.Declaration -> {
 
                         Text(
-                            "Create Profile",
+                            stringResource(Res.string.create_profile),
                             style = MaterialTheme.typography.headlineSmall
                         )
 
                         Text(
-                            "You are about to create a NOSTR profile.",
+                            stringResource(Res.string.you_are_about_to_create_a_nostr_profile),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
 
                         Text(
-                            "It is cryptographical secure, and decentralized, putting you in total control of your digital profile",
+                            stringResource(Res.string.it_is_cryptographical_secure_and),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
@@ -95,13 +128,13 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                text = "Start"
+                                text = stringResource(Res.string.start)
                             )
                         }
                     }
                     is CreateProfileUIState.InputPrompt -> {
                         Text(
-                            "Create Profile",
+                            stringResource(Res.string.create_profile),
                             style = MaterialTheme.typography.headlineSmall
                         )
 
@@ -118,7 +151,7 @@ fun CreateProfileScreen(
                                     Text(
                                         text = it,
                                         modifier = Modifier.padding(
-                                            bottom = 8.dp
+                                            bottom = MaterialTheme.spacing.compactPadding
                                         )
                                     )
                                 }
@@ -129,13 +162,13 @@ fun CreateProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "Name (eg. Alan Turing)",
+                                    text = stringResource(Res.string.name_eg_alan_turing),
                                     maxLines = 1,
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "Enter the name you want to use for your profile",
+                                    text = stringResource(Res.string.enter_the_name_you_want_to_use_for_your_2),
                                     maxLines = 1,
                                 )
                             },
@@ -148,9 +181,9 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "This will be the display name for your profile and also important for search.",
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.this_will_be_the_display_name_for_your),
+                            style = MaterialTheme.typography.labelMedium
                         )
 
                         TextField(
@@ -162,7 +195,7 @@ fun CreateProfileScreen(
                                     Text(
                                         text = it,
                                         modifier = Modifier.padding(
-                                            bottom = 8.dp
+                                            bottom = MaterialTheme.spacing.compactPadding
                                         )
                                     )
                                 }
@@ -173,14 +206,14 @@ fun CreateProfileScreen(
                             ),
                             label = {
                                 Text(
-                                    text = "Introduce yourself",
+                                    text = stringResource(Res.string.introduce_yourself),
                                     maxLines = 1,
 
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    text = "What should people know about you?",
+                                    text = stringResource(Res.string.what_should_people_know_about_you),
                                     maxLines = 1,
                                 )
                             },
@@ -193,9 +226,9 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "This will be shown when people open your profile.",
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.this_will_be_shown_when_people_open_your),
+                            style = MaterialTheme.typography.labelMedium
                         )
 
                         Button(
@@ -215,39 +248,43 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                "Next"
+                                stringResource(Res.string.next)
                             )
                         }
 
                     }
                     is CreateProfileUIState.ConfirmInput -> {
 
+                        // A label/value list, so every one of the five is full width and
+                        // starts at the same edge. Centred, each floated at its own width
+                        // and "Name" began somewhere other than the name under it.
                         Text(
-                            text = "Name",
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.name),
                             style = MaterialTheme.typography.labelLarge
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = createAccountUIState.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyLarge
                         )
 
                         Text(
-                            text = "Bio",
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.bio),
                             style = MaterialTheme.typography.labelLarge
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = createAccountUIState.bio,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyLarge
                         )
 
-
-
                         Text(
-                            text = "The above will be your profile.",
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.the_above_will_be_your_profile),
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -256,7 +293,7 @@ fun CreateProfileScreen(
                         )
 
                         Text(
-                            text = "You will be in full control of this profile. If you would like to use it for the long term please remember to backup the profile/keys.",
+                            text = stringResource(Res.string.you_will_be_in_full_control_of_this_profile),
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center
                         )
@@ -272,7 +309,7 @@ fun CreateProfileScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Create Profile"
+                                    text = stringResource(Res.string.create_profile)
                                 )
                             }
                         }
@@ -283,7 +320,7 @@ fun CreateProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Something went wrong and we were unable to sign you up. Please try again later.",
+                            text = stringResource(Res.string.something_went_wrong_and_we_were_unable_to_2),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
@@ -292,42 +329,48 @@ fun CreateProfileScreen(
                         )
                     }
                     is CreateProfileUIState.ProfileReady -> {
+                        // Both pills come from the extended families rather than from a
+                        // literal paired with Color.White/Color.DarkGray by eye. The old
+                        // pairings read 4.57:1 and 2.90:1 against their containers, and
+                        // RedPill carried alpha 0.749, so composited over the surface the
+                        // first was really 3.50:1. Both are below the 4.5:1 floor.
+                        val extendedColors = LocalExtendedColors.current
 
                         Spacer(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Profile is ready",
+                            text = stringResource(Res.string.profile_is_ready),
                             style = MaterialTheme.typography.headlineLarge,
                             textAlign = TextAlign.Center
                         )
 
                         Text(
-                            text = "After this there is no turning back."
+                            text = stringResource(Res.string.after_this_there_is_no_turning_back)
                         )
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = press.mantra.compose.ui.theme.RedPill,
-                                contentColor = Color.White
+                                containerColor = extendedColors.redPill.color,
+                                contentColor = extendedColors.redPill.onColor
                             ),
                             onClick = {
                                 createProfileViewModel.createAccount(writeSeed)
                             }
                         ) {
                             Text(
-                                text = "See how deep the rabbit hole goes"
+                                text = stringResource(Res.string.see_how_deep_the_rabbit_hole_goes)
                             )
                         }
 
                         HorizontalDivider(
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier.padding(MaterialTheme.spacing.space250)
                         )
 
                         Button(
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = press.mantra.compose.ui.theme.BluePill,
-                                contentColor = Color.DarkGray
+                                containerColor = extendedColors.bluePill.color,
+                                contentColor = extendedColors.bluePill.onColor
                             ),
                             onClick = {
                                 // TODO: Delete everything and close the app
@@ -337,7 +380,7 @@ fun CreateProfileScreen(
                             }
                         ) {
                             Text(
-                                text = "end this"
+                                text = stringResource(Res.string.end_this)
                             )
                         }
                         Spacer(
@@ -350,7 +393,7 @@ fun CreateProfileScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 fun CreateAccountScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

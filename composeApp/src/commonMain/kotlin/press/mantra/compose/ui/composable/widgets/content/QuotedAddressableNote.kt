@@ -17,6 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_note
 
 
 @Composable
@@ -48,22 +52,22 @@ internal fun QuotedAddressableNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = MaterialTheme.spacing.space75)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(MaterialTheme.spacing.space175)
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .width(14.dp)
                         .height(14.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
-                    text = "Loading note...",
+                    text = stringResource(Res.string.loading_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

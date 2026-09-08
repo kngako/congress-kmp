@@ -11,6 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.unsupported_event_kind
+import mantra.composeapp.generated.resources.unsupported_event_kind_2
 
 @Composable
 internal fun UnsupportedKindBadge(kind: Int?, style: TextStyle) {
@@ -20,13 +25,13 @@ internal fun UnsupportedKindBadge(kind: Int?, style: TextStyle) {
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = MaterialTheme.spacing.space75)
     ) {
         Text(
-            text = if (kind != null) "Unsupported event kind: $kind" else "Unsupported event kind",
+            text = if (kind != null) stringResource(Res.string.unsupported_event_kind_2, kind) else stringResource(Res.string.unsupported_event_kind),
             style = style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space175)
         )
     }
 }

@@ -7,15 +7,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun LoadingScreen(
     text: String? = null
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
             press.mantra.compose.ui.composable.widgets.LoadingDataIndicator(
                 text = text
@@ -24,7 +28,7 @@ fun LoadingScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun LoadingScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

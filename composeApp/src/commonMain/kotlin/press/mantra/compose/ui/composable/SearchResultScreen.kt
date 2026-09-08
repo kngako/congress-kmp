@@ -46,7 +46,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.composable.widgets.feed.ListView
@@ -54,6 +53,19 @@ import press.mantra.compose.ui.view.model.SearchResultType
 import press.mantra.compose.ui.view.model.SearchResultViewModel
 import press.mantra.compose.ui.view.state.SearchResultListUIState
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.profiles
+import mantra.composeapp.generated.resources.search
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.searching_for_on
+import mantra.composeapp.generated.resources.nothing_matched_that_search
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import press.mantra.compose.ui.composable.widgets.EmptyState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -81,7 +93,7 @@ fun SearchResultScreen(
     var expanded by rememberSaveable { mutableStateOf(true) }
 
 
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -108,7 +120,7 @@ fun SearchResultScreen(
                             enabled = false,
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
-                            placeholder = { Text("Search") },
+                            placeholder = { Text(stringResource(Res.string.search)) },
                             leadingIcon = {
                                 if (expanded) {
                                     IconButton(
@@ -145,7 +157,7 @@ fun SearchResultScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.Tune,
-                                        contentDescription = "Adjust Search"
+                                        contentDescription = "Adjust search"
                                     )
                                 }
                             }
@@ -199,44 +211,24 @@ fun SearchResultScreen(
                         ) {
                             when(SearchResultType.entries[pageIndex]) {
                                 SearchResultType.Profiles -> {
-                                    Text("Profiles")
+                                    Text(stringResource(Res.string.profiles))
                                 }
                             }
 
                             when (val searchResultListUIState = searchViewModel.searchResultListUIState) {
                                 SearchResultListUIState.Error -> {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Spacer(
-                                            modifier = Modifier.height(50.dp)
-                                        )
-                                        Text(
-                                            text = "Something went wrong",
-                                        )
-                                    }
+                                    ErrorState()
                                 }
                                 is SearchResultListUIState.Loaded -> {
                                     // TODO: Handle gallery UI
                                     if (searchResultListUIState.localNostrEvents.isEmpty()) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        )  {
-                                            Spacer(
-                                                modifier = Modifier.height(50.dp)
-                                            )
-                                            Text(
-                                                text = "No events were found",
-                                            )
-                                        }
+                                        EmptyState(message = stringResource(Res.string.nothing_matched_that_search))
                                     } else {
 
                                         LazyColumn(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                                         ) {
                                             items(
                                                 items = searchResultListUIState.localNostrEvents,
@@ -263,14 +255,14 @@ fun SearchResultScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     )  {
                                         Spacer(
-                                            modifier = Modifier.height(50.dp)
+                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
                                         Text(
-                                            text = "Searching for ${searchViewModel.searchResultType.name.lowercase()} on \"${searchQuery.lowercase()}\"",
+                                            text = stringResource(Res.string.searching_for_on, searchViewModel.searchResultType.name.lowercase(), searchQuery.lowercase()),
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(
-                                            modifier = Modifier.height(50.dp)
+                                            modifier = Modifier.height(MaterialTheme.spacing.space600)
                                         )
 
                                         LoadingIndicator()
@@ -289,12 +281,12 @@ fun SearchResultScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SearchResultScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SearchResultScreen(
                 activeUserPublicKey = "",

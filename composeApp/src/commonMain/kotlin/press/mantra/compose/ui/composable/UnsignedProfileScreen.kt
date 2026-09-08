@@ -15,36 +15,45 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.as_long_as_you_control_your_keys_there_can
+import mantra.composeapp.generated.resources.your_profile_is_almost_ready_just_getting_it
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnsignedProfileScreen() {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Your profile is almost ready... just getting it's first cryptographic signature together.",
+                    text = stringResource(Res.string.your_profile_is_almost_ready_just_getting_it),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "As long as you control your keys there can be no dispute about who YOU actually is.",
+                    text = stringResource(Res.string.as_long_as_you_control_your_keys_there_can),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -61,7 +70,7 @@ fun UnsignedProfileScreen() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnsignedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

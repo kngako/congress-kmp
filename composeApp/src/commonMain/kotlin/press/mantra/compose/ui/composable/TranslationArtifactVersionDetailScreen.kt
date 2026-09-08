@@ -30,7 +30,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -46,6 +45,22 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.TranslationArtifactVersionDetailViewModel
 import press.mantra.compose.ui.view.state.TranslationArtifactVersionDetailUIState
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.chapters
+import mantra.composeapp.generated.resources.details
+import mantra.composeapp.generated.resources.no_chapters
+import mantra.composeapp.generated.resources.propose
+import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_cannot
+import mantra.composeapp.generated.resources.translation_detail
+import mantra.composeapp.generated.resources.chapter
+import mantra.composeapp.generated.resources.chunks_translated
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,187 +89,190 @@ fun TranslationArtifactVersionDetailScreen(
         )
     )
 
-    when (val translationDetailUIState = translationDetailViewModel.translationDetailUIState) {
-        is TranslationArtifactVersionDetailUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(50.dp))
-                Text(text = translationDetailUIState.message)
-            }
-        }
-
-        is TranslationArtifactVersionDetailUIState.Loaded -> {
-            val translation = translationDetailUIState.translation
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text(translation.name) },
-                        navigationIcon = {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
-                            }
-                        },
-                    )
-                }
-            ) { innerPadding ->
-                LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+    ScreenStateTransition(translationDetailViewModel.translationDetailUIState) { uiState ->
+    when (val translationDetailUIState = uiState) {
+            is TranslationArtifactVersionDetailUIState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Chapters the source version has and this translation
-                    // does not. Above the list rather than after it: a chapter
-                    // that is not here is invisible from a list of the ones
-                    // that are.
-                    val localChatRoom = translationDetailUIState.localChatRoom
-                    val missingChapters = translationDetailUIState.missingChapters
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
+                    Text(text = translationDetailUIState.message)
+                }
+            }
 
-                    if (missingChapters.isNotEmpty()) {
-                        item {
-                            Card {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.PlaylistAdd,
-                                            contentDescription = "Chapters missing from this translation"
-                                        )
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            "${missingChapters.size} " +
-                                                (if (missingChapters.size == 1) "chapter is" else "chapters are") +
-                                                " not in this translation yet"
-                                        )
-                                    },
-                                    supportingContent = {
-                                        Text(
-                                            if (!translationDetailUIState.canSign) {
-                                                "This group has no shared key, so it cannot sign them in."
-                                            } else {
-                                                "They were signed into the artifact after this " +
-                                                    "translation. Ask the group to add them so they " +
-                                                    "can be translated."
-                                            }
-                                        )
-                                    },
-                                    trailingContent = {
-                                        TextButton(
-                                            enabled = localChatRoom != null &&
-                                                translationDetailUIState.canSign &&
-                                                !translationDetailViewModel.isActionPending.value,
-                                            onClick = {
-                                                if (localChatRoom == null) return@TextButton
+            is TranslationArtifactVersionDetailUIState.Loaded -> {
+                val translation = translationDetailUIState.translation
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(translation.name) },
+                            navigationIcon = {
+                                IconButton(onClick = onNavigateBack) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                        )
+                    }
+                ) { innerPadding ->
+                    LazyColumn(
+                        modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                    ) {
+                        // Chapters the source version has and this translation
+                        // does not. Above the list rather than after it: a chapter
+                        // that is not here is invisible from a list of the ones
+                        // that are.
+                        val localChatRoom = translationDetailUIState.localChatRoom
+                        val missingChapters = translationDetailUIState.missingChapters
 
-                                                translationDetailViewModel.catchUpMissingChapters(
-                                                    localChatRoom = localChatRoom,
-                                                    missingChapters = missingChapters,
-                                                    onSuccess = { sessionId ->
-                                                        onNavigateToRoute.invoke(
-                                                            FrostSigningRoute(
-                                                                activeUserPublicKey = activeUserPublicKey,
-                                                                chatRoomId = chatRoomId,
-                                                                sessionId = sessionId
+                        if (missingChapters.isNotEmpty()) {
+                            item {
+                                Card {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.PlaylistAdd,
+                                                contentDescription = "Chapters missing from this translation"
+                                            )
+                                        },
+                                        headlineContent = {
+                                            Text(
+                                                "${missingChapters.size} " +
+                                                    (if (missingChapters.size == 1) "chapter is" else "chapters are") +
+                                                    " not in this translation yet"
+                                            )
+                                        },
+                                        supportingContent = {
+                                            Text(
+                                                if (!translationDetailUIState.canSign) {
+                                                    stringResource(Res.string.this_group_has_no_shared_key_so_it_cannot)
+                                                } else {
+                                                    "They were signed into the artifact after this " +
+                                                        "translation. Ask the group to add them so they " +
+                                                        "can be translated."
+                                                }
+                                            )
+                                        },
+                                        trailingContent = {
+                                            TextButton(
+                                                enabled = localChatRoom != null &&
+                                                    translationDetailUIState.canSign &&
+                                                    !translationDetailViewModel.isActionPending.value,
+                                                onClick = {
+                                                    if (localChatRoom == null) return@TextButton
+
+                                                    translationDetailViewModel.catchUpMissingChapters(
+                                                        localChatRoom = localChatRoom,
+                                                        missingChapters = missingChapters,
+                                                        onSuccess = { sessionId ->
+                                                            onNavigateToRoute.invoke(
+                                                                FrostSigningRoute(
+                                                                    activeUserPublicKey = activeUserPublicKey,
+                                                                    chatRoomId = chatRoomId,
+                                                                    sessionId = sessionId
+                                                                )
                                                             )
-                                                        )
-                                                    },
-                                                    onFailure = {}
-                                                )
+                                                        },
+                                                        onFailure = {}
+                                                    )
+                                                }
+                                            ) {
+                                                Text(stringResource(Res.string.propose))
                                             }
-                                        ) {
-                                            Text("Propose")
                                         }
+                                    )
+                                }
+                            }
+
+                            item { HorizontalDivider() }
+                        }
+
+                        // Chapters with translation progress
+                        item {
+                            Text(
+                                text = stringResource(Res.string.chapters),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        if (translationDetailUIState.chapters.isEmpty()) {
+                            item { Text(stringResource(Res.string.no_chapters)) }
+                        } else {
+                            items(
+                                items = translationDetailUIState.chapters,
+                                key = { progress -> progress.chapter.id }
+                            ) { progress ->
+                                Card(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            TranslationChapterRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                translationChapterId = progress.chapter.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
+                                        )
                                     }
-                                )
+                                ) {
+                                    ListItem(
+                                        leadingContent = {
+                                            Icon(
+                                                Icons.Default.Article,
+                                                contentDescription = "Chapter"
+                                            )
+                                        },
+                                        headlineContent = { Text(stringResource(Res.string.chapter, progress.chapter.index)) },
+                                        supportingContent = {
+                                            Text(stringResource(Res.string.chunks_translated, progress.translatedChunks, progress.totalChunks))
+                                        }
+                                    )
+                                }
                             }
                         }
 
                         item { HorizontalDivider() }
-                    }
 
-                    // Chapters with translation progress
-                    item {
-                        Text(
-                            text = "Chapters",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    if (translationDetailUIState.chapters.isEmpty()) {
-                        item { Text("No chapters.") }
-                    } else {
-                        items(
-                            items = translationDetailUIState.chapters,
-                            key = { progress -> progress.chapter.id }
-                        ) { progress ->
-                            Card(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        TranslationChapterRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            translationChapterId = progress.chapter.id,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
-                                    )
-                                }
-                            ) {
-                                ListItem(
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Article,
-                                            contentDescription = "Chapter"
-                                        )
-                                    },
-                                    headlineContent = { Text("Chapter ${progress.chapter.index}") },
-                                    supportingContent = {
-                                        Text("${progress.translatedChunks}/${progress.totalChunks} chunks translated")
-                                    }
-                                )
-                            }
+                        // Details
+                        item {
+                            Text(
+                                text = stringResource(Res.string.details),
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
-                    }
-
-                    item { HorizontalDivider() }
-
-                    // Details
-                    item {
-                        Text(
-                            text = "Details",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    item {
-                        Card {
-                            DetailRow(label = "Name", value = translation.name)
-                            DetailRow(label = "Dialect", value = translation.dialectId)
-                            DetailRow(label = "Visibility", value = translation.visibility)
-                            DetailRow(label = "License", value = translation.license)
-                            DetailRow(label = "Source version", value = translation.artifactVersionId)
-                            DetailRow(label = "Author", value = translation.publicKey)
-                            DetailRow(label = "Created", value = translation.createdAt.toString())
+                        item {
+                            Card {
+                                DetailRow(label = "Name", value = translation.name)
+                                DetailRow(label = "Dialect", value = translation.dialectId)
+                                DetailRow(label = "Visibility", value = translation.visibility)
+                                DetailRow(label = "License", value = translation.license)
+                                DetailRow(label = "Source version", value = translation.artifactVersionId)
+                                DetailRow(label = "Author", value = translation.publicKey)
+                                DetailRow(label = "Created", value = translation.createdAt.toString())
+                            }
                         }
                     }
                 }
             }
-        }
 
-        TranslationArtifactVersionDetailUIState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "Translation Detail",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-                LoadingDataIndicator(fillScreen = false)
-                Spacer(modifier = Modifier.weight(2f))
+            TranslationArtifactVersionDetailUIState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(Res.string.translation_detail),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    LoadingDataIndicator(fillScreen = false)
+                    Spacer(modifier = Modifier.weight(2f))
+                }
             }
         }
     }
@@ -266,7 +284,7 @@ fun TranslationArtifactVersionDetailScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun TranslationArtifactVersionDetailScreenPreview() {
     TorchTheme {

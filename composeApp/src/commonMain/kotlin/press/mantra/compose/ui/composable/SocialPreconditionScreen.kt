@@ -20,8 +20,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.invite_a_friend
+import mantra.composeapp.generated.resources.skip_for_now
+import mantra.composeapp.generated.resources.tell_friends_to_join_you_so_your_feed_stays
+import mantra.composeapp.generated.resources.view_and_accept_invites_you_may_have
+import mantra.composeapp.generated.resources.view_invites
+import mantra.composeapp.generated.resources.who_will_you_be_passing_the_aux_to
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun SocialPreconditionScreen(
@@ -30,6 +42,7 @@ fun SocialPreconditionScreen(
     onNavigateToViewInvites: () -> Unit,
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         bottomBar = {
             BottomAppBar(
                 modifier = Modifier,
@@ -46,7 +59,7 @@ fun SocialPreconditionScreen(
                             )
                         },
                         text = {
-                            Text("Skip for now")
+                            Text(stringResource(Res.string.skip_for_now))
                         },
                         onClick = {
                             onNavigateToSkipForNow.invoke()
@@ -57,16 +70,16 @@ fun SocialPreconditionScreen(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
 
                 Text(
-                    "Who will you be passing the aux to?",
+                    stringResource(Res.string.who_will_you_be_passing_the_aux_to),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -76,7 +89,7 @@ fun SocialPreconditionScreen(
                 )
 
                 Text(
-                    "Tell friends to join you so your feed stays lively and fresh.",
+                    stringResource(Res.string.tell_friends_to_join_you_so_your_feed_stays),
                     textAlign = TextAlign.Center
                 )
 
@@ -86,7 +99,7 @@ fun SocialPreconditionScreen(
                     }
                 ) {
                     Text(
-                        "Invite a Friend"
+                        stringResource(Res.string.invite_a_friend)
                     )
                 }
 
@@ -95,7 +108,7 @@ fun SocialPreconditionScreen(
                 )
 
                 Text(
-                    "View and accept invites you may have received to stay connected with others.",
+                    stringResource(Res.string.view_and_accept_invites_you_may_have),
                     textAlign = TextAlign.Center
                 )
 
@@ -104,19 +117,19 @@ fun SocialPreconditionScreen(
                         onNavigateToViewInvites.invoke()
                     }
                 ) {
-                    Text("View invites")
+                    Text(stringResource(Res.string.view_invites))
                 }
             }
         }
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SocialPreconditionScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             SocialPreconditionScreen(
                 onNavigateToSkipForNow = {},

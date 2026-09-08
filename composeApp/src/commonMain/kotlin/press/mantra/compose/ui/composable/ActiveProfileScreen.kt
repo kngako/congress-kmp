@@ -34,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.NostrEvent
@@ -46,12 +45,34 @@ import press.mantra.compose.ui.composable.navigation.routes.KeyPackageManagement
 import press.mantra.compose.ui.composable.navigation.routes.KeyRecoveryRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
+import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.view.model.ActiveProfileViewModel
 import press.mantra.compose.ui.view.state.ActiveProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.change_account
+import mantra.composeapp.generated.resources.edit_profile
+import mantra.composeapp.generated.resources.key_package_management
+import mantra.composeapp.generated.resources.network_relays
+import mantra.composeapp.generated.resources.profile
+import mantra.composeapp.generated.resources.key_recovery
+import mantra.composeapp.generated.resources.share_profile
+import mantra.composeapp.generated.resources.sign_out
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -73,293 +94,305 @@ fun ActiveProfileScreen(
         ),
     )
 
-    when(val activeProfileUIState = activeProfileViewModel.activeProfileUIState) {
-        ActiveProfileUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Something went wrong")
+    ScreenStateTransition(activeProfileViewModel.activeProfileUIState) { uiState ->
+    when (val activeProfileUIState = uiState) {
+            ActiveProfileUIState.Error -> {
+                ErrorState()
             }
-        }
-        is ActiveProfileUIState.Loaded -> {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "Profile"
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateBack.invoke()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Back"
+            is ActiveProfileUIState.Loaded -> {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = stringResource(Res.string.profile)
                                 )
-                            }
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding)
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                ProfileAvatar(
-                                    profile = activeProfileUIState.localNostrEvent.profile,
-                                    publicKey = activeUserPublicKey
-                                )
-
-                                Column {
-                                    activeProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
-                                        Text(
-                                            text = humanReadableNameOrPubkey,
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                    }
-                                    activeProfileUIState.localNostrEvent.profile?.about?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-
-                                    Spacer(
-                                        modifier = Modifier.height(10.dp)
-                                    )
-
-                                    Text(
-                                        text = activeUserPublicKey.hexToNpubHrp(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(10.dp)
-                            ) {
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                TextButton(
+                            },
+                            navigationIcon = {
+                                IconButton(
                                     onClick = {
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Edit Profile")
-                                        )
+                                        onNavigateBack.invoke()
                                     }
                                 ) {
                                     Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Edit profile"
-                                    )
-
-                                    Spacer(
-                                        modifier = Modifier.width(10.dp)
-                                    )
-
-                                    Text(
-                                        "Edit Profile"
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Back"
                                     )
                                 }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier.padding(innerPadding)
+                        .readableContent()
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
+                                ) {
+                                    ProfileAvatar(
+                                        profile = activeProfileUIState.localNostrEvent.profile,
+                                        publicKey = activeUserPublicKey
+                                    )
 
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
+                                    Column {
+                                        activeProfileUIState.localNostrEvent.profile?.humanReadableNameOrPubkey()?.let { humanReadableNameOrPubkey ->
+                                            Text(
+                                                text = humanReadableNameOrPubkey,
+                                                style = MaterialTheme.typography.titleLarge
+                                            )
+                                        }
+                                        activeProfileUIState.localNostrEvent.profile?.about?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
 
-                                Button(
+                                        Spacer(
+                                            modifier = Modifier.height(MaterialTheme.spacing.space125)
+                                        )
+
+                                        Text(
+                                            text = activeUserPublicKey.hexToNpubHrp(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space125)
+                                ) {
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    TextButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ImplementationPendingRoute("Edit profile")
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit profile"
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+
+                                        Text(
+                                            stringResource(Res.string.edit_profile)
+                                        )
+                                    }
+
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    // The list this sits in is otherwise TextButtons --
+                                    // edit profile, key packages, change account, profile
+                                    // keys, network relays. Two of the seven were filled
+                                    // Buttons, which is M3's highest emphasis and is meant
+                                    // for one action per screen. Sharing is the useful one,
+                                    // so it keeps medium emphasis rather than maximum.
+                                    FilledTonalButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ShareProfileRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    nostrEventId = nostrEventId
+                                                )
+                                            )
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.QrCode,
+                                            contentDescription = "QR code"
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                        )
+                                        Text(
+                                            stringResource(Res.string.share_profile)
+                                        )
+                                    }
+
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            item {
+                                TextButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ShareProfileRoute(
+                                            KeyPackageManagementRoute(
                                                 activeUserPublicKey = activeUserPublicKey,
                                                 nostrEventId = nostrEventId
                                             )
                                         )
-                                    },
+                                    }
                                 ) {
+
                                     Icon(
-                                        Icons.Default.QrCode,
-                                        contentDescription = "QR code"
+                                        Icons.Default.Bento,
+                                        contentDescription = "Key packages"
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
+
                                     Text(
-                                        "Share Profile"
+                                        stringResource(Res.string.key_package_management)
                                     )
                                 }
-
-                                Spacer(
-                                    modifier = Modifier.weight(1f)
-                                )
                             }
-                        }
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        KeyPackageManagementRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            nostrEventId = nostrEventId
+
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Change account")
                                         )
+                                    }
+                                ) {
+
+                                    Icon(
+                                        Icons.Default.ImportExport,
+                                        contentDescription = "Change profile"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        stringResource(Res.string.change_account)
                                     )
                                 }
-                            ) {
-
-                                Icon(
-                                    Icons.Default.Bento,
-                                    contentDescription = "Key Packages"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
-                                Text(
-                                    "Key Package Management"
-                                )
                             }
-                        }
 
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Change Account")
-                                    )
-                                }
-                            ) {
-
-                                Icon(
-                                    Icons.Default.ImportExport,
-                                    contentDescription = "Change Profile"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
-                                Text(
-                                    "Change Account"
-                                )
-                            }
-                        }
-
-
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        KeyRecoveryRoute(
-                                            activeUserPublicKey = activeUserPublicKey
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            KeyRecoveryRoute(
+                                                activeUserPublicKey = activeUserPublicKey
+                                            )
                                         )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Key,
+                                        contentDescription = Decorative
                                     )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.key_recovery))
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Key,
-                                    contentDescription = "Key Recovery"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
-                                Text("Key Recovery")
                             }
-                        }
 
-                        item {
-                            TextButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Network Relays")
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Network relays")
+                                        )
+
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Hub,
+                                        contentDescription = "Network relays"
                                     )
 
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        stringResource(Res.string.network_relays)
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Hub,
-                                    contentDescription = "Network Relays"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
-                                Text(
-                                    "Network Relays"
-                                )
                             }
-                        }
 
-                        item {
-                            Button(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ImplementationPendingRoute("Sign Out")
+                            item {
+                                // Signing out was the *other* filled Button -- the most
+                                // prominent control on the screen given to its most
+                                // destructive action. It now matches how leaving and
+                                // deleting a group are already treated in
+                                // ChatRoomDetailScreen: a TextButton in the error colour.
+                                TextButton(
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            ImplementationPendingRoute("Sign out")
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Logout,
+                                        contentDescription = "Logout"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(
+                                        stringResource(Res.string.sign_out)
                                     )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Logout,
-                                    contentDescription = "Logout"
-                                )
-
-                                Spacer(
-                                    modifier = Modifier.width(10.dp)
-                                )
-
-                                Text(
-                                    "Sign out"
-                                )
                             }
                         }
                     }
                 }
             }
-        }
-        ActiveProfileUIState.Loading -> {
-            LoadingDataIndicator()
+            ActiveProfileUIState.Loading -> {
+                LoadingDataIndicator()
 
-            LaunchedEffect(true) {
-                activeProfileViewModel.loadNostrFeed()
+                LaunchedEffect(true) {
+                    activeProfileViewModel.loadNostrFeed()
+                }
             }
-        }
-        ActiveProfileUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("We couldn't find the local profile. Please try again later.")
+            ActiveProfileUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_the_local_profile_please))
+                }
             }
         }
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

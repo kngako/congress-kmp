@@ -15,36 +15,45 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.all_broadcasts_are_queued_so_that_we_can
+import mantra.composeapp.generated.resources.everything_is_cryptographical_sound_just_3
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UnqueuedProfileScreen() {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(
                 modifier = Modifier.fillMaxWidth().padding(
-                    10.dp
+                    MaterialTheme.spacing.space125
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space250)
             ) {
 
                 Spacer(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Everything is cryptographical sound. Just need to queue your profile and announce it to the world.",
+                    text = stringResource(Res.string.everything_is_cryptographical_sound_just_3),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "All broadcasts are queued so that we can manage data usage on metered connections.",
+                    text = stringResource(Res.string.all_broadcasts_are_queued_so_that_we_can),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
@@ -67,7 +76,7 @@ fun UnqueuedProfileScreen() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

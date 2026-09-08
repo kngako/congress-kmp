@@ -30,7 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import press.mantra.compose.extensions.bech32ToHexOrNull
@@ -42,6 +41,16 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import press.mantra.compose.ui.theme.spacing
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.input_npub_or_nip05
+import mantra.composeapp.generated.resources.start_chat
+import mantra.composeapp.generated.resources.start_chat_via_npub_or_nip05
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
@@ -62,30 +71,40 @@ fun StartDirectMessageToNpubOrNip05Dialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .padding(16.dp),
+                .padding(MaterialTheme.spacing.containerPadding),
             shape = RoundedCornerShape(16.dp),
         ) {
             val textFieldState = rememberTextFieldState()
+
+            // M3's flow guidance for a dialog: "Focus is set to the dialog component,
+            // likely to a specific interactive element within the dialog such as a text
+            // input field." This dialog is one field and two buttons, so the field is
+            // unambiguous -- and without this the whole dialog opens with nothing
+            // focused, which for a keyboard or switch user means tabbing in from
+            // wherever focus happened to be.
+            val npubFieldFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { npubFieldFocus.requestFocus() }
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 Spacer(
-                    modifier = Modifier.height(4.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space50)
                 )
                 Text(
                     modifier = Modifier.fillMaxWidth().padding(
-                        horizontal = 20.dp,
+                        horizontal = MaterialTheme.spacing.space250,
                     ),
-                    text = "Start chat via npub or nip05",
+                    text = stringResource(Res.string.start_chat_via_npub_or_nip05),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center
                 )
                 TextField(
+                    modifier = Modifier.focusRequester(npubFieldFocus),
                     state = textFieldState,
                     placeholder = {
-                        Text("Input npub... or nip05")
+                        Text(stringResource(Res.string.input_npub_or_nip05))
                     },
                     trailingIcon = {
                         IconButton(
@@ -98,7 +117,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         ) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Close Start Npub Direct Message"
+                                contentDescription = "Close"
                             )
                         }
                     },
@@ -152,10 +171,10 @@ fun StartDirectMessageToNpubOrNip05Dialog(
                         }
                     }
                 ) {
-                    Text("Start Chat")
+                    Text(stringResource(Res.string.start_chat))
 
                     Spacer(
-                        modifier = Modifier.width(10.dp)
+                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                     )
 
                     Icon(
@@ -168,7 +187,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun StartDirectMessageToNpubOrNip05DialogPreview() {
     TorchTheme {

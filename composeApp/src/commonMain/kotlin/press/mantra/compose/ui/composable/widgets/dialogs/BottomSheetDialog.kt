@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
 
 /** Provides a Material3 [ModalBottomSheet] with some presets. Content is contained in a [Column] with [internalPadding]. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,7 +53,7 @@ fun ModalBottomSheet(
     dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults. DragHandle() },
     contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.windowInsets },
     contentHeight: Dp = Dp.Unspecified,
-    internalPadding: PaddingValues = PaddingValues(top = 0.dp, start = 20.dp, end = 20.dp, bottom = 64.dp),
+    internalPadding: PaddingValues = PaddingValues(top = MaterialTheme.spacing.space0, start = MaterialTheme.spacing.space250, end = MaterialTheme.spacing.space250, bottom = MaterialTheme.spacing.space800),
     isContentScrollable: Boolean = true,
     dismissOnScrimClick: Boolean = true,
     dismissOnBack: Boolean = true,

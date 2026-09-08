@@ -35,18 +35,30 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.be_the_first_to_comment
+import mantra.composeapp.generated.resources.post
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.reply_to
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -71,6 +83,7 @@ fun TextNoteEventDetail(
     )
 
     Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
@@ -85,7 +98,7 @@ fun TextNoteEventDetail(
                     }
                 },
                 title = {
-                    Text("Post")
+                    Text(stringResource(Res.string.post))
                 },
             )
         },
@@ -93,8 +106,8 @@ fun TextNoteEventDetail(
             FlexibleBottomAppBar(
                 containerColor = Color.Transparent,
                 contentPadding = PaddingValues(
-                    start = 10.dp,
-                    end = 10.dp
+                    start = MaterialTheme.spacing.space125,
+                    end = MaterialTheme.spacing.space125
                 ),
                 scrollBehavior = scrollBehavior
             ) {
@@ -102,17 +115,21 @@ fun TextNoteEventDetail(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .minimumInteractiveComponentSize()
                         .clickable {
                             onNavigateToWriteAReply.invoke(
                                 localNostrEvent.nostrEvent.id
                             )
                         },
-                    shape = RoundedCornerShape(30.dp),
+                    // The one hand-written corner that was off the shape scale, at 30dp
+                    // against extraLarge's 28. Two units, invisible on its own and exactly
+                    // the drift a scale exists to stop.
+                    shape = MaterialTheme.shapes.extraLarge,
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(MaterialTheme.spacing.space125).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                     ) {
                         // TODO: Load user profile...
                         Icon(
@@ -127,7 +144,7 @@ fun TextNoteEventDetail(
 
                         Text(
                             modifier = Modifier.weight(1f),
-                            text = "Reply to ${localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"}",
+                            text = stringResource(Res.string.reply_to, localNostrEvent.profile?.humanReadableNameOrPubkey() ?: "the above"),
                             maxLines = 1,
                         )
 
@@ -181,7 +198,7 @@ fun TextNoteEventDetail(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
 
             LazyColumn(
@@ -196,8 +213,8 @@ fun TextNoteEventDetail(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space150),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val profile = localNostrEvent.profile
@@ -251,7 +268,7 @@ fun TextNoteEventDetail(
 
                         press.mantra.compose.ui.composable.widgets.content.RichContent(
                             modifier = Modifier.fillMaxWidth().padding(
-                                horizontal = 20.dp
+                                horizontal = MaterialTheme.spacing.space250
                             ),
                             nostrEvent = localNostrEvent.nostrEvent,
                             localQuotedNostrEvent = localNostrEvent.localQuotedNostrEvent,
@@ -260,7 +277,7 @@ fun TextNoteEventDetail(
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                             horizontalArrangement = Arrangement.Start
                         ) {
                             Text(
@@ -281,7 +298,7 @@ fun TextNoteEventDetail(
                                 ) {
                                     Icon(
                                         Icons.Default.AddReaction,
-                                        contentDescription = "Add Reaction"
+                                        contentDescription = "Add reaction"
                                     )
                                 }
 
@@ -340,7 +357,7 @@ fun TextNoteEventDetail(
                         if (inReplyToFeedListUIState.localNostrEvents.isEmpty()) {
                             item {
                                 Text(
-                                    "Be the first to comment."
+                                    stringResource(Res.string.be_the_first_to_comment)
                                 )
                             }
                         } else {
@@ -355,11 +372,7 @@ fun TextNoteEventDetail(
                         }
                     }
                     press.mantra.compose.ui.view.state.FeedListUIState.Error -> {
-                        item {
-                            Text(
-                                text = "Something went wrong"
-                            )
-                        }
+                        item { ErrorState() }
                     }
                     press.mantra.compose.ui.view.state.FeedListUIState.Loading -> {
                         item {
@@ -376,13 +389,13 @@ fun TextNoteEventDetail(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun TextNoteEventDetailPreview() {
 
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             TextNoteEventDetail(
                 localNostrEvent = press.mantra.compose.database.model.intermdiate.LocalNostrEvent(

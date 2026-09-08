@@ -17,8 +17,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.create_profile
+import mantra.composeapp.generated.resources.if_you_are_new_to_torch_or_just_want_to
+import mantra.composeapp.generated.resources.keep_the_feed_alive
+import mantra.composeapp.generated.resources.learn_more
+import mantra.composeapp.generated.resources.mantra
+import mantra.composeapp.generated.resources.sign_in
+import mantra.composeapp.generated.resources.sign_in_to_torch_via_nsec_or_remote_signer
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun LandingScreen(
@@ -26,29 +39,30 @@ fun LandingScreen(
     onNavigateToSignIn: () -> Unit,
     onNavigateToCreateProfile: () -> Unit
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Mantra",
+                    text = stringResource(Res.string.mantra),
                     style = MaterialTheme.typography.headlineLarge
                 )
 
                 Text(
-                    text = "Keep the feed alive."
+                    text = stringResource(Res.string.keep_the_feed_alive)
                 )
 
                 TextButton(
                     onClick = onNavigateToLearnMore
                 ) {
                     Text(
-                        text = "Learn More",
+                        text = stringResource(Res.string.learn_more),
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -62,34 +76,34 @@ fun LandingScreen(
                 ) {
 
                     Text(
-                        "Sign in",
+                        stringResource(Res.string.sign_in),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
 
                 Text(
-                    text = "Sign in to Torch via nsec, or remote signer",
-                    modifier = Modifier.padding(10.dp),
+                    text = stringResource(Res.string.sign_in_to_torch_via_nsec_or_remote_signer),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(
-                    modifier = Modifier.height(20.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.space250)
                 )
 
                 Button(
                     onClick = onNavigateToCreateProfile
                 ) {
                     Text(
-                        "Create Profile",
+                        stringResource(Res.string.create_profile),
                         style = MaterialTheme.typography.bodyLarge
                     )
 
                 }
                 Text(
-                    text = "If you are new to Torch or just want to create a fresh profile",
-                    modifier = Modifier.padding(10.dp),
+                    text = stringResource(Res.string.if_you_are_new_to_torch_or_just_want_to),
+                    modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )
@@ -98,7 +112,7 @@ fun LandingScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun LandingScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

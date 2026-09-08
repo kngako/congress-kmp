@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -38,17 +39,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
+import mantra.composeapp.generated.resources.Res
+import mantra.composeapp.generated.resources.cloud_backup
+import mantra.composeapp.generated.resources.download_and_securely_store_everything
+import mantra.composeapp.generated.resources.emergency_kit
+import mantra.composeapp.generated.resources.encrypt_and_back_your_recovery_information
+import mantra.composeapp.generated.resources.key_recovery
+import mantra.composeapp.generated.resources.not_backed_up_yet
+import mantra.composeapp.generated.resources.recovery_phrase
+import mantra.composeapp.generated.resources.these_are_your_keys_keep_them_safe_so_they
+import mantra.composeapp.generated.resources.write_down_and_secure_the_12_word_phrase
+import mantra.composeapp.generated.resources.yolo
+import mantra.composeapp.generated.resources.you_only_live_once_lose_this_phone_and_the
+import mantra.composeapp.generated.resources.you_said_you_wrote_it_down
+import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.extensions.hexToNpubHrp
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.RecoveryPhraseRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.widgets.Decorative
+import press.mantra.compose.ui.theme.ConformancePreviews
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.spacing
 
 /**
  * Everything that can put this profile back on another phone.
@@ -80,7 +98,7 @@ fun KeyRecoveryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Key Recovery"
+                        text = stringResource(Res.string.key_recovery)
                     )
                 },
                 navigationIcon = {
@@ -99,24 +117,25 @@ fun KeyRecoveryScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(innerPadding).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .padding(innerPadding)
+                .readableContent()
+                .padding(horizontal = MaterialTheme.spacing.screenMargin),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.containerPadding),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "These are your keys. Keep them safe so they can keep unlocking " +
-                                "this profile and its coins, even when you lose or change your phone.",
+                        text = stringResource(Res.string.these_are_your_keys_keep_them_safe_so_they),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(10.dp)
                     )
 
                     Text(
@@ -130,20 +149,19 @@ fun KeyRecoveryScreen(
             item {
                 KeyRecoveryOption(
                     icon = Icons.Default.Spellcheck,
-                    title = "Recovery Phrase",
-                    description = "Write down and secure the 12 word phrase that this profile and " +
-                            "its wallet are derived from.",
+                    title = stringResource(Res.string.recovery_phrase),
+                    description = stringResource(Res.string.write_down_and_secure_the_12_word_phrase),
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     status = if (showBackupNotice) {
                         KeyRecoveryStatus(
                             icon = Icons.Default.Warning,
-                            text = "Not backed up yet"
+                            text = stringResource(Res.string.not_backed_up_yet)
                         )
                     } else {
                         KeyRecoveryStatus(
                             icon = Icons.Default.CheckCircle,
-                            text = "You said you wrote it down"
+                            text = stringResource(Res.string.you_said_you_wrote_it_down)
                         )
                     },
                     onClick = {
@@ -155,12 +173,11 @@ fun KeyRecoveryScreen(
             item {
                 KeyRecoveryOption(
                     icon = Icons.Default.AddToDrive,
-                    title = "Cloud Backup",
-                    description = "Encrypt and back your recovery information up to your Google " +
-                            "Drive or iCloud.",
+                    title = stringResource(Res.string.cloud_backup),
+                    description = stringResource(Res.string.encrypt_and_back_your_recovery_information),
                     onClick = {
                         onNavigateToRoute.invoke(
-                            ImplementationPendingRoute("Cloud Backup")
+                            ImplementationPendingRoute("Cloud backup")
                         )
                     }
                 )
@@ -169,12 +186,11 @@ fun KeyRecoveryScreen(
             item {
                 KeyRecoveryOption(
                     icon = Icons.Default.LocalHospital,
-                    title = "Emergency Kit",
-                    description = "Download and securely store everything needed to recover this " +
-                            "profile and the coins it holds.",
+                    title = stringResource(Res.string.emergency_kit),
+                    description = stringResource(Res.string.download_and_securely_store_everything),
                     onClick = {
                         onNavigateToRoute.invoke(
-                            ImplementationPendingRoute("Emergency Kit")
+                            ImplementationPendingRoute("Emergency kit")
                         )
                     }
                 )
@@ -183,9 +199,8 @@ fun KeyRecoveryScreen(
             item {
                 KeyRecoveryOption(
                     icon = Icons.Default.VolunteerActivism,
-                    title = "YOLO",
-                    description = "You only live once. Lose this phone and the profile goes with " +
-                            "it, along with anything it holds.",
+                    title = stringResource(Res.string.yolo),
+                    description = stringResource(Res.string.you_only_live_once_lose_this_phone_and_the),
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                     onClick = {
@@ -196,7 +211,7 @@ fun KeyRecoveryScreen(
 
             item {
                 Spacer(
-                    modifier = Modifier.height(10.dp)
+                    modifier = Modifier.height(MaterialTheme.spacing.itemGap)
                 )
             }
         }
@@ -215,10 +230,10 @@ private fun KeyRecoveryOption(
     icon: ImageVector,
     title: String,
     description: String,
+    onClick: () -> Unit,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     status: KeyRecoveryStatus? = null,
-    onClick: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -229,19 +244,21 @@ private fun KeyRecoveryOption(
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.containerPadding),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     icon,
-                    contentDescription = title
+                    contentDescription = Decorative
                 )
 
                 Spacer(
-                    modifier = Modifier.width(10.dp)
+                    modifier = Modifier.width(MaterialTheme.spacing.space125)
                 )
 
                 Text(
@@ -261,12 +278,12 @@ private fun KeyRecoveryOption(
                 ) {
                     Icon(
                         it.icon,
-                        contentDescription = null,
-                        modifier = Modifier.width(16.dp)
+                        contentDescription = Decorative,
+                        modifier = Modifier.size(16.dp)
                     )
 
                     Spacer(
-                        modifier = Modifier.width(6.dp)
+                        modifier = Modifier.width(MaterialTheme.spacing.relatedGap)
                     )
 
                     Text(
@@ -279,7 +296,7 @@ private fun KeyRecoveryOption(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun KeyRecoveryScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

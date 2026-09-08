@@ -28,6 +28,9 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.security.JvmKeyStore
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +40,8 @@ import press.mantra.compose.MantraApp
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.PlatformContext
 import press.mantra.compose.defaultMantraDir
+import press.mantra.compose.ui.theme.TorchTheme
+import java.awt.Dimension
 import java.io.File
 
 /**
@@ -56,23 +61,47 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "Mantra",
-        // The layouts have only ever been exercised at phone widths. This is a starting size
-        // that does not immediately misrepresent them, not a considered desktop layout.
-        state = rememberWindowState(width = 480.dp, height = 900.dp),
+        // 1100dp is the expanded breakpoint -- 840 to 1199 -- which is the narrowest window
+        // M3 recommends two panes in, and so the smallest opening size at which a desktop
+        // user sees a desktop layout rather than a phone one stretched. It used to open at
+        // 480dp with a comment apologising for it; that was honest while the layouts had
+        // only ever been exercised at phone widths, and is no longer true.
+        //
+        // The content does not stretch to fill it. Screens are held to a readable measure
+        // and centred (see `readableContent`), so the extra width is margin, which is what
+        // M3's single-pane canonical layout does with a window wider than its content.
+        state = rememberWindowState(width = 1100.dp, height = 800.dp),
     ) {
         var unlocked by remember { mutableStateOf(false) }
 
-        if (unlocked) {
-            val navController = rememberNavController()
-            MantraApp(
-                navController = navController,
-                mantraGlobal = MantraGlobal(platformContext = PlatformContext(appDir)),
-                phoenixGlobal = PhoenixGlobal(
-                    ctx = fr.acinq.phoenix.utils.PlatformContext(applicationDir = appDir),
-                ),
-            )
-        } else {
-            PassphraseGate(appDir = appDir, onUnlocked = { unlocked = true })
+        // A floor rather than a preference. Compose Desktop has no minimum in WindowState,
+        // so without this the window can be dragged narrower than any layout in the app was
+        // written for -- and the compact breakpoint's own floor is a phone, not nothing.
+        // 400x600 is the narrowest window the phase's acceptance widths name.
+        LaunchedEffect(window) { window.minimumSize = Dimension(400, 600) }
+
+        // TorchTheme wraps both branches, not just the app. PassphraseGate used to sit
+        // beside MantraApp -- which applies the theme itself -- so it composed under the
+        // default MaterialTheme and its colorScheme and typography were baseline M3
+        // rather than this app's. It is the first screen a desktop user sees.
+        //
+        // MantraApp still applies TorchTheme, so the unlocked branch is wrapped twice.
+        // That is deliberate: android and ios enter through MantraApp and would lose the
+        // theme entirely if it moved out, and a second application of the same values
+        // costs one composition of a CompositionLocalProvider.
+        TorchTheme {
+            if (unlocked) {
+                val navController = rememberNavController()
+                MantraApp(
+                    navController = navController,
+                    mantraGlobal = MantraGlobal(platformContext = PlatformContext(appDir)),
+                    phoenixGlobal = PhoenixGlobal(
+                        ctx = fr.acinq.phoenix.utils.PlatformContext(applicationDir = appDir),
+                    ),
+                )
+            } else {
+                PassphraseGate(appDir = appDir, onUnlocked = { unlocked = true })
+            }
         }
     }
 }
@@ -95,6 +124,13 @@ private fun PassphraseGate(appDir: File, onUnlocked: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    // The first screen of a desktop app, whose entire content is one field. M3 asks for
+    // an initial focus to be defined per screen; here there is only one candidate, and on
+    // a desktop there is no tap to give it focus -- somebody who opens the app and starts
+    // typing their passphrase should not have to reach for the mouse first.
+    val passphraseFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { passphraseFocus.requestFocus() }
 
     fun submit() {
         if (busy || passphrase.isEmpty()) return
@@ -144,7 +180,7 @@ private fun PassphraseGate(appDir: File, onUnlocked: () -> Unit) {
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { submit() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(passphraseFocus),
             )
             error?.let {
                 Text(

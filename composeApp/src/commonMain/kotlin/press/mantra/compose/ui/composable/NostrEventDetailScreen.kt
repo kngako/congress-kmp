@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -12,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.NostrEvent
@@ -30,6 +30,19 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.functionality_coming_soon
+import mantra.composeapp.generated.resources.post_functionality_coming_soon
+import mantra.composeapp.generated.resources.something_went_wrong
+import mantra.composeapp.generated.resources.we_couldn_t_find_your_nostr_event_please_try
+import press.mantra.compose.ui.composable.widgets.ErrorState
+import androidx.compose.material3.SnackbarHost
+import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,95 +67,91 @@ fun NostrEventDetailScreen(
         ),
     )
 
-    when(val feedListUIState = nostrEventDetailViewModel.nostrEventDetailUIState) {
-        NostrEventDetailUIState.Error -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Something went wrong")
+    ScreenStateTransition(nostrEventDetailViewModel.nostrEventDetailUIState) { uiState ->
+    when (val feedListUIState = uiState) {
+            NostrEventDetailUIState.Error -> {
+                ErrorState()
             }
-        }
-        is NostrEventDetailUIState.Loaded -> {
+            is NostrEventDetailUIState.Loaded -> {
 
-            when(feedListUIState.localNostrEvent.nostrEvent.kind) {
-                MetadataEvent.KIND -> {
-                    MetadataEventDetail(
-                        activeUserPublicKey = activeUserPublicKey,
-                        localNostrEvent = feedListUIState.localNostrEvent,
-                        onNavigateBack = onNavigateBack,
-                        onNavigateToEvent = onNavigateToEvent,
-                        onNavigateToChatRoom = onNavigateToDirectMessage,
-                        onNavigateToEditProfile = onNavigateToEditProfile,
-                        nostrRepository = nostrRepository
-                    )
-                }
-                TextNoteEvent.KIND -> {
-                    TextNoteEventDetail(
-                        feedListUIState.localNostrEvent,
-                        onNavigateBack = onNavigateBack,
-                        onNavigateToWriteAReply = onNavigateToWriteAReply,
-                        onNavigateToNostrEvent = onNavigateToQuoteNostrEvent,
-                        nostrRepository = nostrRepository
-                    )
-                }
-                RepostEvent.KIND -> {
-                    // TODO: RePost...
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(feedListUIState.localNostrEvent.nostrEvent.content)
-
-                        Text("post functionality coming soon.")
+                when(feedListUIState.localNostrEvent.nostrEvent.kind) {
+                    MetadataEvent.KIND -> {
+                        MetadataEventDetail(
+                            activeUserPublicKey = activeUserPublicKey,
+                            localNostrEvent = feedListUIState.localNostrEvent,
+                            onNavigateBack = onNavigateBack,
+                            onNavigateToEvent = onNavigateToEvent,
+                            onNavigateToChatRoom = onNavigateToDirectMessage,
+                            onNavigateToEditProfile = onNavigateToEditProfile,
+                            nostrRepository = nostrRepository
+                        )
                     }
-                }
-                else -> {
-                    Scaffold { innerPadding ->
+                    TextNoteEvent.KIND -> {
+                        TextNoteEventDetail(
+                            feedListUIState.localNostrEvent,
+                            onNavigateBack = onNavigateBack,
+                            onNavigateToWriteAReply = onNavigateToWriteAReply,
+                            onNavigateToNostrEvent = onNavigateToQuoteNostrEvent,
+                            nostrRepository = nostrRepository
+                        )
+                    }
+                    RepostEvent.KIND -> {
+                        // TODO: RePost...
                         Column(
-                            modifier = Modifier.padding(innerPadding).fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(feedListUIState.localNostrEvent.nostrEvent.content)
+                            Text(feedListUIState.localNostrEvent.nostrEvent.content)
 
-                                Text("functionality coming soon.")
+                            Text(stringResource(Res.string.post_functionality_coming_soon))
+                        }
+                    }
+                    else -> {
+                        Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
+                            Column(
+                                modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(feedListUIState.localNostrEvent.nostrEvent.content)
+
+                                    Text(stringResource(Res.string.functionality_coming_soon))
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        NostrEventDetailUIState.Loading -> {
-            LoadingDataIndicator()
+            NostrEventDetailUIState.Loading -> {
+                LoadingDataIndicator()
 
-            LaunchedEffect(true) {
-                nostrEventDetailViewModel.loadNostrFeed()
+                LaunchedEffect(true) {
+                    nostrEventDetailViewModel.loadNostrFeed()
+                }
             }
-        }
-        NostrEventDetailUIState.NotFound -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("We couldn't find your nostr event. Please try again later.")
+            NostrEventDetailUIState.NotFound -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(Res.string.we_couldn_t_find_your_nostr_event_please_try))
+                }
             }
         }
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun NostrEventDetailScreenPreview() {
     TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             NostrEventDetailScreen(
                 initialNostrEventDetailUIState = NostrEventDetailUIState.Loaded(

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import press.mantra.compose.ui.composable.navigation.MantraNavHost
+import press.mantra.compose.ui.composable.widgets.ProvideSnackbarHost
 import press.mantra.compose.ui.theme.TorchTheme
 import fr.acinq.phoenix.PhoenixGlobal
 
@@ -19,11 +20,18 @@ fun MantraApp(
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
-            MantraNavHost(
-                mantraGlobal = mantraGlobal,
-                phoenixGlobal = phoenixGlobal,
-                navController = navController
-            )
+            // One host state for the whole app rather than one per screen. Only one
+            // Scaffold is composed at a time under a NavHost, so the message renders in
+            // whichever screen is on top -- and a view model coroutine reporting an
+            // outcome does not have to be handed a state through the parameter list of
+            // every composable between it and the Scaffold.
+            ProvideSnackbarHost {
+                MantraNavHost(
+                    mantraGlobal = mantraGlobal,
+                    phoenixGlobal = phoenixGlobal,
+                    navController = navController
+                )
+            }
         }
     }
 }

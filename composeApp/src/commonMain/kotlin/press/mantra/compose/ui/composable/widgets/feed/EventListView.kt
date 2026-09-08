@@ -13,16 +13,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip18Reposts.RepostEvent
 import kotlin.time.Instant
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_author_information_2
+import mantra.composeapp.generated.resources.malformed_note
+import mantra.composeapp.generated.resources.reposted
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
@@ -33,21 +40,22 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = 10.dp
-                        ).clickable(
+                            horizontal = MaterialTheme.spacing.space125
+                        ).minimumInteractiveComponentSize()
+                        .clickable(
                             enabled = true,
                             onClick = {
                                 onNavigateToEvent.invoke(profile?.nostrEventId ?: nostrEvent.id)
                             }
                         ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                 ) {
                     Icon(
                         modifier = Modifier.size(
@@ -63,7 +71,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                         color = press.mantra.compose.ui.composable.widgets.profile.ProfileColor.fromPublicKey(profile?.publicKey ?: nostrEvent.pubKey)
                     )
                     Text(
-                        text = "reposted",
+                        text = stringResource(Res.string.reposted),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -89,7 +97,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                     ).containedPost()
 
                     if (containedPost != null) {
-                        Text("Loading author information...")
+                        Text(stringResource(Res.string.loading_author_information_2))
                         Text(
                             containedPost.content
                         )
@@ -97,7 +105,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
                             text = Instant.fromEpochSeconds(containedPost.createdAt).toFormattedTimeAndDateString()
                         )
                     } else {
-                        Text("Malformed Note")
+                        Text(stringResource(Res.string.malformed_note))
                     }
 
                 }
@@ -118,12 +126,12 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
 }
 
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun EventListViewRepostedPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(
@@ -169,12 +177,12 @@ private fun EventListViewRepostedPreview() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun EventListViewInReplyPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             press.mantra.compose.database.model.intermdiate.LocalNostrEvent(
                 nostrEvent = press.mantra.compose.database.model.NostrEvent(

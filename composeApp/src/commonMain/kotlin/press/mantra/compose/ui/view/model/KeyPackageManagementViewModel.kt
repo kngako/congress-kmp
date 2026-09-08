@@ -40,19 +40,29 @@ class KeyPackageManagementViewModel(
         }
     }
 
-    fun publishNewKeyPackage() {
+    /**
+     * @param onDone called on completion so the screen can report it. Both of these were
+     *   fire and forget: you tapped, a coroutine ran, and nothing on screen changed --
+     *   which is indistinguishable from a tap that missed.
+     */
+    fun publishNewKeyPackage(onDone: () -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             // TODO: Rotate all other keys...
             marmotRepository.publishMarmotKeyPackageBundle(
                 publicKey = activeUserPublicKey,
                 nsecPassword = "" // TODO: Implement nsecPassword logic...
             )
+            onDone()
         }
     }
 
-    fun rotateKeyPackage(marmotKeyPackageBundle: MarmotKeyPackageBundle) {
+    fun rotateKeyPackage(
+        marmotKeyPackageBundle: MarmotKeyPackageBundle,
+        onDone: () -> Unit = {},
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             marmotRepository.rotateMarmotKeyPackageBundle(marmotKeyPackageBundle)
+            onDone()
         }
     }
 

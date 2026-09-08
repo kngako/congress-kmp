@@ -480,7 +480,7 @@ class DatabaseChatRepository(
 
         // TODO: Process this in the notary...
         sendChatMessage(
-            text = "Left Group",
+            text = "Left group",
             localChatRoom = localChatRoom,
             // TODO: Add Information/LeaveChatGroup Message Type...
         )

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -31,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,28 +39,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.acinq.phoenix.PhoenixGlobal
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.StateFlow
+import mantra.composeapp.generated.resources.Res
+import mantra.composeapp.generated.resources.backup_confirmation
+import mantra.composeapp.generated.resources.bip39_seed_with_the_standard_bip84
+import mantra.composeapp.generated.resources.could_not_unlock_your_phrase_please_try
+import mantra.composeapp.generated.resources.display_recovery_phrase
+import mantra.composeapp.generated.resources.hide
+import mantra.composeapp.generated.resources.i_have_saved_my_recovery_phrase_somewhere
+import mantra.composeapp.generated.resources.i_understand_that_if_i_lose_this_phone_and
+import mantra.composeapp.generated.resources.keep_this_phrase_safe_do_not_share_it
+import mantra.composeapp.generated.resources.loading_preferences
+import mantra.composeapp.generated.resources.lose_this_phone_before_you_do_and_the
+import mantra.composeapp.generated.resources.no_wallet_is_open_on_this_device_so_there
+import mantra.composeapp.generated.resources.recovery_phrase
+import mantra.composeapp.generated.resources.the_recovery_phrase_sometimes_called_a_seed
+import mantra.composeapp.generated.resources.this_device_holds_no_phrase_for_the_profile
+import mantra.composeapp.generated.resources.unlocking_your_phrase
+import mantra.composeapp.generated.resources.word_position
+import mantra.composeapp.generated.resources.you_have_not_backed_up_your_recovery_phrase
+import org.jetbrains.compose.resources.stringResource
+import press.mantra.compose.ui.composable.widgets.Decorative
+import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
+import press.mantra.compose.ui.theme.ConformancePreviews
+import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.view.model.RecoveryPhraseViewModel
 import press.mantra.compose.ui.view.state.RecoveryPhraseUIState
-
-private const val PHRASE_INSTRUCTIONS =
-    "The recovery phrase (sometimes called a seed) is a list of 12 English words. It is the only " +
-            "way back to this profile: the key that signs as you, and the wallet that holds your " +
-            "coins, are both derived from it.\n\n" +
-            "Only you have this phrase. Keep it private — nobody from mantra will ever ask you " +
-            "for it.\n\n" +
-            "Do not lose it. Write it down and keep it somewhere safe that is not this phone. If " +
-            "you lose both the phone and the phrase, this profile and its funds are gone for good."
-
-private const val PHRASE_DERIVATION =
-    "BIP39 seed with the standard BIP84 derivation path. The profile's nostr key comes off the " +
-            "same seed, so these 12 words restore both."
 
 /**
  * The twelve words behind this profile, shown once and on request.
@@ -123,7 +133,7 @@ private fun RecoveryPhraseContent(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Recovery Phrase"
+                        text = stringResource(Res.string.recovery_phrase)
                     )
                 },
                 navigationIcon = {
@@ -142,14 +152,19 @@ private fun RecoveryPhraseContent(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(innerPadding).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .padding(innerPadding)
+                .readableContent()
+                .padding(horizontal = MaterialTheme.spacing.screenMargin),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
                 Text(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    text = PHRASE_INSTRUCTIONS,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.containerPadding),
+                    text = stringResource(Res.string.the_recovery_phrase_sometimes_called_a_seed),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -164,27 +179,28 @@ private fun RecoveryPhraseContent(
                         )
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(MaterialTheme.spacing.containerPadding),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 Icons.Default.Warning,
-                                contentDescription = null
+                                contentDescription = Decorative
                             )
 
                             Spacer(
-                                modifier = Modifier.width(10.dp)
+                                modifier = Modifier.width(MaterialTheme.spacing.space125)
                             )
 
                             Column {
                                 Text(
-                                    text = "You have not backed up your recovery phrase",
+                                    text = stringResource(Res.string.you_have_not_backed_up_your_recovery_phrase),
                                     style = MaterialTheme.typography.titleSmall
                                 )
 
                                 Text(
-                                    text = "Lose this phone before you do, and the profile goes " +
-                                            "with it.",
+                                    text = stringResource(Res.string.lose_this_phone_before_you_do_and_the),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -198,7 +214,10 @@ private fun RecoveryPhraseContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(MaterialTheme.spacing.containerPadding),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.itemGap),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         when (recoveryPhraseUIState) {
@@ -208,15 +227,15 @@ private fun RecoveryPhraseContent(
                                 ) {
                                     Icon(
                                         Icons.Default.Visibility,
-                                        contentDescription = "Display recovery phrase"
+                                        contentDescription = Decorative
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
                                     Text(
-                                        text = "Display recovery phrase"
+                                        text = stringResource(Res.string.display_recovery_phrase)
                                     )
                                 }
                             }
@@ -224,7 +243,7 @@ private fun RecoveryPhraseContent(
                             is RecoveryPhraseUIState.Revealing -> {
                                 LoadingDataIndicator(
                                     fillScreen = false,
-                                    text = "Unlocking your phrase…"
+                                    text = stringResource(Res.string.unlocking_your_phrase)
                                 )
                             }
 
@@ -233,56 +252,41 @@ private fun RecoveryPhraseContent(
                                     words = recoveryPhraseUIState.words
                                 )
 
-                                Spacer(
-                                    modifier = Modifier.height(10.dp)
-                                )
-
                                 TextButton(
                                     onClick = onHideRecoveryPhrase
                                 ) {
                                     Icon(
                                         Icons.Default.VisibilityOff,
-                                        contentDescription = "Hide recovery phrase"
+                                        contentDescription = Decorative
                                     )
 
                                     Spacer(
-                                        modifier = Modifier.width(10.dp)
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
                                     )
 
                                     Text(
-                                        text = "Hide"
+                                        text = stringResource(Res.string.hide)
                                     )
                                 }
                             }
 
                             is RecoveryPhraseUIState.Error -> {
-                                Text(
-                                    text = when (recoveryPhraseUIState) {
+                                ErrorState(
+                                    message = when (recoveryPhraseUIState) {
                                         is RecoveryPhraseUIState.Error.NoActiveWallet ->
-                                            "No wallet is open on this device, so there is no " +
-                                                    "phrase to show."
+                                            stringResource(Res.string.no_wallet_is_open_on_this_device_so_there)
                                         is RecoveryPhraseUIState.Error.NoPhraseForThisWallet ->
-                                            "This device holds no phrase for the profile that is " +
-                                                    "signed in."
+                                            stringResource(Res.string.this_device_holds_no_phrase_for_the_profile)
                                         is RecoveryPhraseUIState.Error.SeedUnreadable ->
-                                            "Could not unlock your phrase. Please try again."
+                                            stringResource(Res.string.could_not_unlock_your_phrase_please_try)
                                     },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.error
+                                    // Retrying a wallet that is not open cannot help: the
+                                    // seed file has nothing to match against until one is.
+                                    onRetry = when (recoveryPhraseUIState) {
+                                        is RecoveryPhraseUIState.Error.NoActiveWallet -> null
+                                        else -> onRevealRecoveryPhrase
+                                    }
                                 )
-
-                                Spacer(
-                                    modifier = Modifier.height(10.dp)
-                                )
-
-                                TextButton(
-                                    onClick = onRevealRecoveryPhrase
-                                ) {
-                                    Text(
-                                        text = "Try again"
-                                    )
-                                }
                             }
                         }
                     }
@@ -292,7 +296,7 @@ private fun RecoveryPhraseContent(
             item {
                 Text(
                     modifier = Modifier.fillMaxWidth(),
-                    text = "Backup confirmation",
+                    text = stringResource(Res.string.backup_confirmation),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -303,21 +307,22 @@ private fun RecoveryPhraseContent(
                 ) {
                     if (isBackupDone == null || isDisclaimerRead == null) {
                         Text(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            text = "Loading preferences…",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(MaterialTheme.spacing.containerPadding),
+                            text = stringResource(Res.string.loading_preferences),
                             style = MaterialTheme.typography.bodySmall
                         )
                     } else {
                         RecoveryPhraseCheckbox(
                             checked = isBackupDone,
-                            text = "I have saved my recovery phrase somewhere safe.",
+                            text = stringResource(Res.string.i_have_saved_my_recovery_phrase_somewhere),
                             onCheckedChange = onBackupDoneChange
                         )
 
                         RecoveryPhraseCheckbox(
                             checked = isDisclaimerRead,
-                            text = "I understand that if I lose this phone and my recovery " +
-                                    "phrase, I lose this profile and the funds in its wallet.",
+                            text = stringResource(Res.string.i_understand_that_if_i_lose_this_phone_and),
                             onCheckedChange = onDisclaimerReadChange
                         )
                     }
@@ -326,8 +331,10 @@ private fun RecoveryPhraseContent(
 
             item {
                 Text(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    text = PHRASE_DERIVATION,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = MaterialTheme.spacing.containerPadding),
+                    text = stringResource(Res.string.bip39_seed_with_the_standard_bip84),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
                 )
@@ -343,13 +350,9 @@ private fun RecoveryPhraseContent(
 @Composable
 private fun RecoveryPhraseWords(words: List<String>) {
     Text(
-        text = "KEEP THIS PHRASE SAFE.\nDO NOT SHARE IT.",
+        text = stringResource(Res.string.keep_this_phrase_safe_do_not_share_it),
         style = MaterialTheme.typography.labelMedium,
         textAlign = TextAlign.Center
-    )
-
-    Spacer(
-        modifier = Modifier.height(16.dp)
     )
 
     // Read down the left column and then the right, the way the words are written on a card:
@@ -363,7 +366,7 @@ private fun RecoveryPhraseWords(words: List<String>) {
 
     Column(
         modifier = Modifier.widthIn(max = 260.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space75)
     ) {
         pairedWords.forEachIndexed { index, (first, second) ->
             Row(
@@ -401,14 +404,14 @@ private fun RecoveryPhraseWord(
     ) {
         Text(
             modifier = Modifier.width(28.dp),
-            text = "#$position",
+            text = stringResource(Res.string.word_position, position),
             style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.End,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(
-            modifier = Modifier.width(6.dp)
+            modifier = Modifier.width(MaterialTheme.spacing.space75)
         )
 
         Text(
@@ -428,8 +431,14 @@ private fun RecoveryPhraseCheckbox(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // The whole row toggles, so the row is the target and has to carry the 48dp
+            // the Checkbox alone would.
+            .minimumInteractiveComponentSize()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(
+                horizontal = MaterialTheme.spacing.containerPadding,
+                vertical = MaterialTheme.spacing.space150
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
@@ -438,7 +447,7 @@ private fun RecoveryPhraseCheckbox(
         )
 
         Spacer(
-            modifier = Modifier.width(10.dp)
+            modifier = Modifier.width(MaterialTheme.spacing.space125)
         )
 
         Text(
@@ -448,7 +457,7 @@ private fun RecoveryPhraseCheckbox(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
@@ -475,7 +484,7 @@ private fun RecoveryPhraseScreenPreview() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenHiddenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

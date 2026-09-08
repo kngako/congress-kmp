@@ -13,12 +13,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.ui.theme.spacing
+import mantra.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.loading_note
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun QuotedNote(
@@ -56,7 +61,7 @@ fun QuotedNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = MaterialTheme.spacing.space75)
         ) {
             localQuotedNostrEvent.RenderNotePreview(
                 onNavigateToEvent = onNavigateToEvent
@@ -72,7 +77,8 @@ fun QuotedNote(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    Modifier.clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
+                    Modifier.minimumInteractiveComponentSize()
+                        .clickable { effectiveNoteClick(localQuotedNostrEvent.nostrEvent.id) }
                 )
         ) {
             localQuotedNostrEvent.RenderNotePreview(
@@ -87,22 +93,22 @@ fun QuotedNote(
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = MaterialTheme.spacing.space75)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(14.dp)
+                modifier = Modifier.padding(MaterialTheme.spacing.space175)
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .width(14.dp)
                         .height(14.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.space100))
                 Text(
-                    text = "Loading note...",
+                    text = stringResource(Res.string.loading_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -111,12 +117,12 @@ fun QuotedNote(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun QuotedNotePreview() {
     press.mantra.compose.ui.theme.TorchTheme {
         Surface(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
 
             QuotedNote(

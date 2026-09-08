@@ -1,0 +1,62 @@
+# Material Design conformance, as a gate rather than a habit.
+#
+# docs/material-design-conformance.md drove nine classes of defect to zero across eight
+# phases. Every one of them is the kind that comes back one call site at a time -- a
+# hardcoded colour on a screen somebody was in a hurry on, a `10.dp` typed rather than
+# reached for -- and none of them is visible in a diff unless a reviewer is looking for it.
+# The budgets in docs/scripts/m3-audit.sh are what look.
+#
+# Gitea Actions, because the remote is a Gitea instance. The syntax is GitHub Actions'; a
+# runner has to be registered against the repository for either job to run at all.
+name: Material Design conformance
+
+on:
+  push:
+    branches: [mantra]
+  pull_request:
+
+jobs:
+  # Grep over the source tree. No gradle, no android SDK, no submodules, and no network:
+  # this job is why the audit is a shell script rather than a gradle plugin, and it should
+  # stay runnable on a bare container.
+  budgets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check the conformance budgets
+        run: docs/scripts/m3-audit.sh --check
+
+  # The assertions that need a compiler. Much heavier than the job above: the composite
+  # build reaches four levels of submodule and cross-compiles secp256k1's C sources, so a
+  # cold run is minutes rather than seconds. Split out so a runner can be pointed at
+  # `budgets` alone where that is all the capacity there is for.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The chain is lightning-kmp-app -> experimental/lightning-kmp ->
+          # experimental/bitcoin-kmp -> experimental/secp256k1-kmp -> native/secp256k1.
+          # Without every level, gradle fails during configuration with
+          # "Project with path ':library' not found", which reads like a build script
+          # error and is not one.
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # :secp256k1-kmp:jni:android is an android library module, so the SDK has to be
+      # present even for a jvm-only test run -- the failure otherwise is
+      # "SDK location not found" during configuration.
+      - uses: android-actions/setup-android@v3
+
+      - name: Theme, layout and motion tests
+        run: ./gradlew :composeApp:jvmTest --no-daemon
+
+      - name: Android compilation
+        run: ./gradlew :composeApp:compileDebugKotlinAndroid --no-daemon
