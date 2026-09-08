@@ -181,9 +181,9 @@ fun CreateProfileScreen(
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(Res.string.this_will_be_the_display_name_for_your),
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.labelMedium
                         )
 
                         TextField(
@@ -226,9 +226,9 @@ fun CreateProfileScreen(
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(Res.string.this_will_be_shown_when_people_open_your),
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.labelMedium
                         )
 
                         Button(
@@ -255,31 +255,35 @@ fun CreateProfileScreen(
                     }
                     is CreateProfileUIState.ConfirmInput -> {
 
+                        // A label/value list, so every one of the five is full width and
+                        // starts at the same edge. Centred, each floated at its own width
+                        // and "Name" began somewhere other than the name under it.
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(Res.string.name),
                             style = MaterialTheme.typography.labelLarge
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = createAccountUIState.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyLarge
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(Res.string.bio),
                             style = MaterialTheme.typography.labelLarge
                         )
 
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = createAccountUIState.bio,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyLarge
                         )
 
-
-
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(Res.string.the_above_will_be_your_profile),
                             style = MaterialTheme.typography.bodySmall
                         )

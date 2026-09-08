@@ -231,7 +231,6 @@ fun SelectChatRoomTypeScreen(
                     Text(
                         text = stringResource(Res.string.this_decides_who_can_change_the_group_later),
                         style = MaterialTheme.typography.labelMedium,
-                        textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space125)
                     )
 
