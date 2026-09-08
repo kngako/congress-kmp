@@ -11,6 +11,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlin.time.Clock
 import kotlinx.coroutines.withTimeoutOrNull
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.MarmotKeyPackage
@@ -180,10 +181,60 @@ object MarmotGroupCreation {
             logger.w("$groupId created without ${notAdded.size} member(s): $notAdded")
         }
 
+        stampAdmins(database, groupId, adminPublicKeys)
+
         return Outcome.Created(
             room = chatRepository.getChatRoomByIdentifier(groupId) ?: localChatRoom,
             notAdded = notAdded
         )
+    }
+
+    /**
+     * Writes `adminAt` on the rows of the members this room was created with as
+     * admins.
+     *
+     * The creating device never learns this any other way, which is a bug older
+     * than subgroups and easy to miss. `Participant.adminAt` is written in exactly
+     * one place -- `MarmotInboundManager.processGroupMembershipChanges`, on an
+     * arriving commit -- while the rows a creator makes come from
+     * `getOrCreateChatRoom` and `addMembers`, neither of which sets it. So on the
+     * device that made the room, every participant reads as a non-admin until some
+     * *other* member sends a commit it processes: a room whose epoch-0 context
+     * names three admins had none of them flagged, on the one device certain to be
+     * one.
+     *
+     * This is the same list already baked into `MarmotGroupData` a few lines
+     * above, so nothing new is being asserted -- the row is being caught up with
+     * the group context it was created from. `processGroupMembershipChanges`
+     * reconciles it against the MLS tree from then on and will agree.
+     *
+     * Only flags are written. That function also *removes* participants missing
+     * from the tree, and running the whole reconciliation here would soft-delete
+     * the rows of anyone `addMembers` could not reach -- turning a partial invite
+     * into a partial membership. Widening a flag is safe; narrowing membership on
+     * a best-effort step is not.
+     *
+     * Swallowed on failure, like `adopt` above it: the room is made and usable,
+     * and what a missing flag costs is a button not being offered rather than
+     * anything being wrong.
+     */
+    private suspend fun stampAdmins(
+        database: MantraDatabase,
+        groupId: String,
+        adminPublicKeys: Set<HexKey>
+    ) {
+        runCatching {
+            val room = database.chatRoomDao().findChatRoomById(groupId) ?: return
+
+            val stamped = room.localParticipants
+                .map { it.participant }
+                .filter { it.participantPublicKey in adminPublicKeys && it.adminAt == null }
+                .map { it.copy(adminAt = Clock.System.now()) }
+
+            if (stamped.isNotEmpty()) database.participantDao().upsert(stamped)
+        }.onFailure {
+            logger.e("Created $groupId but could not flag its admins", it)
+        }
     }
 
     /**

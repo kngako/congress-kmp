@@ -1,6 +1,10 @@
 package press.mantra.compose.managers
 
 import androidx.room3.Room
+import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
+import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
+import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
+import press.mantra.compose.nostr.Relays
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
@@ -31,6 +35,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.NostrEvent
+import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.toHex
@@ -272,6 +277,43 @@ class SubgroupManagerJvmTest {
     }
 
     @Test
+    fun `an admin is read off the group's data, not off a flag no creator ever sets`(): Unit =
+        runBlocking {
+            // The bug this replaced. `Participant.adminAt` is written in exactly
+            // one place -- `processGroupMembershipChanges`, on an arriving commit
+            // -- and a device that created a room has processed none, so every
+            // row reads as a non-admin including the creator's. A guard on that
+            // column refused the one person certain to be an admin.
+            //
+            // MarmotGroupData is right from epoch 0 on both sides, so this passes
+            // with every adminAt still null.
+            val parent = parentWith(listOf(alice, bob, carol))
+
+            assertTrue(
+                parent.localParticipants.all { it.participant.adminAt == null },
+                "the fixture must not set the flag, or it is not testing the fix",
+            )
+            assertNull(refusal(parent, setOf(alice, bob)))
+        }
+
+    @Test
+    fun `a group with no MLS state has no admin list to consult`(): Unit = runBlocking {
+        // A NIP-17 room: everybody is an equal member and there is no group
+        // context to put a certificate in. The button is hidden there for the
+        // same reason, and this is the guard behind it.
+        (listOf(alice, bob, carol) + user).forEach { seedProfile(it) }
+        val nip17 = assertNotNull(
+            db.nostrNip17Dao().createNip17ChatRoom(
+                userPublicKey = user,
+                participantPublicKeys = listOf(alice, bob, carol),
+                subject = "Ekklesia",
+            )
+        )
+
+        assertNotNull(refusal(nip17, setOf(alice, bob)))
+    }
+
+    @Test
     fun `a subgroup of fewer than three admins is refused`(): Unit = runBlocking {
         val parent = parentWith(listOf(alice, bob, carol))
 
@@ -446,6 +488,21 @@ class SubgroupManagerJvmTest {
      * and [isAdmin] are here so the tests that are *about* those two can turn
      * each off on its own.
      */
+    /**
+     * A parent this device could actually make a subgroup of.
+     *
+     * Built as what a real parent *is* -- the `#admins` room derived from the
+     * group's own key -- rather than as a NIP-17 room with MLS state bolted on.
+     * That is not fussiness: `ChatRoom.deriveChatRoomId` returns a 33-byte
+     * compressed key (66 hex) and `MarmotGroupData.nostrGroupId` takes 32 bytes,
+     * so a NIP-17 id put in that field produces an extension `currentMarmotData()`
+     * reads back as **null**, silently. The fixture that did it tested nothing but
+     * that null.
+     *
+     * [canSign] and [isAdmin] are switchable so the tests about those two can turn
+     * each off on its own; both are conditions `refuseCeremonyRoom` checks before
+     * it looks at the picking at all.
+     */
     private suspend fun parentWith(
         members: List<String>,
         canSign: Boolean = true,
@@ -453,21 +510,52 @@ class SubgroupManagerJvmTest {
     ): LocalChatRoom {
         (members + user).forEach { seedProfile(it) }
 
-        val room = assertNotNull(
-            db.nostrNip17Dao().createNip17ChatRoom(
+        val admins = if (isAdmin) members + user else members
+
+        val metadata = MarmotGroupData(
+            nostrGroupId = parentRoomId,
+            name = "Ekklesia",
+            description = SharedKeyDerivation.describe("Admins of Ekklesia."),
+            adminPubkeys = admins,
+            relays = Relays.DefaultDMRelayList.map { it.url }
+        )
+        val mlsGroup = MlsGroup.create(
+            KeyPair().pubKey,
+            Ed25519.generateKeyPair().privateKey,
+            listOf(metadata.toExtension())
+        )
+
+        db.chatRoomDao().upsert(
+            ChatRoom(
+                id = parentRoomId,
                 userPublicKey = user,
-                participantPublicKeys = members,
                 subject = "Ekklesia",
+                description = metadata.description,
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
         )
 
+        // Deliberately with `adminAt` left null on every one of them. That column
+        // is only ever written by `processGroupMembershipChanges`, on an arriving
+        // commit, so on a device that made the room it is null for everybody --
+        // which is the state the guard has to work in.
+        db.participantDao().upsert(
+            (members + user).map {
+                Participant(
+                    participantPublicKey = it,
+                    chatRoomId = parentRoomId,
+                    relayHint = null,
+                )
+            }
+        )
+
         if (canSign) {
-            // `completedKey` falls back to the newest completed ceremony held in
-            // the room, which is what a NIP-17 room's key looks like from here.
+            // `completedKey` rederives each key-holding ceremony's room and
+            // matches, which is exactly how a real admin room resolves its key.
             db.dkgSessionDao().upsert(
                 DkgSession(
                     id = "parent-ceremony",
-                    chatRoomId = room.chatRoom.id,
+                    chatRoomId = parentRoomId,
                     coordinatorPublicKey = user,
                     userPublicKey = user,
                     threshold = 2,
@@ -482,18 +570,7 @@ class SubgroupManagerJvmTest {
             )
         }
 
-        if (isAdmin) {
-            db.participantDao().upsert(
-                assertNotNull(
-                    db.chatRoomDao().findChatRoomById(room.chatRoom.id)
-                ).localParticipants
-                    .map { it.participant }
-                    .filter { it.participantPublicKey == user }
-                    .map { it.copy(adminAt = Instant.fromEpochSeconds(1_700_000_000)) }
-            )
-        }
-
-        return assertNotNull(db.chatRoomDao().findChatRoomById(room.chatRoom.id))
+        return assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))
     }
 
     private suspend fun seedProfile(publicKey: String) {

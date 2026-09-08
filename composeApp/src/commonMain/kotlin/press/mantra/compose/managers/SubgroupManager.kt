@@ -114,13 +114,36 @@ object SubgroupManager {
 
         // A non-admin proposing the group's signature is a proposal the admins
         // have to decline by hand, which is a worse outcome than not offering it.
-        // Read off the epoch-0 admin list MIP-01 carries, the same reading every
-        // side of the group makes.
-        val isAdmin = parentRoom.localParticipants.any {
-            it.participant.participantPublicKey == coordinatorPublicKey &&
-                it.participant.adminAt != null
+        //
+        // Read off the room's own `MarmotGroupData`, not off `Participant.adminAt`.
+        // That column is written in exactly one place -- `processGroupMembershipChanges`,
+        // on an arriving commit -- so on the device that *created* a room it is
+        // null for everybody, including the creator, until some other member
+        // sends a commit. A freshly made room has had no commits, so the flag
+        // says nobody administers a group whose epoch-0 context names three
+        // admins.
+        //
+        // The group data is the thing that column is a cache of: MIP-01 stamps
+        // `admin_pubkeys` into the epoch-0 group context, every member gets it in
+        // their Welcome, and `processGroupMembershipChanges` reads exactly this
+        // when it writes the flag. Reading it directly cannot drift from what the
+        // group agreed, and is right on both sides from the first moment.
+        // Named for the parent, because `adminPublicKeys` in this function is the
+        // *subgroup's* picked admins and the two must never be confused -- the
+        // ceremony room is derived from the second, and deriving it from the
+        // first would silently make a different room.
+        val parentAdminPublicKeys = runCatching {
+            parentRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+        }.getOrNull()
+
+        if (parentAdminPublicKeys == null) {
+            // No MLS state, or state this build cannot read. A NIP-17 room has no
+            // admin list to consult and no group context to put a subgroup's
+            // certificate in, which is the same reason the button is hidden there.
+            return "A subgroup can only be made from a group that has admins."
         }
-        if (!isAdmin) {
+
+        if (!parentAdminPublicKeys.contains(coordinatorPublicKey)) {
             return "Only an admin of this group can make a subgroup."
         }
 
