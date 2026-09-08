@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -27,6 +28,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -252,6 +254,24 @@ class SubgroupManagerJvmTest {
     // ---- the refusals ------------------------------------------------------
 
     @Test
+    fun `a member holding no share of the parent's key is refused`(): Unit = runBlocking {
+        // Not a permission rule: `proposeSigningBatch` throws outright for a
+        // device with no share, so without this the button would crash rather
+        // than decline. It is also the one refusal the user cannot fix by picking
+        // differently, which is why it is checked first.
+        val parent = parentWith(listOf(alice, bob, carol), canSign = false)
+
+        assertNotNull(refusal(parent, setOf(alice, bob)))
+    }
+
+    @Test
+    fun `a member who is not an admin of the parent is refused`(): Unit = runBlocking {
+        val parent = parentWith(listOf(alice, bob, carol), isAdmin = false)
+
+        assertNotNull(refusal(parent, setOf(alice, bob)))
+    }
+
+    @Test
     fun `a subgroup of fewer than three admins is refused`(): Unit = runBlocking {
         val parent = parentWith(listOf(alice, bob, carol))
 
@@ -288,8 +308,8 @@ class SubgroupManagerJvmTest {
         // of the members. A second subgroup with the same admins would come back
         // with the first one's key and therefore the first one's room id.
         //
-        // Stood up the way `openCeremony` does, room first: the ceremony room is
-        // a real NIP-17 room and `DkgSession.chatRoomId` is a foreign key onto it.
+        // Room first, the way the picker stands one up: the ceremony room is a
+        // real NIP-17 room and `DkgSession.chatRoomId` is a foreign key onto it.
         val ceremonyRoom = assertNotNull(
             db.nostrNip17Dao().createNip17ChatRoom(
                 userPublicKey = user,
@@ -336,7 +356,69 @@ class SubgroupManagerJvmTest {
         )
     }
 
+    @Test
+    fun `certifying a child the parent has already certified is refused`(): Unit = runBlocking {
+        seedRoom(parentRoomId)
+        record(certificate())
+
+        val parentRoom = assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))
+
+        // One certificate per child: a second is a `d`-tag replacement rather
+        // than a second subgroup, and spending a quorum's attention to restate
+        // something they have already signed is worse than doing nothing.
+        //
+        // Two coordinators racing still produce two -- neither can see the
+        // other's session before it completes -- which is why `certificateFor`
+        // folds them. This only stops the case somebody can actually see.
+        assertFailsWith<IllegalStateException> {
+            SubgroupManager.proposeBirthCertificate(
+                database = db,
+                parentRoom = parentRoom,
+                userPublicKey = user,
+                key = completedChildCeremony(),
+                adminPublicKeys = listOf(user, alice, bob),
+                name = "Translation team",
+            )
+        }
+    }
+
+    @Test
+    fun `an unnamed subgroup cannot be certified`(): Unit = runBlocking {
+        seedRoom(parentRoomId)
+        val parentRoom = assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))
+
+        // The parent's admins would be approving a hash. The name is what makes
+        // the proposal legible, so it is required rather than defaulted.
+        assertFailsWith<IllegalArgumentException> {
+            SubgroupManager.proposeBirthCertificate(
+                database = db,
+                parentRoom = parentRoom,
+                userPublicKey = user,
+                key = completedChildCeremony(),
+                adminPublicKeys = listOf(user, alice, bob),
+                name = "  ",
+            )
+        }
+    }
+
     // ---- fixtures ----------------------------------------------------------
+
+    /** A finished ceremony for the child, as far as these guards can tell. */
+    private fun completedChildCeremony() = DkgSession(
+        id = "child-ceremony",
+        chatRoomId = parentRoomId,
+        coordinatorPublicKey = user,
+        userPublicKey = user,
+        threshold = 2,
+        participantCount = 3,
+        stage = DkgRitualStage.COMPLETE,
+        hostPublicKey = user,
+        round1Random = "aa".repeat(32),
+        round2AuxRandom = "bb".repeat(32),
+        thresholdPublicKey = childMaterial.thresholdPublicKey.value.toHex(),
+        secretShare = "dd".repeat(32),
+    )
+
 
     private fun keyMaterial(secret: String): KeyMaterial = Frost.trustedDealerKeygen(
         thresholdSecretKey = PrivateKey(ByteVector32(secret)),
@@ -355,16 +437,63 @@ class SubgroupManagerJvmTest {
             coordinatorPublicKey = user
         )
 
-    private suspend fun parentWith(members: List<String>): LocalChatRoom {
+    /**
+     * A parent this device could actually make a subgroup of: an admin of it, and
+     * holding a share of its key.
+     *
+     * Both are conditions of `refuseCeremonyRoom` before it looks at the picking
+     * at all, so a fixture without them tests only the first refusal. [canSign]
+     * and [isAdmin] are here so the tests that are *about* those two can turn
+     * each off on its own.
+     */
+    private suspend fun parentWith(
+        members: List<String>,
+        canSign: Boolean = true,
+        isAdmin: Boolean = true,
+    ): LocalChatRoom {
         (members + user).forEach { seedProfile(it) }
 
-        return assertNotNull(
+        val room = assertNotNull(
             db.nostrNip17Dao().createNip17ChatRoom(
                 userPublicKey = user,
                 participantPublicKeys = members,
                 subject = "Ekklesia",
             )
         )
+
+        if (canSign) {
+            // `completedKey` falls back to the newest completed ceremony held in
+            // the room, which is what a NIP-17 room's key looks like from here.
+            db.dkgSessionDao().upsert(
+                DkgSession(
+                    id = "parent-ceremony",
+                    chatRoomId = room.chatRoom.id,
+                    coordinatorPublicKey = user,
+                    userPublicKey = user,
+                    threshold = 2,
+                    participantCount = members.size + 1,
+                    stage = DkgRitualStage.COMPLETE,
+                    hostPublicKey = user,
+                    round1Random = "aa".repeat(32),
+                    round2AuxRandom = "bb".repeat(32),
+                    thresholdPublicKey = parentMaterial.thresholdPublicKey.value.toHex(),
+                    secretShare = "cc".repeat(32),
+                )
+            )
+        }
+
+        if (isAdmin) {
+            db.participantDao().upsert(
+                assertNotNull(
+                    db.chatRoomDao().findChatRoomById(room.chatRoom.id)
+                ).localParticipants
+                    .map { it.participant }
+                    .filter { it.participantPublicKey == user }
+                    .map { it.copy(adminAt = Instant.fromEpochSeconds(1_700_000_000)) }
+            )
+        }
+
+        return assertNotNull(db.chatRoomDao().findChatRoomById(room.chatRoom.id))
     }
 
     private suspend fun seedProfile(publicKey: String) {

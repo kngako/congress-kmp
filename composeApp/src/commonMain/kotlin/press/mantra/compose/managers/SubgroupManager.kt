@@ -101,6 +101,28 @@ object SubgroupManager {
         coordinatorPublicKey: HexKey
     ): String? {
         val admins = adminPublicKeys + coordinatorPublicKey
+        val parentChatRoomId = parentRoom.chatRoom.id
+
+        // A subgroup is certified by the parent's key, so a device holding no
+        // share of it cannot open the session at all --
+        // `FrostSigningManager.proposeSigningBatch` throws outright, and throwing
+        // at a button is not a UI. Checked before the size rules because it is the
+        // one refusal the user cannot fix by picking differently.
+        if (!FrostSigningManager.canSign(database, parentChatRoomId)) {
+            return "Only a member who holds a share of this group's key can make a subgroup."
+        }
+
+        // A non-admin proposing the group's signature is a proposal the admins
+        // have to decline by hand, which is a worse outcome than not offering it.
+        // Read off the epoch-0 admin list MIP-01 carries, the same reading every
+        // side of the group makes.
+        val isAdmin = parentRoom.localParticipants.any {
+            it.participant.participantPublicKey == coordinatorPublicKey &&
+                it.participant.adminAt != null
+        }
+        if (!isAdmin) {
+            return "Only an admin of this group can make a subgroup."
+        }
 
         if (admins.size < MINIMUM_ADMINS) {
             return "A subgroup needs at least $MINIMUM_ADMINS admins. Pick at least " +
@@ -167,6 +189,16 @@ object SubgroupManager {
         val parentChatRoomId = parentRoom.chatRoom.id
 
         require(name.isNotBlank()) { "A subgroup has to be called something" }
+
+        // One certificate per child. A second is a `d`-tag replacement of the
+        // first rather than a second subgroup, and spending a quorum's attention
+        // to restate something they have already signed is worse than doing
+        // nothing. Two coordinators racing still produce two -- neither can see
+        // the other's session before it completes -- and `certificateFor` folds
+        // those together; this only stops the case somebody can actually see.
+        check(certificateFor(database, subgroupChatRoomId, parentChatRoomId) == null) {
+            "$parentChatRoomId has already certified $subgroupChatRoomId"
+        }
 
         logger.i("Asking $parentChatRoomId to certify $subgroupChatRoomId as its subgroup")
 
