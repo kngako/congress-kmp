@@ -3,6 +3,7 @@ package press.mantra.compose.managers
 import androidx.room3.Room
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
@@ -307,5 +308,65 @@ class RobustRoomKeyCeremonyTest {
         // And it changes nothing about the ceremony itself.
         assertEquals(quorum, session.threshold)
         assertEquals(3, session.participantCount)
+    }
+
+    /**
+     * The bug a member on the other side of a subgroup actually saw.
+     *
+     * Only the member who opened a subgroup arrives at the ritual screen knowing
+     * it is one. Everybody else reaches it from the room -- the transcript's
+     * ritual notice, or the group's details -- and neither has a purpose to hand
+     * it. When the room's ceremony was looked up by purpose, those members opened
+     * a room whose ceremony had started and were told none had.
+     *
+     * So the room's own lookup stays room-scoped and the purpose is read off the
+     * session that turns up. Scoping belongs where scoping is the question being
+     * asked: "may I open another".
+     */
+    @Test
+    fun `a subgroup's ceremony is found by the room alone`() = runBlocking {
+        val room = robustRoom()
+        val parent = "ab".repeat(32)
+
+        val session = openCeremony(room, parentChatRoomId = parent)
+
+        // What the screen asks when somebody arrives from the transcript, with
+        // nothing but the room.
+        val found = db.dkgSessionDao().observeLatestSessionForChatRoom(room.chatRoom.id).first()
+
+        assertEquals(session.id, found?.id, "a member arriving by room has to find the ceremony")
+        assertEquals(
+            parent,
+            found?.parentChatRoomId,
+            "and the session is where they learn what it is for",
+        )
+    }
+
+    @Test
+    fun `a room may hold its own ceremony and a subgroup's at once`() = runBlocking {
+        val room = robustRoom()
+        val parent = "ab".repeat(32)
+
+        // A subgroup whose admins are everybody lands in the room the group's own
+        // ceremony was held in. Sharing the room is fine; sharing a ceremony is
+        // not, and only the purpose keeps them apart.
+        val own = openCeremony(room)
+        val subgroup = openCeremony(room, parentChatRoomId = parent)
+
+        assertNotEquals(own.id, subgroup.id, "the two must not be the same ceremony")
+
+        assertEquals(
+            own.id,
+            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null)?.id,
+        )
+        assertEquals(
+            subgroup.id,
+            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, parent)?.id,
+        )
+
+        // And asking again for the same purpose hands back what is already
+        // running rather than opening a third.
+        assertEquals(subgroup.id, openCeremony(room, parentChatRoomId = parent).id)
+        assertEquals(own.id, openCeremony(room).id)
     }
 }
