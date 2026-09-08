@@ -26,12 +26,19 @@ interface DkgRepository {
 
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
-    /** Opens a ritual. Only meaningful for the room's creator. */
+    /**
+     * Opens a ritual. Only meaningful for the room's creator.
+     *
+     * [parentChatRoomId] says what the ceremony is for when it is for a subgroup.
+     * It rides on the proposal and is believed by nobody -- see
+     * `DkgSession.parentChatRoomId`.
+     */
     suspend fun proposeRitual(
         localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
-        threshold: Int
+        threshold: Int,
+        parentChatRoomId: HexKey? = null
     ): DkgSession?
 
     /** What the ritual is waiting on this device's owner for, if anything. */
@@ -101,7 +108,8 @@ interface DkgRepository {
                 localChatRoom: LocalChatRoom,
                 userPublicKey: HexKey,
                 nostrPrivateKey: ByteArray,
-                threshold: Int
+                threshold: Int,
+                parentChatRoomId: HexKey?
             ): DkgSession? = null
 
             override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? = null

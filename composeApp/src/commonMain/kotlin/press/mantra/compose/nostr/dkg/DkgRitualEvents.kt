@@ -3,6 +3,8 @@ package press.mantra.compose.nostr.dkg
 import press.mantra.compose.nostr.dkg.tags.DkgSessionIdTag
 import press.mantra.compose.nostr.dkg.tags.DkgThresholdTag
 import com.vitorpamplona.quartz.nip01Core.core.Kind
+import com.vitorpamplona.quartz.nip14Subject.SubjectTag
+import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
 
 /**
  * The nostr kinds a ChillDKG ritual is carried on.
@@ -72,10 +74,14 @@ object DkgRitualEvents {
      */
     fun assembleTags(
         sessionId: String,
-        threshold: Int? = null
+        threshold: Int? = null,
+        parentChatRoomId: String? = null,
+        subject: String? = null
     ): Array<Array<String>> = buildList {
         add(DkgSessionIdTag.assemble(sessionId))
         threshold?.let { add(DkgThresholdTag.assemble(it)) }
+        parentChatRoomId?.let { add(SubgroupParentTag.assemble(it)) }
+        subject?.ifBlank { null }?.let { add(SubjectTag.assemble(it)) }
     }.toTypedArray()
 
     fun parseSessionId(tags: Array<Array<String>>): String? =
@@ -83,4 +89,39 @@ object DkgRitualEvents {
 
     fun parseThreshold(tags: Array<Array<String>>): Int? =
         tags.firstNotNullOfOrNull(DkgThresholdTag::parse)?.threshold
+
+    /**
+     * The group this ceremony claims to be making a subgroup of, or null for an
+     * ordinary one.
+     *
+     * **This authenticates nothing.** Anybody can put any room id here, and
+     * nothing about the parent is checked when it is read: `acceptProposal` files
+     * it on the session and the ritual screen shows it, and that is the whole of
+     * what it is for. The claim that decides anything is the birth certificate,
+     * two steps later, which the parent's own quorum signs and which any device
+     * can check against the parent's room id alone.
+     *
+     * The reason to carry it at all is that a member selected for a subgroup
+     * ceremony would otherwise see a shared key ceremony open in a room they did
+     * not ask for, with nothing saying what it is for. Being told is worth having
+     * even when the telling is not evidence.
+     */
+    fun parseParentChatRoomId(tags: Array<Array<String>>): String? =
+        tags.firstNotNullOfOrNull(SubgroupParentTag::parse)?.parentChatRoomId
+
+    /**
+     * What the room a ceremony runs in should be called.
+     *
+     * `NostrDao.getOrCreateNip17ChatRoom` already reads this off an arriving
+     * payload -- it has always built the receiving side's room with
+     * `subject = parseSubject()` -- and nothing on the ritual path ever wrote
+     * one. So a proposal was the first thing anybody heard of the room, and it
+     * arrived nameless: the member who created it saw the name they typed and
+     * every other member saw an untitled chat with a key ceremony running in it.
+     *
+     * Read through the same `SubjectTag` NIP-14 uses, because it is the same tag
+     * and the same field it lands in.
+     */
+    fun parseSubject(tags: Array<Array<String>>): String? =
+        tags.firstNotNullOfOrNull(SubjectTag::parse)
 }

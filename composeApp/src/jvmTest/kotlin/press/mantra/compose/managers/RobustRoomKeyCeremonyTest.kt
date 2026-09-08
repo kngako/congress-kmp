@@ -16,6 +16,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -93,13 +94,18 @@ class RobustRoomKeyCeremonyTest {
         )
     }
 
-    private suspend fun openCeremony(room: LocalChatRoom, threshold: Int = quorum) =
+    private suspend fun openCeremony(
+        room: LocalChatRoom,
+        threshold: Int = quorum,
+        parentChatRoomId: String? = null,
+    ) =
         ChillDkgRitualManager.proposeRitual(
             database = db,
             localChatRoom = room,
             userPublicKey = user,
             nostrPrivateKey = creatorPrivateKey,
             threshold = threshold,
+            parentChatRoomId = parentChatRoomId,
         )
 
     private suspend fun ritualPayloads(room: LocalChatRoom) =
@@ -220,5 +226,86 @@ class RobustRoomKeyCeremonyTest {
             ritualPayloads(room).count { it.kind == DkgRitualEvents.PROPOSAL },
             "the group proposes again",
         )
+    }
+
+    /**
+     * The room's name reached nobody but the member who typed it.
+     *
+     * `NostrDao.getOrCreateNip17ChatRoom` has always built the receiving side's
+     * room with `subject = parseSubject()`, and nothing on the ritual path ever
+     * wrote a subject tag. Standing up a NIP-17 room sends nothing to anybody, so
+     * the proposal is routinely the first anyone hears of the room -- and it
+     * arrived untitled, with a key ceremony already running in it.
+     */
+    @Test
+    fun `the proposal carries the room's name, and no later message repeats it`() = runBlocking {
+        val room = robustRoom()
+        openCeremony(room)
+
+        val payloads = ritualPayloads(room)
+        val proposal = payloads.first { it.kind == DkgRitualEvents.PROPOSAL }
+
+        assertEquals("Robust Group", DkgRitualEvents.parseSubject(proposal.tags))
+
+        // Every later message belongs to a session the receiver already has the
+        // room for, so repeating the name would be bytes per round to say
+        // something already settled.
+        payloads.filterNot { it.kind == DkgRitualEvents.PROPOSAL }.forEach {
+            assertNull(
+                DkgRitualEvents.parseSubject(it.tags),
+                "kind ${it.kind} should not repeat the room's name",
+            )
+        }
+    }
+
+    @Test
+    fun `an ordinary ceremony claims no parent anywhere`() = runBlocking {
+        val room = robustRoom()
+        val session = openCeremony(room)
+
+        assertNull(session.parentChatRoomId)
+        ritualPayloads(room).forEach {
+            assertNull(
+                DkgRitualEvents.parseParentChatRoomId(it.tags),
+                "kind ${it.kind} should claim no parent",
+            )
+        }
+    }
+
+    /**
+     * A subgroup ceremony says what it is for, and says it once.
+     *
+     * The claim is unverified and nothing is granted on it -- the participant set
+     * is still the p-tags and the threshold is still the threshold. What it buys
+     * is that a member selected for a subgroup is not left watching a key ceremony
+     * open in a room they did not ask for with nothing saying why. The parent's own
+     * signature turns up two steps later, on the birth certificate.
+     */
+    @Test
+    fun `a subgroup ceremony names its parent, on the proposal alone`() = runBlocking {
+        val room = robustRoom()
+        val parent = "ab".repeat(32)
+
+        val session = openCeremony(room, parentChatRoomId = parent)
+
+        assertEquals(parent, session.parentChatRoomId)
+
+        val payloads = ritualPayloads(room)
+        val proposal = payloads.first { it.kind == DkgRitualEvents.PROPOSAL }
+
+        assertEquals(parent, DkgRitualEvents.parseParentChatRoomId(proposal.tags))
+
+        // Only on the proposal: a later message with a say in what an opened
+        // ceremony is for would be a second answer to a settled question.
+        payloads.filterNot { it.kind == DkgRitualEvents.PROPOSAL }.forEach {
+            assertNull(
+                DkgRitualEvents.parseParentChatRoomId(it.tags),
+                "kind ${it.kind} should not restate the parent",
+            )
+        }
+
+        // And it changes nothing about the ceremony itself.
+        assertEquals(quorum, session.threshold)
+        assertEquals(3, session.participantCount)
     }
 }

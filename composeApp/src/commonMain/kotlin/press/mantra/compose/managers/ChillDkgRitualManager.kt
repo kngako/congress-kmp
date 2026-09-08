@@ -122,7 +122,8 @@ object ChillDkgRitualManager {
         localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
-        threshold: Int
+        threshold: Int,
+        parentChatRoomId: HexKey? = null
     ): DkgSession {
         // A room runs one ceremony at a time, and this is reachable twice now that
         // a robust group opens one as it is created: the room id is derived from
@@ -175,7 +176,13 @@ object ChillDkgRitualManager {
             // member is not asked again to publish the host key they just committed
             // the group to. Rounds 1 and 2 are still asked for: those publish key
             // material, and by then the ceremony has other people in it.
-            hostKeyApprovedAt = Clock.System.now()
+            hostKeyApprovedAt = Clock.System.now(),
+            // What this ceremony is for, if it is for anything in particular. The
+            // coordinator's own copy of the claim they are about to put on the
+            // proposal -- unverified there and unverified here, and read for
+            // nothing but a screen's title and a way back into an unfinished
+            // subgroup flow. See `DkgSession.parentChatRoomId`.
+            parentChatRoomId = parentChatRoomId
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -188,7 +195,19 @@ object ChillDkgRitualManager {
             session = session,
             kind = DkgRitualEvents.PROPOSAL,
             content = "",
-            includeThreshold = true
+            includeThreshold = true,
+            // Only on the proposal. Every later message belongs to a session the
+            // receiver already has both of these on, so repeating them would be
+            // bytes per round to say something already settled -- and would give a
+            // later message a say in what an opened ceremony is for.
+            includeParent = true,
+            // The room's name, which until now reached nobody but its creator.
+            // `NostrDao.getOrCreateNip17ChatRoom` has always read a subject off the
+            // payload that first tells it about a room, and a ritual proposal is
+            // routinely that payload -- so without this every member but the
+            // coordinator watched an untitled chat appear with a key ceremony
+            // already running in it.
+            subject = localChatRoom.chatRoom.subject
         )
 
         publishHostKey(database, localChatRoom, session)
@@ -311,7 +330,15 @@ object ChillDkgRitualManager {
             participantCount = members.size,
             hostPublicKey = deriveHostPublicKey(nostrPrivateKey).value.toHex(),
             round1Random = RandomInstance.bytes(32).toHex(),
-            round2AuxRandom = RandomInstance.bytes(32).toHex()
+            round2AuxRandom = RandomInstance.bytes(32).toHex(),
+            // Taken as said, because there is nothing here to check it against and
+            // nothing is granted on it. A proposal claiming a parent this member has
+            // never heard of, or one they are not in, still opens exactly the
+            // ceremony it would have opened without the tag -- the participant set
+            // is the p-tags and the threshold is the threshold. What it changes is
+            // that the screen can say what the ceremony is for. The parent's own
+            // signature turns up two steps later, on the birth certificate.
+            parentChatRoomId = DkgRitualEvents.parseParentChatRoomId(giftWrapPayload.tags)
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -1119,7 +1146,9 @@ object ChillDkgRitualManager {
         session: DkgSession,
         kind: Kind,
         content: String,
-        includeThreshold: Boolean = false
+        includeThreshold: Boolean = false,
+        includeParent: Boolean = false,
+        subject: String? = null
     ) {
         // One p-tag per member, and the sender is implied rather than tagged —
         // together they are the participant set every receiver derives `n` from.
@@ -1135,7 +1164,9 @@ object ChillDkgRitualManager {
 
         val tags = receiverTags.toTypedArray() + DkgRitualEvents.assembleTags(
             sessionId = session.id,
-            threshold = if (includeThreshold) session.threshold else null
+            threshold = if (includeThreshold) session.threshold else null,
+            parentChatRoomId = if (includeParent) session.parentChatRoomId else null,
+            subject = subject
         )
 
         val createdAt = Clock.System.now().epochSeconds

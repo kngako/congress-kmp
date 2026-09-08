@@ -38,14 +38,16 @@ class DatabaseDkgRepository(
         localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
-        threshold: Int
+        threshold: Int,
+        parentChatRoomId: HexKey?
     ): DkgSession? = try {
         ChillDkgRitualManager.proposeRitual(
             database = database,
             localChatRoom = localChatRoom,
             userPublicKey = userPublicKey,
             nostrPrivateKey = nostrPrivateKey,
-            threshold = threshold
+            threshold = threshold,
+            parentChatRoomId = parentChatRoomId
         )
     } catch (e: Throwable) {
         logger.e("Error proposing DKG ritual for ${localChatRoom.chatRoom.id}", e)
