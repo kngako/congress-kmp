@@ -306,10 +306,15 @@ keeps the decision about transcript lines next to the decision about triggers.
 >
 > - **The allowlist now does real work on the way out.** The rebuild could only
 >   ever produce document kinds; the table holds everything the group has signed,
->   and every room signs a `GroupKeyStateEvent` as its first act. `assemble`
->   filters on `ChronicleEvent.isChroniclable` before anything else -- without it
->   `ChronicleEvent.build` refuses the page and a room's whole chronicle fails on the
->   one event every room has.
+>   `GroupKeyStateEvent` included. `assemble` filters on
+>   `ChronicleEvent.isChroniclable` before anything else -- without it
+>   `ChronicleEvent.build` refuses the page and takes the whole chronicle with it.
+>
+>   Written when a room signed its own key state as its first act. It no longer
+>   does: the state is agreed before the room exists, in the NIP-17 room the
+>   ceremony ran in, and is filed under that room -- see `GroupKeyStateManager`.
+>   The filter is therefore a narrower guard than it was and still not a
+>   redundant one; see "What only looks like it goes" below.
 > - **An artifact whose initial version row is missing now chronicles.** The
 >   rebuild has to recover the version label from that row and logs and gives up
 >   without it; on file as an event, the label never left.
@@ -806,11 +811,20 @@ chronicle.
 thing standing.** It is not part of the rebuild; it is there *because* of the
 record. The rebuild could only ever produce document kinds, so nothing needed
 filtering while it was the source. The table holds every kind the group has
-signed, and every room signs a `GroupKeyStateEvent` as its first act -- so
-removing that filter along with the walk turns every room's chronicle into an
-`IllegalArgumentException` from `ChronicleEvent.build`. Two cases in
-`ChronicleAssemblyJvmTest` fail with exactly that if it is dropped, which is the
-guard against removing it by association.
+signed, so removing that filter along with the walk turns a chronicle carrying
+any of them into an `IllegalArgumentException` from `ChronicleEvent.build`. Two
+cases in `ChronicleAssemblyJvmTest` fail with exactly that if it is dropped,
+which is the guard against removing it by association.
+
+What it is really stopping is a member replaying a group-signed statement *about*
+the record as though it were work. `applyPage` refuses the same kinds on the way
+in; the two are a pair, and neither is safe to drop on the strength of the other.
+
+The example used to be a room's own key state, which every room signed as its
+first act. That is no longer where one lives -- a group agrees its key state
+before the room exists and files it under the NIP-17 room its ceremony ran in --
+so the filter now guards a case that has to be reasoned about rather than one
+every room walks into.
 
 **The verify filter in `assemble` stays.** With the rebuild gone it is checking
 events that were verified before they were recorded, so it can never fail in

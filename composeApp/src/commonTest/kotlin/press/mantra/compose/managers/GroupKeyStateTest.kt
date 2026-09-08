@@ -16,6 +16,7 @@ import fr.acinq.bitcoin.crypto.frost.Session
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -383,18 +384,45 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `a state naming another group's key is dropped`() {
-        // Well-formed input that lies. Refused by the derivation rather than by
-        // the signature -- the group here is signing about its own key, it is
-        // simply not the key this room was made from.
+    fun `a state naming another group's key is never about this room`() {
+        // Well-formed input, honestly signed, and about somebody else. Another
+        // group saying what its own room signs with is a true statement, and
+        // putting it through this room's door does not make it a statement about
+        // this room -- the subject is the room the state names, and a state can
+        // only ever name a room it derives.
+        //
+        // This is the check that used to be "arrived in the wrong room, drop
+        // it". That rule had to go when a group started signing its state before
+        // the room it describes exists, so the two are ordinarily different by
+        // design. What it was protecting is here instead, and unconditionally:
+        // there is no input that makes a state about a room it does not derive.
         val siblingRoom = SharedKeyDerivation.marmotGroupId(otherKey, path)
 
+        val state = GroupKeyStateManager.stateFrom(
+            chatRoomId,
+            signedKeyState(
+                content = otherKey,
+                tags = GroupKeyStateEvent.assembleTags(siblingRoom, "ceremony-1", path),
+                author = otherKeyMaterial
+            )
+        )
+
+        assertNotEquals(chatRoomId, state?.chatRoomId)
+        assertEquals(siblingRoom, state?.chatRoomId)
+    }
+
+    @Test
+    fun `a state naming this room but another group's key is dropped`() {
+        // The lie the derivation catches, with the room held fixed: this room,
+        // and a key it was not made from. Refused however well it is signed --
+        // the group signing is signing about its own key, which is simply not
+        // the key this room derives from.
         assertNull(
             GroupKeyStateManager.stateFrom(
                 chatRoomId,
                 signedKeyState(
                     content = otherKey,
-                    tags = GroupKeyStateEvent.assembleTags(siblingRoom, "ceremony-1", path),
+                    tags = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path),
                     author = otherKeyMaterial
                 )
             )

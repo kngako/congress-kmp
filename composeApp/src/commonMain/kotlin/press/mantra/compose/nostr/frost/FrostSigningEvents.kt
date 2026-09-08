@@ -11,10 +11,14 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
 /**
  * The nostr kinds a FROST signing session is carried on.
  *
- * These are **rumor** kinds: they only ever exist inside a Marmot group event,
- * MLS-encrypted to the group and then wrapped again under the group's exporter
- * secret, so no relay sees them and the replaceable semantics normally implied
- * by the 3xxxx range never apply.
+ * These are **rumor** kinds: they only ever exist inside an encryption a relay
+ * cannot open, so no relay sees them and the replaceable semantics normally
+ * implied by the 3xxxx range never apply. Almost always that is a Marmot group
+ * event -- MLS-encrypted to the group and then wrapped again under the group's
+ * exporter secret. The exception is a group's first session, which agrees what
+ * its #admins room will sign with *before* that room exists and so runs in the
+ * NIP-17 room its ceremony ran in, on gift wraps. See
+ * `GroupKeyStateManager.propose`.
  *
  * Who talks to whom, in order:
  *
@@ -40,13 +44,17 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
  * on kind by the same inbound path. Starting at 30320 leaves that family room to
  * grow into.
  *
- * The DKG's 30310-30316 look like a clash and are not: those exist only inside
- * NIP-17 gift wraps, and nothing reads a kind across both transports. It is
- * worth knowing that the numbers already overlap there -- the DKG's proposal and
- * host-key kinds sit on 30310 and 30311 alongside two nip30303 kinds, and its
- * round-1 kind is 30312, alongside SubmissionEvent -- because that separation is
- * an accident of routing rather than a decision, and the next family added
- * should not rely on it.
+ * The DKG's 30310-30316 look like a clash and are not, but the reason is
+ * narrower than it used to be. The nip30303 kinds exist only inside Marmot inner
+ * events and the DKG's only inside NIP-17 gift wraps, so the numbers overlap
+ * where nothing reads across -- the DKG's proposal and host-key kinds sit on
+ * 30310 and 30311 alongside two nip30303 kinds, and its round-1 kind is 30312,
+ * alongside SubmissionEvent.
+ *
+ * These kinds are now the ones that *do* travel on both transports, which is
+ * exactly why they must not overlap with either family. They do not. But that
+ * separation was an accident of routing rather than a decision, and the next
+ * family added should not rely on it.
  */
 object FrostSigningEvents {
     /**

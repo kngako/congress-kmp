@@ -56,6 +56,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.extensions.memberName
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.repository.ChatRepository
@@ -71,6 +72,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.model.DkgRitualViewModel
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.database.model.FrostSigningSession
 import fr.acinq.phoenix.data.ActiveWallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,6 +93,11 @@ import mantra.composeapp.generated.resources.start_key_ceremony
 import mantra.composeapp.generated.resources.the_ceremony_was_abandoned
 import mantra.composeapp.generated.resources.the_group_can_hold_one_key_together_split_so
 import mantra.composeapp.generated.resources.the_group_has_a_shared_key
+import mantra.composeapp.generated.resources.the_group_has_agreed_what_the_admins_room
+import mantra.composeapp.generated.resources.the_group_could_not_agree_what_the_admins
+import mantra.composeapp.generated.resources.the_group_is_agreeing_what_the_admins_room
+import mantra.composeapp.generated.resources.agree_the_groups_signing_key
+import mantra.composeapp.generated.resources.before_the_room_exists_the_group_signs
 import mantra.composeapp.generated.resources.this_is_fixed_once_the_ceremony_runs
 import mantra.composeapp.generated.resources.try_again
 import mantra.composeapp.generated.resources.your_share_of_it_is_on_this_device_only_your
@@ -285,6 +292,9 @@ fun DkgRitualScreen(
                                 round2Participants = dkgRitualUIState.round2Participants,
                                 isActionPending = isActionPending,
                                 adminGroupBlockedOn = dkgRitualUIState.adminGroupBlockedOn,
+                                keyStateSession = dkgRitualUIState.keyStateSession,
+                                isKeyStateSigned = dkgRitualUIState.isKeyStateSigned,
+                                onProposeKeyState = dkgRitualViewModel::proposeKeyState,
                                 onCreateAdminGroup = {
                                     dkgRitualViewModel.createAdminGroup(onNavigateToRoute)
                                 }
@@ -331,6 +341,9 @@ private fun RitualProgress(
     round2Participants: Set<HexKey>,
     isActionPending: Boolean,
     adminGroupBlockedOn: List<String>,
+    keyStateSession: FrostSigningSession?,
+    isKeyStateSigned: Boolean,
+    onProposeKeyState: () -> Unit,
     onCreateAdminGroup: () -> Unit,
 ) {
     val stage = session.stage
@@ -479,6 +492,49 @@ private fun RitualProgress(
                     style = MaterialTheme.typography.labelMedium
                 )
 
+                // What the group has to settle before there is a room: which
+                // ceremony's key the #admins room signs with. Signed first and
+                // filed as the room is created, so the room's founding fact is
+                // never something it has to go and ask about afterwards.
+                //
+                // Shown to every member, not only the coordinator, because every
+                // member has to sign it -- the request itself is a line in this
+                // chat, which is where they answer it.
+                val keyStateFailed = keyStateSession?.stage == FrostSigningStage.FAILED
+
+                when {
+                    isKeyStateSigned -> Row(
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
+                        Text(
+                            text = stringResource(Res.string.the_group_has_agreed_what_the_admins_room),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+
+                    keyStateFailed -> Text(
+                        text = stringResource(Res.string.the_group_could_not_agree_what_the_admins),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+
+                    keyStateSession != null -> Text(
+                        text = stringResource(
+                            Res.string.the_group_is_agreeing_what_the_admins_room,
+                            keyStateSession.threshold,
+                            keyStateSession.participantCount
+                        ),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+
+                    else -> Text(
+                        text = stringResource(Res.string.before_the_room_exists_the_group_signs),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+
                 // Offered to whoever ran the ceremony. Any member's device could
                 // derive the same room id and create it, but one of them has to go
                 // first, and the coordinator is the member the group already watched
@@ -496,17 +552,43 @@ private fun RitualProgress(
                         )
                     }
 
-                    Button(
-                        onClick = { onCreateAdminGroup() },
-                        enabled = !isActionPending,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isActionPending) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        } else {
-                            Icon(Icons.Default.Groups, contentDescription = Decorative)
-                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
-                            Text(text = stringResource(Res.string.create_the_admins_group))
+                    // One button, two steps, in the order they have to happen:
+                    // ask the group to agree the key, then make the room. The
+                    // second is not offered early, because a room made before
+                    // the group agreed would be the old order back again.
+                    if (isKeyStateSigned) {
+                        Button(
+                            onClick = { onCreateAdminGroup() },
+                            enabled = !isActionPending,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isActionPending) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(Icons.Default.Groups, contentDescription = Decorative)
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
+                                Text(text = stringResource(Res.string.create_the_admins_group))
+                            }
+                        }
+                    } else {
+                        // Offered again after a failure, and only then: a
+                        // retry has to be a *new* session, never the same one
+                        // resumed, because that session's nonce seeds have
+                        // already been published against an aggregate.
+                        // `propose` mints a fresh one every time, so tapping
+                        // this is the safe retry by construction.
+                        Button(
+                            onClick = { onProposeKeyState() },
+                            enabled = !isActionPending && (keyStateSession == null || keyStateFailed),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isActionPending) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(Icons.Default.Key, contentDescription = Decorative)
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
+                                Text(text = stringResource(Res.string.agree_the_groups_signing_key))
+                            }
                         }
                     }
                 }

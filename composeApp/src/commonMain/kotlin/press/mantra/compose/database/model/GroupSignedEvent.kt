@@ -71,7 +71,16 @@ data class GroupSignedEvent(
     @PrimaryKey
     val id: HexKey,
 
-    /** The room whose key signed it. Its id *is* [publicKey] for a derived room. */
+    /**
+     * The room the signature was made in. Its id *is* [publicKey] for a derived
+     * room, which is every room but one.
+     *
+     * The exception is a group's first signature: its `GroupKeyStateEvent` is
+     * signed in the NIP-17 room the ceremony ran in, and is authored by the
+     * #admins room that does not exist yet -- so this names where it happened
+     * and [publicKey] names who signed. [verifies] cannot pass on that row, for
+     * the reason it gives.
+     */
     val chatRoomId: String,
 
     /** The author: the group's key at [derivationPath], x-only 32-byte hex. */
@@ -134,14 +143,21 @@ data class GroupSignedEvent(
      *
      * **False does not always mean the row is corrupt.** The usual reading is
      * that its columns have drifted from the event they came from, and that is
-     * the case worth acting on. But a room that was never derived from its
-     * group's key -- [derivationPath] null, the legacy shape `signingPath`
-     * documents -- signs as the bare threshold key rather than as its own id, so
-     * a perfectly good event in such a room fails here and cannot be made to
-     * pass: the key it would have to be checked against is not on the row and
-     * cannot be walked back to from one. Those rooms get an empty chronicle for
-     * the same reason, which is a limit of the derivation rather than of this
-     * check.
+     * the case worth acting on. Two kinds of row fail honestly.
+     *
+     * A room that was never derived from its group's key -- [derivationPath]
+     * null, the legacy shape `signingPath` documents -- signs as the bare
+     * threshold key rather than as its own id, so a perfectly good event in such
+     * a room fails here and cannot be made to pass: the key it would have to be
+     * checked against is not on the row and cannot be walked back to from one.
+     * Those rooms get an empty chronicle for the same reason, which is a limit
+     * of the derivation rather than of this check.
+     *
+     * And a group's first signature is made in the NIP-17 room its ceremony ran
+     * in, about the #admins room it is about to create, so [chatRoomId] is where
+     * it happened and [publicKey] is who signed. Check that one with
+     * `GroupKeyStateEvent.isSignedByGroup`, which asks the question this row
+     * cannot: whether the *named* room signed it.
      */
     fun verifies(): Boolean = GroupKeyStateEvent.isSignedByRoom(toEvent(), chatRoomId)
 

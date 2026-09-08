@@ -470,12 +470,17 @@ class ChronicleAssemblyJvmTest {
     /**
      * The failure this source made possible, and the allowlist that stops it.
      *
-     * A key state is group-signed and verifies perfectly, and every room signs
-     * one as its first act -- so it is on file in every room that has ever
-     * signed anything. The rebuild could not reach one because no `Mantra*` row
-     * holds it; the record holds every kind. Without the filter on the way out
-     * `ChronicleEvent.build` refuses the page and the room's whole chronicle fails
-     * on the one event every room has.
+     * A key state is group-signed and verifies perfectly. The rebuild could not
+     * reach one because no `Mantra*` row holds it; the record holds every kind.
+     * Without the filter on the way out `ChronicleEvent.build` refuses the page
+     * and the room's whole chronicle fails on one event.
+     *
+     * A room no longer signs its own key state -- a group agrees that before the
+     * room exists, in the NIP-17 room its ceremony ran in, and files it under
+     * that room -- so this is put on file by hand rather than arriving by
+     * itself. That makes it a sharper test than it was, not a hypothetical one:
+     * what the filter stops is any group-signed statement *about* the record
+     * being replayed as work, and this is one.
      */
     @Test
     fun `a key state the room really signed is never chronicled`() = runBlocking {

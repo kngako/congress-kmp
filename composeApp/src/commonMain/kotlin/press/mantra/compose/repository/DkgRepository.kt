@@ -3,7 +3,9 @@ package press.mantra.compose.repository
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
@@ -44,20 +46,48 @@ interface DkgRepository {
     )
 
     /**
-     * Asks the room to sign a statement of which ceremony's key it signs with,
-     * as its first message.
+     * Asks the group to sign a statement of which ceremony's key its #admins
+     * room will sign with, before that room is created.
      *
-     * Called once by whoever creates the room. What comes back is the signing
-     * session, not the state: the state exists when a quorum has signed, which
-     * is the point of proposing it rather than announcing it. Null if the ritual
-     * has produced no key yet, or if the room does not derive from the one it
-     * produced -- both of which mean there is nothing true to propose.
+     * Called once by the ceremony's coordinator, in the NIP-17 room the ceremony
+     * ran in. What comes back is the signing session, not the state: the state
+     * exists when a quorum has signed, which is the point of proposing it rather
+     * than announcing it. Null if the ritual has produced no key yet, or if this
+     * room has no standing to propose one -- both of which mean there is nothing
+     * true to propose.
      */
     suspend fun proposeGroupKeyState(
         localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         session: DkgSession
     ): FrostSigningSession?
+
+    /**
+     * The signing sessions open in a room, newest first, with what each signs.
+     *
+     * Read by the ritual screen to follow the one session a NIP-17 room ever
+     * holds: the group agreeing its key state. The items travel with the session
+     * because "which session is this" is answered by the kind of the event it is
+     * signing, not by the row.
+     */
+    fun observeSigningSessions(chatRoomId: String): Flow<List<LocalFrostSigningSession>>
+
+    /**
+     * The key state the group has signed for the #admins room this room's
+     * ceremony will make, whether or not that room exists yet.
+     *
+     * The gate on creating it. Null means the group has not finished agreeing
+     * what it will sign with, and a room created then would be one whose
+     * founding fact was never settled.
+     *
+     * A flow over the signed events rather than a read, because the moment it
+     * changes is the moment there is a room to make -- and the state it is
+     * about does not exist as a row until somebody makes one.
+     */
+    fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?>
+
+    /** Files the state the group signed for a room that now exists. */
+    suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
 
     companion object {
         val NO_OP_DKG_REPOSITORY: DkgRepository = object : DkgRepository {
@@ -88,6 +118,15 @@ interface DkgRepository {
                 userPublicKey: HexKey,
                 session: DkgSession
             ): FrostSigningSession? = null
+
+            override fun observeSigningSessions(
+                chatRoomId: String
+            ): Flow<List<LocalFrostSigningSession>> = flowOf(emptyList())
+
+            override fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?> =
+                flowOf(null)
+
+            override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
         }
     }
 }

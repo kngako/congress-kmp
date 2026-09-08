@@ -1211,15 +1211,20 @@ data class ChatMessage(
                 // account of the same thing.
                 in FrostSigningEvents.ALL -> null
 
-                // The group saying what key its room signs with, arriving here
-                // the way every group-signed event does: applied by
+                // The group saying what key one of its rooms signs with, arriving
+                // here the way every group-signed event does: applied by
                 // `FrostSigningManager` once a quorum has signed the proposal it
                 // was carried in.
                 //
-                // Recorded rather than believed. `GroupKeyStateManager` keeps it
-                // only if the room rederives from the key it names *and* the
-                // group holding that key signed it, so a state reaching this
-                // line still has to earn the row.
+                // [groupId] is where the signing happened, which is usually not
+                // the room the state is about -- a group agrees this before the
+                // room exists, so there is routinely nothing to write yet and
+                // `GroupKeyStateManager.adopt` files it when the room appears.
+                //
+                // Recorded rather than believed either way. `GroupKeyStateManager`
+                // keeps a state only if the room it *names* rederives from the key
+                // it names, and the group holding that key signed it, so a state
+                // reaching this line still has to earn the row.
                 //
                 // No chat line: this is standing state rather than something
                 // that happened, and the session that produced it has already

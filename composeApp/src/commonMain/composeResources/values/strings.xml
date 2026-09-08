@@ -58,6 +58,11 @@
     <string name="create_profile">Create profile</string>
     <string name="create_project">Create project</string>
     <string name="create_the_admins_group">Create the #admins group</string>
+    <string name="agree_the_groups_signing_key">Agree the group's signing key</string>
+    <string name="the_group_is_agreeing_what_the_admins_room">The group is agreeing what the #admins room will sign with. It takes %1$s of %2$s members, and the request is in this chat.</string>
+    <string name="the_group_has_agreed_what_the_admins_room">The group has agreed what the #admins room will sign with.</string>
+    <string name="the_group_could_not_agree_what_the_admins">The group could not agree what the #admins room will sign with. Ask again — a fresh request is the only safe way to retry.</string>
+    <string name="before_the_room_exists_the_group_signs">Before the room exists, the group signs a statement of which key it will sign with. The room is then created already knowing it.</string>
     <string name="creating_new_chat">Creating new chat.</string>
     <string name="currently_no_contacts_please_search_and_chat">Currently no contacts. Please search and chat with a few people.</string>
     <string name="currently_no_messages_have_been_shared">Currently no messages have been shared.\nBreak the ice.</string>

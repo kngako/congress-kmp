@@ -50,11 +50,18 @@ import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
  *
  * **The allowlist does real work on the way out now.** The rebuild could only
  * ever produce document kinds; the table holds everything the group has ever
- * signed, `GroupKeyStateEvent` included -- and every room signs one of those as
- * its first act. So [signedEventsOf] filters on [ChronicleEvent.isChroniclable]
- * before anything else, which is the same rule [applyPage] applies on the way
- * in. Without it `ChronicleEvent.build` would refuse the page, and a room's whole
- * chronicle would fail on the one event every room has.
+ * signed, `GroupKeyStateEvent` included. So [signedEventsOf] filters on
+ * [ChronicleEvent.isChroniclable] before anything else, which is the same rule
+ * [applyPage] applies on the way in. Without it `ChronicleEvent.build` would
+ * refuse the page and take the whole chronicle down with it.
+ *
+ * A room's own key state no longer sits in that table under the room -- it is
+ * signed in the NIP-17 room the ceremony ran in, before the room exists, and
+ * filed under that room; see `GroupKeyStateManager`. That makes the filter a
+ * narrower guard than it was and not a redundant one: what it is really stopping
+ * is a member replaying any group-signed statement about the record as though it
+ * were work, and [applyPage] refuses the same kinds coming the other way. The
+ * two are a pair and neither is safe to drop on the strength of the other.
  *
  * ### Nothing unverifiable leaves
  *

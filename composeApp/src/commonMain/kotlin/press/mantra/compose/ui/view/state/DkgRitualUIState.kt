@@ -1,6 +1,8 @@
 package press.mantra.compose.ui.view.state
 
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
@@ -42,6 +44,25 @@ sealed interface DkgRitualUIState {
          * state a retry starts from.
          */
         val adminGroupBlockedOn: List<String> = emptyList(),
+        /**
+         * The session in which the group is agreeing what its #admins room will
+         * sign with, once somebody has opened one.
+         *
+         * A ceremony's room holds exactly one of these and nothing else, because
+         * a NIP-17 room signs nothing else -- see `GroupKeyStateManager.propose`.
+         * Null before it is proposed, and it stays on the screen afterwards so
+         * the group can see how far the signing has got.
+         */
+        val keyStateSession: FrostSigningSession? = null,
+        /**
+         * Whether the group has finished signing that statement.
+         *
+         * Read from the signed event rather than from the [GroupKeyState] table,
+         * because the room the state is about does not exist yet -- being able
+         * to say this before there is a room is the whole reason the state is
+         * signed first. It is what gates creating the room.
+         */
+        val isKeyStateSigned: Boolean = false,
     ): DkgRitualUIState {
         val hostKeyCount: Int get() = hostKeyParticipants.size
         val round1Count: Int get() = round1Participants.size

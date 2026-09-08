@@ -21,10 +21,13 @@ import press.mantra.compose.managers.SharedKeyDerivation
  * than one share, and they are not interchangeable: a partial signature made
  * with the wrong one cannot aggregate.
  *
- * The row appears on every member's device at once, when the signing session
- * the room opened with produces a signature. Until then a room has no state and
- * signing resolves its key by rederiving, which is what every room did before
- * this table existed.
+ * The row appears as the room does. The group agrees the state before the room
+ * exists -- in the NIP-17 room its ceremony ran in -- and every device that took
+ * part files it the moment it has a room to file it against, whether it created
+ * the room or was handed it by a Welcome. See `GroupKeyStateManager.adopt`.
+ *
+ * A device that was not in the ceremony holds no state and signing resolves its
+ * key by rederiving, which is what every room did before this table existed.
  *
  * ### Why this is a row and not a rederivation
  *

@@ -14,16 +14,24 @@ import press.mantra.compose.nostr.frost.tags.FrostKeyTag
 /**
  * What key a Marmot room signs with, signed by the group whose key it is.
  *
- * The room's creator does not announce this; they *propose* it. What goes into
- * the new room first is a [FrostSigningEvents.PROPOSAL] carrying this event
+ * Nobody announces this; the group *agrees* it, and does so before the room it
+ * is about exists. What the ceremony's coordinator puts into the NIP-17 room the
+ * ceremony ran in is a [FrostSigningEvents.PROPOSAL] carrying this event
  * unsigned, and the state comes into existence when a quorum has signed it --
  * the same shape a dialect or an artifact is created in.
  *
  * ```
- *  creator --[ 30320 proposal over a 30326 ]-> everyone   "shall we say this room signs with K?"
- *  ...the session runs...
- *  everyone --applies the signed 30326 locally--         "the group says this room signs with K"
+ *  coordinator --[ 30320 proposal over a 30326 ]-> the ceremony's room
+ *                                                  "shall we say our room will sign with K?"
+ *  ...the session runs, on gift wraps...
+ *  everyone holds the signed 30326                 "the group says that room signs with K"
+ *  ...somebody creates the room...
+ *  everyone files it as the room appears           GroupKeyStateManager.adopt
  * ```
+ *
+ * A room *is* its key, so this can be signed before the room exists and checked
+ * without it: everything a reader needs is the event. See
+ * `GroupKeyStateManager` for why the order was turned around.
  *
  * Content is the group's ChillDKG threshold public key; the tags name the
  * ceremony that produced it and the path the room's id was derived at.
@@ -61,23 +69,24 @@ import press.mantra.compose.nostr.frost.tags.FrostKeyTag
  *
  * ### Replaceable, by this app rather than by a relay
  *
- * Like every kind in [FrostSigningEvents] this lives inside a Marmot group, so
- * no relay ever sees it and the addressable semantics of the 3xxxx range never
- * fire. [DTag] is the room id and the newest state per room wins, which the
- * local store enforces on its own. Being able to say it twice is what matters
- * in practice: a session replayed after a crash, or a second proposal for the
- * same true state, folds away instead of accumulating.
+ * Like every kind in [FrostSigningEvents] this only ever lives inside an
+ * encryption a relay cannot open -- a Marmot group event, or the gift wrap the
+ * proposal for it travels in -- so no relay sees it and the addressable
+ * semantics of the 3xxxx range never fire. [DTag] is the room id and the newest
+ * state per room wins, which the local store enforces on its own. Being able to
+ * say it twice is what matters in practice: a session replayed after a crash, or
+ * a second proposal for the same true state, folds away instead of accumulating.
  *
  * One room only ever names one key today. A group that re-runs its ceremony
  * derives a *different* room from the new key, so rotation in place does not
  * arise -- and if it ever does, the verification above is what has to change
- * first, because a rotated key no longer derives the room it is announced in.
+ * first, because a rotated key no longer derives the room it names.
  */
 object GroupKeyStateEvent {
     /**
-     * Sits with the signing family in the Marmot inner-event space. 30320-30325
-     * are a signing session; this is the standing fact a session is opened
-     * against, so it is adjacent rather than inside.
+     * Sits with the signing family in the inner-event space. 30320-30325 are a
+     * signing session; this is the standing fact a session is opened against, so
+     * it is adjacent rather than inside.
      */
     val KIND: Kind = 30326
 
@@ -86,10 +95,12 @@ object GroupKeyStateEvent {
     /**
      * The tags for a state naming [dkgSessionId], for the room derived at [path].
      *
-     * The room id goes on as the `d` tag so the event is self-addressing: a
-     * reader can tell which room a state belongs to without the envelope it
-     * arrived in, which is what makes dropping a state announced into the wrong
-     * room a check rather than an assumption.
+     * The room id goes on as the `d` tag so the event is self-addressing, and
+     * that is now load-bearing rather than convenient: a state is signed in a
+     * room that is not the one it is about, so the `d` tag is the only thing
+     * that says which room it belongs to. What stops it naming a room it has no
+     * business naming is the derivation, not the envelope -- see
+     * `GroupKeyStateManager.stateFrom`.
      */
     fun assembleTags(
         chatRoomId: String,

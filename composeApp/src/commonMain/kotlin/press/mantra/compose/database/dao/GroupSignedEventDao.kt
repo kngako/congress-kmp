@@ -7,6 +7,7 @@ import androidx.room3.Upsert
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlin.time.Clock
+import kotlinx.coroutines.flow.Flow
 import press.mantra.compose.database.model.GroupSignedEvent
 
 @Dao
@@ -26,6 +27,28 @@ abstract class GroupSignedEventDao {
 
     @Query("SELECT * FROM GroupSignedEvent WHERE chatRoomId = :chatRoomId AND kind = :kind ORDER BY createdAt ASC, id ASC")
     abstract suspend fun getByChatRoomIdAndKind(chatRoomId: String, kind: Kind): List<GroupSignedEvent>
+
+    /**
+     * Every signed event of one kind, whatever room it was signed in.
+     *
+     * The one query here that is not about a room, and it exists for the one
+     * statement that is not made in the room it is about: a group signs its
+     * `GroupKeyStateEvent` in the NIP-17 room its ceremony ran in, naming the
+     * Marmot room that does not exist yet -- see `GroupKeyStateManager.adopt`,
+     * which walks these to find the state for a room the moment there is one.
+     */
+    @Query("SELECT * FROM GroupSignedEvent WHERE kind = :kind ORDER BY createdAt ASC, id ASC")
+    abstract suspend fun getByKind(kind: Kind): List<GroupSignedEvent>
+
+    /**
+     * The same, as it changes.
+     *
+     * Watched by the ceremony screen, which has to know the moment the group
+     * finishes agreeing its key state -- there being no room yet, and so no
+     * `GroupKeyState` row, to watch instead.
+     */
+    @Query("SELECT * FROM GroupSignedEvent WHERE kind = :kind ORDER BY createdAt ASC, id ASC")
+    abstract fun observeByKind(kind: Kind): Flow<List<GroupSignedEvent>>
 
     /** Everything one session signed, in the order the batch was proposed in. */
     @Query("SELECT * FROM GroupSignedEvent WHERE frostSigningSessionId = :sessionId ORDER BY createdAt ASC, id ASC")

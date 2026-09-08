@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.extensions.toHex
@@ -31,10 +32,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.Dispatchers.Main
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import fr.acinq.phoenix.data.ActiveWallet
@@ -70,6 +73,9 @@ class DkgRitualViewModel(
 
     /** Watches the current session's messages; replaced whenever the session changes. */
     private var messageObserver: Job? = null
+
+    /** Watches the room's signing sessions, which is where the key state is agreed. */
+    private var keyStateObserver: Job? = null
 
     /**
      * The quorum the ritual will generate a key for. Pre-filled with the same
@@ -126,6 +132,8 @@ class DkgRitualViewModel(
                 .defaultQuorum(ChillDkgRitualManager.memberPublicKeys(localChatRoom).size)
                 .coerceIn(quorumRange())
 
+            observeKeyState()
+
             dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
                     ?: DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
@@ -162,6 +170,97 @@ class DkgRitualViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Follows the group agreeing what its #admins room will sign with.
+     *
+     * Nothing here watches a [GroupKeyState] row, because there is no room yet
+     * for one to belong to -- being able to follow this before the room exists
+     * is the point. What is watched instead is the session, for how the signing
+     * is going, and the signed event, for whether it finished.
+     *
+     * The room a ceremony runs in signs nothing else, so the newest session in
+     * it is the key state's -- but it is matched on the kind it carries anyway,
+     * so a room that one day signs something else does not confuse the two.
+     */
+    private fun observeKeyState() {
+        keyStateObserver?.cancel()
+        keyStateObserver = viewModelScope.launch(Dispatchers.IO) {
+            // Two flows because they answer two questions off two tables. How
+            // the signing is going is the session row; whether it finished is
+            // the signed event, and only that second one can be asked at all
+            // before there is a room -- which is the whole point of asking it.
+            launch {
+                dkgRepository.observeSigningSessions(chatRoomId).collect { sessions ->
+                    val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
+
+                    dkgRitualUIState = loaded.copy(
+                        keyStateSession = sessions.firstOrNull { local ->
+                            local.items.any { item ->
+                                runCatching {
+                                    Event.fromJson(item.unsignedEventJson).kind
+                                }.getOrNull() == GroupKeyStateEvent.KIND
+                            }
+                        }?.session
+                    )
+                }
+            }
+
+            launch {
+                dkgRepository.observeSignedGroupKeyState(chatRoomId).collect { state ->
+                    val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
+
+                    dkgRitualUIState = loaded.copy(isKeyStateSigned = state != null)
+                }
+            }
+        }
+    }
+
+    /**
+     * Asks the group to sign what its #admins room will sign with.
+     *
+     * The step before the room exists, and the reason it can be created knowing
+     * its own key state rather than being told afterwards. Offered to the
+     * ceremony's coordinator, who is also the member who will create the room.
+     *
+     * Nothing here waits for the answer: the signing runs on arriving messages
+     * like everything else, and the screen follows it through [observeKeyState].
+     */
+    fun proposeKeyState() {
+        if (isActionPending.value) return
+
+        val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return
+        val session = loaded.session ?: return
+        if (session.thresholdPublicKey == null) return
+
+        // Nothing to ask for, and nobody to ask twice. A failed session is the
+        // one case a second proposal is right, and it has to be a new session
+        // rather than that one resumed -- see `FrostSigningManager`, which is
+        // why `propose` mints a fresh id every time.
+        if (loaded.isKeyStateSigned) return
+        loaded.keyStateSession?.let { if (it.stage != FrostSigningStage.FAILED) return }
+
+        isActionPending.value = true
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val signing = dkgRepository.proposeGroupKeyState(
+                localChatRoom = loaded.localChatRoom,
+                userPublicKey = activeUserPublicKey,
+                session = session
+            )
+
+            isActionPending.value = false
+
+            if (signing == null) {
+                logger.e("Failed to propose the key state for $chatRoomId")
+                dkgRitualUIState = DkgRitualUIState.Error(
+                    "Couldn't ask the group to agree its signing key. Please try again."
+                )
+            }
+            // On success the session flow above delivers the new row; no need to
+            // set it here and risk racing the observer.
         }
     }
 
@@ -246,6 +345,12 @@ class DkgRitualViewModel(
      * room is addressable without being announced, and two members racing to create
      * it produce the same id instead of two rival rooms -- which is why this returns
      * early to the existing room rather than minting a second one.
+     *
+     * Only once the group has signed what the room signs with. That statement is
+     * agreed in the NIP-17 room the ceremony ran in, before there is a Marmot
+     * room to hold it -- see `GroupKeyStateManager.propose` -- so by here it is
+     * a fact the room is created *knowing*, rather than the first thing it has
+     * to go and ask about.
      */
     fun createAdminGroup(onNavigateToRoute: (Route) -> Unit) {
         if (isActionPending.value) return
@@ -253,6 +358,10 @@ class DkgRitualViewModel(
         val loaded = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return
         val session = loaded.session ?: return
         val thresholdPublicKey = session.thresholdPublicKey ?: return
+
+        // The screen offers nothing until the group has signed, so this is a
+        // guard rather than a path anybody takes.
+        if (!loaded.isKeyStateSigned) return
 
         val nostrPrivateKey = activeWalletStateFlow.value?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()
         if (nostrPrivateKey == null) {
@@ -378,43 +487,29 @@ class DkgRitualViewModel(
                 return@launch
             }
 
+            // The room comes into existence already knowing what it signs with.
+            // The group agreed that before any of this ran, in the NIP-17 room
+            // the ceremony was held in, and this device has been holding the
+            // signed statement since -- the line above is simply the first
+            // moment there is a room row to file it against.
+            //
+            // Before the members are added rather than after, because nothing
+            // here goes on the wire: filing it is local, and doing it while the
+            // room is certain to exist beats doing it after a step that can
+            // partly fail.
+            //
+            // Every other member does the same on their Welcome, in NostrDao,
+            // off the same event. A member invited later holds no such event,
+            // and no share either, so they have nothing to pick wrongly between
+            // -- `FrostSigningManager.completedKey` rederives its way to the
+            // same key for them.
+            dkgRepository.adoptGroupKeyState(localChatRoom.chatRoom.id)
+
             val notAdded = runCatching {
                 chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
             }.onFailure {
                 logger.e("Failed to add members to admin group $groupId", it)
             }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
-
-            // The room's first message: a proposal that the group sign a
-            // statement of which ceremony's key it signs with, and the path its
-            // id was derived at. What a signer reaches for when a signing
-            // request arrives and it has to pick one of its shares.
-            //
-            // Proposed rather than declared, so that the first thing on the
-            // record in a group's own room is a thing the group did. Nothing
-            // waits on it: until a quorum signs, a signing request resolves the
-            // key by rederiving, which is what every room did before this event
-            // existed.
-            //
-            // After the members are added rather than before, which is the only
-            // order that works: adding them commits a new epoch, and MLS will not
-            // let a member read what was encrypted before the epoch they joined
-            // at. Proposed first, the proposal would reach nobody but its author
-            // -- and a proposal nobody receives is one nobody can sign. It is
-            // still the room's first *application* message; what comes before it
-            // is handshake.
-            //
-            // A member invited later misses the session for the same reason, and
-            // so misses the state: a completed session is applied by each device
-            // that ran it and the signed event never goes on the wire. They are
-            // left where every member was before this event existed, falling back
-            // to FrostSigningManager.completedKey's rederivation. Re-proposing on
-            // invite is the fix, and is cheap because a second signature over the
-            // same true state folds away rather than accumulating.
-            dkgRepository.proposeGroupKeyState(
-                localChatRoom = localChatRoom,
-                userPublicKey = activeUserPublicKey,
-                session = session
-            )
 
             isActionPending.value = false
 
@@ -446,6 +541,7 @@ class DkgRitualViewModel(
 
     override fun onCleared() {
         messageObserver?.cancel()
+        keyStateObserver?.cancel()
         super.onCleared()
     }
 

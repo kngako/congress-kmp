@@ -8,6 +8,8 @@ import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.Nip01Crypto
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
@@ -26,6 +28,7 @@ import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -37,7 +40,7 @@ import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 
 /**
- * Signs a nostr event with a group's FROST threshold key, in its #admins room.
+ * Signs a nostr event with a group's FROST threshold key, in one of its rooms.
  *
  * The shape is [ChillDkgRitualManager]'s, deliberately: the member who proposes
  * a signature coordinates it, protocol messages travel on the kinds in
@@ -46,14 +49,19 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * so a device killed mid-round resumes on the next message. What that manager's
  * own notes say about being message-driven applies here unchanged.
  *
- * The transport is not the same one. A ceremony runs over NIP-17 because it has
- * to: its participants are not yet a Marmot group, and its whole purpose is to
- * produce the key one would be keyed on. Signing has the opposite problem
- * solved for it -- the #admins room already exists, its membership is exactly
- * the share holders, and its id is derived from the key -- so a signing message
- * is an ordinary Marmot inner event and needs no addressing of its own. One
- * encrypted group event reaches everyone, rather than one sealed wrap per
- * member per message.
+ * ### Two transports, because a group signs before it has a room
+ *
+ * Almost every signature is made in the group's #admins room, and there a
+ * signing message is an ordinary Marmot inner event needing no addressing of its
+ * own: the room already exists, its membership is exactly the share holders, and
+ * its id is derived from the key. One encrypted group event reaches everyone.
+ *
+ * The exception is the group's *first* signature. A room's `GroupKeyState` is
+ * now signed before the room it is about is created -- see
+ * `GroupKeyStateManager.propose` -- so that session runs in the NIP-17 room the
+ * ceremony ran in, where there is no MLS tree and a message goes out as one
+ * sealed gift wrap per member. [broadcast] is the only place that knows the
+ * difference; everything above it is the same protocol either way.
  *
  * ### What it signs as
  *
@@ -63,6 +71,10 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * [SharedKeyDerivation.marmotGroupId], where those are one value. A reader
  * holding a signed dialect therefore needs no lookup to check it: the author
  * they expect is the id of the room they found it in.
+ *
+ * A session in a NIP-17 room signs as the room the ceremony's key derives --
+ * the #admins room that does not exist yet -- which is the same rule read
+ * forwards: what a group signs as is the room the signature belongs to.
  *
  * The path comes from the room, never from a proposal -- [signingPath] -- because
  * it decides which key the group signs as.
@@ -467,7 +479,7 @@ object FrostSigningManager {
         )
 
         announceApprovalNeeded(database, session)
-        replayStoredMessages(database, session)
+        replayStoredMessages(database, localChatRoom, session)
 
         return session
     }
@@ -478,27 +490,52 @@ object FrostSigningManager {
      * They were dropped at the time for want of a session to file them under, but
      * the inbound path stores every payload it decrypts before dispatching on
      * kind, so nothing was actually lost — this reads them back out.
+     *
+     * Out of whichever store the room's transport writes to, which has to be the
+     * same reading [broadcast] makes: a session in a NIP-17 room has its backlog
+     * in the gift-wrap payloads and none at all in the inner events, and looking
+     * in the wrong one is a stall with nothing to blame it on.
      */
     private suspend fun replayStoredMessages(
         database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
         session: FrostSigningSession
     ) {
-        val stored = database.marmotInnerEventDao().getByChatRoomAndKinds(
-            chatRoomId = session.chatRoomId,
-            kinds = FrostSigningEvents.ALL.toList()
-        ).filter { stored ->
+        val kinds = FrostSigningEvents.ALL.toList()
+
+        val received = if (localChatRoom.chatRoom.mlsGroupState != null) {
+            database.marmotInnerEventDao()
+                .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
+                .map { stored ->
+                    Event(
+                        id = stored.id,
+                        pubKey = stored.publicKey,
+                        createdAt = stored.createdAt.epochSeconds,
+                        kind = stored.kind,
+                        tags = stored.tags,
+                        content = stored.content,
+                        sig = ""
+                    )
+                }
+        } else {
+            database.giftWrapPayloadDao()
+                .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
+                .map { stored ->
+                    Event(
+                        id = stored.id,
+                        pubKey = stored.publicKey,
+                        createdAt = stored.createdAt.epochSeconds,
+                        kind = stored.kind,
+                        tags = stored.tags,
+                        content = stored.content,
+                        sig = ""
+                    )
+                }
+        }
+
+        val stored = received.filter { stored ->
             stored.kind != FrostSigningEvents.PROPOSAL &&
                 FrostSigningEvents.parseSessionId(stored.tags) == session.id
-        }.map { stored ->
-            Event(
-                id = stored.id,
-                pubKey = stored.publicKey,
-                createdAt = stored.createdAt.epochSeconds,
-                kind = stored.kind,
-                tags = stored.tags,
-                content = stored.content,
-                sig = ""
-            )
         }
 
         if (stored.isEmpty()) return
@@ -1257,10 +1294,10 @@ object FrostSigningManager {
     /**
      * The key a room signs with, or null when it has none.
      *
-     * Signing runs in the #admins room, which is not where the ceremony ran. A
-     * ceremony needs a NIP-17 group -- every member an equal admin, no MLS tree
-     * to be outside of -- while a group event needs an MLS one, so the two
-     * cannot be the same room.
+     * Signing usually runs in the #admins room, which is not where the ceremony
+     * ran. A ceremony needs a NIP-17 group -- every member an equal admin, no
+     * MLS tree to be outside of -- while a group event needs an MLS one, so the
+     * two cannot be the same room.
      *
      * They are bound together by the room's [GroupKeyState]: the statement the
      * room opened with and the group signed, naming the ceremony behind it. That
@@ -1280,11 +1317,13 @@ object FrostSigningManager {
      * is not how the app wires things today but costs one lookup to keep honest.
      *
      * They are not only for rooms that predate the table. A room's key state is
-     * itself signed by the group, so between creating a room and that session
-     * completing there is no state to read, and the scan is what keeps the room
-     * usable in the meantime -- including for the key-state session's own
-     * members. `GroupKeyStateManager.propose` is the one caller that does not
-     * come through here at all, because it names the ceremony outright.
+     * signed before the room exists and filed as the room is created, so a
+     * device that missed that session -- a member invited later, a reinstall --
+     * has a room and no state, and the scan is what keeps it usable.
+     * `GroupKeyStateManager.propose` is the one caller that does not come
+     * through here at all, because it names the ceremony outright: the room it
+     * runs in is the NIP-17 room the ceremony was held in, which signs nothing
+     * else and has no key state of its own.
      */
     suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
         GroupKeyStateManager.keyStateFor(database, chatRoomId)?.let { state ->
@@ -1327,11 +1366,27 @@ object FrostSigningManager {
      * signs as, so a proposer able to choose it could have every signer put
      * their share behind an author of the proposer's choosing.
      *
-     * Null is not a failure. `completedKey` will find a key for a room that was
-     * never derived from it -- a ceremony held in that very room, which is the
-     * fallback kept for rooms the app no longer makes -- and such a room has no
-     * key of its own to sign as, so it signs as the group's threshold key, which
-     * is what it always did.
+     * ### The room a group signs from before it has one
+     *
+     * One case cannot be self-checked, because there is nothing yet to check
+     * against: the NIP-17 room a ceremony ran in, signing the very statement
+     * that lets the group's Marmot room be created -- see
+     * `GroupKeyStateManager.propose`. A NIP-17 room's id is an aggregation of
+     * its members' keys, so it is not derived from anything and no path reaches
+     * it. What the group signs as there is the room it is about to make: the
+     * ceremony's key at the app's admin path.
+     *
+     * That is admitted only when the ceremony is *this room's own*, and the path
+     * is the constant rather than anything off the wire. Both inputs are read
+     * from this device's database, so a proposer still chooses nothing: naming
+     * some other ceremony this device holds a share for gets no path at all, and
+     * a session with no path signs as the bare threshold key, which is not an
+     * identity any room answers to.
+     *
+     * Null is not a failure. `completedKey` will find a key for a Marmot room
+     * that was never derived from it -- the fallback kept for rooms the app no
+     * longer makes -- and such a room has no key of its own to sign as, so it
+     * signs as the group's threshold key, which is what it always did.
      */
     private suspend fun signingPath(
         database: MantraDatabase,
@@ -1347,11 +1402,17 @@ object FrostSigningManager {
             SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
         )
 
-        return candidates.firstOrNull { path ->
+        candidates.firstOrNull { path ->
             runCatching {
                 SharedKeyDerivation.marmotGroupId(thresholdPublicKey, path) == chatRoomId
             }.getOrDefault(false)
+        }?.let { return it }
+
+        if (localChatRoom.chatRoom.mlsGroupState == null && key.chatRoomId == chatRoomId) {
+            return SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
         }
+
+        return null
     }
 
     /**
@@ -1741,16 +1802,27 @@ object FrostSigningManager {
     }
 
     /**
-     * Queues a signing message as an unprocessed marmot inner event.
-     * `NotaryViewModel` picks it up, MLS-encrypts it and broadcasts it as a
-     * kind:445 for the room — the same path every other event in a Marmot group
-     * takes, which is why this needs no transport of its own.
+     * Queues one of this device's signing messages for the outbound pipeline,
+     * on whichever transport the room it is in has.
      *
-     * No p-tags. A gift wrap is addressed and sealed once per recipient, so the
-     * ceremony has to name everybody on every message; a group event is
-     * encrypted to the group, and who is in it is the MLS tree's business rather
-     * than the message's. That also means the signer set genuinely comes from
-     * the ceremony rather than from whoever happened to be tagged.
+     * In a Marmot room it is an unprocessed inner event: `NotaryViewModel` picks
+     * it up, MLS-encrypts it and broadcasts it as a kind:445 for the room -- the
+     * same path every other event in a Marmot group takes.
+     *
+     * In a NIP-17 room it is a gift-wrap payload, sealed once per recipient and
+     * broadcast the way a ritual message is. That is not a second-class path; it
+     * is the only one a group has before it owns a Marmot room, which is exactly
+     * where the group's first signature is made -- see
+     * `GroupKeyStateManager.propose`.
+     *
+     * The p-tags are the difference between the two, and they are not
+     * cosmetic. A group event is encrypted to the group and who is in it is the
+     * MLS tree's business, so a Marmot message names nobody; a gift wrap is
+     * addressed and sealed per recipient, so a NIP-17 message has to name
+     * everybody or the members it left out never see it. Neither shape lets a
+     * recipient list decide anything: the signer set comes from the ceremony's
+     * host keys either way, so tagging somebody does not put them in it, and
+     * failing to tag somebody only stops them hearing.
      */
     private suspend fun broadcast(
         database: MantraDatabase,
@@ -1761,32 +1833,81 @@ object FrostSigningManager {
         includeKey: Boolean = false,
         signerIds: List<Int>? = null
     ) {
-        val tags = FrostSigningEvents.assembleTags(
+        val sessionTags = FrostSigningEvents.assembleTags(
             sessionId = session.id,
             dkgSessionId = if (includeKey) session.dkgSessionId else null,
             signerIds = signerIds
         )
 
+        // No MLS state is what marks a room NIP-17 -- the same reading
+        // `NostrNip17Dao.getOrCreateChatRoom` writes and `sendChatMessage` makes
+        // when it chooses between a group event and gift wraps.
+        val isMarmotRoom = localChatRoom.chatRoom.mlsGroupState != null
+
+        val tags = if (isMarmotRoom) {
+            sessionTags
+        } else {
+            recipientTags(localChatRoom, session.userPublicKey) + sessionTags
+        }
+
         val createdAt = Clock.System.now().epochSeconds
 
-        database.marmotInnerEventDao().upsert(
-            MarmotInnerEvent(
-                // The rumor id the outbound pipeline will recompute from these
-                // same fields when it assembles the event to encrypt.
-                id = EventHasher.hashId(
-                    pubKey = session.userPublicKey,
-                    createdAt = createdAt,
+        // The rumor id the outbound pipeline will recompute from these same
+        // fields when it assembles the event to encrypt, on either transport.
+        val id = EventHasher.hashId(
+            pubKey = session.userPublicKey,
+            createdAt = createdAt,
+            tags = tags,
+            content = content,
+            kind = kind
+        )
+
+        if (isMarmotRoom) {
+            database.marmotInnerEventDao().upsert(
+                MarmotInnerEvent(
+                    id = id,
+                    publicKey = session.userPublicKey,
+                    kind = kind,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
                     tags = tags,
                     content = content,
-                    kind = kind
-                ),
-                publicKey = session.userPublicKey,
-                kind = kind,
-                createdAt = Instant.fromEpochSeconds(createdAt),
-                tags = tags,
-                content = content,
-                chatRoomId = localChatRoom.chatRoom.id
+                    chatRoomId = localChatRoom.chatRoom.id
+                )
             )
-        )
+        } else {
+            database.giftWrapPayloadDao().upsert(
+                GiftWrapPayload(
+                    id = id,
+                    publicKey = session.userPublicKey,
+                    kind = kind,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    tags = tags,
+                    content = content,
+                    chatRoomId = localChatRoom.chatRoom.id
+                )
+            )
+        }
     }
+
+    /**
+     * One p-tag per member of a NIP-17 room, the sender excepted.
+     *
+     * The sender is left out rather than tagged because a gift wrap is sealed
+     * per recipient and this device already has its own copy -- `publishOwn`
+     * records it locally. Deduplicated by member, since `localParticipants` is a
+     * row list and a room can carry the same person twice.
+     */
+    private fun recipientTags(
+        localChatRoom: LocalChatRoom,
+        senderPublicKey: HexKey
+    ): Array<Array<String>> = localChatRoom.localParticipants
+        .distinctBy { it.participant.participantPublicKey }
+        .filter { it.participant.participantPublicKey != senderPublicKey }
+        .map { localParticipant ->
+            PTag.assemble(
+                localParticipant.participant.participantPublicKey,
+                localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+            )
+        }
+        .toTypedArray()
 }

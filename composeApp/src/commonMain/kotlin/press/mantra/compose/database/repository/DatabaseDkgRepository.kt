@@ -4,15 +4,20 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.GroupKeyStateManager
+import press.mantra.compose.managers.SharedKeyDerivation
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.repository.DkgRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class DatabaseDkgRepository(
     private val database: MantraDatabase,
@@ -62,12 +67,42 @@ class DatabaseDkgRepository(
             key = session
         )
     } catch (e: Throwable) {
-        // The room not deriving from the key it is about to propose is a bug
-        // rather than a condition, and a ceremony with no key yet is a caller
-        // that got ahead of itself. Neither is worth failing the room over: the
-        // group still has a working chat, and signing simply falls back to the
-        // rederivation scan it used before there was a state.
-        logger.e("Error proposing the key state for ${localChatRoom.chatRoom.id}", e)
+        // A room with no standing to propose is a bug rather than a condition,
+        // and a ceremony with no key yet is a caller that got ahead of itself.
+        // Neither is worth failing the room over: the group still has a working
+        // chat, and the screen reports a proposal that did not open by leaving
+        // the group with nothing signed and the button still there.
+        logger.e("Error proposing the key state from ${localChatRoom.chatRoom.id}", e)
+        null
+    }
+
+    override fun observeSigningSessions(
+        chatRoomId: String
+    ): Flow<List<LocalFrostSigningSession>> =
+        database.frostSigningSessionDao().observeSessionsForChatRoom(chatRoomId)
+
+    override fun observeSignedGroupKeyState(chatRoomId: String): Flow<GroupKeyState?> =
+        database.groupSignedEventDao()
+            .observeByKind(GroupKeyStateEvent.KIND)
+            .map { signedEvents ->
+                // The room the ceremony's key derives, resolved per emission
+                // rather than once: the ceremony has no key until it finishes,
+                // and this flow is running before it does.
+                val adminRoomId = database.dkgSessionDao()
+                    .getLatestSessionForChatRoom(chatRoomId)
+                    ?.thresholdPublicKey
+                    ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
+
+                adminRoomId?.let { GroupKeyStateManager.stateAmong(signedEvents, it) }
+            }
+
+    override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = try {
+        GroupKeyStateManager.adopt(database = database, chatRoomId = chatRoomId)
+    } catch (e: Throwable) {
+        // The room is made and usable either way; what it loses is the shortcut
+        // from room to ceremony, and `FrostSigningManager.completedKey` still
+        // rederives its way to the same key.
+        logger.e("Error adopting the signed key state for $chatRoomId", e)
         null
     }
 

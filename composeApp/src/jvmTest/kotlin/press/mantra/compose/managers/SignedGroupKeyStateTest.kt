@@ -18,6 +18,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
@@ -26,7 +27,10 @@ import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
+import press.mantra.compose.database.model.GiftWrapPayload
+import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.NostrEvent
+import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -120,6 +124,41 @@ class SignedGroupKeyStateTest {
 
         val roomId: String get() = room.chatRoom.id
 
+        /** Which transport this device's room puts a signing message on. */
+        val isMarmotRoom: Boolean get() = room.chatRoom.mlsGroupState != null
+
+        /**
+         * Files an arriving message where the inbound path would have filed it,
+         * before it is dispatched.
+         */
+        suspend fun store(queued: Queued) {
+            if (isMarmotRoom) {
+                db.marmotInnerEventDao().upsert(
+                    MarmotInnerEvent(
+                        id = queued.id,
+                        publicKey = queued.publicKey,
+                        kind = queued.kind,
+                        createdAt = queued.createdAt,
+                        tags = queued.tags,
+                        content = queued.content,
+                        chatRoomId = roomId
+                    )
+                )
+            } else {
+                db.giftWrapPayloadDao().upsert(
+                    GiftWrapPayload(
+                        id = queued.id,
+                        publicKey = queued.publicKey,
+                        kind = queued.kind,
+                        createdAt = queued.createdAt,
+                        tags = queued.tags,
+                        content = queued.content,
+                        chatRoomId = roomId
+                    )
+                )
+            }
+        }
+
         suspend fun session(sessionId: String): FrostSigningSession? =
             db.frostSigningSessionDao().getSessionById(sessionId)
 
@@ -141,33 +180,59 @@ class SignedGroupKeyStateTest {
         signerIndex: Int,
         roomId: String = adminRoomId,
         description: String? = adminRoomDescription,
-        ceremonyRoomId: String = roomId
+        ceremonyRoomId: String = roomId,
+        /**
+         * Whether the room is a Marmot one. Not a real saved group -- nothing
+         * here runs MLS -- but null against non-null is exactly the reading
+         * `FrostSigningManager.broadcast` makes when it chooses a transport, so
+         * it has to be the reading these devices offer too.
+         */
+        mlsGroupState: String? = "00"
     ): Device {
         val db = getRoomDatabase(Room.inMemoryDatabaseBuilder<MantraDatabase>())
 
         // Profile hangs off a nostr event, and a room off a profile. Neither is
         // anything this test is about; they are the foreign keys in the way.
-        val nostrEventId = "e$publicKey".take(64)
-        db.nostrEventDao().upsert(
-            NostrEvent(
-                id = nostrEventId,
-                pubKey = publicKey,
-                kind = 0,
-                tags = emptyArray(),
-                content = "{}",
-                sig = "0".repeat(128)
+        // Everybody gets one, because a NIP-17 room's participant rows need a
+        // profile per member and a gift wrap is addressed per member.
+        members.forEach { member ->
+            val nostrEventId = "e$member".take(64)
+            db.nostrEventDao().upsert(
+                NostrEvent(
+                    id = nostrEventId,
+                    pubKey = member,
+                    kind = 0,
+                    tags = emptyArray(),
+                    content = "{}",
+                    sig = "0".repeat(128)
+                )
             )
-        )
-        db.profileDao().upsert(Profile(publicKey = publicKey, nostrEventId = nostrEventId))
+            db.profileDao().upsert(Profile(publicKey = member, nostrEventId = nostrEventId))
+        }
 
         val chatRoom = ChatRoom(
             id = roomId,
             userPublicKey = publicKey,
             subject = "#admins",
             description = description,
-            mlsGroupState = null
+            mlsGroupState = mlsGroupState
         )
         db.chatRoomDao().upsert(chatRoom)
+
+        // A NIP-17 room's membership is its participant rows, and that is what a
+        // gift wrap is addressed from. A Marmot room's is the MLS tree, which
+        // nothing here runs and no signing message reads.
+        if (mlsGroupState == null) {
+            db.participantDao().upsert(
+                members.map { member ->
+                    Participant(
+                        participantPublicKey = member,
+                        chatRoomId = roomId,
+                        relayHint = null
+                    )
+                }
+            )
+        }
 
         db.dkgSessionDao().upsert(
             DkgSession(
@@ -201,23 +266,65 @@ class SignedGroupKeyStateTest {
             )
         }
 
-        return Device(publicKey, db, LocalChatRoom(chatRoom = chatRoom))
-            .also { devices += it }
+        // Read back rather than assembled, so the room carries its participants
+        // -- which is what a gift-wrapped signing message is addressed from.
+        val localChatRoom = db.chatRoomDao().findChatRoomById(roomId)
+            ?: LocalChatRoom(chatRoom = chatRoom)
+
+        return Device(publicKey, db, localChatRoom).also { devices += it }
     }
 
     private suspend fun ceremonyOn(device: Device): DkgSession =
         device.db.dkgSessionDao().getSessionById(ceremonyId)!!
 
-    /** Every protocol row this device has queued, oldest first, protocol order within a second. */
-    private suspend fun outbox(device: Device) = device.db.marmotInnerEventDao()
-        .getByChatRoomAndKinds(
-            chatRoomId = device.roomId,
-            kinds = (FrostSigningEvents.ALL + GroupKeyStateEvent.KIND).toList()
+    /**
+     * One queued protocol message, whichever store it came out of.
+     *
+     * The two transports are two tables and one shape. Flattening them here is
+     * what lets every test below be written once and read the same, whether the
+     * room it is about is a Marmot one or the NIP-17 room a group signs its
+     * first statement in -- which is the point being made: nothing above
+     * `FrostSigningManager.broadcast` knows the difference.
+     */
+    private data class Queued(
+        val id: HexKey,
+        val publicKey: HexKey,
+        val kind: Int,
+        val tags: Array<Array<String>>,
+        val content: String,
+        val createdAt: Instant,
+    ) {
+        fun toEvent(): Event = Event(
+            id = id,
+            pubKey = publicKey,
+            createdAt = createdAt.epochSeconds,
+            kind = kind,
+            tags = tags,
+            content = content,
+            sig = ""
         )
-        .filter { it.publicKey == device.publicKey }
-        // Two rows queued in the same second tie on createdAt. Kind breaks it in
-        // the order a session runs, which is what a relay would have preserved.
-        .sortedWith(compareBy({ it.createdAt }, { it.kind }))
+    }
+
+    /** Every protocol row this device has queued, oldest first, protocol order within a second. */
+    private suspend fun outbox(device: Device): List<Queued> {
+        val kinds = (FrostSigningEvents.ALL + GroupKeyStateEvent.KIND).toList()
+
+        val queued = if (device.isMarmotRoom) {
+            device.db.marmotInnerEventDao()
+                .getByChatRoomAndKinds(chatRoomId = device.roomId, kinds = kinds)
+                .map { Queued(it.id, it.publicKey, it.kind, it.tags, it.content, it.createdAt) }
+        } else {
+            device.db.giftWrapPayloadDao()
+                .getByChatRoomAndKinds(chatRoomId = device.roomId, kinds = kinds)
+                .map { Queued(it.id, it.publicKey, it.kind, it.tags, it.content, it.createdAt) }
+        }
+
+        return queued
+            .filter { it.publicKey == device.publicKey }
+            // Two rows queued in the same second tie on createdAt. Kind breaks it in
+            // the order a session runs, which is what a relay would have preserved.
+            .sortedWith(compareBy({ it.createdAt }, { it.kind }))
+    }
 
     /**
      * Hands everything one device has queued to the other, until neither has
@@ -241,19 +348,11 @@ class SignedGroupKeyStateTest {
                         if (!to.received.add(queued.id)) return@forEach
                         moved = true
 
-                        to.db.marmotInnerEventDao().upsert(queued)
+                        to.store(queued)
                         FrostSigningManager.processSigningPayload(
                             database = to.db,
                             localChatRoom = to.room,
-                            innerEvent = Event(
-                                id = queued.id,
-                                pubKey = queued.publicKey,
-                                createdAt = queued.createdAt.epochSeconds,
-                                kind = queued.kind,
-                                tags = queued.tags,
-                                content = queued.content,
-                                sig = ""
-                            ),
+                            innerEvent = queued.toEvent(),
                             userPublicKey = to.publicKey
                         )
                     }
@@ -263,9 +362,14 @@ class SignedGroupKeyStateTest {
     }
 
     // ---- The key state, from proposal to row ------------------------------
+    //
+    // Signed in the room it is about, which is the shape a re-proposal takes and
+    // the one the mechanics are easiest to read in. The order the app actually
+    // creates a group in -- signed first, room second -- is the section after
+    // the next one.
 
     @Test
-    fun `creating a room proposes its key state rather than announcing it`() = runBlocking {
+    fun `a key state is proposed rather than announced`() = runBlocking {
         val creator = device(members[0], signerIndex = 0)
 
         val session = GroupKeyStateManager.propose(
@@ -282,7 +386,7 @@ class SignedGroupKeyStateTest {
 
         val queued = outbox(creator)
         val proposal = queued.firstOrNull { it.kind == FrostSigningEvents.PROPOSAL }
-        assertNotNull(proposal, "the room's first message must be a signing proposal")
+        assertNotNull(proposal, "a key state must go out as a signing proposal")
 
         val payload = Event.fromJson(proposal.content)
         assertEquals(GroupKeyStateEvent.KIND, payload.kind)
@@ -291,7 +395,7 @@ class SignedGroupKeyStateTest {
     }
 
     @Test
-    fun `the key state a room proposes is authored by the room`() = runBlocking {
+    fun `a key state is authored by the room it is about`() = runBlocking {
         val creator = device(members[0], signerIndex = 0)
 
         val session = GroupKeyStateManager.propose(
@@ -461,6 +565,271 @@ class SignedGroupKeyStateTest {
             "a member the quorum did not need still learns what the room signs with"
         )
         assertEquals(adminRoomId, absent.keyState()?.announcedBy)
+    }
+
+    // ---- The key state, signed before the room exists ----------------------
+
+    /**
+     * The room the ceremony was held in: NIP-17, so no MLS state, and an id that
+     * is an aggregation of its members rather than anything derived. This is
+     * where a group lives before it owns a Marmot room, and where it signs the
+     * statement that lets one be made.
+     */
+    private val ceremonyRoomId = "ceremonyroom".padEnd(64, '0')
+
+    /** A member's device as it is *before* the #admins room exists. */
+    private suspend fun ceremonyDevice(publicKey: HexKey, signerIndex: Int): Device =
+        device(
+            publicKey = publicKey,
+            signerIndex = signerIndex,
+            roomId = ceremonyRoomId,
+            // Not describe()d: a NIP-17 room carries no derivation path, so the
+            // path has to come from the ceremony rather than from the room.
+            description = null,
+            ceremonyRoomId = ceremonyRoomId,
+            mlsGroupState = null
+        )
+
+    /** Brings the #admins room into being on a device, as creating or joining it would. */
+    private suspend fun createAdminRoom(device: Device) {
+        device.db.chatRoomDao().upsert(
+            ChatRoom(
+                id = adminRoomId,
+                userPublicKey = device.publicKey,
+                subject = "#admins",
+                description = adminRoomDescription,
+                mlsGroupState = "00"
+            )
+        )
+    }
+
+    @Test
+    fun `a group signs its key state in the room its ceremony ran in`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+
+        // The proposal goes out on gift wraps, because that is the only
+        // transport a group has before it has a Marmot room.
+        val queued = outbox(creator)
+        val proposal = queued.firstOrNull { it.kind == FrostSigningEvents.PROPOSAL }
+        assertNotNull(proposal, "the proposal must be queued as a gift wrap")
+        assertTrue(
+            creator.db.marmotInnerEventDao()
+                .getByChatRoomAndKinds(ceremonyRoomId, FrostSigningEvents.ALL.toList())
+                .isEmpty(),
+            "a NIP-17 room has no inner events to put a signing message in"
+        )
+
+        // Addressed per member, the sender excepted -- a gift wrap that names
+        // nobody reaches nobody.
+        val addressed = proposal.tags.filter { it.size > 1 && it[0] == "p" }.map { it[1] }
+        assertEquals(members.drop(1).toSet(), addressed.toSet())
+
+        // And what it is about is the room that does not exist yet.
+        val payload = Event.fromJson(creator.item(session.id).unsignedEventJson)
+        assertEquals(adminRoomId, payload.pubKey)
+        assertEquals(adminRoomId, GroupKeyStateEvent.parseChatRoomId(payload.tags))
+        assertEquals(SharedKeyDerivation.formatPath(), session.derivationPath)
+    }
+
+    @Test
+    fun `the state is signed before the room it names is created`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+        val other = ceremonyDevice(members[1], signerIndex = 1)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+        pump(creator, other)
+
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            assertEquals(FrostSigningStage.COMPLETE, device.session(session.id)?.stage)
+
+            // Signed, and by the group -- the author is the id of a room nobody
+            // has made, which is exactly what makes it checkable without one.
+            val signed = FrostSigningManager.signedEvent(device.item(session.id))
+            assertNotNull(signed, "the group should have finished signing its key state")
+            assertEquals(adminRoomId, signed.pubKey)
+            assertTrue(GroupKeyStateEvent.isSignedByRoom(signed, adminRoomId))
+
+            // Nothing filed, because there is no room to file it against. This
+            // is the whole shape of the change: agreement first, room second.
+            assertNull(
+                device.db.groupKeyStateDao().getByChatRoomId(adminRoomId),
+                "a state cannot be filed against a room that does not exist"
+            )
+        }
+    }
+
+    @Test
+    fun `the room is created already knowing what it signs with`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+        val other = ceremonyDevice(members[1], signerIndex = 1)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        // One device creates the room; the other is handed it by a Welcome.
+        // Both file the same state off the event each already held, and neither
+        // is sent anything to do it.
+        listOf(creator, other).forEach { device ->
+            createAdminRoom(device)
+
+            val adopted = GroupKeyStateManager.adopt(device.db, adminRoomId)
+            assertNotNull(adopted, "a room should adopt the state its group signed for it")
+
+            assertEquals(adminRoomId, adopted.chatRoomId)
+            assertEquals(thresholdPublicKey, adopted.thresholdPublicKey)
+            assertEquals(ceremonyId, adopted.dkgSessionId)
+            assertEquals(SharedKeyDerivation.formatPath(), adopted.derivationPath)
+            assertEquals(adminRoomId, adopted.announcedBy)
+            assertTrue(adopted.verifies())
+
+            // On file, not merely returned. Compared field by field because the
+            // store keeps whole seconds and the row in hand does not.
+            val stored = device.db.groupKeyStateDao().getByChatRoomId(adminRoomId)
+            assertNotNull(stored)
+            assertEquals(adopted.chatRoomId, stored.chatRoomId)
+            assertEquals(adopted.thresholdPublicKey, stored.thresholdPublicKey)
+            assertEquals(adopted.dkgSessionId, stored.dkgSessionId)
+            assertEquals(adopted.derivationPath, stored.derivationPath)
+            assertEquals(adopted.announcedAt, stored.announcedAt)
+        }
+    }
+
+    @Test
+    fun `adopting twice settles on the same state`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+        val other = ceremonyDevice(members[1], signerIndex = 1)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        createAdminRoom(creator)
+
+        val first = GroupKeyStateManager.adopt(creator.db, adminRoomId)
+        val second = GroupKeyStateManager.adopt(creator.db, adminRoomId)
+
+        assertNotNull(first)
+        assertNotNull(second)
+        assertEquals(first.thresholdPublicKey, second.thresholdPublicKey)
+        assertEquals(first.dkgSessionId, second.dkgSessionId)
+        assertEquals(first.derivationPath, second.derivationPath)
+        assertEquals(first.announcedAt, second.announcedAt)
+        // The second adopt is a no-op rather than a rewrite: `replace` keeps the
+        // state already on file when nothing newer has been signed. To whole
+        // seconds, which is all the store keeps.
+        assertEquals(first.createdAt.epochSeconds, second.createdAt.epochSeconds)
+    }
+
+    @Test
+    fun `a nonce arriving before the proposal is replayed out of the gift wraps`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+        val other = ceremonyDevice(members[1], signerIndex = 1)
+        val third = ceremonyDevice(members[2], signerIndex = 2)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+
+        // `other` gets the proposal and answers it; `third` gets neither yet.
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+
+        // Now hand `third` everything, worst order first: the nonce before the
+        // proposal that asks for it. A relay delivers a backlog in whatever
+        // order it likes, and a device syncing fresh sees exactly this.
+        val nonce = outbox(other).single { it.kind == FrostSigningEvents.NONCE }
+        third.received.add(nonce.id)
+        third.store(nonce)
+        FrostSigningManager.processSigningPayload(
+            database = third.db,
+            localChatRoom = third.room,
+            innerEvent = nonce.toEvent(),
+            userPublicKey = third.publicKey
+        )
+
+        // Filed nowhere, because there is no session to file it under.
+        assertNull(third.session(session.id))
+
+        pump(creator, other, third)
+
+        // The proposal arrives and the replay goes and finds it -- out of the
+        // gift-wrap payloads, which is the only place a NIP-17 room's backlog
+        // is. Looking in the inner events instead finds nothing and the nonce
+        // is lost.
+        val replayed = third.db.frostSigningSessionDao()
+            .getMessage(session.id, FrostSigningEvents.NONCE, other.publicKey)
+        assertNotNull(replayed, "a nonce that arrived early must be replayed once the proposal lands")
+        assertEquals(nonce.content, replayed.payload)
+    }
+
+    @Test
+    fun `a room nobody signed a state for adopts nothing`() = runBlocking {
+        val creator = ceremonyDevice(members[0], signerIndex = 0)
+
+        // The ceremony happened; the group never got as far as agreeing.
+        createAdminRoom(creator)
+
+        assertNull(GroupKeyStateManager.adopt(creator.db, adminRoomId))
+    }
+
+    @Test
+    fun `a room with no standing to propose a key state refuses to`() = runBlocking {
+        val member = ceremonyDevice(members[0], signerIndex = 0)
+
+        // Another NIP-17 room the same member is in, which is neither the room
+        // the state is about nor the one the ceremony ran in. `signingPath`
+        // would resolve nothing for it, so the group would sign as its bare
+        // threshold key -- an identity no room answers to. Refused before a
+        // single member is asked to sign anything.
+        val bystanderRoom = ChatRoom(
+            id = "bystanderroom".padEnd(64, '0'),
+            userPublicKey = member.publicKey,
+            subject = "some other chat",
+            description = null,
+            mlsGroupState = null
+        )
+        member.db.chatRoomDao().upsert(bystanderRoom)
+
+        assertFailsWith<IllegalStateException> {
+            GroupKeyStateManager.propose(
+                database = member.db,
+                localChatRoom = LocalChatRoom(chatRoom = bystanderRoom),
+                userPublicKey = member.publicKey,
+                key = ceremonyOn(member)
+            )
+        }
+        Unit
     }
 
     // ---- Signing several events in one session -----------------------------
@@ -992,11 +1361,15 @@ class SignedGroupKeyStateTest {
     }
 
     @Test
-    fun `a room that is not derived from the key signs as the key itself`() = runBlocking {
+    fun `a Marmot room that is not derived from the key signs as the key itself`() = runBlocking {
         // The fallback kept for rooms the app no longer makes: the ceremony ran
-        // in this very room, so the room's id is a random 32 bytes rather than
-        // anything walked to. There is no room key to sign as, so it signs as the
-        // group's -- which is what it did before any of this.
+        // in this very Marmot room, so the room's id is a random 32 bytes rather
+        // than anything walked to. There is no room key to sign as, so it signs
+        // as the group's -- which is what it did before any of this.
+        //
+        // A NIP-17 room in the same shape signs as the #admins room the ceremony
+        // will make, which is the case below. The two are told apart by whether
+        // the room has MLS state, and by nothing a proposer can reach.
         val undeerived = "d".repeat(64)
         val creator = device(
             publicKey = members[0],
@@ -1018,5 +1391,38 @@ class SignedGroupKeyStateTest {
         assertNull(session.derivationPath, "no path reaches a room that was not derived")
         assertEquals(emptyList(), session.pathIndices())
         assertEquals(rootPublicKey, Event.fromJson(creator.item(session.id).unsignedEventJson).pubKey)
+    }
+
+    @Test
+    fun `a NIP-17 room that did not host the ceremony cannot sign at all`() = runBlocking {
+        // The other half of the rule that lets a ceremony's room sign as the
+        // room it is about to make. That room signs as the #admins room *its
+        // own* ceremony derives; a NIP-17 room this member merely happens to be
+        // in reaches no key and no path, so it never gets as far as choosing an
+        // identity to sign under.
+        val member = ceremonyDevice(members[0], signerIndex = 0)
+
+        val bystanderRoom = ChatRoom(
+            id = "bystanderroom".padEnd(64, '0'),
+            userPublicKey = member.publicKey,
+            subject = "some other chat",
+            description = null,
+            mlsGroupState = null
+        )
+        member.db.chatRoomDao().upsert(bystanderRoom)
+
+        val template = DialectEvent.build(name = "Sepedi", country = "ZA", language = "nso")
+
+        assertFailsWith<IllegalStateException> {
+            FrostSigningManager.proposeSigning(
+                database = member.db,
+                localChatRoom = LocalChatRoom(chatRoom = bystanderRoom),
+                userPublicKey = member.publicKey,
+                kind = template.kind,
+                tags = template.tags,
+                content = template.content
+            )
+        }
+        Unit
     }
 }

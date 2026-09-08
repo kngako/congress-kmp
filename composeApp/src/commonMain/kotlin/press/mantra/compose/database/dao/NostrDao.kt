@@ -34,6 +34,7 @@ import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MlsGroupCache
 import press.mantra.compose.managers.MarmotInboundManager
 import press.mantra.compose.managers.MarmotReindexSweep
@@ -821,6 +822,23 @@ abstract class NostrDao(
                                         }
                                     }
 
+                                    // The room arrives already knowing what it
+                                    // signs with, if this device was in the
+                                    // ceremony. The state was signed in the NIP-17
+                                    // room the ceremony ran in, before this room
+                                    // existed to hold it, so joining is the first
+                                    // moment there is a row to file it against --
+                                    // see `GroupKeyStateManager.adopt`.
+                                    //
+                                    // Nothing for a member who was not in the
+                                    // ceremony: they hold no signed state and no
+                                    // share either, so there is nothing for them to
+                                    // pick the wrong one of.
+                                    GroupKeyStateManager.adopt(
+                                        database = database,
+                                        chatRoomId = nostrGroupId
+                                    )
+
                                     // Where is the decoded welcome message...
                                     // TODO: Sync GroupEvents/Messages...
 //                                    database.chatMessageDao().upsert(
@@ -863,6 +881,49 @@ abstract class NostrDao(
                                         giftWrapPayload = decryptedGiftWrapPayload,
                                         userPublicKey = activeKeyPair.pubKey.toHex(),
                                         nostrPrivateKey = activeKeyPair.privKey!!
+                                    )
+                                }
+                            } else if (FrostSigningEvents.isFrostSigningKind(decryptedGiftWrapPayload.kind)) {
+                                // A FROST signing message for one of our NIP-17
+                                // groups, which is where a group makes its first
+                                // signature: the statement of what its #admins room
+                                // signs with, agreed before that room is created.
+                                // See `GroupKeyStateManager.propose`.
+                                //
+                                // The room is created on demand for the same reason
+                                // a ritual message creates one, and the manager is
+                                // idempotent, so a redelivered message re-runs a step
+                                // it has already taken.
+                                val localChatRoom = getOrCreateNip17ChatRoom(
+                                    decryptedGiftWrapPayload = decryptedGiftWrapPayload,
+                                    activeKeyPair = activeKeyPair,
+                                    nostrEventId = nostrEvent.id,
+                                    relayURL = relayURL
+                                )
+
+                                if (localChatRoom == null) {
+                                    logger.w("FROST payload for unknown chat room ${decryptedGiftWrapPayload.chatRoomId}")
+                                } else {
+                                    FrostSigningManager.processSigningPayload(
+                                        database = database,
+                                        localChatRoom = localChatRoom,
+                                        // The rumor as its sender wrote it. `sig` is
+                                        // empty because a gift-wrapped rumor carries
+                                        // none -- the seal is what vouches for the
+                                        // author -- and nothing in a signing session
+                                        // reads it: what a session puts a signature
+                                        // to is the event inside the proposal, not
+                                        // the message carrying it.
+                                        innerEvent = Event(
+                                            id = decryptedGiftWrapPayload.id,
+                                            pubKey = decryptedGiftWrapPayload.publicKey,
+                                            createdAt = decryptedGiftWrapPayload.createdAt.epochSeconds,
+                                            kind = decryptedGiftWrapPayload.kind,
+                                            tags = decryptedGiftWrapPayload.tags,
+                                            content = decryptedGiftWrapPayload.content,
+                                            sig = ""
+                                        ),
+                                        userPublicKey = activeKeyPair.pubKey.toHex()
                                     )
                                 }
                             } else {
