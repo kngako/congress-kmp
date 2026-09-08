@@ -32,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.MarmotKeyPackageBundle
@@ -60,6 +59,7 @@ import mantra.composeapp.generated.resources.key_package_published
 import mantra.composeapp.generated.resources.key_package_rotated
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -243,7 +243,7 @@ fun KeyPackageManagementScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

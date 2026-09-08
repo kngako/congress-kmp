@@ -17,7 +17,6 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -30,6 +29,7 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.loading_author_information_2
 import mantra.composeapp.generated.resources.malformed_note
 import mantra.composeapp.generated.resources.reposted
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
@@ -126,7 +126,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
 }
 
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun EventListViewRepostedPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
@@ -177,7 +177,7 @@ private fun EventListViewRepostedPreview() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun EventListViewInReplyPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

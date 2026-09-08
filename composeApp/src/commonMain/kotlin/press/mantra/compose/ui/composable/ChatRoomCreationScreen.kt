@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -41,6 +40,7 @@ import mantra.composeapp.generated.resources.what_will_be_discussed_in_this_chat
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun ChatRoomCreationScreen(
@@ -172,7 +172,7 @@ fun ChatRoomCreationScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun LoadingScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

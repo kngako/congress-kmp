@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
@@ -34,6 +33,7 @@ import mantra.composeapp.generated.resources.who_will_you_be_passing_the_aux_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun SocialPreconditionScreen(
@@ -124,7 +124,7 @@ fun SocialPreconditionScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SocialPreconditionScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

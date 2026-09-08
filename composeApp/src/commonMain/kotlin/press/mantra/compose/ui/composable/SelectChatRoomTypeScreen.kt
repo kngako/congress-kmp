@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.Profile
@@ -74,6 +73,7 @@ import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -462,7 +462,7 @@ private fun QuorumPicker(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SelectChatRoomTypeScreenPreview() {
     TorchTheme {

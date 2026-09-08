@@ -16,7 +16,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.theme.spacing
@@ -27,6 +26,7 @@ import mantra.composeapp.generated.resources.we_are_searching_the_internet_to_fi
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -88,7 +88,7 @@ fun UnqueuedProfileSynchronizationScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun UnqueuedProfileSynchronizationScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -66,6 +65,7 @@ import mantra.composeapp.generated.resources.of_them_could_not_be_read
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -404,7 +404,7 @@ private fun statusOf(proposal: ProposalListUIState.Proposal): String {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun ProposalListScreenPreview() {
     val session = FrostSigningSession(

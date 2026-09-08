@@ -30,7 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import press.mantra.compose.extensions.bech32ToHexOrNull
@@ -51,6 +50,7 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.input_npub_or_nip05
 import mantra.composeapp.generated.resources.start_chat
 import mantra.composeapp.generated.resources.start_chat_via_npub_or_nip05
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun StartDirectMessageToNpubOrNip05Dialog(
@@ -187,7 +187,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun StartDirectMessageToNpubOrNip05DialogPreview() {
     TorchTheme {

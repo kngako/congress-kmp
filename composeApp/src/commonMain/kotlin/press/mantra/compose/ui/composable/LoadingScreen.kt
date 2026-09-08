@@ -7,10 +7,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun LoadingScreen(
@@ -28,7 +28,7 @@ fun LoadingScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun LoadingScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

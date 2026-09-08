@@ -46,7 +46,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -103,6 +102,7 @@ import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -682,7 +682,7 @@ private fun QuorumStepper(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun DkgRitualScreenPreview() {
     TorchTheme {

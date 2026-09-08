@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
@@ -50,6 +49,7 @@ import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -223,7 +223,7 @@ fun SearchMemberToAddToChatRoomScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun ChatRoomDetailScreenPreview() {
     TorchTheme {

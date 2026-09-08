@@ -26,7 +26,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImage
@@ -36,6 +35,7 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.nostr
 import mantra.composeapp.generated.resources.nostr_2
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun RichContent(
@@ -398,7 +398,7 @@ fun RichContent(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun RichContentPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

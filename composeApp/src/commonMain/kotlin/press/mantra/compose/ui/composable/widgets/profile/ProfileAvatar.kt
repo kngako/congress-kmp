@@ -17,11 +17,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import press.mantra.compose.ui.theme.spacing
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @Composable
 fun ProfileAvatar(
@@ -90,7 +90,7 @@ fun ProfileAvatar(
     // TODO: Show cards...
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 fun ProfileAvatarPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

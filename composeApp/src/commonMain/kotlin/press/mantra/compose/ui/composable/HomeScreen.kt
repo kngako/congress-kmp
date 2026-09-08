@@ -37,7 +37,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.NostrEvent
@@ -75,6 +74,7 @@ import press.mantra.compose.ui.theme.listPaneWidthFor
 import press.mantra.compose.ui.theme.readableContent
 import mantra.composeapp.generated.resources.pick_a_conversation_to_read_it_here
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -344,7 +344,7 @@ fun HomeScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun HomeScreenPreview() {
     TorchTheme {

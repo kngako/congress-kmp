@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip19Bech32.entities.NPub
@@ -47,6 +46,7 @@ import mantra.composeapp.generated.resources.this_will_give_you_write_access_to_
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -273,7 +273,7 @@ fun SignInToProfileScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SignInToProfileScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

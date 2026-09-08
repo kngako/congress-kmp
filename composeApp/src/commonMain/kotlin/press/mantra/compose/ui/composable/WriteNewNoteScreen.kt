@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
@@ -59,6 +58,7 @@ import mantra.composeapp.generated.resources.replying_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -465,7 +465,7 @@ fun WriteNewNoteScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun WriteNewNoteScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

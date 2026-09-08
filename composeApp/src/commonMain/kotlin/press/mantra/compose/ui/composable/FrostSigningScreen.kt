@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.Event
@@ -72,6 +71,7 @@ import mantra.composeapp.generated.resources.events_signed_together
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
  * One signing session, and the member's decision about it.
@@ -407,7 +407,7 @@ private fun statusOf(session: FrostSigningSession): String = when (session.stage
     FrostSigningStage.FAILED -> "Abandoned. Nothing was signed, and it is safe to ask again."
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun FrostSigningScreenPreview() {
     TorchTheme {

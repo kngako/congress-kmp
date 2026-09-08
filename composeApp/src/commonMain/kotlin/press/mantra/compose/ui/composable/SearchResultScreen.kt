@@ -46,7 +46,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.composable.widgets.feed.ListView
@@ -66,6 +65,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.EmptyState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -281,7 +281,7 @@ fun SearchResultScreen(
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun SearchResultScreenPreview() {
     press.mantra.compose.ui.theme.TorchTheme {

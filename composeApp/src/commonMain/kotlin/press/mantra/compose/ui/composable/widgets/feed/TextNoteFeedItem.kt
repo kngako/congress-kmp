@@ -21,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -30,6 +29,7 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.loading_author_information
 import mantra.composeapp.generated.resources.loading_information
+import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -184,7 +184,7 @@ internal fun TextNoteFeedItem(
 
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun TextNoteFeedItemPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
@@ -215,7 +215,7 @@ private fun TextNoteFeedItemPreview() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun TextNoteFeedItemInReplyToPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
@@ -269,7 +269,7 @@ private fun TextNoteFeedItemInReplyToPreview() {
     }
 }
 
-@Preview
+@ConformancePreviews
 @Composable
 private fun TextNoteFeedItemQuoteNostrEventPreview() {
     press.mantra.compose.ui.theme.TorchTheme {
