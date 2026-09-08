@@ -882,22 +882,87 @@ screen's app bar offers. It is its own commit and reverts alone.
 layouts. Animating the current layouts and then changing them in Phase 6 is
 work done twice.
 
-**Work.**
+**Built.** Two commits.
 
-1. **Use the `MotionScheme` wired in Phase 1.** Every spec comes from
-   `MotionSchemeKeyTokens` rather than a literal `tween`, so the whole app's
-   feel is one decision.
-2. **Navigation transitions.** All 43 routes use the default; the container
-   transform between a list item and its detail screen is the one that carries
-   the most meaning, and pairs naturally with the pane work from Phase 6.
-3. **State transitions.** `AnimatedContent` between the loading, empty, error
-   and loaded states that Phase 5 standardises — currently a hard cut in every
-   case.
-4. **Respect the reduced-motion preference** on every platform, and hold to the
-   spec's own caution that the dragged state is deliberately low-emphasis.
+1. **Navigation transitions on all 43 routes at once**, from the theme's
+   `MotionScheme` rather than from a literal. The plan expected a hard cut and
+   found something else: navigation-compose's default on android and desktop is
+   `fadeIn(tween(700))` / `fadeOut(tween(700))`, written into the library's own
+   internals. Both halves are worth changing — 700ms is roughly three times M3's
+   duration for a full-screen change, and a literal inside a dependency is not a
+   decision this app made.
 
-**Done when** no state change in the app is an unannounced cut, and every
-animation spec comes from the scheme.
+   The shape is M3's shared axis: the arriving screen slides in from the trailing
+   edge while the leaving one slides out toward the leading edge, both fading, and
+   going back mirrors it so the direction of travel is legible.
+   `slideIntoContainer` is layout-direction aware, so an RTL locale gets the
+   mirror for free.
+
+   **The plan named an API an app cannot reach.** `MotionSchemeKeyTokens` is
+   `internal` to material3, so the tokens are not addressable by name from outside.
+   `MaterialTheme.motionScheme` is the public surface and offers the same six
+   specs; two private helpers name which of them this app uses for what — spatial
+   for the slide, effects for the fade, which is the distinction the scheme draws.
+
+2. **`ScreenStateTransition` on 20 screens**, M3's fade-through between a screen's
+   loading, error, empty and loaded states. The outgoing state fades out, the
+   incoming one fades in and grows the last 8% into place, with `SizeTransform`
+   off so a tall loaded state does not stretch a short spinner on its way in.
+
+   **The content key is the state's class, not the state**, and that is the half
+   that is easy to get wrong and impossible to see. Keyed on the value, a screen
+   re-runs the whole fade every time its loaded data changes — a message arriving,
+   a list growing by one — so it flickers whenever anything happens, and every
+   screenshot looks perfect.
+
+   Not applied to 15 other `when`s, by a mechanical rule: `AnimatedContent` is a
+   layout node, so it can only wrap a `when` that is a composable's whole body.
+   Where the `when` sits inside a `Column` whose branches use `Modifier.weight` —
+   the sign-in and create-profile flows, frost signing, the proposal list, the two
+   feed detail widgets, the four render helpers still on view models — wrapping it
+   would take those branches out of `ColumnScope`.
+
+**Reduced motion, in the shape phase 1 established.** `platformReducedMotion()` is
+an expect/actual beside `platformThemeContrast()`, observed rather than read once.
+It does not mean *no* transition: the screen still fades and what goes is the
+movement, which is what M3 and WCAG 2.3.3 are both about.
+
+- **Android has no "reduce motion" switch.** It has **Remove animations**, which
+  sets the animation duration scales to zero — and the platform applies that scale
+  to `ValueAnimator` and **not to Compose**, which runs on its own clock and
+  ignores it entirely. An app that draws its own transitions has to read the
+  setting itself. A `ContentObserver` on `ANIMATOR_DURATION_SCALE` catches changes
+  without a restart.
+- **iOS** is the one platform where it is a single documented call,
+  `UIAccessibilityIsReduceMotionEnabled`, with the same notification shape as the
+  darker-system-colours one already observed there.
+- **Desktop answers `false`**, and says at the site why that is honest rather than
+  a stub: Windows, macos and the freedesktop desktops each have the setting and
+  none of the three reaches AWT. The same wall `platformThemeContrast` hits on
+  linux and macos, and the same eventual answer — a preference with the platform
+  as its default.
+
+**Verified by holding the clock still**, because neither claim can be asserted on
+a value. `EnterTransition` has no public shape to inspect, so "this one slides and
+that one does not" is measured: navigate, advance a third of the way, and read
+where the arriving screen is — 54dp from home when sliding, already there when
+reduced. And a crossfade is told from a cut by the one frame in which *both*
+states are composed.
+
+**A test found a design flaw rather than a bug.** The reduced case read 54dp of
+slide at first, because the test provided `LocalReducedMotion` around `TorchTheme`
+and the theme overwrote it. The fix is not in the test: `reducedMotion` is now a
+`TorchTheme` parameter defaulted to the platform, exactly as `contrast` is,
+because a value nothing can override is a value nothing can test — and because the
+desktop actual is a hardcoded `false` that a settings screen will need to override
+anyway.
+
+**Left undone.** The container transform between a list item and its detail
+screen, which the plan names as the transition carrying the most meaning. It is
+`SharedTransitionLayout` work and it wants the pane split to settle first: on a
+wide window the detail is already beside the list, so there is no container to
+transform, and the animation only applies below the expanded breakpoint. Doing it
+now would mean writing it twice.
 
 **Risk:** low. Visible, easily tuned, easily reverted.
 
