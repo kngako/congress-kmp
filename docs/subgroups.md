@@ -9,8 +9,29 @@ Read [shared-key-derivation.md](./shared-key-derivation.md) and
 built on the property they state — that a room's id *is* the key it signs with —
 and on the ceremony they describe, which a subgroup runs again from scratch.
 
-**Not built.** Phases 1-9, one commit each. Written against the code as it stands
-at `b50b1762`.
+**Built**, phases 1-9, one commit each. The phases are kept as written because
+they are the reasoning, and the code reads better against the argument it came
+from than against a summary of itself. Where the implementation chose differently
+the section says so, and it did so six times worth reading:
+
+| what the plan said | what it turned out to be |
+|---|---|
+| `SubgroupManager.openCeremony` | never built. The picker calls `createNip17ChatRoom` and `proposeRitual` directly, exactly as robust-group creation does -- a wrapper over two repository calls would have been a third name for one act |
+| `MarmotGroupCreation.create` called from the view model | reached through `ChatRepository.createMarmotGroup`. View models here talk to repositories and managers take the database; the first cut reached for a `database` the interface does not expose, and should not |
+| a pure `SubgroupGuardsTest` in commonTest | jvmTest. Every refusal reads the database -- a key-holding session, an admin flag, a ceremony in the derived room -- so a pure version would have tested less, not differently |
+| Phase 4 adds one tag | two. `subject` fixes a bug older than subgroups: `getOrCreateNip17ChatRoom` has always read a subject off the payload and the ritual path never wrote one, so every robust group arrived nameless on every device but its creator's |
+| `stateFrom` reads the parentage with two parsers | three, and a wrapper. A tag present and unreadable looks absent through a parser, so `claimsParentage` reads the tag *names*; and "refused" has to be told from "none claimed", which a bare nullable cannot carry |
+| Phase 8 adds three refusals to a settled function | it short-circuited the tests that were already there. `canSign` and `isAdmin` run before the picking rules, so the fixtures had to grow a parent that can actually sign and a coordinator who is actually an admin -- see the note in that phase |
+
+Two things the plan got right that are worth keeping if any of this is rewritten.
+The key-package check moved to the picker before a line of it was built, on
+review, and it is the difference between a subgroup failing in a second and
+failing after three ceremonies. And the founding-roster rule -- that `certifies`
+must not compare the name or the `p` tags against anything current -- has a test
+whose job is to *fail* the day somebody adds the comparison that looks obviously
+missing.
+
+Written against the code as it stood at `b50b1762`.
 
 ## What a subgroup is
 

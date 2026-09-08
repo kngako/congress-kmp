@@ -29,7 +29,7 @@ chronicle note is a phased plan that has not been built, and reads as the
 membership note's unanswered half: what a member who joins late can be given,
 and the one thing they cannot. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.
-The subgroups note is a phased plan that has not been built; it assumes both
+The subgroups note is a phased plan that has been built; it assumes both
 shared-key notes and reads as the ceremony's second half — what a group does
 once it has a key, and what it can say about a group that does not yet.
 The Material Design note is a phased plan that has not been built, and is the
