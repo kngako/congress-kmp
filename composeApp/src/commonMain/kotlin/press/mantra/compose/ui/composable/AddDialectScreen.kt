@@ -69,6 +69,7 @@ import mantra.composeapp.generated.resources.language
 import mantra.composeapp.generated.resources.propose_dialect
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -195,7 +196,7 @@ fun AddDialectScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),

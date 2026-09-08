@@ -65,6 +65,7 @@ import mantra.composeapp.generated.resources.waiting_for_you
 import mantra.composeapp.generated.resources.of_them_could_not_be_read
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * Everything the group has asked its shared key to sign.
@@ -128,7 +129,7 @@ fun ProposalListScreen(
     ) { padding ->
         when (val state = proposalListViewModel.proposalListUIState) {
             is ProposalListUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -136,7 +137,7 @@ fun ProposalListScreen(
             }
 
             is ProposalListUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -155,7 +156,7 @@ fun ProposalListScreen(
                 }
 
                 LazyColumn(
-                    modifier = Modifier.padding(padding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    modifier = Modifier.padding(padding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (state.proposals.isEmpty()) {

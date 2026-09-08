@@ -33,6 +33,7 @@ import mantra.composeapp.generated.resources.view_invites
 import mantra.composeapp.generated.resources.who_will_you_be_passing_the_aux_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @Composable
 fun SocialPreconditionScreen(
@@ -69,7 +70,7 @@ fun SocialPreconditionScreen(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),

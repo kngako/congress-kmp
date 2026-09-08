@@ -54,6 +54,7 @@ import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +107,7 @@ fun ShareProfileScreen(
             ) { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding)
+                    .readableContent()
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().weight(1f),

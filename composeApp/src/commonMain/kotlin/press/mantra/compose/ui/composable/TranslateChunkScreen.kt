@@ -64,6 +64,7 @@ import mantra.composeapp.generated.resources.translated_text
 import mantra.composeapp.generated.resources.translation
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +198,7 @@ fun TranslateChunkScreen(
                 Column(
                     modifier = Modifier
                         .padding(innerPadding)
+                        .readableContent()
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(MaterialTheme.spacing.space250),

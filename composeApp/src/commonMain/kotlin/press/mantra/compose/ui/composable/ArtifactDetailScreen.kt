@@ -66,6 +66,7 @@ import mantra.composeapp.generated.resources.chapter
 import mantra.composeapp.generated.resources.words_characters
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,7 +121,7 @@ fun ArtifactDetailScreen(
                 }
             ) { innerPadding ->
                 LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     // Chapters

@@ -72,6 +72,7 @@ import mantra.composeapp.generated.resources.was_created_but_its_shared_key_cere
 import mantra.composeapp.generated.resources.you_and_others
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * Last step of group creation: convenient (one admin) or robust (everyone
@@ -189,6 +190,7 @@ fun SelectChatRoomTypeScreen(
                 Column(
                     modifier = Modifier
                         .padding(innerPadding)
+                        .readableContent()
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(MaterialTheme.spacing.space125),

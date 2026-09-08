@@ -31,6 +31,7 @@ import mantra.composeapp.generated.resources.sign_in
 import mantra.composeapp.generated.resources.sign_in_to_torch_via_nsec_or_remote_signer
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @Composable
 fun LandingScreen(
@@ -41,6 +42,7 @@ fun LandingScreen(
     Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),

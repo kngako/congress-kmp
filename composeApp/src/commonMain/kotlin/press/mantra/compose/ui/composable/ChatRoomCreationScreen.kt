@@ -41,6 +41,7 @@ import mantra.composeapp.generated.resources.what_should_people_know_about_you
 import mantra.composeapp.generated.resources.what_will_be_discussed_in_this_chat_room
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @Composable
 fun ChatRoomCreationScreen(
@@ -57,7 +58,7 @@ fun ChatRoomCreationScreen(
         snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
         modifier = Modifier.imePadding()) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxWidth()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxWidth()
         ) {
 
             Column(

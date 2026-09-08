@@ -85,6 +85,7 @@ import mantra.composeapp.generated.resources.source_dialect
 import mantra.composeapp.generated.resources.url
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -229,7 +230,7 @@ fun AddArtifactScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     // TODO: Check that we have direct message relays for this user...
                     Column(

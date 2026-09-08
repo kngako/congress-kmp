@@ -67,6 +67,7 @@ import mantra.composeapp.generated.resources.translate_into_which_dialect
 import mantra.composeapp.generated.resources.translate
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -218,7 +219,7 @@ fun AddTranslationArtifactVersionScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize().padding(MaterialTheme.spacing.space250),
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize().padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                 ) {
                     if (!addTranslationUIState.canSign) {

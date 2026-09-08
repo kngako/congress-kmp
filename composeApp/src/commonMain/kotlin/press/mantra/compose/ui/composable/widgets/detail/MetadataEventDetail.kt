@@ -69,6 +69,7 @@ import mantra.composeapp.generated.resources.send_message
 import mantra.composeapp.generated.resources.unfollow
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -146,7 +147,7 @@ fun MetadataEventDetail(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize()
+            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
 
             LazyColumn(

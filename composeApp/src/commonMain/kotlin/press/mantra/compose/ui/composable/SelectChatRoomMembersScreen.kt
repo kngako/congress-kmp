@@ -55,6 +55,7 @@ import mantra.composeapp.generated.resources.next_with
 import mantra.composeapp.generated.resources.selected
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * Second step of group creation: pick who is in the group.
@@ -153,7 +154,7 @@ fun SelectChatRoomMembersScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     if (selectChatRoomMembersUIState.profiles.isEmpty()) {
                         Column(

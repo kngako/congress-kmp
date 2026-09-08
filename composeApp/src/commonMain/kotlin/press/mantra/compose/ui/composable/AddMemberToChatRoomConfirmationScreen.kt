@@ -48,6 +48,7 @@ import mantra.composeapp.generated.resources.once_invited_will_be_able_to_receiv
 import mantra.composeapp.generated.resources.to_join_the_chat_room
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -135,7 +136,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),

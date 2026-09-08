@@ -69,6 +69,7 @@ import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -121,6 +122,7 @@ fun ActiveProfileScreen(
             ) { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding)
+                    .readableContent()
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),

@@ -101,6 +101,7 @@ import mantra.composeapp.generated.resources.of_members_will_be_needed_to_sign_w
 import mantra.composeapp.generated.resources.shared_key_for
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * The shared-key ceremony: a ChillDKG ritual run across the group's NIP-17
@@ -240,6 +241,7 @@ fun DkgRitualScreen(
                 Column(
                     modifier = Modifier
                         .padding(innerPadding)
+                        .readableContent()
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(MaterialTheme.spacing.space125),

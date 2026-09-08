@@ -24,6 +24,7 @@ import mantra.composeapp.generated.resources.we_are_looking_for_your_profile_on_
 import mantra.composeapp.generated.resources.we_are_searching_the_internet_to_find_your
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -33,6 +34,7 @@ fun UnsyncedProfileScreen(
     Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(

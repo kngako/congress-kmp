@@ -58,6 +58,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import mantra.composeapp.generated.resources.key_package_published
 import mantra.composeapp.generated.resources.key_package_rotated
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +117,7 @@ fun KeyPackageManagementScreen(
             ) { innerPadding ->
                 Column(
                     modifier = Modifier.padding(innerPadding)
+                    .readableContent()
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),

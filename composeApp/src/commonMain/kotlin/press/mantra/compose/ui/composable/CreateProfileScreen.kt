@@ -61,6 +61,7 @@ import mantra.composeapp.generated.resources.you_are_about_to_create_a_nostr_pro
 import mantra.composeapp.generated.resources.you_will_be_in_full_control_of_this_profile
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -85,6 +86,7 @@ fun CreateProfileScreen(
         modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(

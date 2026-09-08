@@ -58,6 +58,7 @@ import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send
 import mantra.composeapp.generated.resources.replying_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -86,6 +87,7 @@ fun WriteNewNoteScreen(
         modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(

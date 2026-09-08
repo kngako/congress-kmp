@@ -131,6 +131,15 @@ kotlin {
             // needs a coroutine, and a scheduler, to assert it in.
             implementation(libs.kotlinx.coroutinesTest)
         }
+        jvmTest.dependencies {
+            // A layout modifier cannot be asserted by reading it. `readableContent()` is
+            // three modifiers whose order decides whether the content is capped, centred,
+            // both or neither, and every ordering compiles and renders something -- so the
+            // check has to be a measurement of a real composition. Pinned to the same
+            // version as the rest of Compose Multiplatform; test-only.
+            implementation(compose.desktop.uiTestJUnit4)
+            implementation(libs.kotlin.testJunit)
+        }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)

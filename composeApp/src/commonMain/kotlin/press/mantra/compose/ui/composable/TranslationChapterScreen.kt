@@ -54,6 +54,7 @@ import mantra.composeapp.generated.resources.chapter_translation
 import mantra.composeapp.generated.resources.this_chapter_has_no_chunks
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,7 +108,7 @@ fun TranslationChapterScreen(
                 }
             ) { innerPadding ->
                 LazyColumn(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     // Header row: dialect names.
                     item {

@@ -48,6 +48,7 @@ import mantra.composeapp.generated.resources.search_member_functionality
 import mantra.composeapp.generated.resources.search_message_functionality_will_be_here
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +105,7 @@ fun SearchMemberToAddToChatRoomScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier.weight(1f).fillMaxWidth(),

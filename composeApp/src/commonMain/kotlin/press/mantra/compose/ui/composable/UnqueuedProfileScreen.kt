@@ -24,6 +24,7 @@ import mantra.composeapp.generated.resources.all_broadcasts_are_queued_so_that_w
 import mantra.composeapp.generated.resources.everything_is_cryptographical_sound_just_3
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -31,6 +32,7 @@ fun UnqueuedProfileScreen() {
     Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(

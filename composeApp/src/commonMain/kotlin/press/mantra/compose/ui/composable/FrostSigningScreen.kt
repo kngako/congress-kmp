@@ -71,6 +71,7 @@ import mantra.composeapp.generated.resources.signed_their_part
 import mantra.composeapp.generated.resources.events_signed_together
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * One signing session, and the member's decision about it.
@@ -136,7 +137,7 @@ fun FrostSigningScreen(
             is FrostSigningUIState.Loading -> Loading(padding)
 
             is FrostSigningUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -163,6 +164,7 @@ fun FrostSigningScreen(
                 Column(
                     modifier = Modifier
                         .padding(padding)
+                        .readableContent()
                         .fillMaxSize()
                         .verticalScroll(scrollState)
                         .padding(MaterialTheme.spacing.space250),
@@ -320,7 +322,7 @@ fun FrostSigningScreen(
 @Composable
 private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+        modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))

@@ -46,6 +46,7 @@ import mantra.composeapp.generated.resources.this_will_give_you_read_only_access
 import mantra.composeapp.generated.resources.this_will_give_you_write_access_to_the
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -66,6 +67,7 @@ fun SignInToProfileScreen(
         modifier = Modifier.imePadding()) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
+            .readableContent()
         ) {
 
             Column(

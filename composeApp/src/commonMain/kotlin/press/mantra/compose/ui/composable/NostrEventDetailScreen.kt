@@ -41,6 +41,7 @@ import mantra.composeapp.generated.resources.we_couldn_t_find_your_nostr_event_p
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,7 +108,7 @@ fun NostrEventDetailScreen(
                 else -> {
                     Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
                         Column(
-                            modifier = Modifier.padding(innerPadding).fillMaxSize()
+                            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                         ) {
                             Column(
                                 modifier = Modifier.fillMaxSize(),

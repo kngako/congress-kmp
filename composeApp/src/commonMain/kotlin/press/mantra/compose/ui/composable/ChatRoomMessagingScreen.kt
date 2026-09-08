@@ -69,6 +69,7 @@ import mantra.composeapp.generated.resources.private_message_to
 import mantra.composeapp.generated.resources.private_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +151,7 @@ fun ChatRoomMessagingScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier.weight(1f).fillMaxWidth()

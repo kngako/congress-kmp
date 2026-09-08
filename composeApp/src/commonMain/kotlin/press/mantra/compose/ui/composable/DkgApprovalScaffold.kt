@@ -45,6 +45,7 @@ import mantra.composeapp.generated.resources.back
 import mantra.composeapp.generated.resources.not_now
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 /**
  * The frame every ChillDKG approval screen sits in: the view model, the states
@@ -95,7 +96,7 @@ internal fun DkgApprovalScaffold(
     ) { padding ->
         when (val state = dkgRitualViewModel.dkgRitualUIState) {
             is DkgRitualUIState.Loading -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -103,7 +104,7 @@ internal fun DkgApprovalScaffold(
             }
 
             is DkgRitualUIState.Error -> Column(
-                modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -118,7 +119,7 @@ internal fun DkgApprovalScaffold(
                 // on the way in, which looks exactly like the screen not working.
                 if (state.session == null) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(padding).padding(MaterialTheme.spacing.space250),
+                        modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.space600))
@@ -138,6 +139,7 @@ internal fun DkgApprovalScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(padding)
+                            .readableContent()
                             .padding(MaterialTheme.spacing.space250),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space150)
@@ -168,6 +170,7 @@ internal fun DkgApprovalScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(padding)
+                        .readableContent()
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = MaterialTheme.spacing.space250, vertical = MaterialTheme.spacing.containerPadding),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)

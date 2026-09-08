@@ -65,6 +65,7 @@ import mantra.composeapp.generated.resources.something_went_wrong
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.theme.readableContent
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -96,7 +97,7 @@ fun HomeScreen(
         HomeScreenUIState.Error -> {
             Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     ErrorState()
@@ -173,7 +174,7 @@ fun HomeScreen(
                 }
             ) { innerPadding ->
                 Column(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize()
+                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                 ) {
                     PrimaryScrollableTabRow(
                         modifier = Modifier.padding(MaterialTheme.spacing.space125),
