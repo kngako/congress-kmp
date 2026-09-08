@@ -699,7 +699,8 @@ fun MantraNavHost(
                         )
                     },
                     nostrRepository = databaseNostrRepository,
-                    chatRepository = databaseChatRepository
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
                 )
             }
             composable<BlankRoute> {

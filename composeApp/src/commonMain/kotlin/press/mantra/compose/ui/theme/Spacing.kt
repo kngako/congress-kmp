@@ -98,6 +98,12 @@ data class Spacing(
 
     /** Between adjacent touch targets, which M3 asks to be at least 8dp apart. */
     val targetGap: Dp = space100,
+
+    /**
+     * Between two panes. M3's own `PaneScaffoldDirective` uses 24dp at every breakpoint
+     * that has a second pane, which is why this does not vary with the window either.
+     */
+    val paneGap: Dp = space300,
 )
 
 /**

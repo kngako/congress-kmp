@@ -1,13 +1,19 @@
 package press.mantra.compose.ui.composable
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -26,8 +32,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,7 +65,14 @@ import mantra.composeapp.generated.resources.new_chat
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import androidx.compose.ui.Alignment
+import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
+import press.mantra.compose.ui.composable.widgets.EmptyState
+import press.mantra.compose.ui.theme.breakpoint
+import press.mantra.compose.ui.theme.listPaneWidthFor
 import press.mantra.compose.ui.theme.readableContent
+import mantra.composeapp.generated.resources.pick_a_conversation_to_read_it_here
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -68,12 +83,38 @@ fun HomeScreen(
     onNavigateToDirectMessageDetail: (Route) -> Unit,
     onNavigateToChatRoomCreation: () -> Unit,
     nostrRepository: NostrRepository,
-    chatRepository: ChatRepository
+    chatRepository: ChatRepository,
+    // Only the detail pane uses this, and only from the expanded breakpoint up. It is a
+    // required parameter rather than a nullable one because a home screen that silently
+    // loses its detail pane on a desktop is a worse failure than a compile error.
+    frostSigningRepository: FrostSigningRepository,
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
     val openNpubDialog = remember { mutableStateOf(false) }
+
+    // Null below the expanded breakpoint, which is where the room list is the whole screen
+    // and tapping a room navigates, exactly as it did before panes existed.
+    val listPaneWidth = listPaneWidthFor(MaterialTheme.breakpoint)
+
+    // The room the detail pane is showing. Two saveable strings rather than the route
+    // object, because that is all the route carries and both survive a process death that
+    // a `@Serializable` route would need a Saver to survive.
+    var selectedChatRoomId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedRelayHint by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Tapping a room means two different things at two widths, and the list does not need
+    // to know which: it hands over a `ChatRoomMessagingRoute` either way, and this decides
+    // whether that is a destination to push or a selection to make.
+    val onOpenChatRoom: (Route) -> Unit = { route ->
+        if (listPaneWidth != null && route is ChatRoomMessagingRoute) {
+            selectedChatRoomId = route.chatRoomId
+            selectedRelayHint = route.relayHint
+        } else {
+            onNavigateToDirectMessageDetail(route)
+        }
+    }
 
     val homeScreenViewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
@@ -126,24 +167,16 @@ fun HomeScreen(
 
                 },
                 floatingActionButton = {
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            showBottomSheet = true
-                        },
-                        icon = {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "New chat"
-                            )
-                        },
-                        text = {
-                            Text(stringResource(Res.string.new_chat))
-                        }
-                    )
+                    // Only while there is one pane. With two, the scaffold's FAB slot is
+                    // the bottom-right of the *window*, which is on top of the
+                    // transcript's send button; M3 puts a list-detail layout's primary
+                    // action in the list pane, and so does the branch below.
+                    if (listPaneWidth == null) NewChatButton { showBottomSheet = true }
                 }
             ) { innerPadding ->
-                Column(
-                    modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                @Composable
+                fun ChatRoomListPane(modifier: Modifier) = Column(
+                    modifier = modifier
                 ) {
                     PrimaryScrollableTabRow(
                         modifier = Modifier.padding(MaterialTheme.spacing.space125),
@@ -189,13 +222,79 @@ fun HomeScreen(
 
                                     key(true) {
                                         chatRoomListViewModel.RenderFeed(
-                                            onNavigateToDirectMessageDetail = onNavigateToDirectMessageDetail
+                                            onNavigateToDirectMessageDetail = onOpenChatRoom
                                         )
                                     }
 
                                     key(true) {
                                         chatRoomListViewModel.initiate()
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (listPaneWidth == null) {
+                    // Compact and medium: the list is the screen, and a room is a route.
+                    // Byte for byte the layout this screen has always had.
+                    ChatRoomListPane(
+                        Modifier.padding(innerPadding).readableContent().fillMaxSize()
+                    )
+                } else {
+                    // Expanded and up: the list keeps a fixed width and the room fills the
+                    // rest. No `readableContent()` on the pair -- capping the two panes
+                    // together to one column's measure is the opposite of what a second
+                    // pane is for. Each pane holds its own content to a measure instead,
+                    // and `ChatRoomMessagingScreen` already does.
+                    Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .width(listPaneWidth)
+                                .fillMaxHeight()
+                                // The pane's width is the one thing about this layout that
+                                // is a number rather than a rule, and the only way to check
+                                // a number is to measure it in a composition.
+                                .testTag(ChatListPaneTag)
+                        ) {
+                            ChatRoomListPane(Modifier.fillMaxSize())
+
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(MaterialTheme.spacing.containerPadding)
+                            ) {
+                                NewChatButton { showBottomSheet = true }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.paneGap))
+
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            val chatRoomId = selectedChatRoomId
+                            if (chatRoomId == null) {
+                                EmptyState(
+                                    message = stringResource(Res.string.pick_a_conversation_to_read_it_here)
+                                )
+                            } else {
+                                // Keyed on the room, so switching rooms rebuilds the
+                                // screen's view models rather than feeding a new id to
+                                // ones already subscribed to another room's relay.
+                                key(chatRoomId) {
+                                ChatRoomMessagingScreen(
+                                    activeUserPublicKey = activeUserPublicKey,
+                                    chatRoomId = chatRoomId,
+                                    relayHint = selectedRelayHint,
+                                    nostrRepository = nostrRepository,
+                                    chatRepository = chatRepository,
+                                    frostSigningRepository = frostSigningRepository,
+                                    // "Replace what is on screen" is a route push on a
+                                    // phone and a change of selection here. It fires when
+                                    // a conversation that did not exist yet has just been
+                                    // created and has an id at last.
+                                    onNavigateToRouteAndPopUpInclusive = onOpenChatRoom,
+                                    onNavigateToRoute = onNavigateToRoute,
+                                )
                                 }
                             }
                         }
@@ -276,8 +375,35 @@ It has survived not only five centuries, but also the leap into electronic types
                 onNavigateToChatRoomCreation = {},
                 onNavigateToDirectMessageDetail = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
+                frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
             )
         }
     }
 }
+
+/**
+ * The one action the chat list offers, in whichever slot the layout has for it.
+ *
+ * Extracted only so that the two branches above cannot drift: on one pane it is the
+ * `Scaffold`'s floating action button, on two it sits in the bottom corner of the list
+ * pane, and a "new chat" that reads differently depending on window width would be a
+ * strange thing to discover.
+ */
+@Composable
+private fun NewChatButton(onClick: () -> Unit) {
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        icon = {
+            Icon(
+                Icons.Default.Add,
+                // Decorative: the button's own text says "New chat" beside it.
+                contentDescription = null,
+            )
+        },
+        text = { Text(stringResource(Res.string.new_chat)) },
+    )
+}
+
+/** Addresses the chat list pane from a layout test. See `ChatPaneLayoutJvmTest`. */
+const val ChatListPaneTag = "chat-list-pane"

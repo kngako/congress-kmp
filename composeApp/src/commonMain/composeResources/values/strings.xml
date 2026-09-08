@@ -160,6 +160,7 @@
     <string name="private_to_you">Private to you</string>
     <string name="messages">Messages</string>
     <string name="profile">Profile</string>
+    <string name="pick_a_conversation_to_read_it_here">Pick a conversation to read it here.</string>
     <string name="profile_is_ready">Profile is ready</string>
     <string name="profile_keys">Profile keys</string>
     <string name="profiles">Profiles</string>
