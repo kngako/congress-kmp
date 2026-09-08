@@ -32,10 +32,30 @@ BUDGET_STRING_LITERALS=-1      # phase 4 drives to <10
 BUDGET_TITLE_CASE=0            # phase 4: reached 2026-09-08
 BUDGET_UNSET_COLOR_ROLES=0     # phase 1: reached 2026-09-07
 
+# A floor rather than a ceiling: --check fails when the count drops *below* it. The
+# adaptive work is the one thing in this document that a later edit removes rather
+# than adds -- a screen that stops reading the breakpoint still compiles and still
+# renders -- so the budget that protects it has to point the other way.
+FLOOR_ADAPTIVE_APIS=12         # phase 6: reached 2026-09-08
+FLOOR_NAVIGATION_COMPONENTS=2  # phase 6: reached 2026-09-08
+
 fail_count=0
 
 hdr()  { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 note() { printf '   %s\n' "$1"; }
+
+# floor <label> <value> <minimum>
+# The mirror of report(), for counts a phase drives *up*. Used by the adaptive
+# section, where the regression to catch is a screen quietly losing its breakpoint.
+floor() {
+  local label=$1 value=$2 minimum=$3
+  if (( value < minimum )); then
+    printf '   %-42s %6s   \033[31mbelow floor %s\033[0m\n' "$label" "$value" "$minimum"
+    fail_count=$((fail_count + 1))
+  else
+    printf '   %-42s %6s   (floor %s)\n' "$label" "$value" "$minimum"
+  fi
+}
 
 # report <label> <value> <budget>
 report() {
@@ -218,10 +238,14 @@ done
 # ---------------------------------------------------------------------------
 hdr 'Adaptive and motion  (phases 6, 7)'
 
-adaptive=$(count 'WindowSizeClass|currentWindowAdaptiveInfo|NavigationSuiteScaffold|ListDetailPaneScaffold|SupportingPaneScaffold|BoxWithConstraints')
-note "adaptive APIs in use:                   $adaptive"
-nav=$(count 'NavigationBar\(|NavigationRail\(|WideNavigationRail\(|ShortNavigationBar\(')
-note "navigation components:                  $nav"
+adaptive=$(count 'WindowSizeClass|currentWindowAdaptiveInfo|currentWindowDpSize|NavigationSuiteScaffold|ListDetailPaneScaffold|SupportingPaneScaffold|BoxWithConstraints|MaterialTheme\.breakpoint|listPaneWidthFor')
+floor "adaptive APIs in use" "$adaptive" "$FLOOR_ADAPTIVE_APIS"
+# NavigationSuiteScaffold rather than the components themselves: it is what phase 6
+# uses, and it chooses between ShortNavigationBar, WideNavigationRail collapsed and
+# WideNavigationRail expanded per breakpoint. Counting only the concrete components
+# reported zero for an app that had just grown a navigation bar.
+nav=$(count 'NavigationBar\(|NavigationRail\(|WideNavigationRail\(|ShortNavigationBar\(|NavigationSuiteScaffold\(|NavigationSuiteItem\(')
+floor "navigation components" "$nav" "$FLOOR_NAVIGATION_COMPONENTS"
 motion=$(count 'AnimatedVisibility|AnimatedContent|Crossfade|MotionScheme|updateTransition')
 note "motion APIs in use:                     $motion"
 transitions=$(count 'enterTransition|exitTransition|popEnterTransition')

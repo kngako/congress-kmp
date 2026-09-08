@@ -12,6 +12,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import org.jetbrains.compose.resources.stringResource
+import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.theme.Breakpoint
 
@@ -117,12 +118,11 @@ fun MantraNavigationSuite(
                     icon = {
                         Icon(
                             imageVector = destination.icon,
-                            // Null, and decided rather than defaulted: the label is
-                            // beside the icon in the bar and in the expanded rail, and a
-                            // reader would hear the name twice. The collapsed rail is the
-                            // exception, and it draws the label as a tooltip that the
-                            // accessibility tree still carries.
-                            contentDescription = null,
+                            // The label is beside the icon in the bar and in the expanded
+                            // rail, and a reader would hear the name twice. The collapsed
+                            // rail is the exception, and it draws the label as a tooltip
+                            // the accessibility tree still carries.
+                            contentDescription = Decorative,
                         )
                     },
                     label = { Text(stringResource(destination.label)) },

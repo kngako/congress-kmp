@@ -709,48 +709,170 @@ mechanically. Everything above reduces its surface: tokenised spacing can be
 swapped per breakpoint, and the states from Phase 5 are what fills a second
 pane.
 
-**Work.**
+**Built.** Six commits, in the order the dependencies fall rather than the order
+listed above: the view model split first because the pane work needs it, the
+measure before the panes because it decides what a pane holds, navigation and
+panes last because both were product decisions.
 
-1. **Declare the adaptive dependency.** `material3-adaptive` is not in
-   `libs.versions.toml`. Confirm which artifact publishes multiplatform for the
-   pinned Compose Multiplatform 1.11.1 before planning around it — the desktop
-   target makes this a real question, not a formality, and the answer decides
-   whether steps 3–4 use the library scaffolds or a hand-rolled equivalent over
-   `BoxWithConstraints`.
+1. **The dependency question, settled.** `material3-adaptive` publishes
+   multiplatform under `org.jetbrains.compose.material3.adaptive`, with android,
+   desktop and ios variants — the ios ones carry `ios_arm64` and
+   `ios_simulator_arm64` attributes despite their `uikit*` artifact names, so the
+   targets declared on a mac resolve. Version **1.2.0**, not the newer
+   1.3.0-beta02, because it is what the pinned material3 itself resolves:
+   `material3-adaptive-navigation-suite:1.10.0-alpha05` names `adaptive:1.2.0` in
+   its pom, and 1.3.0 would pull window-core 1.5.0 in beside the 1.4.0 the pinned
+   material3 compiled against. Nothing is lost by staying — 1.2.0 already computes
+   the large and extra-large breakpoints through `supportLargeAndXLargeWidth`.
 
-2. **Introduce the breakpoints** — compact / medium / expanded / large /
-   extra-large, at 600 / 840 / 1200 / 1600dp. Wire the spacing scale from Phase
-   2 to widen with them.
+   So the library scaffolds were available. Step 3 uses one and step 4 does not;
+   see below.
 
-3. **Swap navigation.** Today there is no navigation component at all; screens
-   are reached by route. Compact gets a navigation bar, medium and expanded a
-   collapsed rail, large and extra-large an expanded rail. The spec's caution
-   applies: swap only functionally equivalent components.
+2. **`Breakpoint`**, the five-value enum with `ofWidth` as a pure function so the
+   thresholds are assertable without a Compose runtime. `TorchTheme` classifies
+   once and provides `LocalBreakpoint`, so no two screens can disagree about the
+   window they are both in.
 
-4. **Two panes where the content is list-and-detail.** The obvious candidates
-   are chat rooms → messages, proposals → proposal detail, and artifacts →
-   chapters. Chat is the one to do first and the one to be careful with: a
-   message list is high-density content, and the breakpoints page says not to
-   put two dense panes in a medium window.
+   It reads `currentWindowDpSize()` rather than `currentWindowAdaptiveInfo()`,
+   because the latter also computes a `Posture` from the platform's fold state —
+   on android, `WindowInfoTracker` and an activity. This call sits in `TorchTheme`,
+   which wraps all 51 `@Preview` bodies in the tree, and a preview context is not
+   an activity.
 
-5. **Hold text to 40–60 characters** by giving content a max width rather than
-   letting it stretch, and revisit the 91 `TextAlign.Center` uses — start
-   alignment is what gives the rulers something to align to.
+   **Spacing adapts, and exactly one value moves.** M3 publishes a margin per
+   breakpoint — 16dp compact, 24dp wider — and publishes nothing else that varies
+   with window width. The scale itself is absolute: `space200` is 16dp on a phone
+   and 16dp on a desktop, and what adapts is which token a job reaches for. So
+   `screenMargin` goes 16 → 24 at medium and holds; `containerPadding`, `itemGap`
+   and the rest do not move. A test asserts the non-movement, because "make it
+   breathe on a big screen" is the edit a reviewer waves through.
 
-6. **Give the desktop entry a real window size** and delete the comment that
-   apologises for the current one.
+   A test found a real defect while being written: `ofWidth` threw below 0dp, and
+   a desktop window reports a zero size for the frame before its first layout pass.
 
-7. Split the four composables out of `ChatMessageListViewModel.kt` — a 1,000+
-   line view model holding UI is where the only two `BoxWithConstraints` in the
-   app ended up, and it will not survive a pane split.
+3. **The chat transcript left the view model.** `ChatMessageListViewModel` was
+   1,113 lines, of which 380 were a `@Composable` member holding a `LazyColumn`, a
+   `DropdownMenu` and both of the app's only two `BoxWithConstraints`. It is now
+   356 lines of state, and `ChatTranscript.kt` is 779 of layout. The move is
+   verbatim — the three helper composables are byte-identical, and the transcript
+   differs by its signature and fourteen references that had been resolving
+   against the enclosing class.
 
-**Done when** every screen renders correctly at 400dp, 700dp, 1000dp, 1400dp and
-1800dp; navigation swaps at the right thresholds; and the desktop build opens at
-a size that reflects a considered layout.
+4. **A readable measure on all 49 screen roots.** `readableContentWidth()` is
+   `bodyLarge`'s size through the current density, times half an em per character,
+   times sixty: 480dp at the default text size. Derived rather than written down,
+   because a hardcoded `480.dp` holds thirty characters at 200% text scale —
+   silently, since the text still fits. Only the ceiling is enforced: a 400dp
+   window less its margins holds about 46 characters, and no cap can add any.
 
-**Risk:** high. This is the phase that changes what the app looks like. Take it
-screen family by screen family — chat first, then proposals, then translation —
-and keep each behind its own commit.
+   The *column* is centred; the text is not. Those are opposite things, and a
+   centred column still has one straight leading edge for every row, avatar and
+   icon to align to.
+
+   Of the 91 `TextAlign.Center` uses, **84 are right** and were left. Centring is
+   correct for a block that is the only thing on a screen — an empty state, a
+   loading message, an onboarding status screen, a placeholder, a hero. Seven
+   were wrong and shared one shape: text in a column *beside a full-width
+   element*, so there was a leading edge and it was being ignored — four helper
+   lines under `fillMaxWidth()` text fields, one above three full-width cards, and
+   a confirmation list where "Name" and the name below it each floated at their
+   own width.
+
+5. **A navigation component, and an IA decision to make one possible.** The app
+   had none: 43 screens reached by route, and one home screen whose app bar
+   carried the only two peer surfaces. With a single top-level destination a
+   navigation bar would hold one item and be strictly worse than the app bar it
+   replaced, so the question — promote search and profile to peer destinations, or
+   record the finding and wait — was put to the product owner on 2026-09-08 and
+   answered **promote**. `HomeScreen`'s app bar now carries a title and nothing
+   else: two routes to one destination is what M3's "swap only functionally
+   equivalent components" caution is about.
+
+   Compact takes a navigation bar, medium and expanded a collapsed rail, large and
+   extra-large an expanded rail. `NavigationSuiteScaffoldDefaults.navigationSuiteType`
+   is not used, and the difference is the last row — it stops at the collapsed rail,
+   because it classifies with the three-value window size class rather than the five
+   breakpoints. `NavigationSuiteType.None` on every other screen.
+
+   Two things the wiring needed. `ActiveProfileRoute` is addressed by metadata event
+   id rather than by public key, and only the home screen ever had one, so the nav
+   host observes it and the profile item is *disabled* until it arrives rather than
+   absent. And the item click pops to `HomeRoute`, not to the graph's start
+   destination: the android docs give the second shape and it would be wrong here,
+   because this graph starts at `LoadingRoute` and onboarding clears the stack on
+   its way to home.
+
+6. **The chat list beside the conversation, from expanded up.** Below that it is
+   one pane, and that is the spec rather than caution: the breakpoints page says no
+   two dense panes in a medium window, and `calculatePaneScaffoldDirective` says the
+   same in code — `maxHorizontalPartitions = 1` for compact and medium alike.
+
+   `ListDetailPaneScaffold` was available and was **not** used. It earns its API
+   surface — a navigator, a destination history, an `AnimatedPane` per pane, three
+   experimental opt-ins — by owning the single-pane case as well, showing the detail
+   *instead of* the list on a phone. This app cannot hand it that:
+   `ChatRoomMessagingRoute` is navigated to from eleven places, so the conversation
+   stays a pushed destination whatever the window is doing, and a scaffold
+   permanently in its two-pane state would be a `Row` with more words. Its *numbers*
+   are taken instead — 360dp of list at expanded, 412dp from large up, 24dp between
+   — so a hand-built pair measures the same as the scaffold would.
+
+   The floating action button moves into the list pane when there are two, because
+   the `Scaffold`'s slot is the bottom-right of the window, which with two panes is
+   on top of the transcript's send button.
+
+7. **The desktop window opens at 1100×800** — inside the expanded breakpoint, the
+   narrowest window M3 recommends two panes in — with a 400×600 minimum it never
+   had. The comment apologising for the old 480dp size is gone because it has
+   stopped being true.
+
+**Verified by measuring compositions, not by reading code.** This phase added
+`compose.desktop.uiTestJUnit4` to `jvmTest`, pinned to the same 1.11.1 as the rest
+of Compose Multiplatform, and `runDesktopComposeUiTest(width = …)` gives a window
+that genuinely is that many pixels across at density 1. Thirteen tests run at the
+five widths the phase names:
+
+- the measure caps at 480dp and centres at 1400, and is a no-op at 400. Swapping
+  the last two modifiers in `readableContent()` reports `Actual width is 1400.0.dp,
+  expected 480.0.dp` — the "centred but never capped" failure, which no phone-width
+  preview would show;
+- `currentBreakpoint()` answers Compact / Medium / Expanded / Large / ExtraLarge at
+  400 / 700 / 1000 / 1400 / 1800, with the screen margin following. A version
+  measuring the parent's constraints rather than the window would answer `Compact`
+  everywhere and pass every unit test in the suite;
+- the navigation component appears on the three top-level destinations, disappears
+  under a pushed route, and marks the right item selected;
+- the chat panes split at 1000 and 1400 and do not at 400 or 700, with the list
+  pane exactly 360dp and 412dp.
+
+**One test could not be written, and the reason is recorded at the site.** A click
+handler that navigates trips navigation-compose's own main-thread assertion under
+`runDesktopComposeUiTest` — reproducible in twenty lines containing no app code, a
+`NavHost`, two routes and a `TextButton`. What an item's `onClick` builds is
+asserted where it is a pure function instead.
+
+**The audit grew a floor.** Every other budget in `m3-audit.sh` is a ceiling that
+ratchets down; the adaptive work is the one thing in this document that a later
+edit removes rather than adds — a screen that stops reading the breakpoint still
+compiles and still renders — so `--check` now also fails when the adaptive API and
+navigation component counts drop *below* their floors.
+
+**Left for a person, and for a later commit.**
+
+Proposals → signing and artifacts → chapters are the two remaining list-detail
+families the plan names. Chat was done first and alone, deliberately: it is the
+one the spec is most careful about, and it is the one whose eleven entry points
+made the shape of the answer clear. The other two are the same shape with
+different content.
+
+"Every screen renders correctly at five widths" is verified structurally rather
+than screen by screen — the measure is applied at all 49 roots and asserted at
+those widths, and every screen compiles under it. What a person still has to look
+at is whether a 480dp column of a *particular* screen reads well, which is a
+judgement no assertion makes.
+
+**Risk:** high, and realised in one place — the navigation bar changes what every
+screen's app bar offers. It is its own commit and reverts alone.
 
 ---
 

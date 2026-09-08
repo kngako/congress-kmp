@@ -68,6 +68,7 @@ import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import androidx.compose.ui.Alignment
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
+import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.EmptyState
 import press.mantra.compose.ui.theme.breakpoint
 import press.mantra.compose.ui.theme.listPaneWidthFor
@@ -397,8 +398,8 @@ private fun NewChatButton(onClick: () -> Unit) {
         icon = {
             Icon(
                 Icons.Default.Add,
-                // Decorative: the button's own text says "New chat" beside it.
-                contentDescription = null,
+                // The button's own text says "New chat" immediately beside it.
+                contentDescription = Decorative,
             )
         },
         text = { Text(stringResource(Res.string.new_chat)) },
