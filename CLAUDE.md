@@ -73,6 +73,13 @@ Compose Resources is not aapt: it does *not* unescape `\'` and does *not* collap
 though it does process `\n`. `StringCatalogueJvmTest` asserts each escape the app depends
 on; add to it rather than assuming a family rule.
 
+A file whose strings are sample text rather than UI text — a gallery of colour pairings,
+say — marks itself once at the top:
+
+```kotlin
+// m3-string-exempt: these words are sample text for looking at colour pairings
+```
+
 **Budget: 0 title-case strings.** Literals in composables are reported without a budget —
 39 remain, all of them terms of a `+` concatenation.
 

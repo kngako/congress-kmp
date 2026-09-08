@@ -973,24 +973,112 @@ now would mean writing it twice.
 **Why last.** These lock in what the previous phases achieved. Written earlier,
 they would only fail.
 
-**Work.**
+**Built.** Three commits over the four items: the second needed nothing, and
+finding that out is most of what it was worth.
 
-1. **CI runs the Phase 0 audit** and fails on regression: no new `.dp` literals
-   outside the theme, no new hardcoded `Color`, no new string literal in a
-   composable, no new bare `.clickable`.
-2. **The contrast test covers every scheme and every call-site pairing**, and is
-   part of the normal test run. It is the only one of these that catches a bug a
-   human reviewer reliably misses.
-3. **Preview coverage per screen**: light, dark, high-contrast, 200% font scale,
-   compact and expanded. There are already 51 previews to build on.
-4. **A short conventions note in `CLAUDE.md`** — spacing comes from the scale,
-   colour from the role, text from resources, targets are 48dp — so the rules
-   are visible at the point of writing new code rather than at review.
+1. **`:composeApp:m3Audit`, wired into `check`.** The audit has existed since
+   phase 0 and has been run by hand at the end of every phase since, which is the
+   arrangement it was written to end: a budget nobody checks at the moment the
+   number moves is a number that drifts. It shells out to
+   `docs/scripts/m3-audit.sh --check` and fails the build on a budget exceeded or
+   a floor undercut, declares the script and the ui source tree as inputs so it is
+   up-to-date-able, and skips loudly rather than failing where there is no bash.
 
-**Done when** the audit and the contrast test both run in CI, and a change
-violating any of the four rules fails.
+   Verified to bite: one `Color(0xFFAABBCC)` added to `LoadingScreen.kt` reports
+   `hardcoded Color outside theme/ 1 over budget 0` and takes the build with it.
+
+   **A Gitea Actions workflow** beside it, since the remote is a Gitea 1.25
+   instance. Two jobs on purpose: `budgets` is grep over the source tree with no
+   gradle, no SDK, no submodules and no network — which is why the audit is a
+   shell script rather than a gradle plugin — and `tests` needs the whole
+   composite chain and a cold cross-compile of secp256k1, so it is split out for a
+   runner that has the capacity. **The workflow is unverified**: this repository
+   has had no CI of any kind, so there is no runner to try it against. The gradle
+   task is the half that is proven, and it is the half that runs on every
+   developer machine regardless.
+
+2. **The contrast test was already there.** Phases 0 and 3 built it out to ten
+   assertions over all six schemes — every content role on its container, every
+   tonal surface, the twelve fixed roles, the extended brand families, the
+   composited translucent containers, `outline` at 3:1 — and it runs in
+   `:composeApp:jvmTest`, which is now a CI job. Nothing was added, and the reason
+   is recorded in the test itself: a call site that pairs two roles the scheme
+   already covers produces a pairing the first assertion already walks, so
+   restating it per site would double the maintenance and catch nothing.
+
+3. **`@ConformancePreviews` on all 53 previews.** Every one of them rendered a
+   light theme at 100% text at whatever width the pane happened to be — the only
+   condition under which this app has never had a defect. They now render under
+   five: light, dark, 200% text, compact 400dp, expanded 1000dp. Each of the four
+   new ones is where a defect has actually been. It also gives phase 6 the check
+   it could not make: two of its five acceptance widths are now one click away on
+   every screen.
+
+   High contrast is deliberately not in the annotation. Contrast is a property of
+   the scheme rather than of a screen, `ColorSchemeContrastTest` measures every
+   pair in all six, and there is no `@Preview` parameter for it — it needs
+   `TorchTheme(contrast = …)` in the body. `ThemeGallery` covers the six once,
+   over components rather than screens, with `dynamicColor = false` because an
+   android 12+ preview would otherwise paint all six columns from the wallpaper.
+   It is the only place the medium and high contrast schemes can be seen at all.
+
+4. **`CLAUDE.md`**, which this repository did not have. Seven rules, each with the
+   shape to copy, the shape not to, and the budget the audit holds it to. Where a
+   rule has a trap that has already caught somebody, the trap is named rather than
+   the rule restated — `.copy(alpha = …)` on a content role is how nine contrast
+   failures got in, Compose Resources unescapes `\n` but not `\'`,
+   `AnimatedContent` takes a `when`'s branches out of `ColumnScope`,
+   `MotionSchemeKeyTokens` is internal.
 
 **Risk:** none to the app; some friction for contributors, which is the point.
+
+---
+
+## Where this leaves the app
+
+All nine phases are built. The counts the audit was written to move, from the
+state recorded in "Where this app stands" to the state `docs/scripts/m3-audit.sh`
+reports today:
+
+| area | was | is | budget |
+|---|---|---|---|
+| roles falling to the baseline palette | 12 | 0 | 0 |
+| hardcoded `Color` outside `theme/` | 11 | 0 | 0 |
+| dp literals in spacing positions | 527 | 0 | 0 |
+| `.clickable` with no minimum target | 33 | 0 | 0 |
+| untriaged `contentDescription = null` | 18 | 0 | 0 |
+| title case in UI strings | ~45 | 0 | 0 |
+| string literals in composables | 334 | 39 | reported |
+| `stringResource` call sites | 2 | 422 | — |
+| snackbar hosts | 0 | 137 | — |
+| adaptive API uses | 2 | 12 | floor 12 |
+| navigation components | 0 | 2 | floor 2 |
+| motion API uses | 1 | 13 | — |
+| navigation transitions | 0 | 3 | — |
+
+The 39 remaining literals are all terms of a `+` concatenation, several of them
+pluralisations that want a real plural resource rather than a format argument;
+`m3-extract-formatted.py --remaining` lists them.
+
+What a person still has to look at, gathered from the phases that said so:
+
+- **which of a competing pair of filled buttons is primary**, on eight screens.
+  That is a product decision about what each screen is for, and getting it wrong
+  quietly weights a choice the user is supposed to make freely (phase 5).
+- **whether a 480dp column of a particular screen reads well.** The measure is
+  applied at every root and asserted at five widths, but "renders correctly" is a
+  judgement no assertion makes (phase 6).
+- **proposals → signing and artifacts → chapters**, the two list-detail families
+  the pane work did not reach. Same shape as chat, different content (phase 6).
+- **the container transform** between a list item and its detail screen, which
+  wants `SharedTransitionLayout` and only applies below the expanded breakpoint,
+  where the detail is not already beside the list (phase 7).
+- **full keyboard traversal on desktop** — tab order across the modal sheets and
+  the dialog, and focus returning to what opened them. Compose restores focus by
+  default, so the gap is evidence rather than known breakage (phase 3).
+- **the avatar picker's selected state**, `secondaryContainer` at 1.65:1 against
+  the surface, which M3 accepts only where a second cue carries the selection.
+  This grid has neither an outline nor a checkmark (phase 3).
 
 ## Order and dependencies
 

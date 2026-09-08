@@ -209,8 +209,32 @@ note "TextAlign.Center:                       $centred"
 # ---------------------------------------------------------------------------
 hdr 'Content  (phase 4)'
 
-literals=$(( $(count 'text = "') + $(count 'Text\("') ))
+# A file whose strings are sample text rather than UI text -- ThemeGallery, whose whole
+# job is to render colour pairings and whose words are chosen to be words -- marks itself
+# once at the top with `// m3-string-exempt: <reason>`. Per file rather than per line,
+# because the exemption is a property of what the file is for, and eight markers down one
+# gallery would say less than one at the top of it.
+#
+# The same shape as `m3-color-exempt` and `m3-spacing-exempt`: the reason travels with the
+# code rather than living in a list of file names here.
+sample_text_files() {
+  grep -rlE 'm3-string-exempt' "$UI" --include=*.kt 2>/dev/null
+}
+
+string_literals() {
+  local exempt
+  exempt=$(sample_text_files | sed 's|^|^|' )
+  if [[ -z $exempt ]]; then
+    grep -rE 'text = "|Text\("' "$UI" --include=*.kt 2>/dev/null | grep -vE "$NOT_A_COMMENT"
+  else
+    grep -rE 'text = "|Text\("' "$UI" --include=*.kt 2>/dev/null | grep -vE "$NOT_A_COMMENT" \
+      | grep -vE "$(sample_text_files | paste -sd'|' -)"
+  fi
+}
+
+literals=$(string_literals | wc -l | tr -d ' ')
 report 'string literals in composables' "$literals" "$BUDGET_STRING_LITERALS"
+note "sample-text files exempt: $(sample_text_files | wc -l | tr -d ' ')"
 res=$(count 'stringResource|Res\.string')
 note "stringResource / Res.string:            $res"
 # Delegated, because the grep version was wrong twice: it required every word after the

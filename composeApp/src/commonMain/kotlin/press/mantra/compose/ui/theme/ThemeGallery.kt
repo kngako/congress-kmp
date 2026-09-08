@@ -1,3 +1,7 @@
+// m3-string-exempt: the words in this file are sample text for looking at colour
+// pairings, not UI text. Nobody navigates here and nothing here is translated;
+// putting these eight strings in the catalogue would add eight entries that no
+// screen shows and that a translator would have to be told to ignore.
 package press.mantra.compose.ui.theme
 
 import androidx.compose.foundation.layout.Arrangement
