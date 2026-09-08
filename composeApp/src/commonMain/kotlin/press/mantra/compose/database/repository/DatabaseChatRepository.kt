@@ -6,6 +6,7 @@ import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.managers.GroupKeyStateManager
+import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -43,6 +44,28 @@ class DatabaseChatRepository(
     private val scope: CoroutineScope
 ): press.mantra.compose.repository.ChatRepository {
     val logger = Logger.withTag(TAG)
+
+    override suspend fun createMarmotGroup(
+        groupId: String,
+        name: String,
+        purpose: String,
+        adminPublicKeys: Set<HexKey>,
+        userPublicKey: HexKey,
+        keyPair: KeyPair,
+        path: List<Long>,
+        parentChatRoomId: HexKey?,
+    ): MarmotGroupCreation.Outcome = MarmotGroupCreation.create(
+        database = database,
+        chatRepository = this,
+        groupId = groupId,
+        name = name,
+        purpose = purpose,
+        adminPublicKeys = adminPublicKeys,
+        userPublicKey = userPublicKey,
+        keyPair = keyPair,
+        path = path,
+        parentChatRoomId = parentChatRoomId,
+    )
     override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
         return database.chatRoomDao().observeChatRoomListByUserPublicKey(publicKey)
     }

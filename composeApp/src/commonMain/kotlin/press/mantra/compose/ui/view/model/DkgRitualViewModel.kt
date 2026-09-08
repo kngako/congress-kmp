@@ -14,22 +14,13 @@ import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.ChillDkgRitualManager
-import press.mantra.compose.extensions.toHex
+import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SharedKeyDerivation
-import press.mantra.compose.nostr.Relays
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
-import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
-import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.Dispatchers.Main
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
@@ -382,162 +373,59 @@ class DkgRitualViewModel(
         dkgRitualUIState = loaded.copy(adminGroupBlockedOn = emptyList())
 
         viewModelScope.launch(Dispatchers.IO) {
-            // Derived ids make this reachable twice -- a second tap, or another
-            // member having got there first. Joining what exists beats minting a
-            // rival group on the same id.
-            val existing = chatRepository.getChatRoomByIdentifier(groupId)
-            if (existing != null) {
-                isActionPending.value = false
-                withContext(Main) {
+            val outcome = chatRepository.createMarmotGroup(
+                groupId = groupId,
+                name = name,
+                purpose = "Admins of ${loaded.localChatRoom.chatRoom.subject ?: "the group"}.",
+                adminPublicKeys = members,
+                userPublicKey = activeUserPublicKey,
+                keyPair = keyPair
+            )
+
+            isActionPending.value = false
+
+            when (outcome) {
+                is MarmotGroupCreation.Outcome.BlockedOn -> {
+                    // Named rather than counted. A member cannot publish a key
+                    // package on somebody else's behalf, so the only useful thing
+                    // to say is whose door to knock on.
+                    dkgRitualUIState = loaded.copy(
+                        adminGroupBlockedOn = outcome.missing.map { publicKey ->
+                            loaded.ritualMembers
+                                .firstOrNull { it.participant.participantPublicKey == publicKey }
+                                ?.profile
+                                ?.humanReadableNameOrPubkey()
+                                ?: publicKey.take(12)
+                        }
+                    )
+                }
+
+                is MarmotGroupCreation.Outcome.Failed -> {
+                    dkgRitualUIState = DkgRitualUIState.Error(outcome.reason)
+                }
+
+                is MarmotGroupCreation.Outcome.Created -> withContext(Main) {
                     onNavigateToRoute(
                         ChatRoomMessagingRoute(
                             activeUserPublicKey = activeUserPublicKey,
-                            chatRoomId = existing.chatRoom.id,
+                            chatRoomId = outcome.room.chatRoom.id,
                             relayHint = null
                         )
                     )
                 }
-                return@launch
-            }
 
-            // Every key package, before anything exists. Two reasons this is a
-            // precondition rather than a best effort:
-            //
-            // MarmotGroupData.adminPubkeys is baked into the epoch-0 GroupContext
-            // and names every member, so a room created without one of them lists an
-            // admin who is not in the MLS tree -- a group that disagrees with itself
-            // from its first epoch.
-            //
-            // And the id is derived, so there is exactly one room per group at this
-            // path. A half-created one occupies that address permanently; there is no
-            // second id to retry with. Better to create nothing and say who is
-            // missing.
-            val peers = members.filterNot { it == activeUserPublicKey }
-            val keyPackages = coroutineScope {
-                peers.map { publicKey ->
-                    async {
-                        publicKey to withTimeoutOrNull(KEY_PACKAGE_LOOKUP_TIMEOUT) {
-                            chatRepository.observeMarmotKeyPackageForPublicKey(publicKey)
-                                .filterNotNull()
-                                .first()
-                        }
-                    }
-                }.awaitAll()
-            }
-
-            val missing = keyPackages.filter { it.second == null }.map { it.first }
-            if (missing.isNotEmpty()) {
-                logger.w("Not creating admin group $groupId: no key package for $missing")
-
-                isActionPending.value = false
-                dkgRitualUIState = loaded.copy(
-                    adminGroupBlockedOn = missing.map { publicKey ->
-                        loaded.ritualMembers
-                            .firstOrNull { it.participant.participantPublicKey == publicKey }
-                            ?.profile
-                            ?.humanReadableNameOrPubkey()
-                            ?: publicKey.take(12)
-                    }
-                )
-                return@launch
-            }
-
-            val addable = keyPackages.mapNotNull { (publicKey, keyPackage) ->
-                keyPackage?.let { publicKey to it }
-            }
-
-            val relays = Relays.DefaultDMRelayList.map { it.url }
-
-            // Built directly rather than through MarmotGroupData.bootstrap, which
-            // hardcodes a single admin. Baked into the epoch-0 GroupContext so later
-            // invitees get a populated group from their welcome instead of chasing a
-            // bootstrap commit that predates their membership.
-            val metadata = MarmotGroupData(
-                nostrGroupId = groupId,
-                name = name,
-                // Carries the derivation path. MIP-01 has no field for it, and the
-                // path is what rebuilds the TweakCache a signing session needs --
-                // recomputable from the constant only for as long as the constant
-                // never changes.
-                description = SharedKeyDerivation.describe(
-                    purpose = "Admins of ${loaded.localChatRoom.chatRoom.subject ?: "the group"}."
-                ),
-                adminPubkeys = members.toList(),
-                relays = relays
-            )
-
-            val signingKeyPair = Ed25519.generateKeyPair()
-            val group = MlsGroup.create(keyPair.pubKey, signingKeyPair.privateKey, listOf(metadata.toExtension()))
-
-            // Keyed on the Marmot nostrGroupId, not MlsGroup's own groupId: they are
-            // unrelated 32-byte values, and every inbound path resolves rooms by the
-            // former.
-            val localChatRoom = chatRepository.getOrCreateChatRoom(
-                chatRoomId = groupId,
-                activeUserPublicKey = activeUserPublicKey,
-                relayHint = null,
-                defaultSubject = name,
-                description = metadata.description,
-                mlsGroupState = group.saveState().encodeTls().toHex()
-            )
-
-            if (localChatRoom == null) {
-                isActionPending.value = false
-                dkgRitualUIState = DkgRitualUIState.Error("Couldn't create the admin group. Please try again.")
-                return@launch
-            }
-
-            // The room comes into existence already knowing what it signs with.
-            // The group agreed that before any of this ran, in the NIP-17 room
-            // the ceremony was held in, and this device has been holding the
-            // signed statement since -- the line above is simply the first
-            // moment there is a room row to file it against.
-            //
-            // Before the members are added rather than after, because nothing
-            // here goes on the wire: filing it is local, and doing it while the
-            // room is certain to exist beats doing it after a step that can
-            // partly fail.
-            //
-            // Every other member does the same on their Welcome, in NostrDao,
-            // off the same event. A member invited later holds no such event,
-            // and no share either, so they have nothing to pick wrongly between
-            // -- `FrostSigningManager.completedKey` rederives its way to the
-            // same key for them.
-            dkgRepository.adoptGroupKeyState(localChatRoom.chatRoom.id)
-
-            val notAdded = runCatching {
-                chatRepository.addMembers(localChatRoom = localChatRoom, peers = addable)
-            }.onFailure {
-                logger.e("Failed to add members to admin group $groupId", it)
-            }.getOrElse { addable.map { (publicKey, _) -> publicKey } }
-
-            isActionPending.value = false
-
-            if (notAdded.isNotEmpty()) {
-                logger.w("Admin group $groupId created without ${notAdded.size} member(s): $notAdded")
-            }
-
-            withContext(Main) {
-                onNavigateToRoute(
-                    ChatRoomMessagingRoute(
-                        activeUserPublicKey = activeUserPublicKey,
-                        chatRoomId = localChatRoom.chatRoom.id,
-                        relayHint = null
+                is MarmotGroupCreation.Outcome.Existing -> withContext(Main) {
+                    onNavigateToRoute(
+                        ChatRoomMessagingRoute(
+                            activeUserPublicKey = activeUserPublicKey,
+                            chatRoomId = outcome.room.chatRoom.id,
+                            relayHint = null
+                        )
                     )
-                )
+                }
             }
         }
     }
-
-    /**
-     * Adds each member to the freshly created admin room, returning those who could
-     * not be added.
-     *
-     * A Marmot invite needs the invitee's published key package, so a member who has
-     * never published one cannot be added here and has to be invited later. That is
-     * reported rather than treated as failure: a room with most of the group in it
-     * is more useful than no room.
-     */
 
     override fun onCleared() {
         messageObserver?.cancel()

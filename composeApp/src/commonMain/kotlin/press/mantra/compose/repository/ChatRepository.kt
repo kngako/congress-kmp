@@ -4,7 +4,10 @@ import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
+import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import press.mantra.compose.database.model.MarmotKeyPackage
+import press.mantra.compose.managers.SharedKeyDerivation
+import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -112,6 +115,30 @@ interface ChatRepository {
         localChatRoom: LocalChatRoom,
         peers: List<Pair<HexKey, MarmotKeyPackage>>,
     ): List<HexKey>
+
+    /**
+     * Creates a Marmot room at an id the group's key derives, with
+     * [adminPublicKeys] as its admins, and welcomes them into it.
+     *
+     * Two flows want exactly this: the `#admins` room a group opens after its
+     * ceremony, and a subgroup. See `MarmotGroupCreation`, which holds the rules
+     * -- every key package before anything exists, the admins baked into epoch 0,
+     * and the key state filed before the members are added.
+     *
+     * Refuses rather than half-creates: the id is derived, so a partly created
+     * room occupies that address permanently and there is no second id to retry
+     * with.
+     */
+    suspend fun createMarmotGroup(
+        groupId: String,
+        name: String,
+        purpose: String,
+        adminPublicKeys: Set<HexKey>,
+        userPublicKey: HexKey,
+        keyPair: KeyPair,
+        path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+        parentChatRoomId: HexKey? = null,
+    ): MarmotGroupCreation.Outcome
 
     /**
      * Sends [text] to the room, or -- when [directMessageRecipientPublicKey] is given --
@@ -262,6 +289,18 @@ interface ChatRepository {
                 localChatRoom: LocalChatRoom,
                 peers: List<Pair<HexKey, MarmotKeyPackage>>
             ): List<HexKey> = peers.map { it.first }
+
+            override suspend fun createMarmotGroup(
+                groupId: String,
+                name: String,
+                purpose: String,
+                adminPublicKeys: Set<HexKey>,
+                userPublicKey: HexKey,
+                keyPair: KeyPair,
+                path: List<Long>,
+                parentChatRoomId: HexKey?,
+            ): MarmotGroupCreation.Outcome =
+                MarmotGroupCreation.Outcome.Failed("No database")
 
 
             override suspend fun sendChatMessage(
