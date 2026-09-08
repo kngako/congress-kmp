@@ -505,12 +505,17 @@ fun TorchTheme(
     val colorScheme = dynamicColorScheme(darkTheme, dynamicColor)
         ?: appColorScheme(darkTheme, contrast)
 
+    // Classified once, here, so that every screen below reads the same answer. Doing it
+    // per screen would let two of them disagree about the window they are both in, which
+    // is the failure mode of `BoxWithConstraints`-per-screen adaptivity.
+    val breakpoint = currentBreakpoint()
+
     CompositionLocalProvider(
         LocalExtendedColors provides extendedColorsFor(darkTheme),
-        // Nothing scales it yet. It rides the theme now so that the breakpoint phase can
-        // provide a wider instance without touching a call site -- which is the whole
-        // reason for tokenising spacing rather than leaving it in literals.
-        LocalSpacing provides Spacing(),
+        LocalBreakpoint provides breakpoint,
+        // The payoff for tokenising spacing in phase 2: the screen margin widens from
+        // 16dp to 24dp at medium and above without a single call site changing.
+        LocalSpacing provides spacingFor(breakpoint),
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

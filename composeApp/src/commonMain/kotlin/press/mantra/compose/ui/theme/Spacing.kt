@@ -19,11 +19,10 @@ import androidx.compose.ui.unit.dp
  * m3.material.io/m3/pages/spacing/tokens, read September 2026; see
  * docs/material-design-conformance.md for the full table.
  *
- * **Why a `data class` and not constants.** Nothing scales today, but two things are
- * coming that need to: spacing adapts across breakpoints, and M3 has a density setting
- * for data-heavy views. Both are a matter of providing a different [Spacing] instance
- * rather than of touching a call site, and that is only true if the values arrive through
- * the local. A file of top-level `val`s would read the same and adapt to nothing.
+ * **Why a `data class` and not constants.** So that a different instance can be provided
+ * without touching a call site, which is what [spacingFor] now does per [Breakpoint] and
+ * what M3's density setting for data-heavy views would do next. A file of top-level
+ * `val`s would read the same at the call site and adapt to nothing.
  */
 @Immutable
 data class Spacing(
@@ -45,7 +44,7 @@ data class Spacing(
     val space700: Dp = 56.dp,
     val space800: Dp = 64.dp,
     val space900: Dp = 72.dp,
-) {
+
     // -----------------------------------------------------------------------
     // Semantic names
     // -----------------------------------------------------------------------
@@ -65,30 +64,64 @@ data class Spacing(
     // aren't uniform, and require more tokens" -- so there is exactly one margin here,
     // for the screen edge, and everything else is padding or a gap.
 
+    // They are constructor parameters rather than `get()`s over the scale so that a
+    // breakpoint can reassign one without moving the stop underneath it. That direction
+    // matters: M3's spacing tokens are absolute values that do not change with window
+    // width -- `space200` is 16dp on a phone and 16dp on a desktop -- and what adapts is
+    // which token a given job reaches for. A wider window takes a wider screen margin, it
+    // does not take a wider 16.
+    //
+    // Kotlin resolves a default expression against the parameters before it, so each of
+    // these still reads its stop by name and follows it when the scale itself is
+    // overridden. `Spacing(space200 = 24.dp)` still moves `screenMargin`.
+
     /** Screen edge to content. The one margin; everything inside a screen is padding or a gap. */
-    val screenMargin: Dp get() = space200
+    val screenMargin: Dp = space200,
 
     /** Inside a card, dialog, sheet or list row: container edge to its content. */
-    val containerPadding: Dp get() = space200
+    val containerPadding: Dp = space200,
 
     /** Inside a compact container -- a chip, a badge, a dense row. */
-    val compactPadding: Dp get() = space100
+    val compactPadding: Dp = space100,
 
     /** Between two elements that belong to the same thought: a label and its value. */
-    val relatedGap: Dp get() = space50
+    val relatedGap: Dp = space50,
 
     /** The default gap between items in a list or column. */
-    val itemGap: Dp get() = space100
+    val itemGap: Dp = space100,
 
     /** Between one group of content and the next within a screen. */
-    val sectionGap: Dp get() = space300
+    val sectionGap: Dp = space300,
 
     /** Around a lone element that needs to stand apart -- an empty state, a hero action. */
-    val emphasisGap: Dp get() = space500
+    val emphasisGap: Dp = space500,
 
     /** Between adjacent touch targets, which M3 asks to be at least 8dp apart. */
-    val targetGap: Dp get() = space100
-}
+    val targetGap: Dp = space100,
+)
+
+/**
+ * The spacing a window at [breakpoint] should use.
+ *
+ * Exactly one value moves, and that is not an oversight. M3 publishes a margin per
+ * breakpoint -- 16dp compact, 24dp everywhere wider -- and publishes nothing else that
+ * varies with window width: padding inside a card and the gap between two list rows are
+ * component decisions, and a card does not become a different component because the
+ * window grew. Widening them all would be the "everything breathes on a big screen"
+ * instinct, which reads as a zoomed phone rather than as a layout.
+ *
+ * What actually fills a wide window is a second pane and a bounded measure, not fatter
+ * gaps. Those are layout, and they live in `AdaptiveContent` rather than here.
+ */
+fun spacingFor(breakpoint: Breakpoint): Spacing =
+    if (breakpoint == Breakpoint.Compact) CompactSpacing else MediumAndWiderSpacing
+
+// Held as singletons rather than built per call. `LocalSpacing` is a
+// `staticCompositionLocalOf`, so a provider that hands it a fresh but equal instance on
+// every recomposition would restart every composition reading it; `Spacing` is a data
+// class, but static locals compare by identity when deciding whether to invalidate.
+private val CompactSpacing = Spacing()
+private val MediumAndWiderSpacing = Spacing(screenMargin = 24.dp)
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
 

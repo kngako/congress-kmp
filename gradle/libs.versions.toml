@@ -23,6 +23,12 @@ ksp = "2.3.6"
 ktor = "3.5.2"
 lightningKmpCore = "1.11.5"
 material3 = "1.10.0-alpha05"
+# The version material3 1.10.0-alpha05 itself resolves: its
+# material3-adaptive-navigation-suite pom asks for adaptive 1.2.0. Picking the newer
+# 1.3.0-beta02 would drag window-core 1.5.0 in beside the 1.4.0 the pinned material3
+# compiled against, for a large/extra-large breakpoint pair that 1.2.0 already computes
+# through `supportLargeAndXLargeWidth`.
+material3Adaptive = "1.2.0"
 materialIconsCore = "1.7.3"
 materialIconsExtended = "1.7.3"
 navigationCompose = "2.9.2"
@@ -54,6 +60,7 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
+compose-material3-adaptive = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version.ref = "material3Adaptive" }
 compose-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "materialIconsCore" }
 compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
