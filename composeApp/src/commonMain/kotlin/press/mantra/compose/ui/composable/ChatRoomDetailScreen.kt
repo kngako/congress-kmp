@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.WaterfallChart
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -40,12 +42,23 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -58,7 +71,11 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
+import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
+import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
@@ -88,6 +105,17 @@ import mantra.composeapp.generated.resources.projects
 import mantra.composeapp.generated.resources.proposals
 import mantra.composeapp.generated.resources.reindex_events
 import mantra.composeapp.generated.resources.shared_key
+import mantra.composeapp.generated.resources.signing_key
+import mantra.composeapp.generated.resources.the_key_this_room_signs_as
+import mantra.composeapp.generated.resources.what_the_group_signed
+import mantra.composeapp.generated.resources.this_room_signs_as
+import mantra.composeapp.generated.resources.derivation_path
+import mantra.composeapp.generated.resources.key_ceremony
+import mantra.composeapp.generated.resources.agreed_on
+import mantra.composeapp.generated.resources.the_signed_event
+import mantra.composeapp.generated.resources.copy_the_signed_event
+import mantra.composeapp.generated.resources.copied_the_signed_event
+import mantra.composeapp.generated.resources.this_device_does_not_hold_the_event
 import mantra.composeapp.generated.resources.event_s_still_unreadable
 import mantra.composeapp.generated.resources.recovered_of_event_s
 import mantra.composeapp.generated.resources.recovered_of_still_unreadable
@@ -96,6 +124,7 @@ import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -151,11 +180,63 @@ fun ChatRoomDetailScreen(
                     Column(
                         modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                     ) {
+                        var isShowingGroupKeyState by rememberSaveable { mutableStateOf(false) }
+
                         LazyColumn(
                             modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125)
                         ) {
+                            // First on the screen, because it is the fact the rest
+                            // of the room's signed work stands on: which key the
+                            // room signs as decides whether anything it has signed
+                            // will be believed anywhere.
+                            //
+                            // Absent rather than empty on a room the group has said
+                            // nothing about. There is no half state to report -- a
+                            // room either has one a quorum signed or has none -- and
+                            // the shared key entry further down is where somebody
+                            // goes to make one.
+                            chatRoomDetailUIState.groupKeyState?.let { groupKeyState ->
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = { isShowingGroupKeyState = true }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(Icons.Default.Key, contentDescription = Decorative)
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(text = stringResource(Res.string.signing_key))
+                                            },
+                                            supportingContent = {
+                                                // The identity, not the group's root
+                                                // key: this is the pubkey a reader
+                                                // sees on everything the room signs,
+                                                // and the room's own id. Truncated
+                                                // here and whole in the sheet, where
+                                                // it can be compared.
+                                                Text(
+                                                    text = groupKeyState.announcedBy
+                                                        .take(16)
+                                                        .inComparableGroups(),
+                                                    fontFamily = FontFamily.Monospace,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.MiddleEllipsis
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                             item {
                                 chatRoomDetailUIState.localChatRoom.chatRoom.description?.let {
                                     Text(
@@ -609,6 +690,16 @@ fun ChatRoomDetailScreen(
                                 }
                             }
                         }
+
+                        if (isShowingGroupKeyState) {
+                            chatRoomDetailUIState.groupKeyState?.let { groupKeyState ->
+                                GroupKeyStateSheet(
+                                    groupKeyState = groupKeyState,
+                                    signedEvent = chatRoomDetailUIState.signedGroupKeyStateEvent,
+                                    onDismiss = { isShowingGroupKeyState = false }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -653,6 +744,199 @@ fun ChatRoomDetailScreen(
             chatRoomDetailViewModel.initiateChatRoomDetail()
         }
     }
+}
+
+/**
+ * What the group signed to say what this room signs with, and a way to take it
+ * somewhere else.
+ *
+ * The fields first, because they are what a member came to read: the identity
+ * the room signs as, the key behind it, the path between them, and which
+ * ceremony made it. Then the event itself, which is the only part that can be
+ * *checked* -- a signature by that same identity over those same fields -- and
+ * so the only part worth copying.
+ *
+ * Whole values throughout, monospaced and wrapping. These exist to be compared
+ * character by character, against another member's screen or against what a
+ * relay reports, and a truncated key cannot be compared.
+ *
+ * [signedEvent] can be missing while [groupKeyState] is not -- a device that
+ * kept the reading and lost the statement -- and the sheet says so rather than
+ * showing the fields as though they were signed. It never happens the other way
+ * round: a state is only ever written from an event that passed both checks.
+ */
+@Composable
+private fun GroupKeyStateSheet(
+    groupKeyState: GroupKeyState,
+    signedEvent: GroupSignedEvent?,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismiss = onDismiss) {
+        GroupKeyStateSheetContent(groupKeyState = groupKeyState, signedEvent = signedEvent)
+    }
+}
+
+/**
+ * The sheet's body, apart from the sheet.
+ *
+ * Split out so it can be rendered and measured on its own -- a bottom sheet is a
+ * popup with its own window, which a layout test cannot reach into. See
+ * `GroupKeyStateSheetLayoutJvmTest`, which is checking the one thing that is not
+ * obvious from reading this: that a 500-character line of JSON with almost no
+ * spaces in it wraps inside the sheet rather than running off the side of it.
+ */
+@Composable
+internal fun GroupKeyStateSheetContent(
+    groupKeyState: GroupKeyState,
+    signedEvent: GroupSignedEvent?
+) {
+    val clipboardManager = LocalClipboardManager.current
+
+    // Read out here rather than in the click handler: both of these are
+    // composable, and an onClick lambda is not.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val copied = stringResource(Res.string.copied_the_signed_event)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(Res.string.what_the_group_signed),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.relatedGap))
+
+        Text(
+            text = stringResource(Res.string.the_key_this_room_signs_as),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.sectionGap))
+
+        // The identity every reader will see on this room's signed events, which
+        // is also the room's own id -- see SharedKeyDerivation.marmotGroupId,
+        // where those are one value.
+        GroupKeyStateField(
+            label = stringResource(Res.string.this_room_signs_as),
+            value = groupKeyState.announcedBy.inComparableGroups()
+        )
+
+        GroupKeyStateField(
+            label = stringResource(Res.string.shared_key),
+            value = groupKeyState.thresholdPublicKey.inComparableGroups()
+        )
+
+        GroupKeyStateField(
+            label = stringResource(Res.string.derivation_path),
+            value = groupKeyState.derivationPath
+        )
+
+        GroupKeyStateField(
+            label = stringResource(Res.string.key_ceremony),
+            value = groupKeyState.dkgSessionId.inComparableGroups()
+        )
+
+        GroupKeyStateField(
+            label = stringResource(Res.string.agreed_on),
+            value = groupKeyState.announcedAt.toFormattedTimeAndDateString(),
+            isMonospaced = false
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.sectionGap))
+
+        Text(
+            text = stringResource(Res.string.the_signed_event),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.relatedGap))
+
+        if (signedEvent == null) {
+            Text(
+                text = stringResource(Res.string.this_device_does_not_hold_the_event),
+                style = MaterialTheme.typography.bodySmall
+            )
+            return@Column
+        }
+
+        // As the group signed it, byte for byte. What is copied is exactly what
+        // is shown, because the point of copying it is to hand somebody
+        // something they can verify -- and a prettier rendering would be a
+        // different string to the one whose id was hashed.
+        val json = signedEvent.toEvent().toJson()
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                text = json,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(MaterialTheme.spacing.containerPadding)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.itemGap))
+
+        FilledTonalButton(
+            onClick = {
+                clipboardManager.setText(AnnotatedString(json))
+                notify(copied)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.ContentCopy, contentDescription = Decorative)
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space100))
+            Text(text = stringResource(Res.string.copy_the_signed_event))
+        }
+    }
+}
+
+/**
+ * A long hex value in groups of eight, which is what makes it readable and what
+ * lets it wrap at all.
+ *
+ * Both halves matter. A 64-character key is compared against another member's
+ * screen a character at a time, and the eye loses its place in an undivided run
+ * of hex -- the same reason a fingerprint or an account number is grouped.
+ *
+ * And a run of hex has no space in it, so Compose has nowhere to break the line:
+ * it lays the whole thing out on one and lets it run off the side of the sheet,
+ * where the end of the key cannot be read at all. The spaces are the break
+ * opportunities. Nothing is copied from these -- the copy button takes the
+ * signed event, which is not grouped -- so the display can be shaped for reading
+ * without a paste losing the value.
+ */
+private fun String.inComparableGroups(): String = chunked(8).joinToString(" ")
+
+/** One labelled value of a key state, whole and comparable. */
+@Composable
+private fun GroupKeyStateField(
+    label: String,
+    value: String,
+    isMonospaced: Boolean = true
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    Text(
+        text = value,
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = if (isMonospaced) FontFamily.Monospace else null,
+        // Stated rather than inherited: the label above is deliberately quieter,
+        // and the value is the thing that was come for.
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.itemGap))
 }
 
 /**
@@ -776,6 +1060,17 @@ private fun ChatRoomMessagingScreenPreview() {
                                 )
                             )
                         )
+                    ),
+                    // A room that has one, so the signing key row renders under
+                    // all five conditions rather than only in a group that has
+                    // held a ceremony. Not a real key: nothing here derives.
+                    groupKeyState = GroupKeyState(
+                        chatRoomId = "publicKey",
+                        dkgSessionId = "c".repeat(64),
+                        thresholdPublicKey = "02".padEnd(66, 'a'),
+                        derivationPath = "m/9420/0/0",
+                        announcedBy = "d".repeat(64),
+                        announcedAt = Instant.fromEpochSeconds(1_700_000_000)
                     )
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,

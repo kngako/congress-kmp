@@ -2,7 +2,10 @@ package press.mantra.compose.database.repository
 
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.MantraDatabase
+import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.managers.ChronicleManager
+import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -60,6 +63,20 @@ class DatabaseChatRepository(
         chatRoomId = chatRoomId,
         userPublicKey = userPublicKey,
     )
+
+    override suspend fun groupKeyState(chatRoomId: String): GroupKeyState? =
+        GroupKeyStateManager.keyStateFor(database, chatRoomId)
+
+    override suspend fun signedGroupKeyStateEvent(chatRoomId: String): GroupSignedEvent? = try {
+        GroupKeyStateManager.signedEventFor(database, chatRoomId)
+    } catch (e: Throwable) {
+        // Reading it walks every key state this device holds through the same
+        // checks that let one be believed in the first place, and one that will
+        // not derive throws rather than answering. The screen wants to draw
+        // either way -- what it loses is the copyable event, not the room.
+        logger.e("Error reading the signed key state event for $chatRoomId", e)
+        null
+    }
 
     override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
         return database.participantDao().findParticipantByPublicKey(publicKey)

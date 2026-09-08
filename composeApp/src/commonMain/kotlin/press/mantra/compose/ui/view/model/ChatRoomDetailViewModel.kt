@@ -78,6 +78,8 @@ class ChatRoomDetailViewModel(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
                     dialects = mantraRepository.getDialects(chatRoomId),
+                    groupKeyState = chatRepository.groupKeyState(chatRoomId),
+                    signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                 )
             }
         }

@@ -2,6 +2,8 @@ package press.mantra.compose.repository
 
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
+import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
@@ -31,6 +33,27 @@ interface ChatRepository {
      * pushing.
      */
     suspend fun requestGroupHistoryIfMissing(chatRoomId: String, userPublicKey: HexKey): Boolean
+
+    /**
+     * What the group has said this room signs with, or null while it has said
+     * nothing.
+     *
+     * The row the app resolves a signing request against -- see
+     * `FrostSigningManager.completedKey` -- and the thing the group detail screen
+     * puts at the top, because which key a room signs as is the one fact about a
+     * room that decides whether anything it signs will be believed.
+     */
+    suspend fun groupKeyState(chatRoomId: String): GroupKeyState?
+
+    /**
+     * The event the group signed to say it, as the group signed it.
+     *
+     * Kept apart from [groupKeyState] because they can be missing separately and
+     * mean different things when they are. The state is this device's reading;
+     * this is the statement, with the signature on it, for a member who wants to
+     * see or check what the group actually put its key to.
+     */
+    suspend fun signedGroupKeyStateEvent(chatRoomId: String): GroupSignedEvent?
 
     suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
 
@@ -153,6 +176,12 @@ interface ChatRepository {
                 chatRoomId: String,
                 userPublicKey: HexKey
             ): Boolean = false
+
+            override suspend fun groupKeyState(chatRoomId: String): GroupKeyState? = null
+
+            override suspend fun signedGroupKeyStateEvent(
+                chatRoomId: String
+            ): GroupSignedEvent? = null
 
             override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
                 return flow {  }

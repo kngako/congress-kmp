@@ -235,6 +235,24 @@ object GroupKeyStateManager {
         stateAmong(database.groupSignedEventDao().getByKind(GroupKeyStateEvent.KIND), chatRoomId)
 
     /**
+     * The event the group signed to say what [chatRoomId] signs with, as the
+     * group signed it.
+     *
+     * The statement itself rather than the reading of it in [signedStateFor],
+     * for a screen that shows a member what their group actually put a signature
+     * to -- and lets them copy it somewhere it can be checked. Found wherever it
+     * is filed, which for the room it is about is *not* that room: the group
+     * agrees this before the room exists, so the event lives under the NIP-17
+     * room its ceremony ran in.
+     */
+    suspend fun signedEventFor(
+        database: MantraDatabase,
+        chatRoomId: String
+    ): GroupSignedEvent? =
+        signedAmong(database.groupSignedEventDao().getByKind(GroupKeyStateEvent.KIND), chatRoomId)
+            ?.first
+
+    /**
      * The newest state for [chatRoomId] among some signed events, or null if
      * none of them is one.
      *
@@ -243,6 +261,21 @@ object GroupKeyStateManager {
      * ceremony screen knows the group has finished agreeing.
      */
     fun stateAmong(signedEvents: List<GroupSignedEvent>, chatRoomId: String): GroupKeyState? =
+        signedAmong(signedEvents, chatRoomId)?.second
+
+    /**
+     * The newest signed event for [chatRoomId] and the state it amounts to.
+     *
+     * The two travel together because neither is worth having without the other
+     * here: the state is what the app acts on, and the event is the group's own
+     * statement of it -- and an event that produces no state is one this device
+     * would not have believed, so it must not be shown as though the group had
+     * settled anything.
+     */
+    private fun signedAmong(
+        signedEvents: List<GroupSignedEvent>,
+        chatRoomId: String
+    ): Pair<GroupSignedEvent, GroupKeyState>? =
         signedEvents
             .asSequence()
             .filter { it.kind == GroupKeyStateEvent.KIND }
@@ -250,8 +283,8 @@ object GroupKeyStateManager {
             // the room an event arrived in; this one is walking events from
             // every room at once, so a state that names no room names nothing.
             .filter { GroupKeyStateEvent.parseChatRoomId(it.tags) == chatRoomId }
-            .mapNotNull { stateFrom(chatRoomId, it.toEvent()) }
-            .maxByOrNull { it.announcedAt }
+            .mapNotNull { signed -> stateFrom(chatRoomId, signed.toEvent())?.let { signed to it } }
+            .maxByOrNull { (_, state) -> state.announcedAt }
 
     /**
      * The state an event amounts to, or null if it amounts to none.

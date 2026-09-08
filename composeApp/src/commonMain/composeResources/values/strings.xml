@@ -215,6 +215,17 @@
     <string name="send_message">Send message</string>
     <string name="share_profile">Share profile</string>
     <string name="shared_key">Shared key</string>
+    <string name="signing_key">Signing key</string>
+    <string name="the_key_this_room_signs_as">The key this room signs as, and the ceremony it came from.</string>
+    <string name="what_the_group_signed">What the group signed</string>
+    <string name="this_room_signs_as">This room signs as</string>
+    <string name="derivation_path">Derivation path</string>
+    <string name="key_ceremony">Key ceremony</string>
+    <string name="agreed_on">Agreed on</string>
+    <string name="the_signed_event">The signed event</string>
+    <string name="copy_the_signed_event">Copy the signed event</string>
+    <string name="copied_the_signed_event">Copied the signed event</string>
+    <string name="this_device_does_not_hold_the_event">This device holds the group's reading of this, but not the signed event itself. Nothing here can be checked against a signature.</string>
     <string name="sign">Sign</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_in_is_not_yet_available_while_mantra_is">Sign in is not yet available while Mantra is in alpha testing.</string>
