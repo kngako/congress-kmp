@@ -2,19 +2,16 @@ package press.mantra.compose.ui.composable
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -22,16 +19,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,12 +37,10 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalProfileWithFollowing
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
-import press.mantra.compose.ui.composable.navigation.routes.ActiveProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
 import press.mantra.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
-import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.TorchTheme
 import press.mantra.compose.ui.view.model.ChatRoomListViewModel
 import press.mantra.compose.ui.view.model.HomeScreenType
@@ -61,7 +54,6 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.mantra
 import mantra.composeapp.generated.resources.new_chat
-import mantra.composeapp.generated.resources.something_went_wrong
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
@@ -75,7 +67,6 @@ fun HomeScreen(
     onNavigateToRoute: (Route) -> Unit,
     onNavigateToDirectMessageDetail: (Route) -> Unit,
     onNavigateToChatRoomCreation: () -> Unit,
-    onNavigateToSearch: () -> Unit,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository
 ) {
@@ -124,35 +115,13 @@ fun HomeScreen(
                             // a content one.
                             Text(stringResource(Res.string.mantra))
                         },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        ActiveProfileRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            nostrEventId = homeScreenUIState.profileWithFollowing.nostrEvent.id
-                                        )
-                                    )
-                                }
-                            ) {
-                                ProfileAvatar(
-                                    profile = homeScreenUIState.profileWithFollowing.profile,
-                                    publicKey = homeScreenUIState.profileWithFollowing.profile.publicKey
-                                )
-                            }
-                        },
-                        actions = {
-                            IconButton(
-                                onClick = {
-                                    onNavigateToSearch.invoke()
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "Search"
-                                )
-                            }
-                        }
+                        // No navigation icon and no actions. The avatar in the leading
+                        // slot and the search icon in the trailing one were the app's only
+                        // two peer surfaces, and they are now items in the navigation
+                        // component -- a bar on a phone, a rail on a wide window. Leaving
+                        // them here as well would be two routes to one destination, which
+                        // is the thing M3's "swap only functionally equivalent components"
+                        // caution is about.
                     )
 
                 },
@@ -305,7 +274,6 @@ It has survived not only five centuries, but also the leap into electronic types
                 ),
                 onNavigateToRoute = {},
                 onNavigateToChatRoomCreation = {},
-                onNavigateToSearch = {},
                 onNavigateToDirectMessageDetail = {},
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY
