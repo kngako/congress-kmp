@@ -13,6 +13,7 @@ import press.mantra.compose.nostr.chronicle.tags.ChroniclePageTag
 import press.mantra.compose.nostr.chronicle.tags.ChronicleRecipientTag
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -226,6 +227,24 @@ class ChronicleEventTest {
         // whoever kept a copy. Nothing but this stops it.
         assertFalse(ChronicleEvent.isChroniclable(GroupKeyStateEvent.KIND))
         assertNull(ChronicleEvent.applyRank(GroupKeyStateEvent.KIND))
+    }
+
+    @Test
+    fun `a chronicle may not carry a birth certificate either`() {
+        // The same shape as the key state above: signed by the room, passes
+        // verification perfectly, and says something standing about groups rather
+        // than carrying the group's work.
+        //
+        // The argument for letting it through is better than it is for a key
+        // state -- "P certified C" is a fixed historical fact, where a key state
+        // decides what a live room signs with -- and the cost of leaving it out
+        // is real: a member added to a parent after a subgroup was made sees an
+        // empty subgroup list. It is still left out here, because admitting it
+        // needs an apply-order slot and a decision about whether a room's
+        // chronicle may carry an event its own key did not sign, which no
+        // chroniclable kind does. See docs/subgroups.md.
+        assertFalse(ChronicleEvent.isChroniclable(SubgroupBirthCertificateEvent.KIND))
+        assertNull(ChronicleEvent.applyRank(SubgroupBirthCertificateEvent.KIND))
     }
 
     @Test

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -276,6 +277,27 @@ fun ChatTranscript(
                                 // -- these report rather than ask, so they stay in
                                 // the quiet tint and offer nothing to review.
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES) {
+                                    RitualNotice(
+                                        localChatMessage = localChatMessage,
+                                        isAnswered = true,
+                                        isSettled = true,
+                                        onClick = {}
+                                    )
+                                    return@items
+                                }
+
+                                // A subgroup being certified is the group's own
+                                // signature, not a member's words, so it gets the
+                                // same treatment. Answered and settled because it
+                                // reports rather than asks: by the time this line
+                                // exists a quorum has already signed, and there is
+                                // nothing left for a reader to do about it.
+                                //
+                                // It leads nowhere for now. What a reader wants
+                                // from one is the subgroup, and the subgroups
+                                // section of the group's detail screen is where
+                                // that lives.
+                                if (localChatMessage.chatMessage.messageType in ChatMessage.SUBGROUP_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
                                         isAnswered = true,
@@ -670,6 +692,7 @@ private fun RitualNotice(
         // An invite made and an invite sent are two separate steps on the deferred
         // path, so they get separate icons -- the whole reason both lines exist is
         // to be able to see that the first happened and the second did not.
+        ChatMessage.TYPE_SUBGROUP_CERTIFIED -> Icons.Default.AccountTree
         ChatMessage.TYPE_MEMBER_INVITED -> Icons.Default.PersonAdd
         ChatMessage.TYPE_MEMBER_INVITE_SENT -> Icons.Default.Upload
         ChatMessage.TYPE_MEMBER_INVITE_FAILED -> Icons.Default.ErrorOutline

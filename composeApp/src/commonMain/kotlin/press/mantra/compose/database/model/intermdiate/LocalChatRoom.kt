@@ -116,7 +116,8 @@ data class LocalChatRoom(
         if (lastChatMessage.messageType in ChatMessage.DKG_TYPES ||
             lastChatMessage.messageType in ChatMessage.FROST_TYPES ||
             lastChatMessage.messageType in ChatMessage.CHRONICLE_TYPES ||
-            lastChatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES
+            lastChatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES ||
+            lastChatMessage.messageType in ChatMessage.SUBGROUP_TYPES
         ) {
             val isAuthored = lastChatMessage.messageType in ChatMessage.DKG_AUTHORED_TYPES ||
                 lastChatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES

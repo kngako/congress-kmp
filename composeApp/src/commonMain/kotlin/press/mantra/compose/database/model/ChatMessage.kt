@@ -13,6 +13,7 @@ import press.mantra.compose.database.model.traits.UserViewableEntity
 import press.mantra.compose.exceptions.MarmotUnprocessableInnerEventException
 import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.managers.GroupKeyStateManager
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.extensions.toHex
 import com.vitorpamplona.quartz.marmot.GroupEventResult
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
@@ -22,6 +23,7 @@ import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -350,6 +352,28 @@ data class ChatMessage(
         const val TYPE_CHRONICLE_REQUESTED = "chronicleRequested"
         const val TYPE_CHRONICLE_SENT = "chronicleSent"
         const val TYPE_CHRONICLE_RECEIVED = "chronicleReceived"
+
+        /**
+         * The group certified another group as its child.
+         *
+         * A system line rather than a bubble: nobody said it, the group signed
+         * it. It is written in the *parent's* room, which is the only place the
+         * certificate is ever made, and it is there for the members of that room
+         * who are not in the child -- for whom this is the only notice a subgroup
+         * exists at all.
+         */
+        const val TYPE_SUBGROUP_CERTIFIED = "subgroupCertified"
+
+        /**
+         * Every subgroup line, for the one check the transcript dispatches on.
+         *
+         * One member today, and a set anyway. A type missing from here renders as
+         * a chat bubble -- silently, and looking exactly like a member having said
+         * "The group made Translation team a subgroup".
+         */
+        val SUBGROUP_TYPES = setOf(
+            TYPE_SUBGROUP_CERTIFIED,
+        )
 
         /**
          * Every chronicle line, for the one check the transcript dispatches on.
@@ -1238,6 +1262,46 @@ data class ChatMessage(
                         innerEvent = event
                     )
                     null
+                }
+
+                // The group has certified another group as its child. Verified
+                // again here rather than trusted: this arm is reached both from a
+                // completed signing session, where the signature has already been
+                // checked, and from an arriving inner event, where a member could
+                // have sent a rumor of this kind -- and it cannot tell which.
+                //
+                // Unlike the key state above this *does* write a line. A key state
+                // is standing state whose session already wrote the transcript; a
+                // subgroup being born is something that happened, and it happened
+                // on behalf of members of this room who are not in the child and
+                // will otherwise never be told it exists.
+                //
+                // The name is the one the parent certified, which is the only one
+                // that was ever put to this room -- the child may since have been
+                // renamed, and this line is a record of what was agreed rather
+                // than a view of what is.
+                SubgroupBirthCertificateEvent.KIND -> {
+                    SubgroupManager.record(
+                        database = database,
+                        chatRoomId = groupId,
+                        innerEvent = event
+                    ) ?: return null
+
+                    val name = SubgroupBirthCertificateEvent.parseName(event.tags)
+                    val admins = SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags).size
+
+                    ChatMessage(
+                        giftWrapPayloadId = null,
+                        messageType = TYPE_SUBGROUP_CERTIFIED,
+                        marmotGroupEventId = marmotGroupEventId,
+                        marmotInnerEventId = marmotInnerEventId,
+                        senderPublicKey = senderPublicKey,
+                        isUserMessage = isUserMessage,
+                        chatRoomId = groupId,
+                        createdAt = createdAt,
+                        content = "The group made ${name ?: "a subgroup"} a subgroup, " +
+                            "run by $admins of its members"
+                    )
                 }
 
                 else -> {

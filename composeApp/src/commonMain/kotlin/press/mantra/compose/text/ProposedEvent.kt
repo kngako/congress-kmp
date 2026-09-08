@@ -3,6 +3,7 @@ package press.mantra.compose.text
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -133,6 +134,24 @@ object ProposedEvent {
             detail = listOfNotNull(
                 GroupKeyStateEvent.parsePath(event.tags)?.let(SharedKeyDerivation::formatPath),
                 GroupKeyStateEvent.parseDkgSessionId(event.tags)?.take(12)
+            ).joinToString(" · ")
+        )
+
+        // The other thing a group signs that is about groups rather than about
+        // work, and the only one where the *proposal* is the last chance to
+        // check. A parent admin approving this is putting the group's signature
+        // to a room id produced by a ceremony most of them were not in, so the
+        // summary is who it is for and what it is called -- the two things they
+        // can actually weigh. The id is shown by the screen, and their device has
+        // already checked it derives from the key the certificate names.
+        SubgroupBirthCertificateEvent.KIND -> Summary(
+            label = "A new subgroup of this group",
+            detail = listOfNotNull(
+                SubgroupBirthCertificateEvent.parseName(event.tags),
+                SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags)
+                    .size
+                    .takeIf { it > 0 }
+                    ?.let { "run by $it members" }
             ).joinToString(" · ")
         )
 
