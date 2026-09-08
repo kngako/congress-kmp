@@ -41,6 +41,7 @@ import press.mantra.compose.MantraGlobal
 import press.mantra.compose.PlatformContext
 import press.mantra.compose.defaultMantraDir
 import press.mantra.compose.ui.theme.TorchTheme
+import java.awt.Dimension
 import java.io.File
 
 /**
@@ -60,11 +61,24 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "Mantra",
-        // The layouts have only ever been exercised at phone widths. This is a starting size
-        // that does not immediately misrepresent them, not a considered desktop layout.
-        state = rememberWindowState(width = 480.dp, height = 900.dp),
+        // 1100dp is the expanded breakpoint -- 840 to 1199 -- which is the narrowest window
+        // M3 recommends two panes in, and so the smallest opening size at which a desktop
+        // user sees a desktop layout rather than a phone one stretched. It used to open at
+        // 480dp with a comment apologising for it; that was honest while the layouts had
+        // only ever been exercised at phone widths, and is no longer true.
+        //
+        // The content does not stretch to fill it. Screens are held to a readable measure
+        // and centred (see `readableContent`), so the extra width is margin, which is what
+        // M3's single-pane canonical layout does with a window wider than its content.
+        state = rememberWindowState(width = 1100.dp, height = 800.dp),
     ) {
         var unlocked by remember { mutableStateOf(false) }
+
+        // A floor rather than a preference. Compose Desktop has no minimum in WindowState,
+        // so without this the window can be dragged narrower than any layout in the app was
+        // written for -- and the compact breakpoint's own floor is a phone, not nothing.
+        // 400x600 is the narrowest window the phase's acceptance widths name.
+        LaunchedEffect(window) { window.minimumSize = Dimension(400, 600) }
 
         // TorchTheme wraps both branches, not just the app. PassphraseGate used to sit
         // beside MantraApp -- which applies the theme itself -- so it composed under the
