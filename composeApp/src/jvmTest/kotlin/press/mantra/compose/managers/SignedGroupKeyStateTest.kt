@@ -11,6 +11,12 @@ import fr.acinq.bitcoin.PrivateKey
 import fr.acinq.bitcoin.XonlyPublicKey
 import fr.acinq.bitcoin.crypto.frost.Frost
 import fr.acinq.bitcoin.crypto.frost.KeyMaterial
+import press.mantra.compose.nostr.subgroup.SubgroupParentage
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import fr.acinq.bitcoin.crypto.frost.Session
+import fr.acinq.bitcoin.crypto.frost.SecretNonce
+import fr.acinq.bitcoin.crypto.frost.IndividualNonce
+import fr.acinq.bitcoin.ByteVector
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -77,6 +83,22 @@ class SignedGroupKeyStateTest {
     )
 
     private val thresholdPublicKey = keyMaterial.thresholdPublicKey.value.toHex()
+
+    /**
+     * A second group entirely, standing in for the parent when this one is being
+     * made as a subgroup: its own key, its own quorum, its own room.
+     */
+    private val parentMaterial: KeyMaterial = Frost.trustedDealerKeygen(
+        thresholdSecretKey = PrivateKey(
+            ByteVector32("2bada550000000000000000000000000000000000000000000000000000000b2")
+        ),
+        nParticipants = participants,
+        threshold = threshold
+    )
+
+    private val parentRoomId = SharedKeyDerivation.marmotGroupId(
+        parentMaterial.thresholdPublicKey.value.toHex()
+    )
 
     /** The group's root key as nostr would name it -- what nothing should be signed as. */
     private val rootPublicKey = XonlyPublicKey(keyMaterial.thresholdPublicKey).value.toHex()
@@ -1424,5 +1446,181 @@ class SignedGroupKeyStateTest {
             )
         }
         Unit
+    }
+
+    // ---- a state that carries a parentage -----------------------------------
+    //
+    // Phase 3's rules are settled in `GroupKeyStateTest`, purely and
+    // exhaustively. What cannot be settled there is the join: that a parentage
+    // put on a proposal survives a real session, a real aggregate and a real
+    // `record`, and lands on the *row* on every device rather than only in the
+    // event. That is a schema question wearing a protocol question's clothes, and
+    // it is exactly the sort of thing that breaks without failing.
+
+    /**
+     * A birth certificate for this group's admin room, signed by the parent's
+     * quorum.
+     *
+     * Assembled by hand rather than through a second harness: what these tests
+     * need from the parent is one valid signature, and standing up three more
+     * databases to get it would test the harness rather than the join.
+     */
+    private fun birthCertificate(
+        subgroupChatRoomId: String = adminRoomId,
+        createdAt: Long = 1_700_000_000
+    ): Event {
+        val tags = SubgroupBirthCertificateEvent.assembleTags(
+            subgroupChatRoomId = subgroupChatRoomId,
+            parentChatRoomId = parentRoomId,
+            thresholdPublicKey = thresholdPublicKey,
+            adminPublicKeys = members,
+            name = "Translation team"
+        )
+
+        val pubKey = SharedKeyDerivation
+            .derive(parentMaterial.thresholdPublicKey.value.toHex())
+            .hex
+
+        val id = EventHasher.hashId(
+            pubKey = pubKey,
+            createdAt = createdAt,
+            kind = SubgroupBirthCertificateEvent.KIND,
+            tags = tags,
+            content = subgroupChatRoomId
+        )
+
+        return Event(
+            id = id,
+            pubKey = pubKey,
+            createdAt = createdAt,
+            kind = SubgroupBirthCertificateEvent.KIND,
+            tags = tags,
+            content = subgroupChatRoomId,
+            sig = parentSignature(id)
+        )
+    }
+
+    /** A real FROST aggregate by the parent's quorum over [eventId]. */
+    private fun parentSignature(eventId: String): String {
+        val cache = SharedKeyDerivation
+            .derive(parentMaterial.thresholdPublicKey.value.toHex())
+            .cache
+        val message = ByteVector(eventId.hexToByteArray())
+        val signerIds = listOf(0, 1)
+
+        val nonces = signerIds.map { signerId ->
+            SecretNonce.generate(
+                sessionRandom = ByteVector32("a".repeat(63) + "${signerId + 1}"),
+                secretShare = parentMaterial.secretShares[signerId],
+                publicShare = parentMaterial.publicShares[signerId],
+                tweakedThresholdPublicKey = cache.tweakedPublicKey,
+                message = message,
+                extraInput = null
+            )
+        }
+
+        val signing = Session.create(
+            aggregatedNonce = IndividualNonce.aggregate(nonces.map { it.second }).right!!,
+            signerIds = signerIds.map { it.toUInt() },
+            signerPublicShares = signerIds.map { parentMaterial.publicShares[it] },
+            nParticipants = participants,
+            threshold = threshold,
+            tweakCache = cache,
+            message = message
+        )
+
+        val partials = signerIds.mapIndexed { position, signerId ->
+            signing.sign(
+                nonces[position].first,
+                parentMaterial.secretShares[signerId],
+                signerId.toUInt()
+            ).right!!
+        }
+
+        return signing.aggregateSigs(partials).right!!.toByteArray().toHex()
+    }
+
+    @Test
+    fun `a quorum signing a subgroup's state puts its parentage on every device`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val certificate = birthCertificate()
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator),
+            parent = SubgroupParentage(
+                parentChatRoomId = parentRoomId,
+                certificate = certificate
+            )
+        )
+        pump(creator, other)
+
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            val state = assertNotNull(device.keyState(), "every signer should hold the state")
+
+            // The whole join. Neither device was sent a row; both derived the
+            // event from their own items, both re-ran `certifies` against the
+            // parent's id, and both wrote the same two columns.
+            assertEquals(parentRoomId, state.parentChatRoomId)
+            assertEquals(certificate.toJson(), state.birthCertificateJson)
+            assertTrue(state.verifies())
+        }
+    }
+
+    @Test
+    fun `a state whose certificate is for another room is dropped by every device`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        // A real certificate, really signed by the parent, for a room that is not
+        // this one. `propose` refuses it before anything is published, which is
+        // the point: a proposal this device would itself drop is a quorum's
+        // attention spent on a statement nobody will keep.
+        assertFailsWith<IllegalStateException> {
+            GroupKeyStateManager.propose(
+                database = creator.db,
+                localChatRoom = creator.room,
+                userPublicKey = creator.publicKey,
+                key = ceremonyOn(creator),
+                parent = SubgroupParentage(
+                    parentChatRoomId = parentRoomId,
+                    certificate = birthCertificate(subgroupChatRoomId = parentRoomId)
+                )
+            )
+        }
+
+        assertNull(creator.keyState())
+        assertNull(other.keyState())
+    }
+
+    @Test
+    fun `a state signed with no parentage keeps both columns null`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = GroupKeyStateManager.propose(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            key = ceremonyOn(creator)
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        // Every group made before subgroups existed reads back this way, and so
+        // does every top-level group made after.
+        listOf(creator, other).forEach { device ->
+            val state = assertNotNull(device.keyState())
+            assertNull(state.parentChatRoomId)
+            assertNull(state.birthCertificateJson)
+        }
     }
 }
