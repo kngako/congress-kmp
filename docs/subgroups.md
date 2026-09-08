@@ -75,11 +75,21 @@ is gated on the key state for the same reason `DkgRitualViewModel.createAdminGro
 is today — a room created before its group has agreed what it signs with is a
 room whose founding fact is settled after the founding.
 
-The coordinator is the same person throughout: the parent admin who pressed the
-button. They coordinate the child's ceremony, propose the certificate in the
-parent, propose the key state in the child, and create the room. ChillDKG and
-FROST both treat a coordinator as untrusted, so this buys them nothing but work —
-the same bargain the existing ceremony makes.
+The coordinator is the parent admin who pressed the button. They coordinate the
+child's ceremony, propose the certificate in the parent, propose the key state in
+the child, and create the room. ChillDKG and FROST both treat a coordinator as
+untrusted, so this buys them nothing but work — the same bargain the existing
+ceremony makes.
+
+**Only step 1 is theirs alone.** After the ceremony fixes the participant set,
+every remaining step is open to somebody else: the certificate can be proposed by
+any parent admin holding a share of the parent's key, and the key state and the
+room by any of the child's admins, who by then all hold shares of `K` and know
+`C`. So a coordinator whose phone dies after the ceremony does not strand a
+subgroup — the flow is resumable by anyone who was in it, which is why every step
+reads its state off stored rows rather than off a session object. The UI should
+make that reachable rather than merely true: Phase 7's rung is offered to whoever
+opens the screen and can act, not only to the member who started.
 
 ## Three ceremonies, two quorums, one coordinator
 
@@ -116,15 +126,36 @@ tags:
   ["parent_group", <the parent room's id>]
   ["subgroup_key", <the child's threshold key, 33-byte hex>]
   ["frost_path",   "m/9420/0/0"]
+  ["name",         <the subgroup's name, as the coordinator typed it>]
   ["p",            <each of the child's admins>]
 ```
 
 With those, a parent admin's device can check the thing that actually matters
 before it signs — `marmotGroupId(subgroup_key, frost_path) == content` — and
-`ProposedEvent` can render "a subgroup for Alice, Bob and Carol" rather than a
-hash. A coordinator who lies about who is in the child is then lying in a field
-the parent's signature covers, which is the difference between a mistake and
-evidence.
+`ProposedEvent` can render "Translation team, for Alice, Bob and Carol" rather
+than a hash. A coordinator who lies about who is in the child is then lying in a
+field the parent's signature covers, which is the difference between a mistake
+and evidence.
+
+The name is in there for the same reason and not for the room's benefit: the room
+takes its name from `MarmotGroupData` like every other Marmot room, and this copy
+exists so that what the parent approved is legible in the transcript and in the
+proposal screen. Two consequences to hold:
+
+**The name and the `p` tags are the founding roster, and they are frozen.** A
+certificate is signed once and members move afterwards — somebody is added to the
+child, somebody leaves, the room is renamed. None of that reaches a signature
+already made, and none of it should: the certificate says who the parent
+certified and under what name, which is a historical fact and stays true. So the
+UI must never render either as the *current* state of the subgroup. Where the
+room exists locally, its own row is the live answer; the certificate is what it
+was born as. The Phase 7 list follows that rule and the plan says so again there.
+
+**A rename therefore drifts from what was signed, on purpose.** The alternative —
+leaving the name out so nothing can drift — buys consistency by making the
+parent's admins approve an unnamed hash, which is the problem this section
+exists to fix. Drift in a historical record is not an error; an unreadable
+approval is.
 
 ## Phase 1 — the certificate, and checking one
 
@@ -144,6 +175,7 @@ object SubgroupBirthCertificateEvent {
         parentChatRoomId: String,
         thresholdPublicKey: HexKey,
         adminPublicKeys: List<HexKey>,
+        name: String,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
     ): Array<Array<String>>
 
@@ -152,6 +184,7 @@ object SubgroupBirthCertificateEvent {
     fun parseThresholdPublicKey(tags: Array<Array<String>>): HexKey?
     fun parsePath(tags: Array<Array<String>>): List<Long>?
     fun parseAdminPublicKeys(tags: Array<Array<String>>): List<HexKey>
+    fun parseName(tags: Array<Array<String>>): String?
 
     /** Whether [event] is a certificate the room [parentChatRoomId] actually signed for [subgroupChatRoomId]. */
     fun certifies(event: Event, subgroupChatRoomId: String, parentChatRoomId: String): Boolean
@@ -176,18 +209,30 @@ Point 5 is `GroupKeyStateEvent.isSignedByRoom` used verbatim, not reimplemented.
 It already asks "did *this room* sign this", and a room id is a public key here —
 that is the whole economy of `docs/member-chronicle.md` and it applies unchanged.
 
+**The name and the `p` tags are deliberately not among the six.** They are
+covered by the signature — everything in the tags is — but nothing downstream may
+*require* them to match anything, because they are the founding roster and the
+world moves. A `certifies` that compared the `p` tags against the room's current
+members would start rejecting a valid certificate the first time somebody joined
+the child, and the failure would look like a forgery.
+
 Two tag classes beside it, in `nostr/subgroup/tags/`, matching
 `FrostDerivationPathTag`'s shape: `SubgroupParentTag` (`parent_group`) and
-`SubgroupKeyTag` (`subgroup_key`). The `d` and `p` tags are quartz's.
+`SubgroupKeyTag` (`subgroup_key`). The `d` and `p` tags are quartz's; `name` is a
+bare two-element tag with no class of its own, since nothing parses it but the
+proposal screen.
 
 **Tests** — `SubgroupBirthCertificateEventTest`, commonTest, pure: a certificate
 that verifies; one whose content does not match its `d` tag; one whose id does
 not derive from its key; one signed by a different room; one whose signature is
-64 bytes of nonsense; one whose key is not a point on the curve.
+64 bytes of nonsense; one whose key is not a point on the curve; and one whose
+name and admin set have nothing to do with the room's current ones, which must
+still verify — that last is there to fail loudly if anybody later adds the
+roster check the paragraph above forbids.
 
 ## Phase 2 — schema 16 → 17
 
-Three nullable columns and nothing else, so Room migrates itself and the entry
+Four nullable columns and nothing else, so Room migrates itself and the entry
 joins the list in `MantraDatabase`.
 
 | table | column | filled from | trusted? |
@@ -201,6 +246,31 @@ The trust column is the point of the table. Two of these are written only after 
 signature has been checked and one is written from an unauthenticated claim on a
 wire message; a column that mixes the two is a column no reader can act on. The
 `DkgSession` one is never read for anything but a screen's title.
+
+### `parentChatRoomId` is a plain column, never a foreign key
+
+Worth its own heading because the reflex points the wrong way. `GroupKeyState`,
+`DkgSession` and `GroupSignedEvent` each declare
+
+```kotlin
+ForeignKey(entity = ChatRoom::class, parentColumns = ["id"], childColumns = ["chatRoomId"],
+           onDelete = ForeignKey.CASCADE)
+```
+
+and the obvious next move is to give the parent pointer the same treatment. It
+must not have it. A self-referential foreign key on `ChatRoom` with `CASCADE`
+means deleting a parent room deletes every subgroup row beneath it — and then,
+by their own cascades, each subgroup's messages, participants, key state, signing
+sessions and signed events. A user tidying up a group they have left would silently
+destroy a group they are still in.
+
+`RESTRICT` is not the answer either: it would make a parent undeletable while any
+child row exists, which is a foreign key deciding a product question. The parent
+pointer is a **reference to a room that may not be on this device at all** — a
+member of a subgroup who was never in its parent has the id and nothing else —
+so it cannot be a foreign key in the first place. A dangling pointer is the
+normal, expected state, and readers resolve it with a lookup that is allowed to
+return null.
 
 The whole certificate event is stored as JSON rather than the signature alone.
 That is deliberate and is argued in the [appendix](#appendix--what-was-considered-and-rejected):
@@ -273,14 +343,30 @@ derives `n` from those same p-tags.
 This is the same move `SelectChatRoomTypeViewModel.createNip17ChatRoom` already
 makes for a robust group, and the reason step 1 costs almost no new code.
 
-**One tag is added to the ceremony proposal**: `parent_group`, on
-`DkgRitualEvents.PROPOSAL` only, parsed by `acceptProposal` onto
-`DkgSession.parentChatRoomId`. It authenticates nothing — anyone can claim any
-parent — and is read for exactly two things: the ritual screen saying "a subgroup
-of Ekklesia" instead of "a shared key ceremony", and the coordinator finding
-their way back into a flow they closed the app halfway through. The load-bearing
-claim is the certificate, three steps later, and the code should say so where the
-column is declared.
+**Two tags are added to the ceremony proposal**, on `DkgRitualEvents.PROPOSAL`
+only, and both are cosmetic in the strict sense that nothing acts on either.
+
+`parent_group` is parsed by `acceptProposal` onto `DkgSession.parentChatRoomId`.
+It authenticates nothing — anyone can claim any parent — and is read for exactly
+two things: the ritual screen saying "a subgroup of Ekklesia" instead of "a shared
+key ceremony", and a member finding their way back into a flow they closed the app
+halfway through. The load-bearing claim is the certificate, three steps later, and
+the code should say so where the column is declared.
+
+`subject` is the fix for a gap this flow inherits and makes worse.
+`NostrDao.getOrCreateNip17ChatRoom` already builds the receiving side's room with
+`subject = decryptedGiftWrapPayload.parseSubject()`, and
+`ChillDkgRitualManager.broadcast` writes no subject tag — so today a member
+selected for a ceremony watches an **unnamed** chat room appear on their device
+with a key ceremony already running in it. That is survivable when the user just
+agreed to make a group with those people; it is not when the room is a means to an
+end they were not consulted about. The proposal carries the subgroup's name, the
+receiving room gets it for free through a reader that already exists, and the
+change is one tag on one broadcast.
+
+It is worth fixing for the existing robust-group flow in the same commit, since
+`SelectChatRoomTypeViewModel` passes a `subject` to `createNip17ChatRoom` that only
+ever reaches the creator's own device.
 
 ### The collision this buys, and it is real
 
@@ -392,6 +478,7 @@ object SubgroupManager {
         userPublicKey: HexKey,
         key: DkgSession,
         adminPublicKeys: List<HexKey>,
+        name: String,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
     ): FrostSigningSession
 
@@ -432,6 +519,16 @@ No table of subgroups: the certificates *are* the record, they are the group's o
 signed statement, and every device in the parent room already has them —
 `FrostSigningManager.complete` files a `GroupSignedEvent` on every device that
 followed the session, not only on the signers'.
+
+**Two certificates for one child is a normal outcome, not a conflict.** Two parent
+admins can press the button on the same admin set: the second lands in the same
+NIP-17 ceremony room and gets the first's ceremony back, but both may go on to
+propose a certificate, and both sessions can complete. `GroupSignedEvent` is keyed
+on the event id, so the rows coexist. `certificateFor` therefore takes the
+**newest** of those that pass `certifies`, the way `GroupKeyStateManager.signedAmong`
+already picks the newest state — and because both certificates say the same true
+thing about the same child, which one wins does not matter. The `d` tag makes them
+replacements of each other rather than an accumulation, which is what it is for.
 
 ### Two dispatch arms, both easy to forget
 
@@ -505,6 +602,34 @@ re-deriving:
 `SharedKeyDerivation.describe`, exactly as the admin room's does — MIP-01 has no
 field for either, and the path is what rebuilds the `TweakCache`.
 
+### The description carries the parent too, as a hint
+
+`describe` gains a second optional line, beside the path:
+
+```
+Admins of Ekklesia's translation work.
+
+Shared key path: m/9420/0/0
+Parent group: 4f2b…
+```
+
+It is there for one member and one problem: somebody welcomed into the subgroup
+*after* it was founded. The verified parent link lives on `GroupKeyState`, filed
+by `adopt` from the signed key state — which only ceremony participants hold — and
+certificates are not chroniclable, so a later joiner has a room, no key state, and
+no way to learn the room is anybody's child. `MarmotGroupData` is the one thing
+that does reach them: it rides in the Welcome and is baked into the epoch-0 group
+context, so every member gets it however late they arrive.
+
+**It is a hint and must be rendered as one.** Group data is written by the room's
+creator and agreed by MLS, not by the parent — so this line says "this room claims
+Ekklesia as its parent", which is a strictly weaker statement than the certificate
+makes. The rule for the UI is the one Phase 2's table states: where a verified
+`GroupKeyState.parentChatRoomId` exists, it wins and the hint is never consulted;
+where it does not, the hint may be shown as unconfirmed and must not be written
+into the verified column. The upgrade path is the certificate itself — see
+[what this does not do](#what-this-does-not-do).
+
 ## Phase 7 — the UI
 
 Four pieces, three of them small. Every one of them is subject to `./gradlew
@@ -521,6 +646,16 @@ above them in the shape the existing "invite new member" one has. The row's tap
 target navigates into the child's room if this device has it and to the
 certificate's `NostrEventDetailRoute` if it does not.
 
+**The row's title comes from the room where there is one, and only otherwise from
+the certificate.** That ordering is the frozen-roster rule from
+[the consent section](#informed-consent-and-what-the-parents-admins-are-actually-signing)
+applied at the only place it is visible: the certificate's `name` and `p` tags are
+what the parent approved at founding, and a subgroup that has since been renamed
+or has added members would otherwise be listed under a name nobody uses and a
+membership nobody has. Where this device holds the child's room, the room is the
+live answer. Where it does not, the certificate is all there is, and the row says
+so by carrying its supporting line rather than pretending to be current.
+
 Offered only where it can work: this device is an admin of the parent
 (`Participant.adminAt != null`), the parent can sign
 (`FrostSigningManager.canSign`), and the parent is a Marmot room. Hidden, not
@@ -535,6 +670,44 @@ where a member looks to find out what the room is.
 and non-admins alike, with the parent's admins marked rather than filtered — the
 point of a subgroup is that it can be run by people the parent does not let run
 the parent.
+
+**A name field at the top**, because nothing else in the flow can supply one.
+`createAdminGroup` synthesises `"${parent.subject} (#admins)"` and gets away with
+it — a group has exactly one admin room and the name states a relationship rather
+than a choice — but a group can have many subgroups and "Ekklesia (#subgroup)"
+names none of them. The name is required, travels on the route to Phase 6's
+`MarmotGroupData`, and is copied into the birth certificate so the parent's admins
+approve something legible.
+
+### Key packages, checked here rather than discovered at step 4
+
+The single most likely way this flow fails, and the cheapest to prevent.
+
+A key package is **one-time-use**: `NostrDao` marks the bundle `consumed = true`
+as the device processes its own Welcome, and `MarmotKeyPackageBundleDao` only ever
+hands back one with `consumed = false AND rotated = false`. Every group a member
+joins burns one. So a member who is in the parent room and has not published a
+fresh key package since has none left, and Phase 6 will refuse to create the
+subgroup for exactly the right reason — after a ChillDKG, a parent quorum and a
+child quorum have all completed, each of which required every selected admin to
+show up and approve. Three multi-party ceremonies, then a dead end, and no second
+room id to retry against.
+
+So availability is a property of the **picker**, not of the create step:
+
+- Prefetch every candidate's key package as the screen opens, the way
+  `SelectChatRoomMembersViewModel.scheduleKeyPackageEventSynchronization` already
+  does for group creation — by the time somebody has finished ticking names and
+  set a threshold, the relay round trip is usually done.
+- Mark a member with none, and refuse to select them, with the reason and the
+  remedy in the same line: they need to publish a new key package. Anything vaguer
+  makes it the coordinator's problem to diagnose.
+- Re-check at confirm, because the screen may have been open a while.
+
+Phase 6's refusal stays exactly as it is. It is now a **backstop** rather than the
+first line of defence — a member's package can be consumed by some other group
+between the picker and the create step — and a backstop is worth having precisely
+because the address it protects is permanent.
 
 **Three admins in total, the coordinator included**, so the picker asks for at
 least **two** others. Three is `ChatRoomType.MINIMUM_ROBUST_GROUP_SIZE`, and it
@@ -588,6 +761,8 @@ a room nobody can replace.
 |---|---|
 | fewer than three admins in total — the coordinator plus two | below three a quorum is not a check — the same floor `ChatRoomType.MINIMUM_ROBUST_GROUP_SIZE` states |
 | a threshold outside `ChatRoomType.quorumRange(adminCount)` | `t = 1` is a threshold key any one member signs with, and ChillDKG will happily generate one. `acceptProposal` already refuses such a proposal, so an unchecked one produces a ceremony every invitee silently drops |
+| an empty or blank name | Phase 6 has nothing to put in `MarmotGroupData.name`, and the parent's admins would be certifying an unnamed hash |
+| a selected member with no unconsumed key package | they cannot be welcomed into the room at step 4, and finding that out at step 4 wastes three ceremonies. Checked at the picker and again at confirm |
 | the selection is not a proper subset of the parent's members | selecting everybody derives the parent's own ceremony room, and the "child" comes out as the parent |
 | the ceremony room already holds a non-`FAILED` `DkgSession` | `proposeRitual` would return that ceremony, and the "new" subgroup would be the old one — same key, same id |
 | this device holds no share of the parent's key | it cannot open the certificate session; `proposeSigningBatch` throws, and throwing at the button is not a UI |
@@ -603,10 +778,15 @@ to do: "pick at least two more people" and "a subgroup cannot be the whole group
 
 The pure ones carry the weight, because every check that matters is pure:
 
-- `SubgroupBirthCertificateEventTest` (commonTest) — Phase 1's six cases.
+- `SubgroupBirthCertificateEventTest` (commonTest) — Phase 1's seven cases,
+  including the one that must **pass**: a certificate whose name and admin set no
+  longer match the room's, which fails the day somebody adds the roster check
+  Phase 1 forbids.
 - `GroupKeyStateTest` (commonTest) — Phase 3's five `stateFrom` cases.
 - `SubgroupGuardsTest` (commonTest) — Phase 8's table, one case each, against
-  the pure predicates rather than the ViewModel.
+  the pure predicates rather than the ViewModel. The key-package row is the one
+  worth writing first: it is the guard that exists to stop three ceremonies being
+  spent on a room that cannot be created.
 
 Two that need a database, in jvmTest, where `secp256k1` loads and Room runs:
 
@@ -614,7 +794,7 @@ Two that need a database, in jvmTest, where `secp256k1` loads and Room runs:
   real certificate signed by the parent, a real child key state carrying it, and
   the assertion that `stateFrom` accepts it and rejects each single-field
   mutation of it.
-- `SubgroupDaoJvmTest` — schema 17 round-trips the three columns, and
+- `SubgroupDaoJvmTest` — schema 17 round-trips the four columns, and
   `subgroupsOf` returns a certified child whose room does not exist locally.
 
 One end-to-end, and it is the one that would have caught the collision in Phase
@@ -651,13 +831,24 @@ lineage, not a delegation of authority, and nothing in this design lets one grou
 act as the other. If delegation is ever wanted it is a different mechanism and it
 should not be built on top of this one silently.
 
-**A member added to the parent later sees no subgroups.** Certificates are not
-chroniclable, for the reason Phase 5 gives. The argument for admitting them is
-better than it is for a key state — a certificate says "P certified C", which is
-a fixed historical fact, whereas a key state decides what a live room signs with,
-so a replayed certificate changes nothing a fresh one would not — but it is an
-argument that deserves its own change, its own idempotency test and its own
-apply-order slot, not a line in this one.
+**A member added to the parent later sees no subgroups, and a member added to the
+subgroup later cannot verify its parent.** One cause, two faces, and both are the
+chronicle allowlist. Certificates are not chroniclable, for the reason Phase 5
+gives, so a member welcomed into the *parent* after a subgroup was made holds no
+certificate and gets an empty list. A member welcomed into the *child* holds no
+key state either — `adopt` files one only from the signed event, which only
+ceremony participants have — so their verified parent link is null, and the
+description hint from Phase 6 is all they get: a claim by the room's creator
+rather than a statement by the parent.
+
+Chronicling the certificate fixes both at once, and the argument for admitting it
+is better than it is for a key state: a certificate says "P certified C", a fixed
+historical fact, whereas a key state decides what a live room signs with, so a
+replayed certificate changes nothing a fresh one would not. It still deserves its
+own change — its own idempotency test, its own apply-order slot, and a decision
+about whether the child's chronicle may carry an event its own key did not sign,
+which no chroniclable kind does today. That last one is the real work, and it is
+why this is a follow-up rather than a line in Phase 5.
 
 **One admin set, one subgroup.** Phase 4's collision is refused, not solved. Two
 subgroups with exactly the same admins need the NIP-17 ceremony room to be
