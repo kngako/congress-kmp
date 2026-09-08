@@ -963,8 +963,12 @@ class ChronicleApplyJvmTest {
             )
         }
 
+        // Newest first, which is the transcript's order: the answer is the line above
+        // the composer and the ask sits over it. Both land in the same second, so what
+        // decides between them is `ChatMessageDao`'s `id DESC` rather than the sorter --
+        // without it this read whichever way SQLite happened to hand the tie back.
         assertEquals(
-            listOf(ChatMessage.TYPE_CHRONICLE_REQUESTED, ChatMessage.TYPE_CHRONICLE_RECEIVED),
+            listOf(ChatMessage.TYPE_CHRONICLE_RECEIVED, ChatMessage.TYPE_CHRONICLE_REQUESTED),
             receiver.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)
                 .map { it.chatMessage.messageType }
         )
