@@ -632,9 +632,7 @@ fun MantraNavHost(
                 )
             }
             composable<SignInRoute> {
-                SignInToProfileScreen(
-                    nostrRepository = databaseNostrRepository
-                )
+                SignInToProfileScreen()
             }
             composable<UnsignedProfileRoute> { backStackEntry ->
                 backStackEntry.toRoute<UnsignedProfileRoute>()

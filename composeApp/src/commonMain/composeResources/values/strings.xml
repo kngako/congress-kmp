@@ -212,6 +212,7 @@
     <string name="shared_key">Shared key</string>
     <string name="sign">Sign</string>
     <string name="sign_in">Sign in</string>
+    <string name="sign_in_is_not_yet_available_while_mantra_is">Sign in is not yet available while Mantra is in alpha testing.</string>
     <string name="sign_in_to_nsec">Sign in to nsec</string>
     <string name="sign_in_to_torch_via_nsec_or_remote_signer">Sign in to Mantra via nsec, or remote signer</string>
     <string name="sign_in_with_an_npub">Sign in with an npub</string>
