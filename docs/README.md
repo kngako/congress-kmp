@@ -8,6 +8,7 @@ silent, or a decision that looked arbitrary and was not.
 |---|---|
 | [shared-key-ceremony.md](./shared-key-ceremony.md) | ChillDKG over NIP-17: the rounds, the approval gates, the chat transcript, participant ordering |
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
+| [subgroups.md](./subgroups.md) | a group making another group — the four ceremonies, what the parent's signature actually covers, and why the child's key is fresh rather than derived |
 | [frost-batch-signing.md](./frost-batch-signing.md) | signing several events in one ceremony — why one nonce can never cover two messages, and the phased schema, wire and UI work that follows from it |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
 | [member-chronicle.md](./member-chronicle.md) | handing a member added after the work was done the group's signed record — why the events are not on the wire at all, and why the room's id is enough to verify them |
@@ -28,6 +29,9 @@ chronicle note is a phased plan that has not been built, and reads as the
 membership note's unanswered half: what a member who joins late can be given,
 and the one thing they cannot. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.
+The subgroups note is a phased plan that has not been built; it assumes both
+shared-key notes and reads as the ceremony's second half — what a group does
+once it has a key, and what it can say about a group that does not yet.
 The Material Design note is a phased plan that has not been built, and is the
 only one about what the app looks like rather than what it does; read the
 jvm-target note first if you want to know why its adaptive-layout phase exists.
