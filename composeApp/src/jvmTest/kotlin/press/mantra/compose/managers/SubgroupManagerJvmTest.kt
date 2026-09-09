@@ -346,61 +346,73 @@ class SubgroupManagerJvmTest {
     }
 
     @Test
-    fun `the group's own ceremony does not block a subgroup in the same room`(): Unit =
+    fun `a ceremony in the parent's room for something else does not block one`(): Unit =
         runBlocking {
-            // The collision the size rule was standing in for, made concrete. A
-            // subgroup over everybody derives the room the group's own ceremony was
-            // held in -- so the room is shared, and only `parentChatRoomId` keeps
-            // the two ceremonies apart. Without that scoping `proposeRitual` would
-            // hand back the *group's* key and quietly make the child the parent.
-            val parent = parentWith(listOf(alice, bob))
-            val ceremonyRoomId = SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user)
+            // The parent's room hosts every ceremony the group ever runs, so "is
+            // this room already running one" stopped being a question worth
+            // asking the moment the ceremony moved here. Scoping on the room
+            // would refuse a group's second subgroup on the strength of its
+            // first, which is most of what the move was for.
+            val parent = parentWith(listOf(alice, bob, carol))
 
-            seedCeremonyRoom(ceremonyRoomId, listOf(alice, bob, user))
-            db.dkgSessionDao().upsert(ownCeremony(ceremonyRoomId))
+            db.dkgSessionDao().upsert(
+                subgroupCeremony(id = "other-admins", admins = setOf(alice, carol, user))
+            )
+            db.dkgSessionDao().upsert(ownCeremony(parentRoomId))
 
             assertNull(
                 refusal(parent, setOf(alice, bob)),
-                "the group's own ceremony is not this subgroup's",
+                "another subgroup's ceremony, and the room's own, are not this one",
             )
         }
 
     @Test
-    fun `the same parent cannot have two subgroups over the same admins`(): Unit = runBlocking {
+    fun `a subgroup ceremony already under way over the same admins is refused`(): Unit =
+        runBlocking {
+            val parent = parentWith(listOf(alice, bob, carol))
+
+            assertNull(refusal(parent, setOf(alice, bob)))
+
+            db.dkgSessionDao().upsert(
+                subgroupCeremony(id = "running", admins = setOf(alice, bob, user))
+            )
+
+            // Not because two subgroups over the same people are forbidden --
+            // they are not, since the move -- but because nobody can answer for
+            // two live ceremonies at once: every admin would be asked twice, on
+            // two ladders, for two keys, one of which nobody will ever make a
+            // room from.
+            assertNotNull(refusal(parent, setOf(alice, bob)))
+
+            // A different admin set is a different subgroup, and untouched.
+            assertNull(refusal(parent, setOf(alice, carol)))
+        }
+
+    @Test
+    fun `a finished subgroup does not stop a second over the same admins`(): Unit = runBlocking {
+        // The limitation that went away with the sibling room. A ceremony room
+        // derived from its admins meant one admin set got one subgroup forever:
+        // asking again handed back the first ceremony's key, so the "new"
+        // subgroup was the old one under a new name. In the parent's room a
+        // second ask is a second ceremony, with a key of its own.
         val parent = parentWith(listOf(alice, bob, carol))
 
-        assertNull(refusal(parent, setOf(alice, bob)))
-
-        // The one collision that survives, and it is degenerate: same parent,
-        // same admins. The ceremony room is derived from the admins and the
-        // ceremonies in it are told apart by their parent, so this pair has
-        // nothing left to distinguish them -- which is another way of saying it
-        // is one subgroup asked for twice.
-        val ceremonyRoomId = SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user)
-        seedCeremonyRoom(ceremonyRoomId, listOf(alice, bob, user))
         db.dkgSessionDao().upsert(
-            ownCeremony(ceremonyRoomId).copy(id = "s1", parentChatRoomId = parentRoomId)
+            subgroupCeremony(id = "done", admins = setOf(alice, bob, user))
+                .copy(stage = DkgRitualStage.COMPLETE)
         )
 
-        assertNotNull(refusal(parent, setOf(alice, bob)))
-
-        // And a different admin set is a different room, so it is untouched.
-        assertNull(refusal(parent, setOf(alice, carol)))
+        assertNull(refusal(parent, setOf(alice, bob)))
     }
 
     @Test
-    fun `the ceremony room is the same whichever way the admins are ordered`() {
-        // Every device has to land on the same room without being told, which is
-        // what makes a ceremony findable at all -- and what makes two members
-        // starting the same subgroup meet rather than fork.
+    fun `the stored participant set is the same whichever way the admins were picked`() {
+        // The coordinator assembles the set from a picker and every other device
+        // from the proposal's p-tags. They have to match as strings or the guard
+        // above finds nothing and every ask opens a ceremony.
         assertEquals(
-            SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user),
-            SubgroupManager.ceremonyRoomIdFor(setOf(bob, alice), user)
-        )
-        // And the coordinator is in it whether or not they were ticked.
-        assertEquals(
-            SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob), user),
-            SubgroupManager.ceremonyRoomIdFor(setOf(alice, bob, user), user)
+            DkgSession.formatParticipants(setOf(alice, bob, user)),
+            DkgSession.formatParticipants(setOf(user, bob, alice))
         )
     }
 
@@ -488,23 +500,14 @@ class SubgroupManagerJvmTest {
      * The NIP-17 room a ceremony runs in, stood up the way the picker does it --
      * room first, because `DkgSession.chatRoomId` is a foreign key onto it.
      */
-    private suspend fun seedCeremonyRoom(expectedId: String, members: List<String>) {
-        members.forEach { seedProfile(it) }
-
-        val room = assertNotNull(
-            db.nostrNip17Dao().createNip17ChatRoom(
-                userPublicKey = user,
-                participantPublicKeys = members.filterNot { it == user },
-                subject = "Translation team",
-            )
+    /** A ceremony held in the parent's room to make a subgroup run by [admins]. */
+    private fun subgroupCeremony(id: String, admins: Set<String>) =
+        ownCeremony(parentRoomId).copy(
+            id = id,
+            parentChatRoomId = parentRoomId,
+            participantPublicKeys = DkgSession.formatParticipants(admins),
+            participantCount = admins.size,
         )
-
-        assertEquals(
-            expectedId,
-            room.chatRoom.id,
-            "the derived ceremony room is the one createNip17ChatRoom lands on",
-        )
-    }
 
     /** A ceremony held in [chatRoomId] for no subgroup: the group's own. */
     private fun ownCeremony(chatRoomId: String) = DkgSession(
@@ -546,7 +549,7 @@ class SubgroupManagerJvmTest {
         SharedKeyDerivation.marmotGroupId(material.thresholdPublicKey.value.toHex(), path)
 
     private suspend fun refusal(parent: LocalChatRoom, admins: Set<String>): String? =
-        SubgroupManager.refuseCeremonyRoom(
+        SubgroupManager.refuseSubgroup(
             database = db,
             parentRoom = parent,
             adminPublicKeys = admins,
@@ -557,7 +560,7 @@ class SubgroupManagerJvmTest {
      * A parent this device could actually make a subgroup of: an admin of it, and
      * holding a share of its key.
      *
-     * Both are conditions of `refuseCeremonyRoom` before it looks at the picking
+     * Both are conditions of `refuseSubgroup` before it looks at the picking
      * at all, so a fixture without them tests only the first refusal. [canSign]
      * and [isAdmin] are here so the tests that are *about* those two can turn
      * each off on its own.
@@ -574,7 +577,7 @@ class SubgroupManagerJvmTest {
      * that null.
      *
      * [canSign] and [isAdmin] are switchable so the tests about those two can turn
-     * each off on its own; both are conditions `refuseCeremonyRoom` checks before
+     * each off on its own; both are conditions `refuseSubgroup` checks before
      * it looks at the picking at all.
      */
     private suspend fun parentWith(

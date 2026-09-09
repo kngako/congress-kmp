@@ -590,9 +590,16 @@ fun ChatRoomDetailScreen(
                                 )
                             }
 
-                            // A shared threshold key only means something where every
-                            // member is an equal admin, which is the NIP-17 (robust) case.
-                            // MLS rooms have one admin and no group key to share.
+                            // Offering a ceremony to a room is offering it a key of
+                            // its own, and only a NIP-17 room is in a position to
+                            // want one: a Marmot room's id is derived from a key it
+                            // already has, so a second ceremony there would produce
+                            // a key the room could never answer to.
+                            //
+                            // A Marmot room does host ceremonies -- its subgroups'
+                            // -- and those are reached from the transcript line that
+                            // names the ceremony they are about, never from here,
+                            // which has no way to say which.
                             if (chatRoomDetailUIState.localChatRoom.chatRoom.mlsGroupState == null) {
                                 item {
                                     TextButton(
@@ -619,11 +626,10 @@ fun ChatRoomDetailScreen(
                                 }
                             }
 
-                            // Every room, not only the one that holds the key. A
-                            // ceremony needs a NIP-17 group, but a signing message is
-                            // a marmot inner event -- see `FrostSigningManager.broadcast`
-                            // -- so the room a group actually proposes in is the MLS
-                            // one, which is the last place this should be missing from.
+                            // Every room, not only the one that holds the key. Most
+                            // of what a group signs it signs in its Marmot room --
+                            // its subgroups' certificates and key states included --
+                            // so that is the last place this should be missing from.
                             //
                             // The transcript carries a proposal past as it happens;
                             // this is where a member goes to find one that has scrolled

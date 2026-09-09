@@ -95,7 +95,7 @@ interface ChatRepository {
      *
      * Read by the picker so a subgroup that could only fail is never offered, and
      * again on confirm, because a screen not drawing something is not a guard.
-     * See `SubgroupManager.refuseCeremonyRoom`.
+     * See `SubgroupManager.refuseSubgroup`.
      */
     suspend fun refuseSubgroup(
         parentChatRoomId: String,

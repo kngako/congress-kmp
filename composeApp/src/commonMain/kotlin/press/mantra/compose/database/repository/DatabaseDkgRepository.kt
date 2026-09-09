@@ -62,7 +62,9 @@ class DatabaseDkgRepository(
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
         threshold: Int,
-        parentChatRoomId: HexKey?
+        parentChatRoomId: HexKey?,
+        participantPublicKeys: Set<HexKey>?,
+        subject: String?
     ): DkgSession? = try {
         ChillDkgRitualManager.proposeRitual(
             database = database,
@@ -70,7 +72,9 @@ class DatabaseDkgRepository(
             userPublicKey = userPublicKey,
             nostrPrivateKey = nostrPrivateKey,
             threshold = threshold,
-            parentChatRoomId = parentChatRoomId
+            parentChatRoomId = parentChatRoomId,
+            participantPublicKeys = participantPublicKeys,
+            subject = subject
         )
     } catch (e: Throwable) {
         logger.e("Error proposing DKG ritual for ${localChatRoom.chatRoom.id}", e)

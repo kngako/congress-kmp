@@ -25,9 +25,8 @@ interface DkgRepository {
      * [parentChatRoomId] is null, or that parent's subgroup when it is not.
      * Abandoned attempts are superseded by the newest.
      *
-     * A room can hold two: a subgroup whose admins are the whole group derives
-     * the room the group's own ceremony ran in. See
-     * `DkgSessionDao.getLatestSessionFor`.
+     * A room routinely holds several: a parent's room hosts the ceremony of every
+     * subgroup the group makes. See `DkgSessionDao.getLatestSessionFor`.
      */
     fun observeLatestSessionForChatRoom(
         chatRoomId: String,
@@ -67,18 +66,26 @@ interface DkgRepository {
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
     /**
-     * Opens a ritual. Only meaningful for the room's creator.
+     * Opens a ritual in [localChatRoom], making this device the coordinator.
      *
      * [parentChatRoomId] says what the ceremony is for when it is for a subgroup.
      * It rides on the proposal and is believed by nobody -- see
      * `DkgSession.parentChatRoomId`.
+     *
+     * [participantPublicKeys] and [subject] are what a subgroup needs and a
+     * group's own ceremony does not: the room it runs in is the *parent's*, so
+     * the room can say neither who the ceremony is with nor what the room it
+     * makes is to be called. Both default to the room, which is the right answer
+     * for a group opening its own.
      */
     suspend fun proposeRitual(
         localChatRoom: LocalChatRoom,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
         threshold: Int,
-        parentChatRoomId: HexKey? = null
+        parentChatRoomId: HexKey? = null,
+        participantPublicKeys: Set<HexKey>? = null,
+        subject: String? = null
     ): DkgSession?
 
     /** What the ritual is waiting on this device's owner for, if anything. */
@@ -96,8 +103,8 @@ interface DkgRepository {
      * Asks the group to sign a statement of which ceremony's key its admin
      * room will sign with, before that room is created.
      *
-     * Called once by the ceremony's coordinator, in the NIP-17 room the ceremony
-     * ran in. What comes back is the signing session, not the state: the state
+     * Called once by the ceremony's coordinator, in the room the ceremony ran
+     * in. What comes back is the signing session, not the state: the state
      * exists when a quorum has signed, which is the point of proposing it rather
      * than announcing it. Null if the ritual has produced no key yet, or if this
      * room has no standing to propose one -- both of which mean there is nothing
@@ -112,10 +119,11 @@ interface DkgRepository {
     /**
      * The signing sessions open in a room, newest first, with what each signs.
      *
-     * Read by the ritual screen to follow the one session a NIP-17 room ever
-     * holds: the group agreeing its key state. The items travel with the session
-     * because "which session is this" is answered by the kind of the event it is
-     * signing, not by the row.
+     * Read by the ritual screen to follow the session the group's key state is
+     * agreed in. The items travel with the session because "which session is
+     * this" is answered by the kind of the event it is signing, not by the row --
+     * which is what lets the same reading work in a parent's room, where a
+     * subgroup's key state is one session among however many the room is running.
      */
     fun observeSigningSessions(chatRoomId: String): Flow<List<LocalFrostSigningSession>>
 
@@ -149,10 +157,10 @@ interface DkgRepository {
     /**
      * Asks the parent's quorum to certify the subgroup this ceremony produced.
      *
-     * Runs in the **parent's** room, not the ceremony's, so what comes back is
-     * signed by the parent's key and authored by the parent's own room id -- the
-     * one thing a lineage can be checked against. See
-     * `SubgroupManager.proposeBirthCertificate`.
+     * Signed by the parent's key and authored by the parent's own room id -- the
+     * one thing a lineage can be checked against. The ceremony runs in that room
+     * too now, so this is no longer a change of venue, only of whose quorum is
+     * being asked. See `SubgroupManager.proposeBirthCertificate`.
      */
     suspend fun proposeBirthCertificate(
         parentChatRoomId: String,
@@ -210,7 +218,9 @@ interface DkgRepository {
                 userPublicKey: HexKey,
                 nostrPrivateKey: ByteArray,
                 threshold: Int,
-                parentChatRoomId: HexKey?
+                parentChatRoomId: HexKey?,
+                participantPublicKeys: Set<HexKey>?,
+                subject: String?
             ): DkgSession? = null
 
             override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? = null

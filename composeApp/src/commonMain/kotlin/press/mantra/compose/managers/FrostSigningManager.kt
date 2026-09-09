@@ -58,10 +58,12 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  *
  * The exception is the group's *first* signature. A room's `GroupKeyState` is
  * now signed before the room it is about is created -- see
- * `GroupKeyStateManager.propose` -- so that session runs in the NIP-17 room the
- * ceremony ran in, where there is no MLS tree and a message goes out as one
- * sealed gift wrap per member. [broadcast] is the only place that knows the
- * difference; everything above it is the same protocol either way.
+ * `GroupKeyStateManager.propose` -- so that session runs wherever the ceremony
+ * ran: the members' NIP-17 room for a group's own key, where there is no MLS
+ * tree and a message goes out as one sealed gift wrap per member, and the
+ * parent's Marmot room for a subgroup's, where it is an ordinary group event.
+ * [broadcast] is the only place that knows the difference; everything above it
+ * is the same protocol either way.
  *
  * ### What it signs as
  *
@@ -72,9 +74,9 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * holding a signed dialect therefore needs no lookup to check it: the author
  * they expect is the id of the room they found it in.
  *
- * A session in a NIP-17 room signs as the room the ceremony's key derives --
- * the admin room that does not exist yet -- which is the same rule read
- * forwards: what a group signs as is the room the signature belongs to.
+ * A session in a ceremony's own room signs as the room that ceremony's key
+ * derives -- the admin room that does not exist yet -- which is the same rule
+ * read forwards: what a group signs as is the room the signature belongs to.
  *
  * The path comes from the room, never from a proposal -- [signingPath] -- because
  * it decides which key the group signs as.
@@ -1294,10 +1296,10 @@ object FrostSigningManager {
     /**
      * The key a room signs with, or null when it has none.
      *
-     * Signing usually runs in the admin room, which is not where the ceremony
-     * ran. A ceremony needs a NIP-17 group -- every member an equal admin, no
-     * MLS tree to be outside of -- while a group event needs an MLS one, so the
-     * two cannot be the same room.
+     * Signing usually runs in the admin room, which is never where the ceremony
+     * ran: the admin room's id is derived from the key the ceremony produces, so
+     * it cannot exist until afterwards. A group's own ceremony runs in the NIP-17
+     * room its members share; a subgroup's runs in its parent's Marmot room.
      *
      * They are bound together by the room's [GroupKeyState]: the statement the
      * room opened with and the group signed, naming the ceremony behind it. That
@@ -1315,6 +1317,15 @@ object FrostSigningManager {
      * ceremony this device holds a share for, rederiving each one's room id
      * until one matches; the second is a ceremony held in this very room, which
      * is not how the app wires things today but costs one lookup to keep honest.
+     *
+     * That second one asks for the room's *own* ceremony, and the distinction is
+     * load-bearing now rather than pedantic. A parent's Marmot room hosts the
+     * ChillDKG of every subgroup it makes, so it holds completed ceremonies whose
+     * key belongs to a child; handing one back here would have the parent sign as
+     * its own subgroup, silently, for every member who holds no key-state row --
+     * which is every member welcomed after the parent's own ceremony. A ceremony
+     * naming a parent is never the room's own key, and that is all it takes to
+     * tell them apart.
      *
      * They are not only for rooms that predate the table. A room's key state is
      * signed before the room exists and filed as the room is created, so a
@@ -1342,7 +1353,7 @@ object FrostSigningManager {
         }?.let { return it }
 
         return database.dkgSessionDao()
-            .getLatestSessionForChatRoom(chatRoomId)
+            .getLatestOwnSessionForChatRoom(chatRoomId)
             ?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
     }
 
@@ -1369,19 +1380,31 @@ object FrostSigningManager {
      * ### The room a group signs from before it has one
      *
      * One case cannot be self-checked, because there is nothing yet to check
-     * against: the NIP-17 room a ceremony ran in, signing the very statement
-     * that lets the group's Marmot room be created -- see
-     * `GroupKeyStateManager.propose`. A NIP-17 room's id is an aggregation of
-     * its members' keys, so it is not derived from anything and no path reaches
-     * it. What the group signs as there is the room it is about to make: the
-     * ceremony's key at the app's admin path.
+     * against: the room a ceremony ran in, signing the very statement that lets
+     * the room the ceremony's key derives be created -- see
+     * `GroupKeyStateManager.propose`. What the group signs as there is the room
+     * it is about to make: the ceremony's key at the app's admin path.
      *
-     * That is admitted only when the ceremony is *this room's own*, and the path
-     * is the constant rather than anything off the wire. Both inputs are read
-     * from this device's database, so a proposer still chooses nothing: naming
+     * Two rooms are that room. A group's own ceremony runs in the NIP-17 room its
+     * members share, whose id is an aggregation of their keys, so it is derived
+     * from nothing and no path reaches it. A *subgroup's* ceremony runs in the
+     * parent's Marmot room, which is derived from the parent's key and so reaches
+     * itself at some path -- just never from the child's, which is the key being
+     * signed under here.
+     *
+     * Each is admitted on the narrowest thing that identifies it, and the path is
+     * the constant rather than anything off the wire. Every input is read from
+     * this device's own database, so a proposer still chooses nothing: naming
      * some other ceremony this device holds a share for gets no path at all, and
      * a session with no path signs as the bare threshold key, which is not an
      * identity any room answers to.
+     *
+     * `key.parentChatRoomId` is the unverified claim off a proposal, and admitting
+     * it here grants nothing. The signature it enables is by the child's key over
+     * the child's own id -- both derived from a ceremony every signer contributed
+     * to -- so a member who put a false parent on a proposal gets a key state for
+     * a room made from a key they helped make, which is what they would have got
+     * by telling the truth.
      *
      * Null is not a failure. `completedKey` will find a key for a Marmot room
      * that was never derived from it -- the fallback kept for rooms the app no
@@ -1408,7 +1431,10 @@ object FrostSigningManager {
             }.getOrDefault(false)
         }?.let { return it }
 
-        if (localChatRoom.chatRoom.mlsGroupState == null && key.chatRoomId == chatRoomId) {
+        val isCeremonyRoom = key.chatRoomId == chatRoomId
+        val isSubgroupCeremony = key.parentChatRoomId == chatRoomId
+
+        if (isCeremonyRoom && (localChatRoom.chatRoom.mlsGroupState == null || isSubgroupCeremony)) {
             return SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
         }
 

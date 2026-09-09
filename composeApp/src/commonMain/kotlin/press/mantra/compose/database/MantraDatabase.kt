@@ -177,7 +177,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 18,
+    version = 19,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -298,6 +298,20 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // clock, which is correct for them: nothing that predates subgroups ran
         // two ceremonies in one room.
         AutoMigration(from = 17, to = 18),
+        // v19 adds two nullable DkgSession columns, both of which the ceremony's
+        // room used to answer and no longer can: a subgroup's ChillDKG now runs
+        // in the **parent's** Marmot room rather than in a NIP-17 room derived
+        // from the child's admins. See docs/subgroups.md.
+        //
+        // `participantPublicKeys` is who the ceremony is with -- a subset of the
+        // parent's members, so the room's roster is the wrong set -- and
+        // `subject` is what the room it will make is to be called, which used to
+        // be the ceremony room's own name. Both are read off the proposal, which
+        // has carried both since before this move; what changed is where they
+        // land. Rows written before this read back null and fall back to the
+        // room, which is correct for them: a ceremony held in its own NIP-17 room
+        // ran over exactly that room's members and was named after it.
+        AutoMigration(from = 18, to = 19),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

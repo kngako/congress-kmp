@@ -443,13 +443,17 @@ class DkgRitualViewModel(
                 parentChatRoomId = parent,
                 userPublicKey = activeUserPublicKey,
                 session = session,
+                // The ceremony's participants, not the room's members. The
+                // ceremony runs in the parent's room, so the room's roster is
+                // everybody the subgroup is *not* -- putting it here would ask the
+                // parent to certify itself as its own child.
                 adminPublicKeys = ChillDkgRitualManager
-                    .memberPublicKeys(loaded.localChatRoom)
+                    .participantsOf(session, loaded.localChatRoom)
                     .toList(),
-                // The ceremony room was created with the name the coordinator
-                // typed, and the proposal carried it to everyone else -- so this
-                // is the same name every admin has been looking at.
-                name = loaded.localChatRoom.chatRoom.subject ?: "Subgroup"
+                // The name the coordinator typed, carried to every other admin on
+                // the proposal -- so this is the same name they have all been
+                // looking at, and the one the parent's quorum is about to sign.
+                name = session.subject ?: "Subgroup"
             )
 
             isActionPending.value = false
@@ -535,9 +539,10 @@ class DkgRitualViewModel(
      * Opens the group's admin room: a Marmot/MLS chat whose every member is an
      * admin, keyed on an id derived from the shared key.
      *
-     * The room the ceremony ran in is NIP-17, where nobody administers anything.
-     * This gives the same people a room where every one of them can act, which is
-     * the shape a group that has just made a t-of-n key is asking for.
+     * The room the ceremony ran in is somebody else's -- a NIP-17 room where
+     * nobody administers anything, or the parent whose subgroup this is. This
+     * gives the people who hold shares a room where every one of them can act,
+     * which is the shape a group that has just made a t-of-n key is asking for.
      *
      * Derived rather than random, unlike every other Marmot room. Every member's
      * device can compute the id from the ceremony they all took part in, so the
@@ -546,10 +551,10 @@ class DkgRitualViewModel(
      * early to the existing room rather than minting a second one.
      *
      * Only once the group has signed what the room signs with. That statement is
-     * agreed in the NIP-17 room the ceremony ran in, before there is a Marmot
-     * room to hold it -- see `GroupKeyStateManager.propose` -- so by here it is
-     * a fact the room is created *knowing*, rather than the first thing it has
-     * to go and ask about.
+     * agreed in the room the ceremony ran in, before there is a room of its own
+     * to hold it -- see `GroupKeyStateManager.propose` -- so by here it is a fact
+     * the room is created *knowing*, rather than the first thing it has to go and
+     * ask about.
      */
     fun createAdminGroup(onNavigateToRoute: (Route) -> Unit) {
         if (isActionPending.value) return
@@ -574,17 +579,19 @@ class DkgRitualViewModel(
         // Everyone the ceremony was run with, this device included. These are the
         // admins: the whole point of the room is that the members who hold shares of
         // the key can all act in it.
-        val members = ChillDkgRitualManager.memberPublicKeys(loaded.localChatRoom)
+        //
+        // Off the ceremony rather than off the room, because for a subgroup the
+        // room is the parent's and its roster is the wrong set entirely.
+        val members = ChillDkgRitualManager.participantsOf(session, loaded.localChatRoom)
 
         // A subgroup is called what the coordinator called it; an admin room is
         // called after the group it administers, because it has no name of its
         // own to be given. Either way the bare name goes down and
-        // `MarmotGroupCreation` puts it under `MarmotGroupName`, so the NIP-17
-        // room the ceremony ran in stays `Ekklesia` and the Marmot room it stands
-        // up is `#Ekklesia`.
+        // `MarmotGroupCreation` puts it under `MarmotGroupName`, so a NIP-17 room
+        // called `Ekklesia` stands up a Marmot room called `#Ekklesia`.
         val subgroupParent = loaded.parentChatRoomId
 
-        val name = loaded.localChatRoom.chatRoom.subject
+        val name = session.subject
             ?: if (subgroupParent != null) "Subgroup" else "Group"
 
         isActionPending.value = true
@@ -597,7 +604,7 @@ class DkgRitualViewModel(
                 purpose = if (subgroupParent != null) {
                     "A subgroup of the group that certified it."
                 } else {
-                    "Admins of ${loaded.localChatRoom.chatRoom.subject ?: "the group"}."
+                    "Admins of ${session.subject ?: "the group"}."
                 },
                 adminPublicKeys = members,
                 userPublicKey = activeUserPublicKey,

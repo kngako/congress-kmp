@@ -9,9 +9,12 @@ Read [shared-key-derivation.md](./shared-key-derivation.md) and
 built on the property they state — that a room's id *is* the key it signs with —
 and on the ceremony they describe, which a subgroup runs again from scratch.
 
-**Built**, phases 1-9, one commit each. The phases are kept as written because
-they are the reasoning, and the code reads better against the argument it came
-from than against a summary of itself. Where the implementation chose differently
+**Built**, phases 1-9, one commit each, and then **Phase 10 moved the child's
+ceremony into the parent's Marmot room** -- the thing [Phase 4](#why-not-the-parents-marmot-room)
+deferred and said to revisit. Phases 1-9 are kept as written because they are the
+reasoning, and the code reads better against the argument it came from than
+against a summary of itself; where Phase 10 overtook one of them the section says
+so and points forward. Where the implementation chose differently
 the section says so, and it did so six times worth reading:
 
 | what the plan said | what it turned out to be |
@@ -116,14 +119,27 @@ opens the screen and can act, not only to the member who started.
 
 | step | runs in | signed by | transport |
 |---|---|---|---|
-| ChillDKG | a NIP-17 room over the child's admins | n/a — every participant | gift wraps |
+| ChillDKG | the **parent** Marmot room, over the child's admins | n/a — every participant | MLS group events |
 | birth certificate | the **parent** Marmot room | the parent's quorum, as the parent's key | MLS group events |
-| key state | the child's NIP-17 ceremony room | the **child's** quorum, as the child's key | gift wraps |
+| key state | the **parent** Marmot room | the **child's** quorum, as the child's key | MLS group events |
 
-The middle row is the only new shape, and it is not new machinery:
-`FrostSigningManager` already runs on both transports and already gates each
-signer's approval behind the existing proposal UI. What is new is a kind for it
-to carry and a reason for the parent's admins to say yes.
+One room, three ceremonies, two quorums. The middle row was the only new shape
+and it is not new machinery: `FrostSigningManager` already runs on both
+transports and already gates each signer's approval behind the existing proposal
+UI. What is new is a kind for it to carry and a reason for the parent's admins to
+say yes.
+
+The first and third rows read like that since [Phase 10](#phase-10--the-ceremony-moves-into-the-parents-room).
+They used to run in a sibling NIP-17 room whose id was an aggregate of the child's
+admins, and the reasons for moving them -- and the two ways it can silently go
+wrong -- are there.
+
+The parent's room hosting a ceremony its own members are not all in is the one
+thing that needs saying twice. An MLS message reaches the whole tree, so the
+ceremony has to name who it is with: the proposal's p-tags are the participant
+set, and a parent member outside them drops the proposal rather than joining.
+"Can read the message" and "is in the ceremony" are different questions, and a
+member who published a host key would be in the child's signing quorum for good.
 
 ## Informed consent, and what the parent's admins are actually signing
 
@@ -353,6 +369,11 @@ state's.
 
 ## Phase 4 — where the subgroup's ceremony runs
 
+> **Overtaken by [Phase 10](#phase-10--the-ceremony-moves-into-the-parents-room).**
+> The ceremony now runs in the parent's Marmot room. Everything below is what was
+> built first and why; the two tags it adds are unchanged and still travel on the
+> proposal, and the collision it argues about is the thing Phase 10 retired.
+
 The child's ChillDKG needs a room whose participant set is exactly the child's
 admins, and whose transport is gift wraps. There is already one:
 `chatRepository.createNip17ChatRoom` over the selected admins plus the
@@ -391,6 +412,11 @@ ever reaches the creator's own device.
 
 ### The collision this buys, and it is real
 
+> Retired by [Phase 10](#phase-10--the-ceremony-moves-into-the-parents-room):
+> there is no member-derived ceremony room left to collide. What survives is a
+> narrower refusal -- a ceremony for the same admins under the same parent that is
+> still *running* -- and the reasoning below is why that one is worth keeping.
+
 A NIP-17 room's id is a pure function of its members, so **one admin set gets one
 ceremony room, forever**. Two consequences, and both need a guard rather than a
 comment:
@@ -410,6 +436,11 @@ it, so what Phase 8 refuses is only the same parent asking twice over the same
 admins. See [that phase](#phase-8--the-refusals).
 
 ### Why not the parent's Marmot room
+
+> **It landed** — see [Phase 10](#phase-10--the-ceremony-moves-into-the-parents-room),
+> which is this section's shopping list carried out. Kept as written because the
+> three mechanical costs it enumerates are exactly the three that had to be paid,
+> and two of them fail silently if they are not.
 
 The obvious alternative is to hold all three steps in the parent room: no sibling
 room, no member-derived id, and the collision above disappears. It is a better
@@ -492,10 +523,10 @@ reimplement them.
 ```kotlin
 object SubgroupManager {
     /** The NIP-17 room a ceremony for these admins would run in. Pure. */
-    fun ceremonyRoomIdFor(adminPublicKeys: Set<HexKey>, coordinator: HexKey): String
+    fun ceremonyRoomIdFor(adminPublicKeys: Set<HexKey>, coordinator: HexKey): String  // deleted in Phase 10
 
     /** Step 1: stand up the ceremony room and open the ritual in it. */
-    suspend fun openCeremony(...): DkgSession
+    suspend fun openCeremony(...): DkgSession  // never built
 
     /** Step 2: ask the parent's quorum to certify the child. Runs in the parent room. */
     suspend fun proposeBirthCertificate(
@@ -547,9 +578,9 @@ signed statement, and every device in the parent room already has them —
 followed the session, not only on the signers'.
 
 **Two certificates for one child is a normal outcome, not a conflict.** Two parent
-admins can press the button on the same admin set: the second lands in the same
-NIP-17 ceremony room and gets the first's ceremony back, but both may go on to
-propose a certificate, and both sessions can complete. `GroupSignedEvent` is keyed
+admins can press the button on the same admin set: the second's `proposeRitual`
+folds into the ceremony the first opened, but both may go on to propose a
+certificate, and both sessions can complete. `GroupSignedEvent` is keyed
 on the event id, so the rows coexist. `certificateFor` therefore takes the
 **newest** of those that pass `certifies`, the way `GroupKeyStateManager.signedAmong`
 already picks the newest state — and because both certificates say the same true
@@ -706,11 +737,11 @@ certificate so the parent's admins approve something legible.
 
 `MarmotGroupName.of` puts the `#` on it. The field shows the prefix beside what is
 typed rather than in it, so the caret does not move under somebody mid-word, and
-the ceremony room keeps the bare name — it is a NIP-17 room, and the mark is what
-tells it apart from the subgroup it stands up. The subgroup's own name is derived
-from that subject twice, by two unrelated callers: `proposeBirthCertificate`
-normalises the name the parent signs, `MarmotGroupCreation` normalises the name the
-room carries. Those two have to be the same string or the subgroup is not called
+the bare name is what goes down — since Phase 10 onto `DkgSession.subject`, which
+is where a ceremony held in somebody else's room has to keep it. The subgroup's
+own name is derived from that twice, by two unrelated callers:
+`proposeBirthCertificate` normalises the name the parent signs,
+`MarmotGroupCreation` normalises the name the room carries. Those two have to be the same string or the subgroup is not called
 what its parent certified, which is what the rule being idempotent buys.
 
 ### Key packages, checked here rather than discovered at step 4
@@ -780,9 +811,12 @@ rendered only when a parent is present, and it is where the coordinator proposes
 the certificate and watches the parent's quorum answer.
 
 The approvals themselves need **no new UI**. The certificate is a
-`FrostSigningEvents.PROPOSAL` in the parent room and the key state one in the
-ceremony room; `ProposalListScreen` and `FrostSigningScreen` already show and
-approve both, on both transports.
+`FrostSigningEvents.PROPOSAL` in the parent room and so, since Phase 10, is the
+key state; `ProposalListScreen` and `FrostSigningScreen` already show and approve
+both. Which quorum each asks is not the room's business either way — a proposal
+names the ceremony it signs under, and `signerIdOf` drops one for a ceremony this
+device was not in, so a parent admin outside the subgroup never sees the child's
+key state as theirs to answer.
 
 ## Phase 8 — the refusals
 
@@ -798,7 +832,7 @@ a room nobody can replace.
 | an empty or blank name | Phase 6 has nothing to put in `MarmotGroupData.name`, and the parent's admins would be certifying an unnamed hash |
 | a selected member with no unconsumed key package | they cannot be welcomed into the room at step 4, and finding that out at step 4 wastes three ceremonies. Checked at the picker and again at confirm |
 | ~~the selection is not a proper subset of the parent's members~~ | **withdrawn.** A subgroup is a logical division, not a smaller membership, so "everybody" is a normal answer. What this was standing in for is the row below, checked precisely rather than by set size |
-| the ceremony room already holds a non-`FAILED` `DkgSession` **for this same parent** | `proposeRitual` would return that ceremony, and the "new" subgroup would be the old one — same key, same id. Scoped by `DkgSession.parentChatRoomId`, so a room may hold the group's own ceremony *and* a subgroup's |
+| a ceremony for **this parent over these same admins** is still running | every admin would be asked twice, on two ladders, for two keys, one of which nobody will make a room from. Matched on `DkgSession.participantPublicKeys` since Phase 10, and only while the ceremony is live: a *finished* one means that subgroup was made, and a second run by the same people is a legitimate ask |
 | this device holds no share of the parent's key | it cannot open the certificate session; `proposeSigningBatch` throws, and throwing at the button is not a UI |
 | this device is not an admin of the parent | a non-admin proposing the parent's signature is a proposal the parent's admins have to decline by hand |
 | the parent has no signed key state and no resolvable key | there is nothing for the certificate to be signed with |
@@ -830,6 +864,10 @@ forbid the selection. A room may now hold two ceremonies, and everything below
 that lookup already keyed off the session id, so nothing else had to learn about
 the second one.
 
+Phase 10 finished the thought. A parent's room hosts *every* subgroup ceremony
+the group ever runs, so `(room, parent)` stopped telling two of them apart and the
+lookup moved to `(room, parent, admins)` — `getLatestSubgroupSessionFor`.
+
 One collision survives, and it is degenerate: the same parent, over the same
 admins, twice. Those two have nothing left to distinguish them, which is another
 way of saying they are one subgroup asked for twice, and that is what the message
@@ -857,10 +895,104 @@ Two that need a database, in jvmTest, where `secp256k1` loads and Room runs:
   mutation of it.
 - `SubgroupDaoJvmTest` — schema 17 round-trips the four columns, and
   `subgroupsOf` returns a certified child whose room does not exist locally.
+- `SubgroupCeremonyInParentRoomTest` (Phase 10) — the ceremony queued as inner
+  events rather than gift wraps, the p-tags naming only the picked admins, a
+  parent member outside them opening no session, a backlog replayed out of the
+  inner-event store, and `completedKey` refusing to hand the parent its child's
+  key.
 
 One end-to-end, and it is the one that would have caught the collision in Phase
 4: two ceremonies proposed over the same admin set land in the same room, and the
 second is refused rather than silently returning the first's key.
+
+## Phase 10 — the ceremony moves into the parent's room
+
+The thing [Phase 4](#why-not-the-parents-marmot-room) deferred, done, because the
+reason to wait was `docs/mls-skipped-keys.md` and that is being fixed. The child's
+ChillDKG and its key state now run in the parent's Marmot room on group events;
+the sibling NIP-17 room is gone, and with it the rule that one admin set could
+hold one subgroup forever.
+
+Schema 18 → 19, two nullable columns, both on `DkgSession`, and both are things
+the sibling room used to answer:
+
+| column | why the room cannot answer it any more |
+|---|---|
+| `participantPublicKeys` | the ceremony is with a *subset* of the parent's members, so the room's roster names every person the subgroup is not |
+| `subject` | the room this ceremony's key derives is not called what the parent is called, and the parent's name is the one name a child must not take |
+
+Both are read off the proposal, which has carried both since Phase 4 — the p-tags
+and the `subject` tag. What changed is where they land: on the session, which is
+the only thing in a shared room that knows which ceremony it is.
+
+### Three costs, and two of them are silent
+
+Phase 4 enumerated them. All three had to be paid, and the two that fail silently
+are worth stating as rules rather than as changes.
+
+**1. `ChillDkgRitualManager` grows the two-transport shape.** `broadcast` writes a
+`MarmotInnerEvent` where the room has MLS state and a `GiftWrapPayload` where it
+does not, `replayStoredMessages` reads the backlog out of whichever store that
+same reading names, `processRitualPayload` takes an `Event` rather than a
+gift-wrap payload, and `NostrDao`'s Marmot arm dispatches the DKG kinds beside
+the FROST ones it already did.
+
+**The p-tags stay on both transports**, unlike `FrostSigningManager`'s. There a
+p-tag is an address and a group event needs none; here the p-tag set *is* the
+participant set every device derives `n` from — and in the parent's room it is
+also the only thing separating the subgroup's admins from everyone else who can
+read the message. Dropping them the way the signing manager correctly does would
+enrol the whole parent in the child's permanent signing quorum. Inside MLS
+encryption, naming them leaks nothing.
+
+**2. `DkgSession.chatRoomId` stopped identifying a ceremony**, and the failure is
+silent in the one place it matters. `FrostSigningManager.completedKey`'s last
+fallback is "a ceremony held in this very room" — the fallback every parent member
+welcomed after the group's own ceremony lands on, since they hold neither a share
+nor a key state. The parent's room now holds a *completed* ceremony whose key is
+the child's, and handing that back would have the parent sign as its own subgroup
+with nothing to see. `getLatestOwnSessionForChatRoom` is that fallback scoped to
+`parentChatRoomId IS NULL`: a ceremony run to make a subgroup is never the room's
+own key, and that is the whole of what has to be read to know it.
+
+`proposeRitual`'s guard moved for the same reason and in the other direction —
+see the Phase 8 row above.
+
+**3. `signingPath` admits a Marmot room**, narrowly. It has one case that cannot
+be self-checked: the room a ceremony ran in, signing the statement that lets the
+room the ceremony's key derives be created. That used to mean "a NIP-17 room whose
+ceremony is its own"; it now also means "the parent's room, where the ceremony
+claims that parent". The claim is unverified and grants nothing — the signature it
+enables is by the *child's* key over the *child's* own id, both derived from a
+ceremony every signer contributed to, so a member who lied about the parent gets
+what telling the truth would have got them.
+
+### What it buys
+
+- **A subgroup no longer costs a room.** Nothing appears in anybody's chat list
+  that is not a group.
+- **One admin set can run many subgroups.** The permanent collision is gone,
+  because there is no member-derived id left to collide; what is refused is only a
+  ceremony for the same people under the same parent that is still running.
+- **Every step of a subgroup happens in one place.** The picker hands back to the
+  parent's transcript, and the ceremony, the certificate and the key state are all
+  answered from there — which is where `observeCeremoniesAwaitingYou` and
+  `observeProposalsAwaitingYou` were already looking.
+- **`DkgSession.parentChatRoomId` is no longer a hint alone.** It still
+  authenticates nothing, and nothing may be granted on it that would not be
+  granted without it — but two lookups now scope on it, so the note where it is
+  declared has to be read before either is widened.
+
+### What it costs
+
+A ceremony now rides the transport where a message arriving a moment late is
+dropped for good, which is the whole of Phase 4's objection and is not answered by
+this phase — it is answered by the quartz fix `docs/mls-skipped-keys.md`
+describes. A DKG is the worst payload for that bug: it cannot finish until every
+participant takes part, so one lost round-1 message stalls it for everybody.
+`replayStoredMessages` covers a message that lost a race to the proposal, since
+the inner event is stored before it is dispatched; it cannot cover a message the
+tree could never decrypt.
 
 ## Rollout
 
@@ -911,20 +1043,13 @@ about whether the child's chronicle may carry an event its own key did not sign,
 which no chroniclable kind does today. That last one is the real work, and it is
 why this is a follow-up rather than a line in Phase 5.
 
-**One parent, one admin set, one subgroup.** Narrower than it first shipped: a
-room may hold two ceremonies, told apart by `DkgSession.parentChatRoomId`, so a
-group's own ceremony and a subgroup over the same people coexist. What is still
-refused is the same parent asking twice over the same admins, which have nothing
-left to distinguish them.
-
-Widening that further needs the NIP-17 ceremony room to be distinguishable by
-something other than its members, and `ChatRoom.deriveChatRoomId` is a pure
-aggregate of member keys that the inbound path recomputes. Changing it is a change
-to how every NIP-17 room in the app is addressed.
-
-It is also the limitation that disappears on its own: move the ceremony into the
-parent's Marmot room, as [Phase 4](#why-not-the-parents-marmot-room) defers doing,
-and there is no member-derived id left to collide.
+**~~One parent, one admin set, one subgroup.~~ Gone in Phase 10.** It narrowed
+twice and then disappeared. First to "the same parent asking twice over the same
+admins", once `DkgSession.parentChatRoomId` told two ceremonies in a room apart.
+Then to nothing permanent at all, because moving the ceremony into the parent's
+Marmot room left no member-derived id to collide: what is refused now is only a
+ceremony for those admins under that parent that is **still running**, and a
+finished one is a subgroup that exists rather than a slot that is used up.
 
 **Every selected admin has to show up, twice.** A ChillDKG cannot finish without
 all `n`, and the key state then needs a quorum of them. A member who never
@@ -964,12 +1089,14 @@ every parent member, and verifiable without the table. A table would be a second
 copy that can disagree with them, and the only thing it would add is flow state
 for the coordinator — which `DkgSession.parentChatRoomId` covers with one column.
 
-**Running the child's ChillDKG and key state inside the parent's Marmot room.**
-The better design, deferred rather than rejected, and argued in full in
-[Phase 4](#why-not-the-parents-marmot-room). Short version: the two move
-together, the mechanical cost is three enumerable changes, and the reason to wait
-is `docs/mls-skipped-keys.md` — a ceremony needs every participant, and group
-events lose one of any two that arrive back to back.
+**~~Running the child's ChillDKG and key state inside the parent's Marmot room.~~**
+Not rejected — deferred, argued in full in
+[Phase 4](#why-not-the-parents-marmot-room), and then
+[built](#phase-10--the-ceremony-moves-into-the-parents-room) once the reason to
+wait was being fixed. The two did move together, the mechanical cost was the
+three changes Phase 4 enumerated, and `docs/mls-skipped-keys.md` remains the thing
+this leans on: a ceremony needs every participant, and group events lose one of
+any two that arrive back to back until that lands.
 
 **A dedicated subgroup derivation path.** `m/9420/0/0` is reused, because the
 path is walked from the *child's own* key and two different keys at the same path
