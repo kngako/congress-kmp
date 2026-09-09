@@ -299,6 +299,115 @@ the certificate travels inside it — verified standalone by `stateFrom` on ever
 child device, exactly as at founding. The proposer needs the event; nobody else
 does.
 
+## Choosing the parent
+
+Worth its own section, because "pick a group" is not what the picker can offer and
+designing the screen around the wrong list would be the easy mistake.
+
+### The list is the selector's own rooms, and cannot be anything else
+
+A certificate is proposed **inside** the adopting group, by
+`FrostSigningManager.proposeSigning` in that room. So the candidate list is not "the
+groups that exist" or "the groups C's admins can name" — it is the rooms *this
+device* can already act in:
+
+```
+getChatRoomListByUserPublicKey(user)
+  filter { it is a Marmot room whose MarmotGroupData reads }
+  filter { adminPubkeys.contains(userPublicKey) }
+  filter { FrostSigningManager.canSign(database, it.id) }
+  filter { it.id != C }
+  filter { it.id !in C's current parents }
+  filter { it.id is not a descendant of C }
+```
+
+The first three are `SubgroupManager.refuseCeremonyRoom`'s existing checks with the
+target moved from "the parent of a new subgroup" to "the adopting group", and the
+admin one reads `MarmotGroupData.adminPubkeys` rather than `Participant.adminAt`, for
+the reason that function already gives: the flag is written only by
+`processGroupMembershipChanges` on an arriving commit, so it is null for everybody on
+a room this device created.
+
+**A group cannot be offered as a parent by somebody who is not in it.** That is the
+overlap requirement from [who can actually do this](#who-can-actually-do-this) showing
+up as a list length. If nobody in C administers P2, P2 simply does not appear, and the
+remedy is a person rather than a button.
+
+### Cost, and where it goes
+
+`toMlsGroup()` deserialises the whole group state out of hex to reach `adminPubkeys`,
+once per candidate room. `canSign` is cheap for exactly the rooms that pass —
+`completedKey`'s first branch is a key-state lookup and a session lookup by id, and
+its expensive fallback (`getKeyHoldingSessions` with a `marmotGroupId` derivation per
+session) only fires for rooms with no key state, which fail the filter anyway.
+
+So the filter is one MLS decode per room and two indexed reads. Fine at twenty rooms
+and worth building the way `SelectChatRoomMembersViewModel.scheduleKeyPackageEventSynchronization`
+already builds its prefetch: off the main thread, filling in as it resolves, rather
+than blocking the screen on the whole list.
+
+### The selection is an offer, not a decision
+
+The ordering is forced — the key state carries the certificate, so the certificate is
+signed first — and that has a consequence worth stating in the UI's own words:
+
+> **P2's quorum commits first. C's quorum decides second.**
+
+Whoever picks P2 is not choosing on C's behalf. They are asking P2 to make an offer,
+and C's admins answer it at step 2 by signing the re-announced key state or not. The
+real decision point for C is the key-state proposal, which is why
+[the `ProposedEvent` gap](#consent-on-both-sides) is the most important small change
+in this design.
+
+It also means P2's quorum can be spent on an offer that is declined. That is not new —
+founding has the same ordering, and `proposeBirthCertificate` runs before the child's
+quorum has signed anything either — but at founding the child's admins have at least
+*seen* the intent, because `DkgRitualEvents`' `parent_group` tag rides on the ceremony
+proposal and the ritual screen says which group it is for. Adoption has no ceremony
+and so no such hint.
+
+### So C's admins need telling, and the arm to tell them already exists
+
+Without one, the first thing an admin of C hears about the whole business is a
+proposal asking for their signature.
+
+`ChatMessage.applyInnerEvent`'s 30329 arm should grow a second branch. Today it calls
+`SubgroupManager.record`, which asks `certifies(event, subgroup, chatRoomId)` — the
+certificate's parent must be the room it arrived in — and drops anything else. A
+certificate that instead names *this* room as its subject, and verifies against the
+parent it names, is the arriving offer:
+
+| the certificate | the line |
+|---|---|
+| signed by this room, about another | "The group made #Translators a subgroup…" (today's) |
+| about this room, signed by another | "#Ekklesia has offered to adopt this group" |
+
+Both branches are fully verified and neither needs a lookup: `certifies` checks the
+signature against a room id, and a room id is a public key. Nothing is stored — the
+`GroupSignedEvent` foreign key onto `ChatRoom` forbids it, and nothing needs it,
+because the certificate reaches C's devices for real inside the key state at step 2.
+The line is notice, not evidence, and should read as an offer rather than as a fact
+about C's lineage.
+
+Delivering the certificate into C is then one act by the member who is in both, and it
+is the same act that gives the step-2 proposer the event they need.
+
+### Which screen it starts from
+
+Two defensible entry points, and they produce an identical certificate:
+
+- **C's detail screen**, beside the parent card: *"add a parent group"*. The child is
+  the one acquiring the relationship, its quorum is the one that ultimately decides,
+  and it mirrors the parent screen's existing *"add subgroup"*.
+- **P2's detail screen**, beside *"add subgroup"*: *"adopt an existing group"*. This is
+  where the proposal actually lands, and where P2's admins would look for what their
+  group has taken on.
+
+C's screen is the better default, for the mirroring and because the intent usually
+originates with the group looking for a parent. P2's is worth adding later; the guards
+are the same set read in the other direction, and the candidate list becomes "Marmot
+rooms I hold a key state for", since that is where `subgroup_key` comes from.
+
 ## Consent, on both sides
 
 The parent's side already works. A P2 admin sees `ProposedEvent`'s 30329 summary —
@@ -377,15 +486,19 @@ screen, and no new approval UI at all — both proposals are ordinary
 `FrostSigningEvents.PROPOSAL`s that `ProposalListScreen` and `FrostSigningScreen`
 already show and approve.
 
-**"Add a parent group"** opens a picker of candidate rooms: the Marmot rooms this
-device administers and can sign in. Choosing one proposes the certificate there.
-Offered only where step 1's guards pass, hidden rather than disabled, in the same
-way the shared-key entry is hidden on an MLS room.
+**"Add a parent group"** opens the picker described under [choosing the
+parent](#choosing-the-parent) and proposes the certificate in whichever group is
+chosen. Offered only where step 1's guards pass, hidden rather than disabled, in the
+same way the shared-key entry is hidden on an MLS room — and empty for a member who
+administers none of C's candidate parents, which is a fact about them rather than a
+failure.
 
 **"Accept #P2 as a parent"** appears once a certificate this device can see has
 been signed, and proposes the re-announced key state. Offered to any member of C
 holding a share — not only to whoever started, for the same reason `subgroups.md`
-gives for the ritual screen's rung.
+gives for the ritual screen's rung. Its wording is the decision, not the mechanism:
+C is accepting an offer, and the transcript line from the arriving certificate is
+what it is accepting.
 
 **The parent card becomes up to N cards.** It reads
 `ChatRoomDetailUIState.parentChatRoomId` ← `chatRepository.parentOf` ←
@@ -416,7 +529,12 @@ otherwise.
 - `SubgroupDaoJvmTest` — schema 19 round-trips the table, a newer state replaces
   the parentage rows of an older one, and a re-announcement that drops a parent
   leaves no row behind.
-- `SubgroupManagerJvmTest` — the two guard tables.
+- `SubgroupManagerJvmTest` — the two guard tables, and the candidate filter: a room
+  this device is in but does not administer is not offered as a parent, and neither
+  is one it administers but holds no share of.
+- `ChatMessageJvmTest` — the 30329 arm's second branch: a certificate about this room,
+  signed by another, writes the offer line; one signed by neither this room nor the
+  parent it names writes nothing.
 
 ## Rollout
 
@@ -515,8 +633,8 @@ description is baked into the epoch-0 group context and adoption happens after i
 | schema | 5 | `GroupKeyState`, a new entity, `GroupKeyStateDao` (transactional `replace`), `ChatRoomDao`, `MantraDatabase` + migration |
 | managers | 2 | `GroupKeyStateManager` (`parentageOf`, `propose`), `SubgroupManager` (`parentsOf`, the two guard sets, adoption proposals) |
 | repositories | 4 | two interfaces, two implementations, mostly signature plurals |
-| text | 1 | `ProposedEvent`'s 30326 arm — the consent fix |
+| text | 2 | `ProposedEvent`'s 30326 arm — the consent fix — and `ChatMessage`'s 30329 arm, for the offer line |
 | UI | 5 | `ChatRoomDetailUIState`, its view model and screen, a parent picker, strings |
-| tests | 6 | |
+| tests | 8 | |
 
 Around two dozen files, and the founding flow is not among them.
