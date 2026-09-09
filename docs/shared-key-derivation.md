@@ -110,7 +110,7 @@ leak reaches the others.
 `derive` and `marmotGroupId` both take `path: List<Long>`, defaulting to
 `MARMOT_ADMIN_GROUP_PATH` (`m/9420/0/0`). Any depth works.
 
-`9420` is arbitrary and has to stay put: the derived key *is* the `#admins` room's
+`9420` is arbitrary and has to stay put: the derived key *is* the admin room's
 id, so changing the path orphans every room already created — members would derive
 a different id and stop finding the room at all.
 

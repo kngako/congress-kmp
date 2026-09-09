@@ -31,6 +31,7 @@ import kotlin.time.Instant
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.GroupSignedEvent
@@ -39,6 +40,7 @@ import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.toHex
+import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 
 /**
@@ -429,6 +431,39 @@ class SubgroupManagerJvmTest {
     }
 
     @Test
+    fun `the name the parent is asked to sign is the name the room will carry`(): Unit =
+        runBlocking {
+            // A parent that can actually sign: the proposal has to get as far as
+            // writing the event whose tags are what this is about.
+            val parentRoom = parentWith(listOf(alice, bob))
+
+            val session = SubgroupManager.proposeBirthCertificate(
+                database = db,
+                parentRoom = parentRoom,
+                userPublicKey = user,
+                key = completedChildCeremony(),
+                adminPublicKeys = listOf(user, alice, bob),
+                // Bare, as it comes off the ceremony room's subject -- that room
+                // is NIP-17 and keeps the name unmarked.
+                name = "Translation team",
+            )
+
+            val proposed = Event.fromJson(
+                assertNotNull(db.frostSigningSessionDao().getItems(session.id).firstOrNull())
+                    .unsignedEventJson
+            )
+
+            // A quorum is being asked to sign a name, and `MarmotGroupCreation`
+            // will name the room by the same rule from the same subject. If only
+            // one of the two applied it, the parent would certify "Translation
+            // team" and the room would be called "#Translation team".
+            assertEquals(
+                MarmotGroupName.of("Translation team"),
+                SubgroupBirthCertificateEvent.parseName(proposed.tags)
+            )
+        }
+
+    @Test
     fun `an unnamed subgroup cannot be certified`(): Unit = runBlocking {
         seedRoom(parentRoomId)
         val parentRoom = assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))
@@ -530,7 +565,7 @@ class SubgroupManagerJvmTest {
     /**
      * A parent this device could actually make a subgroup of.
      *
-     * Built as what a real parent *is* -- the `#admins` room derived from the
+     * Built as what a real parent *is* -- the admin room derived from the
      * group's own key -- rather than as a NIP-17 room with MLS state bolted on.
      * That is not fussiness: `ChatRoom.deriveChatRoomId` returns a 33-byte
      * compressed key (66 hex) and `MarmotGroupData.nostrGroupId` takes 32 bytes,
@@ -607,6 +642,21 @@ class SubgroupManagerJvmTest {
                     secretShare = "cc".repeat(32),
                 )
             )
+
+            // A ceremony's signer ids come from its host keys, sorted -- there is
+            // no stored signer id to seed. Without these the parent holds a key it
+            // cannot find itself in, and `proposeSigningBatch` refuses before it
+            // writes anything.
+            (members + user).forEachIndexed { index, member ->
+                db.dkgSessionDao().upsert(
+                    DkgParticipantMessage(
+                        sessionId = "parent-ceremony",
+                        participantPublicKey = member,
+                        kind = DkgRitualEvents.HOST_KEY,
+                        payload = "0${index + 1}".repeat(33)
+                    )
+                )
+            }
         }
 
         return assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))

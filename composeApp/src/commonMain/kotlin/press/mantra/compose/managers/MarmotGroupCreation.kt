@@ -24,10 +24,10 @@ import press.mantra.compose.repository.ChatRepository
  * Creating a Marmot room at an id the group's key derives, once, for every flow
  * that needs one.
  *
- * Two do: the `#admins` room a group opens after its own ceremony, and a
- * subgroup, which is the same act with four different values. This was 120 lines
- * inside `DkgRitualViewModel` and is here unchanged in behaviour, because the
- * rules it already gets right are not rules worth deriving twice.
+ * Two do: the admin room a group opens after its own ceremony, and a subgroup,
+ * which is the same act with four different values. This was 120 lines inside
+ * `DkgRitualViewModel` and is here unchanged in behaviour, because the rules it
+ * already gets right are not rules worth deriving twice.
  *
  * ### The three that are not obvious
  *
@@ -96,6 +96,11 @@ object MarmotGroupCreation {
      * [parentChatRoomId] is written onto the room when this is a subgroup. It is
      * the verified value off the child's own key state -- never a claim off a
      * proposal.
+     *
+     * [name] is put under [MarmotGroupName] here rather than trusted from the
+     * caller. Every Marmot room on a device is a `#name`, and this is the funnel
+     * both flows that make one already go through, so it is the one place the
+     * convention cannot be forgotten.
      */
     suspend fun create(
         database: MantraDatabase,
@@ -111,6 +116,8 @@ object MarmotGroupCreation {
         keyPackageLookupTimeout: Long = KEY_PACKAGE_LOOKUP_TIMEOUT
     ): Outcome {
         chatRepository.getChatRoomByIdentifier(groupId)?.let { return Outcome.Existing(it) }
+
+        val groupName = MarmotGroupName.of(name)
 
         val peers = adminPublicKeys.filterNot { it == userPublicKey }
         val keyPackages = keyPackagesFor(chatRepository, peers, keyPackageLookupTimeout)
@@ -131,7 +138,7 @@ object MarmotGroupCreation {
         // hardcodes a single admin.
         val metadata = MarmotGroupData(
             nostrGroupId = groupId,
-            name = name,
+            name = groupName,
             description = description,
             adminPubkeys = adminPublicKeys.toList(),
             relays = Relays.DefaultDMRelayList.map { it.url }
@@ -151,7 +158,7 @@ object MarmotGroupCreation {
             chatRoomId = groupId,
             activeUserPublicKey = userPublicKey,
             relayHint = null,
-            defaultSubject = name,
+            defaultSubject = groupName,
             description = description,
             mlsGroupState = group.saveState().encodeTls().toHex()
         ) ?: return Outcome.Failed("Couldn't create the group. Please try again.")

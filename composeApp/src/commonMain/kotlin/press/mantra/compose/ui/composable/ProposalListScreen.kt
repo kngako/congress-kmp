@@ -428,7 +428,7 @@ private fun ProposalListScreenPreview() {
                         chatRoom = ChatRoom(
                             id = "chatRoomId",
                             userPublicKey = "u".repeat(64),
-                            subject = "Group (#admins)",
+                            subject = "#Ekklesia",
                             description = null,
                             initialGiftWrapPayloadId = "sdfaer",
                             mlsGroupState = null

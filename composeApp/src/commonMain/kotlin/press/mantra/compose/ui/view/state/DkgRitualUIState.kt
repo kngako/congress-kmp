@@ -37,7 +37,7 @@ sealed interface DkgRitualUIState {
         val pendingApproval: DkgApprovalStep? = null,
         /**
          * Members whose key package the coordinator could not find, and so who stop
-         * the #admins room being created at all.
+         * the admin room being created at all.
          *
          * Names rather than keys, because the answer to this is to go and ask that
          * person to open the app. Empty when nothing is blocked, which is also the
@@ -45,7 +45,7 @@ sealed interface DkgRitualUIState {
          */
         val adminGroupBlockedOn: List<String> = emptyList(),
         /**
-         * The session in which the group is agreeing what its #admins room will
+         * The session in which the group is agreeing what its admin room will
          * sign with, once somebody has opened one.
          *
          * A ceremony's room holds exactly one of these and nothing else, because

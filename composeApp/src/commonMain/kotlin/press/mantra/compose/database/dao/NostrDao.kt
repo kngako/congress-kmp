@@ -886,7 +886,7 @@ abstract class NostrDao(
                             } else if (FrostSigningEvents.isFrostSigningKind(decryptedGiftWrapPayload.kind)) {
                                 // A FROST signing message for one of our NIP-17
                                 // groups, which is where a group makes its first
-                                // signature: the statement of what its #admins room
+                                // signature: the statement of what its admin room
                                 // signs with, agreed before that room is created.
                                 // See `GroupKeyStateManager.propose`.
                                 //

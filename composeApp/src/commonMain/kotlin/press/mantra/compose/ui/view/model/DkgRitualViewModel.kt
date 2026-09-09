@@ -238,7 +238,7 @@ class DkgRitualViewModel(
     }
 
     /**
-     * Follows the group agreeing what its #admins room will sign with.
+     * Follows the group agreeing what its admin room will sign with.
      *
      * Nothing here watches a [GroupKeyState] row, because there is no room yet
      * for one to belong to -- being able to follow this before the room exists
@@ -348,7 +348,7 @@ class DkgRitualViewModel(
     }
 
     /**
-     * Asks the group to sign what its #admins room will sign with.
+     * Asks the group to sign what its admin room will sign with.
      *
      * The step before the room exists, and the reason it can be created knowing
      * its own key state rather than being told afterwards. Offered to the
@@ -578,14 +578,14 @@ class DkgRitualViewModel(
 
         // A subgroup is called what the coordinator called it; an admin room is
         // called after the group it administers, because it has no name of its
-        // own to be given.
+        // own to be given. Either way the bare name goes down and
+        // `MarmotGroupCreation` puts it under `MarmotGroupName`, so the NIP-17
+        // room the ceremony ran in stays `Ekklesia` and the Marmot room it stands
+        // up is `#Ekklesia`.
         val subgroupParent = loaded.parentChatRoomId
 
-        val name = if (subgroupParent != null) {
-            loaded.localChatRoom.chatRoom.subject ?: "Subgroup"
-        } else {
-            "${loaded.localChatRoom.chatRoom.subject ?: "Group"} (#admins)"
-        }
+        val name = loaded.localChatRoom.chatRoom.subject
+            ?: if (subgroupParent != null) "Subgroup" else "Group"
 
         isActionPending.value = true
         dkgRitualUIState = loaded.copy(adminGroupBlockedOn = emptyList())

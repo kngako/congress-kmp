@@ -80,7 +80,7 @@ import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
-import mantra.composeapp.generated.resources.create_the_admins_group
+import mantra.composeapp.generated.resources.create_the_admin_room
 import androidx.compose.material.icons.filled.AccountTree
 import mantra.composeapp.generated.resources.create_the_subgroup
 import mantra.composeapp.generated.resources.ask_the_parent_group_to_certify
@@ -100,9 +100,9 @@ import mantra.composeapp.generated.resources.start_key_ceremony
 import mantra.composeapp.generated.resources.the_ceremony_was_abandoned
 import mantra.composeapp.generated.resources.the_group_can_hold_one_key_together_split_so
 import mantra.composeapp.generated.resources.the_group_has_a_shared_key
-import mantra.composeapp.generated.resources.the_group_has_agreed_what_the_admins_room
-import mantra.composeapp.generated.resources.the_group_could_not_agree_what_the_admins
-import mantra.composeapp.generated.resources.the_group_is_agreeing_what_the_admins_room
+import mantra.composeapp.generated.resources.the_group_has_agreed_what_the_admin_room
+import mantra.composeapp.generated.resources.the_group_could_not_agree_what_the_admin
+import mantra.composeapp.generated.resources.the_group_is_agreeing_what_the_admin_room
 import mantra.composeapp.generated.resources.agree_the_groups_signing_key
 import mantra.composeapp.generated.resources.before_the_room_exists_the_group_signs
 import mantra.composeapp.generated.resources.this_is_fixed_once_the_ceremony_runs
@@ -514,7 +514,7 @@ private fun RitualProgress(
                 )
 
                 // What the group has to settle before there is a room: which
-                // ceremony's key the #admins room signs with. Signed first and
+                // ceremony's key the admin room signs with. Signed first and
                 // filed as the room is created, so the room's founding fact is
                 // never something it has to go and ask about afterwards.
                 //
@@ -595,20 +595,20 @@ private fun RitualProgress(
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = Decorative)
                         Text(
-                            text = stringResource(Res.string.the_group_has_agreed_what_the_admins_room),
+                            text = stringResource(Res.string.the_group_has_agreed_what_the_admin_room),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
 
                     keyStateFailed -> Text(
-                        text = stringResource(Res.string.the_group_could_not_agree_what_the_admins),
+                        text = stringResource(Res.string.the_group_could_not_agree_what_the_admin),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error
                     )
 
                     keyStateSession != null -> Text(
                         text = stringResource(
-                            Res.string.the_group_is_agreeing_what_the_admins_room,
+                            Res.string.the_group_is_agreeing_what_the_admin_room,
                             keyStateSession.threshold,
                             keyStateSession.participantCount
                         ),
@@ -657,7 +657,7 @@ private fun RitualProgress(
                                     text = if (parentChatRoomId != null) {
                                         stringResource(Res.string.create_the_subgroup)
                                     } else {
-                                        stringResource(Res.string.create_the_admins_group)
+                                        stringResource(Res.string.create_the_admin_room)
                                     }
                                 )
                             }

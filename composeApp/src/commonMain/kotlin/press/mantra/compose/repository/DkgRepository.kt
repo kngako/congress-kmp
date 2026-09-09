@@ -93,7 +93,7 @@ interface DkgRepository {
     )
 
     /**
-     * Asks the group to sign a statement of which ceremony's key its #admins
+     * Asks the group to sign a statement of which ceremony's key its admin
      * room will sign with, before that room is created.
      *
      * Called once by the ceremony's coordinator, in the NIP-17 room the ceremony
@@ -120,7 +120,7 @@ interface DkgRepository {
     fun observeSigningSessions(chatRoomId: String): Flow<List<LocalFrostSigningSession>>
 
     /**
-     * The key state the group has signed for the #admins room this room's
+     * The key state the group has signed for the admin room this room's
      * ceremony will make, whether or not that room exists yet.
      *
      * The gate on creating it. Null means the group has not finished agreeing

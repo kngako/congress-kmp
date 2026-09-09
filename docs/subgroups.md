@@ -698,12 +698,20 @@ point of a subgroup is that it can be run by people the parent does not let run
 the parent.
 
 **A name field at the top**, because nothing else in the flow can supply one.
-`createAdminGroup` synthesises `"${parent.subject} (#admins)"` and gets away with
-it — a group has exactly one admin room and the name states a relationship rather
-than a choice — but a group can have many subgroups and "Ekklesia (#subgroup)"
-names none of them. The name is required, travels on the route to Phase 6's
-`MarmotGroupData`, and is copied into the birth certificate so the parent's admins
-approve something legible.
+`createAdminGroup` gets away with naming the admin room after the group it
+administers — a group has exactly one — but a group can have many subgroups, and
+naming them all after the parent names none of them. The name is required, travels
+on the route to Phase 6's `MarmotGroupData`, and is copied into the birth
+certificate so the parent's admins approve something legible.
+
+`MarmotGroupName.of` puts the `#` on it. The field shows the prefix beside what is
+typed rather than in it, so the caret does not move under somebody mid-word, and
+the ceremony room keeps the bare name — it is a NIP-17 room, and the mark is what
+tells it apart from the subgroup it stands up. The subgroup's own name is derived
+from that subject twice, by two unrelated callers: `proposeBirthCertificate`
+normalises the name the parent signs, `MarmotGroupCreation` normalises the name the
+room carries. Those two have to be the same string or the subgroup is not called
+what its parent certified, which is what the rule being idempotent buys.
 
 ### Key packages, checked here rather than discovered at step 4
 

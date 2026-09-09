@@ -76,7 +76,7 @@ interface DkgSessionDao {
     /**
      * Every ceremony this device came out of holding a share, newest first.
      *
-     * Signing happens in the #admins room, whose id is derived from the key
+     * Signing happens in the admin room, whose id is derived from the key
      * rather than from the room the ceremony ran in, so the key is found by
      * matching that derivation rather than by a stored room id.
      */

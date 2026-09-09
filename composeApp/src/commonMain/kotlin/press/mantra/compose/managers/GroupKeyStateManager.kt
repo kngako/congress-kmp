@@ -45,7 +45,7 @@ import press.mantra.compose.nostr.subgroup.SubgroupParentage
  *  coordinator --[ 30320 proposal over a 30326 ]-> the same NIP-17 room
  *  ...a quorum signs, on gift wraps...
  *  every device holds the signed 30326, naming a room nobody has made yet
- *  coordinator creates the #admins room --> adopt() files the state as it appears
+ *  coordinator creates the admin room --> adopt() files the state as it appears
  * ```
  *
  * It used to be the new room's first application message, which meant the group
@@ -75,7 +75,7 @@ object GroupKeyStateManager {
      * Asks the group to say what the room it is about to make signs with.
      *
      * Called once, by the ceremony's coordinator, in the NIP-17 room the
-     * ceremony ran in -- before the #admins room exists. [localChatRoom] is
+     * ceremony ran in -- before the admin room exists. [localChatRoom] is
      * therefore where the session *runs*, and is not usually the room the state
      * is *about*: that one is derived here, from [key] at [path], because the
      * room's id and the key it signs as are the same value.

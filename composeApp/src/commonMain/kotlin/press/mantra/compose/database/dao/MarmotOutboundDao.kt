@@ -188,7 +188,7 @@ abstract class MarmotOutboundDao(
      * Adds every member in [peers] to a group in a single MLS commit.
      *
      * The shape to use whenever the whole membership is known up front -- creating a
-     * room, or opening the #admins room after a key ceremony. One commit, one
+     * room, or opening the admin room after a key ceremony. One commit, one
      * Welcome carrying an EncryptedGroupSecrets per joiner, and crucially **no
      * intermediate epoch for anybody to miss**.
      *

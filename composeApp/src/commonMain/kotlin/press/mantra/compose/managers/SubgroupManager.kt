@@ -218,6 +218,12 @@ object SubgroupManager {
 
         require(name.isNotBlank()) { "A subgroup has to be called something" }
 
+        // The certificate is a signature over the name, so it has to be the name
+        // the room ends up with. `MarmotGroupCreation` normalises again on the
+        // way in and `MarmotGroupName.of` is idempotent, so the two agree by
+        // construction rather than by both callers remembering.
+        val subgroupName = MarmotGroupName.of(name)
+
         // One certificate per child. A second is a `d`-tag replacement of the
         // first rather than a second subgroup, and spending a quorum's attention
         // to restate something they have already signed is worse than doing
@@ -240,7 +246,7 @@ object SubgroupManager {
                 parentChatRoomId = parentChatRoomId,
                 thresholdPublicKey = thresholdPublicKey,
                 adminPublicKeys = adminPublicKeys,
-                name = name,
+                name = subgroupName,
                 path = path
             ),
             content = subgroupChatRoomId

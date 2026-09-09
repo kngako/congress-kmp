@@ -194,7 +194,7 @@ class FrostSigningSessionDaoJvmTest {
     }
 
     /**
-     * Signing happens in the #admins room, and a device can be in more than one. A session from
+     * Signing happens in the admin room, and a device can be in more than one. A session from
      * another room appearing here would have a signer answering a request its group never made.
      */
     @Test

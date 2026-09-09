@@ -51,7 +51,7 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  *
  * ### Two transports, because a group signs before it has a room
  *
- * Almost every signature is made in the group's #admins room, and there a
+ * Almost every signature is made in the group's admin room, and there a
  * signing message is an ordinary Marmot inner event needing no addressing of its
  * own: the room already exists, its membership is exactly the share holders, and
  * its id is derived from the key. One encrypted group event reaches everyone.
@@ -73,7 +73,7 @@ import press.mantra.compose.nostr.frost.FrostSigningEvents
  * they expect is the id of the room they found it in.
  *
  * A session in a NIP-17 room signs as the room the ceremony's key derives --
- * the #admins room that does not exist yet -- which is the same rule read
+ * the admin room that does not exist yet -- which is the same rule read
  * forwards: what a group signs as is the room the signature belongs to.
  *
  * The path comes from the room, never from a proposal -- [signingPath] -- because
@@ -1294,7 +1294,7 @@ object FrostSigningManager {
     /**
      * The key a room signs with, or null when it has none.
      *
-     * Signing usually runs in the #admins room, which is not where the ceremony
+     * Signing usually runs in the admin room, which is not where the ceremony
      * ran. A ceremony needs a NIP-17 group -- every member an equal admin, no
      * MLS tree to be outside of -- while a group event needs an MLS one, so the
      * two cannot be the same room.

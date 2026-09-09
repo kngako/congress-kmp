@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.MarmotGroupCreation
+import press.mantra.compose.managers.MarmotGroupName
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
@@ -66,6 +67,15 @@ class SelectSubgroupAdminsViewModel(
     /** Members ticked, in the order they were ticked. The coordinator is never here. */
     val selectedPublicKeys = mutableStateListOf<HexKey>()
 
+    /**
+     * What the coordinator typed, bare.
+     *
+     * The `#` is drawn beside the field rather than pushed into this state:
+     * normalising on every keystroke would move the caret out from under somebody
+     * halfway through a word. It is added by `MarmotGroupName.of` where the
+     * subgroup's name is actually used -- in the certificate the parent signs and
+     * on the room itself -- which is idempotent, so the two agree.
+     */
     val name: MutableState<String> = mutableStateOf("")
 
     val threshold: MutableState<Int> = mutableStateOf(ChatRoomType.MINIMUM_QUORUM)
@@ -213,11 +223,22 @@ class SelectSubgroupAdminsViewModel(
                 return@launch
             }
 
+            // The ceremony room keeps the bare name. It is a NIP-17 room -- where
+            // the subgroup is made, not the subgroup -- and the `#` is what tells
+            // those two rows apart afterwards, so putting it on both would spend
+            // the mark to say nothing.
+            //
+            // The subgroup gets it twice over, and never from here:
+            // `proposeBirthCertificate` normalises the name the parent signs and
+            // `MarmotGroupCreation` normalises the name the room carries, both
+            // reading this subject. `MarmotGroupName.of` is idempotent, so those
+            // are the same string -- which they have to be, or the room is not
+            // called what its parent certified.
             val ceremonyRoom = chatRepository.createNip17ChatRoom(
                 userPublicKey = activeUserPublicKey,
                 participantPublicKeys = selectedPublicKeys.toList(),
-                subject = name.value,
-                description = "Making ${name.value} a subgroup of " +
+                subject = name.value.trim(),
+                description = "Making ${MarmotGroupName.of(name.value)} a subgroup of " +
                     (loaded.parentRoom.chatRoom.subject ?: "this group") + "."
             )
 

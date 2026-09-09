@@ -16,7 +16,7 @@ import press.mantra.compose.nostr.frost.tags.FrostSignerIdsTag
  * implied by the 3xxxx range never apply. Almost always that is a Marmot group
  * event -- MLS-encrypted to the group and then wrapped again under the group's
  * exporter secret. The exception is a group's first session, which agrees what
- * its #admins room will sign with *before* that room exists and so runs in the
+ * its admin room will sign with *before* that room exists and so runs in the
  * NIP-17 room its ceremony ran in, on gift wraps. See
  * `GroupKeyStateManager.propose`.
  *

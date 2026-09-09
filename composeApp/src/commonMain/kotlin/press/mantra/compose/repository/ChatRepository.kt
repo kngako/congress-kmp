@@ -165,7 +165,7 @@ interface ChatRepository {
      * Creates a Marmot room at an id the group's key derives, with
      * [adminPublicKeys] as its admins, and welcomes them into it.
      *
-     * Two flows want exactly this: the `#admins` room a group opens after its
+     * Two flows want exactly this: the admin room a group opens after its
      * ceremony, and a subgroup. See `MarmotGroupCreation`, which holds the rules
      * -- every key package before anything exists, the admins baked into epoch 0,
      * and the key state filed before the members are added.

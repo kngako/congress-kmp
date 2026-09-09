@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.extensions.toHex
+import press.mantra.compose.managers.MarmotGroupName
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
@@ -222,6 +223,12 @@ class SelectChatRoomTypeViewModel(
     ) {
         val gid = RandomInstance.bytes(32).toHexKey() // TODO: Generate GID through frost...
 
+        // Every Marmot room is a `#name`. This one does not go through
+        // `MarmotGroupCreation` -- its id is random rather than derived, so it has
+        // no key state to adopt and no admin set to bake in -- which is why the
+        // convention is applied here as well as there.
+        val groupName = MarmotGroupName.of(name)
+
         // Stamp initial metadata via the shared factory so UI + CLI stay
         // byte-identical. Bake the MarmotGroupData extension into the
         // epoch-0 GroupContext directly (see `MarmotManager.createGroup`)
@@ -232,7 +239,7 @@ class SelectChatRoomTypeViewModel(
             nostrGroupId = gid,
             creatorPubKey = keyPair.pubKey.toHexKey(),
             outboxRelays = Relays.DefaultDMRelayList.map { it.url },
-            name = name,
+            name = groupName,
             description = description.orEmpty()
         )
 
@@ -255,7 +262,7 @@ class SelectChatRoomTypeViewModel(
                 chatRoomId = gid,
                 activeUserPublicKey = keyPair.pubKey.toHexKey(),
                 relayHint = null,
-                defaultSubject = name,
+                defaultSubject = groupName,
                 description = description,
                 mlsGroupState = group.saveState().encodeTls().toHex()
             )

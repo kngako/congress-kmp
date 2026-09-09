@@ -77,7 +77,7 @@ data class GroupSignedEvent(
      *
      * The exception is a group's first signature: its `GroupKeyStateEvent` is
      * signed in the NIP-17 room the ceremony ran in, and is authored by the
-     * #admins room that does not exist yet -- so this names where it happened
+     * admin room that does not exist yet -- so this names where it happened
      * and [publicKey] names who signed. [verifies] cannot pass on that row, for
      * the reason it gives.
      */
@@ -154,7 +154,7 @@ data class GroupSignedEvent(
      * of the derivation rather than of this check.
      *
      * And a group's first signature is made in the NIP-17 room its ceremony ran
-     * in, about the #admins room it is about to create, so [chatRoomId] is where
+     * in, about the admin room it is about to create, so [chatRoomId] is where
      * it happened and [publicKey] is who signed. Check that one with
      * `GroupKeyStateEvent.isSignedByGroup`, which asks the question this row
      * cannot: whether the *named* room signed it.

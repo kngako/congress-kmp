@@ -237,7 +237,7 @@ class SignedGroupKeyStateTest {
         val chatRoom = ChatRoom(
             id = roomId,
             userPublicKey = publicKey,
-            subject = "#admins",
+            subject = "#Ekklesia",
             description = description,
             mlsGroupState = mlsGroupState
         )
@@ -601,7 +601,7 @@ class SignedGroupKeyStateTest {
      */
     private val ceremonyRoomId = "ceremonyroom".padEnd(64, '0')
 
-    /** A member's device as it is *before* the #admins room exists. */
+    /** A member's device as it is *before* the admin room exists. */
     private suspend fun ceremonyDevice(publicKey: HexKey, signerIndex: Int): Device =
         device(
             publicKey = publicKey,
@@ -614,13 +614,13 @@ class SignedGroupKeyStateTest {
             mlsGroupState = null
         )
 
-    /** Brings the #admins room into being on a device, as creating or joining it would. */
+    /** Brings the admin room into being on a device, as creating or joining it would. */
     private suspend fun createAdminRoom(device: Device) {
         device.db.chatRoomDao().upsert(
             ChatRoom(
                 id = adminRoomId,
                 userPublicKey = device.publicKey,
-                subject = "#admins",
+                subject = "#Ekklesia",
                 description = adminRoomDescription,
                 mlsGroupState = "00"
             )
@@ -1391,7 +1391,7 @@ class SignedGroupKeyStateTest {
         // than anything walked to. There is no room key to sign as, so it signs
         // as the group's -- which is what it did before any of this.
         //
-        // A NIP-17 room in the same shape signs as the #admins room the ceremony
+        // A NIP-17 room in the same shape signs as the admin room the ceremony
         // will make, which is the case below. The two are told apart by whether
         // the room has MLS state, and by nothing a proposer can reach.
         val undeerived = "d".repeat(64)
@@ -1420,7 +1420,7 @@ class SignedGroupKeyStateTest {
     @Test
     fun `a NIP-17 room that did not host the ceremony cannot sign at all`() = runBlocking {
         // The other half of the rule that lets a ceremony's room sign as the
-        // room it is about to make. That room signs as the #admins room *its
+        // room it is about to make. That room signs as the admin room *its
         // own* ceremony derives; a NIP-17 room this member merely happens to be
         // in reaches no key and no path, so it never gets as far as choosing an
         // identity to sign under.

@@ -106,7 +106,7 @@ with that peer's key package.
 
 Both callers that know their membership up front now use it —
 `SelectChatRoomTypeViewModel.inviteMembers` at room creation, and
-`DkgRitualViewModel.inviteAdmins` for the `#admins` room.
+`DkgRitualViewModel.inviteAdmins` for the admin room.
 
 ### Why this needed no schema change
 

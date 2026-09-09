@@ -51,6 +51,7 @@ import mantra.composeapp.generated.resources.what_is_the_subgroup_called
 import mantra.composeapp.generated.resources.who_runs_the_subgroup
 import mantra.composeapp.generated.resources.you_coordinate_this_subgroup
 import org.jetbrains.compose.resources.stringResource
+import press.mantra.compose.managers.MarmotGroupName
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -151,6 +152,12 @@ fun SelectSubgroupAdminsScreen(
                             onValueChange = viewModel::setName,
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
+                            // Every Marmot room is a `#name`, and a subgroup is
+                            // one. Shown in the field rather than added on
+                            // confirm alone, so the name the coordinator reads
+                            // here is the name the parent's admins will be asked
+                            // to approve.
+                            prefix = { Text(MarmotGroupName.PREFIX) },
                             label = { Text(stringResource(Res.string.what_is_the_subgroup_called)) }
                         )
                     }

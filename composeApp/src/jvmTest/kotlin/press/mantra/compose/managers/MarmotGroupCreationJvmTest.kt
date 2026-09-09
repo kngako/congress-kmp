@@ -63,7 +63,7 @@ class MarmotGroupCreationJvmTest {
             database = db,
             chatRepository = repository,
             groupId = groupId,
-            name = "Ekklesia (#admins)",
+            name = "#Ekklesia",
             purpose = "Admins of Ekklesia.",
             // A group of one, so nothing has to be invited and no key package has
             // to be found. The flag is the whole of what is being tested.
@@ -94,7 +94,7 @@ class MarmotGroupCreationJvmTest {
             database = db,
             chatRepository = repository,
             groupId = groupId,
-            name = "Ekklesia (#admins)",
+            name = "#Ekklesia",
             purpose = "Admins of Ekklesia.",
             adminPublicKeys = setOf(user),
             userPublicKey = user,
@@ -114,6 +114,35 @@ class MarmotGroupCreationJvmTest {
         assertEquals(groupId, data.nostrGroupId)
         assertEquals(64, groupId.length)
         assertTrue(data.adminPubkeys.contains(user))
+    }
+
+    @Test
+    fun `the room is named under the convention whatever the caller passed`(): Unit = runBlocking {
+        seedProfile(user)
+
+        MarmotGroupCreation.create(
+            database = db,
+            chatRepository = repository,
+            groupId = groupId,
+            // A bare name, as a caller reading a room's subject straight off the
+            // database hands it over. The convention is this function's to apply:
+            // it is where both flows that make a Marmot room meet, and the name
+            // goes into the epoch-0 group context every member is welcomed with,
+            // so a caller that forgot would mark the room on no device at all.
+            name = "Ekklesia",
+            purpose = "Admins of Ekklesia.",
+            adminPublicKeys = setOf(user),
+            userPublicKey = user,
+            keyPair = keyPair,
+        )
+
+        val room = assertNotNull(db.chatRoomDao().findChatRoomById(groupId))
+        val data = assertNotNull(room.chatRoom.toMlsGroup()?.currentMarmotData())
+
+        // Both, and the same string in each: the row is what this device draws in
+        // its room list, and the group data is what every other member reads.
+        assertEquals("#Ekklesia", room.chatRoom.subject)
+        assertEquals("#Ekklesia", data.name)
     }
 
     private suspend fun seedProfile(publicKey: String) {

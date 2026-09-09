@@ -79,7 +79,7 @@ if (!event.pubKey.equals(author, ignoreCase = true)) return false
 
 That derived value is the room's id. `GroupKeyState.isMatchedBy` enforces it,
 `FrostSigningManager.signingPath` resolves the path by it, and
-`DkgRitualViewModel` creates the `#admins` room *at* it. So for any room with a
+`DkgRitualViewModel` creates the admin room *at* it. So for any room with a
 shared key, `marmotGroupId(thresholdPublicKey, path) == chatRoomId`, and the
 check collapses to:
 

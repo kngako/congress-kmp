@@ -105,7 +105,7 @@ class TranslationBatchProposalJvmTest {
         val chatRoom = ChatRoom(
             id = roomId,
             userPublicKey = proposer,
-            subject = "#admins",
+            subject = "#Ekklesia",
             description = SharedKeyDerivation.describe("Admins of the group."),
             mlsGroupState = null
         )
