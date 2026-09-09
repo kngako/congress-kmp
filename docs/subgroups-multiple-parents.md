@@ -7,7 +7,12 @@ Read [subgroups.md](./subgroups.md) first. This extends it and contradicts it in
 one place — the assumption, never stated because it never had to be, that a
 lineage is a single link settled at founding.
 
-Written against the code as it stands at `45cc80b5`.
+Written against the code as it stands at `0be31803` — that is, **after**
+`subgroups.md`'s Phase 10 moved the child's ceremony into the parent's Marmot room.
+That move removed two of the costs an earlier draft of this note claimed adoption
+would avoid and reshaped a third, so the case is made here on what is left. It also
+makes founding with two parents *harder* — see the
+[rejected alternatives](#considered-and-rejected).
 
 ## The short answer
 
@@ -25,17 +30,24 @@ That is the whole flow. Compare it with founding, which is four steps:
 |---|---|
 | 1. ChillDKG among the child's admins | — the key already exists |
 | 2. birth certificate, in the parent | **the same step, unchanged** |
-| 3. key state, in the NIP-17 ceremony room | **the same event, in the child's own Marmot room** |
+| 3. key state, in the parent's room where the ceremony ran | **the same event, in the child's own Marmot room** |
 | 4. create the Marmot room | — the room already exists |
 
 Losing step 1 is the point. `subgroups.md` names it as the single biggest
 practical cost of a subgroup — *"a ChillDKG cannot finish without all `n`… a
 member who never approves stalls the subgroup at step 1 indefinitely"* — and it
-is also what drags in the NIP-17 ceremony room, the member-derived room id, the
-collision guard, and `DkgSession.parentChatRoomId` as a discriminator. None of
-that is reachable from here. **The whole of `DkgSession`, `ChillDkgRitualManager`,
-`MarmotGroupCreation`, `SelectSubgroupAdminsScreen` and the ritual screen's rung
-is untouched by this design.**
+is also the last thing standing between a lineage and being an ordinary edit.
+
+Phase 10 has already paid down what it used to drag in: the NIP-17 sibling room and
+the member-derived id are gone, and the collision guard is now
+`DkgSessionDao.getLatestSubgroupSessionFor` over `(room, parent, participants)` rather
+than an address that could only be occupied once. So this note claims none of those as
+savings — only the ceremony and the room creation, which is enough.
+
+**The whole of `DkgSession`, `ChillDkgRitualManager`, `MarmotGroupCreation`,
+`SelectSubgroupAdminsScreen` and the ritual screen's rung is untouched by this
+design** — and Phase 10 makes that a stronger statement than it was, because those
+files have just absorbed a large change that adoption does not have to follow.
 
 Three things in the existing code make step 2 work as it stands:
 
@@ -46,9 +58,11 @@ Three things in the existing code make step 2 work as it stands:
 - `FrostSigningManager.signingPath` resolves correctly for it. Its first candidate
   is `GroupKeyStateManager.keyStateFor(chatRoomId)?.pathIndices()`, which for the
   child is `m/9420/0/0`, and `marmotGroupId(K, path) == chatRoomId` self-checks.
-  The `mlsGroupState == null` special case — the one `subgroups.md` flags as the
-  only un-self-checkable path in the app — is **not** reached, because the child's
-  room exists.
+  The one un-self-checkable case is **not** reached. Phase 10 widened it from
+  `mlsGroupState == null` to `isCeremonyRoom && (mlsGroupState == null ||
+  isSubgroupCeremony)`, so it now admits the parent's room as well as a NIP-17 one —
+  and adoption enters neither arm, because the child's own room is neither the
+  ceremony's room nor its claimed parent.
 - `GroupKeyStateDao.replace` keeps the newest state per room by `announcedAt`, and
   `announcedAt` comes off the signed event. So a re-announcement replaces the old
   lineage cleanly, and an out-of-order arrival is dropped rather than applied.
@@ -231,15 +245,20 @@ has newest-wins logic and would have to become a `@Transaction` that rewrites th
 parentage rows with the state, or a dropped parent survives the re-announcement
 that dropped it — which is exactly the operation this design adds.
 
-**`DkgSession`: untouched.** No discriminator, no canonical joined string, no
-migration. This is the largest single saving over founding-time multi-parent.
+**`DkgSession`: untouched.** Adoption opens no ceremony, so it needs no session, no
+discriminator and no migration there. Phase 10 has just added two columns to that
+table — `participantPublicKeys`, a sorted comma-joined set matched whole by
+`getLatestSubgroupSessionFor`, and `subject` — which is worth knowing for two
+reasons: it is the precedent for the canonical-string shape, and it is the change
+adoption is glad not to be entangled with.
 
 **`ChatRoom.parentChatRoomId`: drop it.** It is write-only in production (see
 [found while reading](#found-while-reading)), and leaving it holding one of
 several parents makes it a cache that is wrong rather than merely unused.
 
-Schema **18 → 19**: one new table, one dropped column, and the existing rows
-carried across as a single parentage row each. Not an `AutoMigration`; schema
+Schema **19 → 20** — 19 is Phase 10's, for `DkgSession.participantPublicKeys` and
+`subject`: one new table, one dropped column, and the existing rows carried across as
+a single parentage row each. Not an `AutoMigration`; schema
 9→10 already has the shape to copy.
 
 ### The zero-migration alternative, and why not
@@ -321,7 +340,7 @@ getChatRoomListByUserPublicKey(user)
   filter { it.id is not a descendant of C }
 ```
 
-The first three are `SubgroupManager.refuseCeremonyRoom`'s existing checks with the
+The first three are `SubgroupManager.refuseSubgroup`'s existing checks with the
 target moved from "the parent of a new subgroup" to "the adopting group", and the
 admin one reads `MarmotGroupData.adminPubkeys` rather than `Participant.adminAt`, for
 the reason that function already gives: the flag is written only by
@@ -339,7 +358,10 @@ remedy is a person rather than a button.
 once per candidate room. `canSign` is cheap for exactly the rooms that pass —
 `completedKey`'s first branch is a key-state lookup and a session lookup by id, and
 its expensive fallback (`getKeyHoldingSessions` with a `marmotGroupId` derivation per
-session) only fires for rooms with no key state, which fail the filter anyway.
+session) only fires for rooms with no key state, which fail the filter anyway. Its last
+fallback is now `getLatestOwnSessionForChatRoom` — the same query scoped to
+`parentChatRoomId IS NULL`, so that a parent hosting its child's ceremony cannot
+resolve the child's key as its own.
 
 So the filter is one MLS decode per room and two indexed reads. Fine at twenty rooms
 and worth building the way `SelectChatRoomMembersViewModel.scheduleKeyPackageEventSynchronization`
@@ -434,7 +456,7 @@ currently not being told what it is.
 
 ## Guards
 
-Two new refusal sets, both in the shape `SubgroupManager.refuseCeremonyRoom`
+Two new refusal sets, both in the shape `SubgroupManager.refuseSubgroup`
 already has: checked before the button is offered, and again in the manager.
 
 **Before proposing a certificate in P2** — the first three are its existing checks,
@@ -526,7 +548,7 @@ otherwise.
   key, a real P1 key and state, a real P2 key, a real certificate by P2 over the
   child, a real **re-announced** state carrying both, and the assertion that
   `stateFrom` accepts it and rejects each single-field mutation.
-- `SubgroupDaoJvmTest` — schema 19 round-trips the table, a newer state replaces
+- `SubgroupDaoJvmTest` — schema 20 round-trips the table, a newer state replaces
   the parentage rows of an older one, and a re-announcement that drops a parent
   leaves no row behind.
 - `SubgroupManagerJvmTest` — the two guard tables, and the candidate filter: a room
@@ -562,15 +584,26 @@ without the two rungs, so the flag, if one is wanted, is again the button.
 ## Considered and rejected
 
 **Founding a subgroup with two parents at once.** The version this question
-replaced, and worth recording why the incremental framing wins. It needs the
-ceremony's parent set to become a canonical discriminator on `DkgSession`, a
-co-parent tag on the certificate so all certificates can agree on the set, a
-coordinator who administers *both* parents, two quorums answering before the child
-room can be created at all, and a widened `refuseCeremonyRoom`. Roughly thirty
-files against this design's dozen — and it delivers strictly less, because it
-cannot adopt a group that already exists, which is the case people actually have.
-Founding with two parents remains reachable afterwards: found with one, adopt the
-second, and the room is a few minutes old instead of a few seconds.
+replaced. An earlier draft rejected it on costs Phase 10 has since removed — the
+member-derived ceremony room and the parent set as a `DkgSession` discriminator — so
+the argument has to be made again, and it comes out the same way for a better reason.
+
+**Phase 10 makes founding with two parents harder, not easier.** The ceremony now runs
+in *the parent's room*, and a child with two parents has two candidate rooms and no
+principled way to choose: `DkgSession.chatRoomId` is one column, the ceremony's
+messages ride that room's MLS transport, and the members of the other parent — who may
+be admins of the child — are not in it to receive them. Running it in both means two
+ceremonies and two keys, which is two children. Running it in one means the other
+parent's admins take part in a ceremony held somewhere they cannot see, which is not a
+thing MLS will do.
+
+Adoption sidesteps the question entirely by not holding a ceremony, and what remains
+against founding-with-two is unchanged: it still needs a co-parent tag so certificates
+can agree on the set, a coordinator who administers both parents, and two quorums
+answering before the child room exists at all — and it still cannot adopt a group that
+already exists, which is the case people actually have. Founding with two parents stays
+reachable: found with one, adopt the second, and the room is a few minutes old instead
+of a few seconds.
 
 **A separate adoption kind, leaving the key state alone.** Cleaner-sounding: a new
 event by the child's quorum saying "we accept P2", so the founding fact is never
