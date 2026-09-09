@@ -21,6 +21,7 @@ import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
+import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
@@ -1259,6 +1260,21 @@ data class ChatMessage(
                 // what, so an "unsupported" row here would be a second, worse
                 // account of the same thing.
                 in FrostSigningEvents.ALL -> null
+
+                // A key ceremony's own protocol messages, for the same reason.
+                // These reach a Marmot room when the group is standing up a
+                // subgroup: the child's ChillDKG runs in the parent's room,
+                // because the child has no room until the ceremony has made the
+                // key its id is derived from. `ChillDkgRitualManager` applies
+                // them and writes the ladder of lines naming who joined, who
+                // contributed and who confirmed.
+                //
+                // Null for every member of the room, including the ones the
+                // ceremony is not with. They were never in the participant set
+                // and their device drops the proposal, so the alternative to no
+                // line at all is an "unsupported" one for a ceremony that is
+                // none of their business.
+                in DkgRitualEvents.ALL -> null
 
                 // The group saying what key one of its rooms signs with, arriving
                 // here the way every group-signed event does: applied by

@@ -5,6 +5,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.GiftWrapPayload
+import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.database.model.types.DkgApprovalStep
@@ -12,12 +13,14 @@ import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import co.touchlab.kermit.Logger
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
+import com.vitorpamplona.quartz.nip01Core.tags.people.taggedUsers
 import com.vitorpamplona.quartz.utils.RandomInstance
 import fr.acinq.bitcoin.ByteVector
 import fr.acinq.bitcoin.ByteVector32
@@ -32,18 +35,38 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
- * Runs a ChillDKG ritual over a NIP-17 group.
+ * Runs a ChillDKG ritual in a group's room, on whichever transport that room has.
  *
- * The group is the participant set, the member who opens the ritual is the
- * coordinator, and every protocol message travels as a gift-wrapped rumor on
- * the kinds in [DkgRitualEvents] — the same sealing and broadcast pipeline chat
- * messages already use, so there is no second transport to operate.
+ * The participant set is who the proposal p-tags, the member who opens the ritual
+ * is the coordinator, and every protocol message travels on the kinds in
+ * [DkgRitualEvents] — as a gift-wrapped rumor in a NIP-17 room and as an MLS
+ * application message in a Marmot one, which are the two pipelines chat messages
+ * already use, so there is no second transport to operate.
+ *
+ * ### Two transports, because a subgroup's ceremony is held by its parent
+ *
+ * A group's own ceremony runs in the NIP-17 room its members share: there is no
+ * MLS tree yet, and cannot be, since the room the key will make is derived from
+ * the key the ceremony is about to produce.
+ *
+ * A *subgroup's* ceremony runs in the **parent's** Marmot room. The parent
+ * already exists, already holds exactly the people a subgroup can be drawn from,
+ * and already signs the child's birth certificate there — so the alternative was
+ * a sibling NIP-17 room whose id was an aggregate of the child's admins, which
+ * meant one admin set could hold one subgroup ever. [broadcast] is the only place
+ * that knows the difference; everything above it is the same protocol either way.
+ *
+ * The p-tags stay on **both**, unlike `FrostSigningManager`'s. There they are an
+ * address list and a Marmot message needs none; here the p-tag set *is* the
+ * participant set every device derives `n` from, and in the parent's room that is
+ * a subset of who can read the message. Inside MLS encryption, naming them leaks
+ * nothing.
  *
  * The coordinator is a participant too. ChillDKG treats the coordinator as
  * untrusted (it relays but cannot learn secrets or bias the key), so opening
  * the ritual buys it no authority here — only the job of aggregating. That is
  * why any member may open one: there is nothing to gain by being the one who
- * does, and a NIP-17 room records no creator to privilege.
+ * does.
  *
  * ### Why this is driven by arriving messages
  *
@@ -110,8 +133,37 @@ object ChillDkgRitualManager {
         memberPublicKeys(localChatRoom).size >= MINIMUM_PARTICIPANTS
 
     /**
+     * Everyone a ceremony is being run with — which is not the same question as
+     * who is in the room it runs in.
+     *
+     * A subgroup's ceremony is held in the parent's room over a subset of the
+     * parent's members, so the room's roster names people the ceremony has
+     * nothing to do with. [DkgSession.participantPublicKeys] is the set the
+     * ceremony was opened on, taken from the proposal's p-tags on every device
+     * that did not open it.
+     *
+     * The room is the fallback, and only for rows written before that column
+     * existed: every ceremony then ran in a room whose members were exactly its
+     * participants, so reading the room gave the same answer.
+     */
+    fun participantsOf(session: DkgSession, localChatRoom: LocalChatRoom): Set<HexKey> =
+        session.participantPublicKeySet() ?: memberPublicKeys(localChatRoom)
+
+    /**
      * Opens a ritual, making this device the coordinator. A room already running
-     * one gets that one back rather than a second.
+     * one for the same purpose gets that one back rather than a second.
+     *
+     * [participantPublicKeys] is who the ceremony is with, and defaults to the
+     * room's members -- which is the whole story for a group's own ceremony,
+     * where the room *is* the participant set. A subgroup's ceremony runs in the
+     * parent's room over a subset of it, so that caller names the set, and this
+     * device is added to it either way: opening a ceremony is being in it.
+     *
+     * [subject] is what the room this ceremony's key derives will be called. A
+     * group's own ceremony takes the name of the room it runs in, since the room
+     * it makes administers that group; a subgroup's is named by the coordinator,
+     * and is carried to the other admins on the proposal because there is no
+     * longer a room of its own for them to read it off.
      *
      * Throws when the group or the threshold cannot support one; the UI checks
      * both before offering the button, so reaching either is a bug rather than a
@@ -123,8 +175,15 @@ object ChillDkgRitualManager {
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray,
         threshold: Int,
-        parentChatRoomId: HexKey? = null
+        parentChatRoomId: HexKey? = null,
+        participantPublicKeys: Set<HexKey>? = null,
+        subject: String? = null
     ): DkgSession {
+        // Built the way a receiver rebuilds it from the proposal — the p-tags
+        // `broadcast` writes, plus this device — so both sides count the same `n`
+        // even if the room's own rows have drifted.
+        val members = (participantPublicKeys ?: memberPublicKeys(localChatRoom)) + userPublicKey
+
         // A room runs one ceremony at a time *for one purpose*, and this is
         // reachable twice now that a robust group opens one as it is created: the
         // room id is derived from its members, so making the same group again
@@ -133,35 +192,65 @@ object ChillDkgRitualManager {
         // and the key the first one produced would be left with nothing pointing
         // at it. A failed ritual is not running, and is there to be replaced.
         //
-        // Scoped by [parentChatRoomId] rather than by room alone. A subgroup's
-        // ceremony room is derived from its admins, so a subgroup whose admins are
-        // the whole group lands in the room the group's own ceremony was held in
-        // -- and that is a legitimate subgroup, since a subgroup is a logical
-        // division rather than a smaller membership. Refusing it on the room would
-        // hand back the *group's* key and quietly make the child the parent.
+        // What "the same purpose" means differs by which kind of ceremony this
+        // is, because a parent's room hosts every subgroup ceremony the group
+        // ever runs. Scoping a subgroup's on the room would refuse the parent's
+        // *second* subgroup on the strength of its first.
         //
-        // Checked before the arguments are, because a running ritual makes the
+        // Checked before the threshold is, because a running ritual makes the
         // requested threshold moot -- it settled that question when it opened.
-        database.dkgSessionDao().getLatestSessionFor(localChatRoom.chatRoom.id, parentChatRoomId)
-            ?.takeIf { it.stage != DkgRitualStage.FAILED }
-            ?.let { running ->
-                logger.i(
-                    "Room ${localChatRoom.chatRoom.id} is already running ritual " +
-                        "${running.id}; not opening another"
-                )
-                return running
+        val running = if (parentChatRoomId == null) {
+            database.dkgSessionDao()
+                .getLatestSessionFor(localChatRoom.chatRoom.id, null)
+                ?.takeIf { it.stage != DkgRitualStage.FAILED }
+        } else {
+            // Same parent, same admins -- and still running. A *completed* one is
+            // deliberately not a reason to refuse: it means that subgroup was
+            // made, and a group is entitled to a second one run by the same
+            // people. That was impossible while the ceremony room was derived
+            // from the admins, since asking again handed back the first
+            // ceremony's key and the "new" subgroup was the old one renamed.
+            database.dkgSessionDao().getLatestSubgroupSessionFor(
+                chatRoomId = localChatRoom.chatRoom.id,
+                parentChatRoomId = parentChatRoomId,
+                participantPublicKeys = DkgSession.formatParticipants(members).orEmpty()
+            )?.takeIf {
+                it.stage != DkgRitualStage.FAILED && it.stage != DkgRitualStage.COMPLETE
             }
+        }
 
-        // Built the way a receiver rebuilds it from the proposal — the p-tags
-        // `broadcast` writes, plus this device — so both sides count the same `n`
-        // even if the room's own rows have drifted.
-        val members = memberPublicKeys(localChatRoom) + userPublicKey
+        if (running != null) {
+            logger.i(
+                "Room ${localChatRoom.chatRoom.id} is already running ritual " +
+                    "${running.id}; not opening another"
+            )
+            return running
+        }
+
+        // Everyone in a ceremony has to be able to hear it. In a NIP-17 room a
+        // gift wrap is sealed per p-tag so this was true by construction; in a
+        // Marmot room a message reaches the MLS tree and nobody else, so a
+        // participant outside it is an `n` that can never be met. Checked here
+        // because `SubgroupManager.refuseSubgroup` checking it is a screen not
+        // drawing something, which is not a guard.
+        val room = memberPublicKeys(localChatRoom) + localChatRoom.chatRoom.userPublicKey
+        require(room.containsAll(members)) {
+            "A ceremony in ${localChatRoom.chatRoom.id} cannot include " +
+                "${(members - room).joinToString { it.take(8) }}, who are not in it"
+        }
+
         require(members.size >= MINIMUM_PARTICIPANTS) {
-            "A shared key needs at least $MINIMUM_PARTICIPANTS members, this room has ${members.size}"
+            "A shared key needs at least $MINIMUM_PARTICIPANTS members, this ceremony has ${members.size}"
         }
         require(threshold in ChatRoomType.quorumRange(members.size)) {
             "Quorum $threshold is outside ${ChatRoomType.quorumRange(members.size)} for ${members.size} members"
         }
+
+        // A subgroup is named by whoever is making it. Falling back to the room
+        // there would name a child after its parent, which is the one name it
+        // must not have -- the certificate the parent signs is over this string.
+        val ceremonySubject = subject?.takeIf { it.isNotBlank() }
+            ?: localChatRoom.chatRoom.subject?.takeIf { parentChatRoomId == null }
 
         val sessionId = RandomInstance.bytes(32).toHex()
 
@@ -174,6 +263,10 @@ object ChillDkgRitualManager {
             // The `n` every other device will derive from this proposal's p-tags,
             // which `broadcast` assembles from exactly this set.
             participantCount = members.size,
+            // And the set itself, because the room can no longer be asked: a
+            // subgroup's ceremony runs in the parent's room over a subset of it.
+            participantPublicKeys = DkgSession.formatParticipants(members),
+            subject = ceremonySubject,
             hostPublicKey = deriveHostPublicKey(nostrPrivateKey).value.toHex(),
             // Fresh per session. Persisted because participantStep1/2 are pure in
             // it, which is what makes the whole ritual restart-safe.
@@ -208,13 +301,15 @@ object ChillDkgRitualManager {
             // bytes per round to say something already settled -- and would give a
             // later message a say in what an opened ceremony is for.
             includeParent = true,
-            // The room's name, which until now reached nobody but its creator.
-            // `NostrDao.getOrCreateNip17ChatRoom` has always read a subject off the
-            // payload that first tells it about a room, and a ritual proposal is
-            // routinely that payload -- so without this every member but the
-            // coordinator watched an untitled chat appear with a key ceremony
-            // already running in it.
-            subject = localChatRoom.chatRoom.subject
+            // What the room this key derives is to be called. For a group's own
+            // ceremony that is the NIP-17 room's name, which until this tag
+            // existed reached nobody but its creator --
+            // `NostrDao.getOrCreateNip17ChatRoom` has always read a subject off
+            // the payload that first tells it about a room, and a ritual proposal
+            // is routinely that payload. For a subgroup it is the only way the
+            // name travels at all, since the child has no room yet and the room
+            // this runs in is the parent's.
+            subject = ceremonySubject
         )
 
         publishHostKey(database, localChatRoom, session)
@@ -226,49 +321,55 @@ object ChillDkgRitualManager {
      * Feeds one inbound ritual message in and advances the ritual as far as it
      * will go. Safe to call twice with the same message: every write is keyed
      * and every step recomputed from stored inputs.
+     *
+     * [innerEvent] is the rumor as its sender wrote it, whichever transport
+     * carried it -- the decrypted gift wrap in a NIP-17 room, the inner event of
+     * a kind:445 in a Marmot one. `sig` is empty on both and nothing here reads
+     * it: what vouches for the author is the seal or the MLS frame, not a
+     * signature on the payload.
      */
     suspend fun processRitualPayload(
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
-        giftWrapPayload: GiftWrapPayload,
+        innerEvent: Event,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray
     ) {
-        val sessionId = DkgRitualEvents.parseSessionId(giftWrapPayload.tags)
+        val sessionId = DkgRitualEvents.parseSessionId(innerEvent.tags)
         if (sessionId == null) {
-            logger.w("DKG payload ${giftWrapPayload.id} has no session tag; dropping")
+            logger.w("DKG payload ${innerEvent.id} has no session tag; dropping")
             return
         }
 
-        val session = if (giftWrapPayload.kind == DkgRitualEvents.PROPOSAL) {
+        val session = if (innerEvent.kind == DkgRitualEvents.PROPOSAL) {
             acceptProposal(
                 database = database,
                 localChatRoom = localChatRoom,
-                giftWrapPayload = giftWrapPayload,
+                innerEvent = innerEvent,
                 sessionId = sessionId,
                 userPublicKey = userPublicKey,
                 nostrPrivateKey = nostrPrivateKey
             )
         } else {
-            // Not knowing the session is normal: gift wraps carry a randomised
-            // created_at and relays hand them back in no particular order, so a
-            // round-1 message routinely lands before the proposal that opens the
-            // ritual. The payload is already stored, and [acceptProposal] replays
-            // it once the proposal turns up.
+            // Not knowing the session is normal: relays hand events back in no
+            // particular order -- and gift wraps carry a randomised created_at on
+            // top of that -- so a round-1 message routinely lands before the
+            // proposal that opens the ritual. The payload is already stored, and
+            // [acceptProposal] replays it once the proposal turns up.
             database.dkgSessionDao().getSessionById(sessionId)
         }
 
         if (session == null) {
-            logger.i("No DKG session $sessionId for kind ${giftWrapPayload.kind}; leaving it stored")
+            logger.i("No DKG session $sessionId for kind ${innerEvent.kind}; leaving it stored")
             return
         }
 
         if (session.stage == DkgRitualStage.FAILED) {
-            logger.i("Ritual $sessionId already failed; ignoring kind ${giftWrapPayload.kind}")
+            logger.i("Ritual $sessionId already failed; ignoring kind ${innerEvent.kind}")
             return
         }
 
-        if (!record(database, session, giftWrapPayload)) return
+        if (!record(database, session, innerEvent)) return
 
         advance(
             database = database,
@@ -285,7 +386,7 @@ object ChillDkgRitualManager {
     private suspend fun acceptProposal(
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
-        giftWrapPayload: GiftWrapPayload,
+        innerEvent: Event,
         sessionId: String,
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray
@@ -296,10 +397,15 @@ object ChillDkgRitualManager {
         // this device's view of the room. `n` is hashed into the session identity,
         // so two devices that disagree on it cannot complete a ritual together —
         // and local membership is exactly the thing that drifts between devices.
-        val members = giftWrapPayload.participantPTags().map { it.pubKey }.toSet()
+        //
+        // In the parent's room it is not even meant to match: a subgroup's
+        // ceremony is run by some of the room, and every member outside the set
+        // drops the proposal below rather than joining a ceremony they were not
+        // picked for.
+        val members = participantsFrom(innerEvent)
 
         if (userPublicKey !in members) {
-            logger.w("DKG proposal $sessionId does not include this device; dropping")
+            logger.i("DKG proposal $sessionId does not include this device; dropping")
             return null
         }
 
@@ -308,7 +414,7 @@ object ChillDkgRitualManager {
             return null
         }
 
-        val threshold = DkgRitualEvents.parseThreshold(giftWrapPayload.tags)
+        val threshold = DkgRitualEvents.parseThreshold(innerEvent.tags)
         if (threshold == null) {
             logger.w("DKG proposal $sessionId carries no threshold; dropping")
             return null
@@ -330,11 +436,25 @@ object ChillDkgRitualManager {
             chatRoomId = localChatRoom.chatRoom.id,
             // Whoever opens the ritual coordinates it. ChillDKG gives the
             // coordinator no power over the outcome, so there is nothing here to
-            // reserve for a "room creator" — which NIP-17 does not record anyway.
-            coordinatorPublicKey = giftWrapPayload.publicKey,
+            // reserve for a room's creator or its admins — and in the parent's
+            // room, where a member who is neither can put a proposal on the wire,
+            // that is what keeps this from needing a permission check. The worst
+            // such a proposal can do is ask: the birth certificate two steps later
+            // needs the parent's own quorum, which is the check that was always
+            // going to be the check.
+            coordinatorPublicKey = innerEvent.pubKey,
             userPublicKey = userPublicKey,
             threshold = threshold,
             participantCount = members.size,
+            // The set the count is of, kept so the room never has to be asked.
+            // In the parent's room asking it would answer with the parent's
+            // membership, which is every person this ceremony is not with.
+            participantPublicKeys = DkgSession.formatParticipants(members),
+            // What the room this key derives is to be called, as claimed. Taken
+            // as said for the same reason the parent below is: nothing is granted
+            // on it, and the certificate the parent's quorum signs is over this
+            // name, so an admin who dislikes it declines that.
+            subject = DkgRitualEvents.parseSubject(innerEvent.tags),
             hostPublicKey = deriveHostPublicKey(nostrPrivateKey).value.toHex(),
             round1Random = RandomInstance.bytes(32).toHex(),
             round2AuxRandom = RandomInstance.bytes(32).toHex(),
@@ -345,7 +465,7 @@ object ChillDkgRitualManager {
             // is the p-tags and the threshold is the threshold. What it changes is
             // that the screen can say what the ceremony is for. The parent's own
             // signature turns up two steps later, on the birth certificate.
-            parentChatRoomId = DkgRitualEvents.parseParentChatRoomId(giftWrapPayload.tags)
+            parentChatRoomId = DkgRitualEvents.parseParentChatRoomId(innerEvent.tags)
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -358,7 +478,7 @@ object ChillDkgRitualManager {
         // the ritual can be shown and stored messages replayed; [advance] sends
         // nothing until [approve] has been called.
         announceApprovalNeeded(database, session, DkgApprovalStep.HOST_KEY)
-        replayStoredMessages(database, session)
+        replayStoredMessages(database, localChatRoom, session)
 
         return session
     }
@@ -371,15 +491,50 @@ object ChillDkgRitualManager {
      * kind, so nothing was actually lost — this reads them back out. Without it a
      * ritual whose proposal loses the race to its own round-1 messages waits
      * forever on messages that already arrived.
+     *
+     * Out of whichever store the room's transport writes to, which has to be the
+     * same reading [broadcast] makes: a ceremony in a NIP-17 room has its backlog
+     * in the gift-wrap payloads and none at all in the inner events, and looking
+     * in the wrong one is a stall with nothing to blame it on.
      */
     private suspend fun replayStoredMessages(
         database: MantraDatabase,
+        localChatRoom: LocalChatRoom,
         session: DkgSession
     ) {
-        val stored = database.giftWrapPayloadDao().getByChatRoomAndKinds(
-            chatRoomId = session.chatRoomId,
-            kinds = DkgRitualEvents.ALL.toList()
-        ).filter { payload ->
+        val kinds = DkgRitualEvents.ALL.toList()
+
+        val received = if (localChatRoom.chatRoom.mlsGroupState != null) {
+            database.marmotInnerEventDao()
+                .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
+                .map { stored ->
+                    Event(
+                        id = stored.id,
+                        pubKey = stored.publicKey,
+                        createdAt = stored.createdAt.epochSeconds,
+                        kind = stored.kind,
+                        tags = stored.tags,
+                        content = stored.content,
+                        sig = ""
+                    )
+                }
+        } else {
+            database.giftWrapPayloadDao()
+                .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
+                .map { stored ->
+                    Event(
+                        id = stored.id,
+                        pubKey = stored.publicKey,
+                        createdAt = stored.createdAt.epochSeconds,
+                        kind = stored.kind,
+                        tags = stored.tags,
+                        content = stored.content,
+                        sig = ""
+                    )
+                }
+        }
+
+        val stored = received.filter { payload ->
             payload.kind != DkgRitualEvents.PROPOSAL &&
                 DkgRitualEvents.parseSessionId(payload.tags) == session.id
         }
@@ -404,9 +559,9 @@ object ChillDkgRitualManager {
     private suspend fun record(
         database: MantraDatabase,
         session: DkgSession,
-        giftWrapPayload: GiftWrapPayload
+        innerEvent: Event
     ): Boolean {
-        when (giftWrapPayload.kind) {
+        when (innerEvent.kind) {
             DkgRitualEvents.PROPOSAL -> Unit // handled by acceptProposal; host key already published
 
             DkgRitualEvents.HOST_KEY,
@@ -417,19 +572,19 @@ object ChillDkgRitualManager {
                 // upsert below absorbs that, but a chat row has no key to absorb it
                 // with.
                 val known = database.dkgSessionDao()
-                    .getMessage(session.id, giftWrapPayload.kind, giftWrapPayload.publicKey) != null
+                    .getMessage(session.id, innerEvent.kind, innerEvent.pubKey) != null
 
                 database.dkgSessionDao().upsert(
                     DkgParticipantMessage(
                         sessionId = session.id,
-                        participantPublicKey = giftWrapPayload.publicKey,
-                        kind = giftWrapPayload.kind,
-                        payload = giftWrapPayload.content
+                        participantPublicKey = innerEvent.pubKey,
+                        kind = innerEvent.kind,
+                        payload = innerEvent.content
                     )
                 )
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
@@ -437,38 +592,38 @@ object ChillDkgRitualManager {
             // them from anyone else lets any member stall the ritual by getting a
             // bogus one in first, since the real one would then be ignored.
             DkgRitualEvents.COORDINATOR_ROUND_1 -> {
-                if (!isFromCoordinator(session, giftWrapPayload)) return true
+                if (!isFromCoordinator(session, innerEvent)) return true
 
                 val known = current(database, session).coordinatorRound1 != null
 
                 update(database, session) { current ->
                     if (current.coordinatorRound1 == null) {
-                        current.copy(coordinatorRound1 = giftWrapPayload.content)
+                        current.copy(coordinatorRound1 = innerEvent.content)
                     } else {
                         current
                     }
                 }
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
             DkgRitualEvents.CERTIFICATE -> {
-                if (!isFromCoordinator(session, giftWrapPayload)) return true
+                if (!isFromCoordinator(session, innerEvent)) return true
 
                 val known = current(database, session).certificate != null
 
                 update(database, session) { current ->
                     if (current.certificate == null) {
-                        current.copy(certificate = giftWrapPayload.content)
+                        current.copy(certificate = innerEvent.content)
                     } else {
                         current
                     }
                 }
 
                 if (!known) {
-                    announceStep(database, session, giftWrapPayload.kind, giftWrapPayload.publicKey)
+                    announceStep(database, session, innerEvent.kind, innerEvent.pubKey)
                 }
             }
 
@@ -476,8 +631,8 @@ object ChillDkgRitualManager {
                 fail(
                     database = database,
                     session = session,
-                    reason = "Abandoned by ${giftWrapPayload.publicKey.take(8)}: ${giftWrapPayload.content}",
-                    culprit = giftWrapPayload.publicKey
+                    reason = "Abandoned by ${innerEvent.pubKey.take(8)}: ${innerEvent.content}",
+                    culprit = innerEvent.pubKey
                 )
                 return false
             }
@@ -486,12 +641,12 @@ object ChillDkgRitualManager {
         return true
     }
 
-    private fun isFromCoordinator(session: DkgSession, giftWrapPayload: GiftWrapPayload): Boolean {
-        if (giftWrapPayload.publicKey == session.coordinatorPublicKey) return true
+    private fun isFromCoordinator(session: DkgSession, innerEvent: Event): Boolean {
+        if (innerEvent.pubKey == session.coordinatorPublicKey) return true
 
         logger.w(
-            "Ritual ${session.id}: kind ${giftWrapPayload.kind} from " +
-                "${giftWrapPayload.publicKey.take(8)}, who is not the coordinator; ignoring"
+            "Ritual ${session.id}: kind ${innerEvent.kind} from " +
+                "${innerEvent.pubKey.take(8)}, who is not the coordinator; ignoring"
         )
         return false
     }
@@ -874,11 +1029,24 @@ object ChillDkgRitualManager {
         session = session,
         messageType = ChatMessage.TYPE_DKG_STARTED,
         // Reads after the actor's name -- see ChatMessage.DKG_AUTHORED_TYPES. Who
-        // opened a ceremony matters: any member can, and it settles the group's
+        // opened a ceremony matters: any member can, and it settles a group's
         // signing quorum for good.
-        content = "started a shared key ceremony. It will take ${session.threshold} of " +
-            "${session.participantCount} members to sign with the key, and it finishes once " +
-            "everyone has taken part.",
+        //
+        // A subgroup's ceremony says so, because it lands in the *parent's* room
+        // and the unqualified sentence reads there as though this group were
+        // getting a new key. It is not: the quorum quoted is the child's, over
+        // the child's admins, and the parent's own key is untouched. Getting that
+        // wrong is how a member approves something they did not follow.
+        content = if (session.parentChatRoomId != null) {
+            "started a key ceremony for ${session.subject ?: "a subgroup"}, a subgroup of " +
+                "this group. It will take ${session.threshold} of " +
+                "${session.participantCount} of its admins to sign with the subgroup's key, " +
+                "and it finishes once all of them have taken part."
+        } else {
+            "started a shared key ceremony. It will take ${session.threshold} of " +
+                "${session.participantCount} members to sign with the key, and it finishes " +
+                "once everyone has taken part."
+        },
         actor = session.coordinatorPublicKey
     )
 
@@ -1147,9 +1315,28 @@ object ChillDkgRitualManager {
     }
 
     /**
-     * Queues a ritual message as a gift-wrap payload. `NotaryViewModel` picks it
-     * up, seals a copy per participant and broadcasts — the same path chat
-     * messages take, which is why this needs no transport of its own.
+     * Queues one of this device's ritual messages for the outbound pipeline, on
+     * whichever transport the room it is in has.
+     *
+     * In a NIP-17 room it is a gift-wrap payload: `NotaryViewModel` picks it up,
+     * seals a copy per participant and broadcasts. In a Marmot room it is an
+     * unprocessed inner event, MLS-encrypted and broadcast as a kind:445 for the
+     * room. Both are the paths chat messages already take, which is why this
+     * needs no transport of its own.
+     *
+     * **The p-tags go on both**, which is where this parts company with
+     * `FrostSigningManager.broadcast`. There a p-tag is an address, and a group
+     * event needs none because it is encrypted to the whole tree. Here the p-tag
+     * set *is* the participant set: `acceptProposal` builds `n` out of it on
+     * every device, and `n` is hashed into the session identity, so dropping the
+     * tags in a Marmot room would leave every receiver unable to say what
+     * ceremony they had been invited to. In the parent's room they are also the
+     * only thing separating the subgroup's admins from everybody else who can
+     * read the message, and naming them inside MLS encryption leaks nothing.
+     *
+     * Off the session rather than off the room, for that same reason. A
+     * subgroup's ceremony runs in the parent's room, so the room's roster would
+     * invite the whole parent into the child's key.
      */
     private suspend fun broadcast(
         database: MantraDatabase,
@@ -1161,15 +1348,19 @@ object ChillDkgRitualManager {
         includeParent: Boolean = false,
         subject: String? = null
     ) {
-        // One p-tag per member, and the sender is implied rather than tagged —
-        // together they are the participant set every receiver derives `n` from.
-        val receiverTags = localChatRoom.localParticipants
-            .distinctBy { it.participant.participantPublicKey }
-            .filter { it.participant.participantPublicKey != session.userPublicKey }
-            .map { localParticipant ->
+        // Sorted so a receiver comparing two devices' proposals is comparing the
+        // same bytes, and the sender is implied rather than tagged -- together
+        // they are the set every receiver derives `n` from.
+        val relayHints = localChatRoom.localParticipants
+            .associate { it.participant.participantPublicKey to it.participant.relayHint }
+
+        val receiverTags = participantsOf(session, localChatRoom)
+            .filterNot { it == session.userPublicKey }
+            .sorted()
+            .map { participant ->
                 PTag.assemble(
-                    localParticipant.participant.participantPublicKey,
-                    localParticipant.participant.relayHint?.let { NormalizedRelayUrl(it) }
+                    participant,
+                    relayHints[participant]?.let { NormalizedRelayUrl(it) }
                 )
             }
 
@@ -1181,7 +1372,10 @@ object ChillDkgRitualManager {
         )
 
         val createdAt = Clock.System.now().epochSeconds
-        val giftWrapPayloadId = EventHasher.hashId(
+
+        // The rumor id the outbound pipeline will recompute from these same
+        // fields when it assembles the event to encrypt, on either transport.
+        val id = EventHasher.hashId(
             pubKey = session.userPublicKey,
             createdAt = createdAt,
             tags = tags,
@@ -1189,16 +1383,45 @@ object ChillDkgRitualManager {
             kind = kind
         )
 
-        database.giftWrapPayloadDao().upsert(
-            GiftWrapPayload(
-                id = giftWrapPayloadId,
-                kind = kind,
-                tags = tags,
-                createdAt = Instant.fromEpochSeconds(createdAt),
-                content = content,
-                chatRoomId = localChatRoom.chatRoom.id,
-                publicKey = session.userPublicKey
+        // No MLS state is what marks a room NIP-17 -- the same reading
+        // `NostrNip17Dao.getOrCreateChatRoom` writes, `sendChatMessage` makes when
+        // it chooses between a group event and gift wraps, and
+        // [replayStoredMessages] has to make again to find this message later.
+        if (localChatRoom.chatRoom.mlsGroupState != null) {
+            database.marmotInnerEventDao().upsert(
+                MarmotInnerEvent(
+                    id = id,
+                    publicKey = session.userPublicKey,
+                    kind = kind,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    tags = tags,
+                    content = content,
+                    chatRoomId = localChatRoom.chatRoom.id
+                )
             )
-        )
+        } else {
+            database.giftWrapPayloadDao().upsert(
+                GiftWrapPayload(
+                    id = id,
+                    kind = kind,
+                    tags = tags,
+                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    content = content,
+                    chatRoomId = localChatRoom.chatRoom.id,
+                    publicKey = session.userPublicKey
+                )
+            )
+        }
     }
+
+    /**
+     * The participant set a proposal names: its p-tags plus its sender.
+     *
+     * The sender is in the set without tagging themselves -- they are running the
+     * ceremony, and a device does not need to be told to send itself a message.
+     * `GiftWrapPayload.participantPTags` reads exactly this off the other
+     * transport, and the two have to agree or a ceremony cannot span them.
+     */
+    private fun participantsFrom(innerEvent: Event): Set<HexKey> =
+        innerEvent.tags.taggedUsers().map { it.pubKey }.toSet() + innerEvent.pubKey
 }

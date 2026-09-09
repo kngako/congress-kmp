@@ -878,7 +878,22 @@ abstract class NostrDao(
                                     ChillDkgRitualManager.processRitualPayload(
                                         database = database,
                                         localChatRoom = localChatRoom,
-                                        giftWrapPayload = decryptedGiftWrapPayload,
+                                        // The rumor as its sender wrote it, the
+                                        // shape a Marmot inner event arrives in
+                                        // too -- the manager reads one protocol
+                                        // off both transports. `sig` is empty
+                                        // because a gift-wrapped rumor carries
+                                        // none; the seal is what vouches for the
+                                        // author.
+                                        innerEvent = Event(
+                                            id = decryptedGiftWrapPayload.id,
+                                            pubKey = decryptedGiftWrapPayload.publicKey,
+                                            createdAt = decryptedGiftWrapPayload.createdAt.epochSeconds,
+                                            kind = decryptedGiftWrapPayload.kind,
+                                            tags = decryptedGiftWrapPayload.tags,
+                                            content = decryptedGiftWrapPayload.content,
+                                            sig = ""
+                                        ),
                                         userPublicKey = activeKeyPair.pubKey.toHex(),
                                         nostrPrivateKey = activeKeyPair.privKey!!
                                     )
@@ -1320,12 +1335,20 @@ abstract class NostrDao(
                         persistMarmotChatMessage(chatMessage)
                     }
 
-                    // A FROST signing message for this group. Driven from
-                    // here rather than from ChatMessage because the
+                    // A signing or ceremony message for this group. Driven
+                    // from here rather than from ChatMessage because each
                     // manager needs the room to publish its own replies
-                    // into, and because it writes its transcript lines
-                    // itself. The manager is idempotent, so a redelivered
-                    // message re-runs a step it has already taken.
+                    // into, and because both write their transcript lines
+                    // themselves. Both are idempotent, so a redelivered
+                    // message re-runs a step already taken.
+                    //
+                    // A ceremony arrives here when the group is standing up
+                    // a subgroup: the child's ChillDKG runs in this room,
+                    // over the admins the proposal p-tags, because the
+                    // child has no room of its own until the ceremony has
+                    // produced the key its id is derived from. A member of
+                    // this room who was not picked drops the proposal in
+                    // `acceptProposal` and never opens a session.
                     //
                     // A GroupKeyStateEvent is deliberately not dispatched
                     // here. It is no longer something a member says --
@@ -1334,14 +1357,25 @@ abstract class NostrDao(
                     // every other event the group has signed.
                     if (groupEventResult is GroupEventResult.ApplicationMessage) {
                         Event.fromJsonOrNull(groupEventResult.innerEventJson)
-                            ?.takeIf { FrostSigningEvents.isFrostSigningKind(it.kind) }
                             ?.let { innerEvent ->
-                                FrostSigningManager.processSigningPayload(
-                                    database = database,
-                                    localChatRoom = localChatRoom,
-                                    innerEvent = innerEvent,
-                                    userPublicKey = activeKeyPair.pubKey.toHex()
-                                )
+                                when {
+                                    FrostSigningEvents.isFrostSigningKind(innerEvent.kind) ->
+                                        FrostSigningManager.processSigningPayload(
+                                            database = database,
+                                            localChatRoom = localChatRoom,
+                                            innerEvent = innerEvent,
+                                            userPublicKey = activeKeyPair.pubKey.toHex()
+                                        )
+
+                                    DkgRitualEvents.isDkgRitualKind(innerEvent.kind) ->
+                                        ChillDkgRitualManager.processRitualPayload(
+                                            database = database,
+                                            localChatRoom = localChatRoom,
+                                            innerEvent = innerEvent,
+                                            userPublicKey = activeKeyPair.pubKey.toHex(),
+                                            nostrPrivateKey = activeKeyPair.privKey!!
+                                        )
+                                }
                             }
                     }
                 }
