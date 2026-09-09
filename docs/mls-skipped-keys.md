@@ -109,6 +109,12 @@ Several flows publish in bursts, and each of them is a reliable trigger:
 twenty-one events at once, and only the ones that happen to arrive in ascending
 generation order survive.
 
+`proposeRitual` is the one with the worst *consequence*. It reached this table on
+gift wraps, where the bug does not apply; since `docs/subgroups.md` Phase 10 a
+subgroup's ceremony rides group events, and a ChillDKG cannot finish until every
+participant has taken part — so one lost round-1 message stalls it permanently for
+everybody, rather than costing one member a line of chat.
+
 ## The fix, in quartz
 
 Carry the skipped keys through `saveState`/`restore` alongside the ratchet

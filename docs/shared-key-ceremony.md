@@ -1,15 +1,21 @@
 # The shared key ceremony
 
-A group creates a `t`-of-`n` FROST key by running ChillDKG over its NIP-17 chat.
-No trusted dealer, no single device ever holding the whole key.
+A group creates a `t`-of-`n` FROST key by running ChillDKG over its own chat. No
+trusted dealer, no single device ever holding the whole key.
 
 Implemented in `ChillDkgRitualManager`, on `fr.acinq.bitcoin.crypto.dkg.chill.ChillDKG`.
 
 ## Shape
 
-The group is the participant set, the member who opens the ceremony coordinates
-it, and every protocol message travels as a gift-wrapped rumor on the same NIP-17
-pipeline chat messages already use — so there is no second transport to operate.
+The participant set is who the proposal `p`-tags, the member who opens the
+ceremony coordinates it, and every protocol message travels on a pipeline chat
+messages already use — a gift-wrapped rumor in a NIP-17 room, an MLS application
+message in a Marmot one — so there is no second transport to operate.
+
+A group's own ceremony runs in the NIP-17 room its members share, and there the
+participant set and the room's membership are the same thing. A **subgroup's**
+runs in its parent's Marmot room over a subset of it, which is why the set is the
+p-tags rather than the room: see [subgroups.md](./subgroups.md).
 
 The coordinator is a participant too, and ChillDKG treats it as untrusted: it
 relays and aggregates but cannot learn secrets or bias the key. Being the room's
