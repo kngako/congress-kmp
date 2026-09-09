@@ -552,7 +552,6 @@ fun MantraNavHost(
                 DkgRitualScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
-                    parentChatRoomId = route.parentChatRoomId,
                     dkgSessionId = route.dkgSessionId,
                     activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
                     chatRepository = databaseChatRepository,

@@ -5,17 +5,17 @@ import kotlinx.serialization.Serializable
 /**
  * The shared-key ceremony for one NIP-17 group.
  *
- * [parentChatRoomId] is set when the ceremony is making a subgroup, and turns the
- * screen from a three-step ladder into a four-step one -- the extra rung being the
- * parent's birth certificate. It is a claim rather than evidence, in the route as
- * on the wire: what makes a lineage real is the certificate the parent's quorum
- * signs, two steps later. See `docs/subgroups.md`.
+ * Deliberately says nothing about *what the ceremony is for*. A subgroup's
+ * ceremony grows the ladder by a rung -- the parent's birth certificate -- and
+ * that is read off `DkgSession.parentChatRoomId`, never off the route. Only the
+ * member who opened a subgroup could ever have put it here, and every other way
+ * into this screen is from a room; a route that knows more than the room does is
+ * a route that is right for one caller and silently wrong for the rest.
  */
 @Serializable
 data class DkgRitualRoute(
     val activeUserPublicKey: String,
     val chatRoomId: String,
-    val parentChatRoomId: String? = null,
     /**
      * Which of the room's ceremonies to show, when the caller knows.
      *

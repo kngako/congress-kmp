@@ -64,6 +64,18 @@ sealed interface DkgRitualUIState {
          */
         val isKeyStateSigned: Boolean = false,
         /**
+         * Whether this room already holds a ceremony that has not failed --
+         * whichever one [session] happens to be showing.
+         *
+         * Two different questions, and conflating them opened a second ceremony
+         * in a room that already had one. [session] is the ceremony being looked
+         * at; this is whether the room has any. `proposeRitual`'s guard is scoped
+         * by purpose, so a room holding a subgroup's ceremony would happily take
+         * a second one for no subgroup -- and then "the room's newest ceremony"
+         * is the new empty one and the subgroup's is buried under it.
+         */
+        val roomHasCeremony: Boolean = false,
+        /**
          * The group this ceremony is making a subgroup of, or null for an
          * ordinary one.
          *

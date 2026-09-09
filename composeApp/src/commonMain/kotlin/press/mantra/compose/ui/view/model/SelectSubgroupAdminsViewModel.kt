@@ -24,7 +24,7 @@ import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
-import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.state.SelectSubgroupAdminsUIState
 
@@ -248,11 +248,24 @@ class SelectSubgroupAdminsViewModel(
             }
 
             withContext(Dispatchers.Main) {
+                // The transcript, not the shared-key screen. The ceremony is
+                // already open and its first line is already in this room, so what
+                // the coordinator needs is to watch it and answer the requests as
+                // they arrive -- which is the same path every other member takes,
+                // through the ritual notices that name their own ceremony.
+                //
+                // Sending them to the shared-key screen instead was actively
+                // harmful: that screen's job is to *offer* a ceremony to a room
+                // that has none, so the coordinator arrived at a "Start key
+                // ceremony" button seconds after starting one, and pressing it
+                // opened a second -- for no subgroup, so `proposeRitual`'s guard
+                // did not recognise it as a duplicate -- which then buried the
+                // subgroup's under the room's newest.
                 onNavigateToRoute(
-                    DkgRitualRoute(
+                    ChatRoomMessagingRoute(
                         activeUserPublicKey = activeUserPublicKey,
                         chatRoomId = ceremonyRoom.chatRoom.id,
-                        parentChatRoomId = parentChatRoomId
+                        relayHint = null
                     )
                 )
             }

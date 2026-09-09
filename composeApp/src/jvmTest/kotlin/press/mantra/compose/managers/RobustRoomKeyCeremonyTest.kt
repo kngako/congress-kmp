@@ -421,4 +421,38 @@ class RobustRoomKeyCeremonyTest {
             )
         }
     }
+
+    /**
+     * The second ceremony a coordinator was able to open seconds after the first.
+     *
+     * `proposeRitual`'s guard is scoped by purpose, deliberately -- a room has to
+     * be able to hold the group's own ceremony and a subgroup's. But that means a
+     * room with a subgroup's ceremony in it will take a second one for *no*
+     * subgroup without complaint, and then "the room's newest ceremony" is the new
+     * empty one and the subgroup's is buried under it.
+     *
+     * Nothing on the wire stops that and nothing should: two purposes are two
+     * ceremonies. What stops it is not offering it -- the shared-key screen exists
+     * to give a ceremony to a room that has none, and this room has one.
+     */
+    @Test
+    fun `a room holding a ceremony will still take one for another purpose`() = runBlocking {
+        val room = robustRoom()
+
+        val subgroup = openCeremony(room, parentChatRoomId = "ab".repeat(32))
+        val own = openCeremony(room)
+
+        // Both exist, which is correct at this level: the guard is about purpose.
+        assertNotEquals(subgroup.id, own.id)
+
+        // So the refusal has to live in what the screen offers, which is why
+        // `DkgRitualUIState.roomHasCeremony` is asked separately from which
+        // ceremony is being shown.
+        assertEquals(
+            2,
+            db.dkgSessionDao().getByParentChatRoomId("ab".repeat(32)).size +
+                (if (db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null) != null) 1 else 0),
+            "a room can end up holding two ceremonies, so the UI must not offer a third",
+        )
+    }
 }

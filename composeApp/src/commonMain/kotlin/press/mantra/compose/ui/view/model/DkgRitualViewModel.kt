@@ -51,11 +51,6 @@ class DkgRitualViewModel(
     val chatRoomId: String,
     val activeUserPublicKey: HexKey,
     /**
-     * The group this ceremony is making a subgroup of, or null for an ordinary
-     * one. Off the route, which got it off the proposal -- a claim either way.
-     */
-    val parentChatRoomId: HexKey? = null,
-    /**
      * The ceremony to show, when the caller knew which. Null falls back to the
      * room's newest -- see [DkgRitualRoute.dkgSessionId].
      */
@@ -113,6 +108,12 @@ class DkgRitualViewModel(
 
         if (loaded.session != null && loaded.session.stage != DkgRitualStage.FAILED) return false
 
+        // Not just the ceremony on screen. A room can hold more than one, and this
+        // screen exists to offer one to a room that has none -- so a room with a
+        // ceremony running under a different purpose must not be offered another,
+        // whatever this screen happens to be showing.
+        if (loaded.roomHasCeremony) return false
+
         return ChillDkgRitualManager.canRunRitual(loaded.localChatRoom)
     }
 
@@ -141,10 +142,7 @@ class DkgRitualViewModel(
                 return@launch
             }
 
-            dkgRitualUIState = DkgRitualUIState.Loaded(
-                localChatRoom = localChatRoom,
-                parentChatRoomId = parentChatRoomId
-            )
+            dkgRitualUIState = DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
             threshold.value = ChatRoomType
                 .defaultQuorum(ChillDkgRitualManager.memberPublicKeys(localChatRoom).size)
                 .coerceIn(quorumRange())
@@ -171,17 +169,27 @@ class DkgRitualViewModel(
                 ?.let { dkgRepository.observeSessionById(it) }
                 ?: dkgRepository.observeLatestSessionForChatRoom(chatRoomId)
 
+            // Whether the room has any ceremony at all, which is a different
+            // question from which one is being shown -- see
+            // `DkgRitualUIState.roomHasCeremony`.
+            launch {
+                dkgRepository.observeLatestSessionForChatRoom(chatRoomId).collect { newest ->
+                    val current = dkgRitualUIState as? DkgRitualUIState.Loaded ?: return@collect
+
+                    dkgRitualUIState = current.copy(
+                        roomHasCeremony = newest != null && newest.stage != DkgRitualStage.FAILED
+                    )
+                }
+            }
+
             sessions.collect { session ->
                 val loaded = (dkgRitualUIState as? DkgRitualUIState.Loaded)
-                    ?: DkgRitualUIState.Loaded(
-                        localChatRoom = localChatRoom,
-                        parentChatRoomId = parentChatRoomId
-                    )
+                    ?: DkgRitualUIState.Loaded(localChatRoom = localChatRoom)
 
-                // The session's own claim wins over the route's. They agree for the
-                // coordinator; for everybody else the route has nothing and the
-                // session is the only thing that knows.
-                val parent = session?.parentChatRoomId ?: parentChatRoomId
+                // The session is the only thing that knows what the ceremony is
+                // for. The route used to carry it too, which was right for the one
+                // member who opened the subgroup and null for everybody else.
+                val parent = session?.parentChatRoomId
 
                 dkgRitualUIState = loaded.copy(
                     session = session,
@@ -661,7 +669,6 @@ class DkgRitualViewModel(
         fun factory(
             chatRoomId: String,
             activeUserPublicKey: HexKey,
-            parentChatRoomId: HexKey? = null,
             dkgSessionId: String? = null,
             initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
             activeWalletStateFlow: StateFlow<ActiveWallet?>,
@@ -672,7 +679,6 @@ class DkgRitualViewModel(
                 DkgRitualViewModel(
                     chatRoomId = chatRoomId,
                     activeUserPublicKey = activeUserPublicKey,
-                    parentChatRoomId = parentChatRoomId,
                     dkgSessionId = dkgSessionId,
                     initialDkgRitualUIState = initialDkgRitualUIState,
                     activeWalletStateFlow = activeWalletStateFlow,

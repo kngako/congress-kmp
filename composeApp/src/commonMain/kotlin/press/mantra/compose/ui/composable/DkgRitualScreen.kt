@@ -132,11 +132,6 @@ import press.mantra.compose.ui.theme.ConformancePreviews
 fun DkgRitualScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
-    /**
-     * Set when this ceremony is making a subgroup, which grows the ladder by one
-     * rung: the parent's birth certificate, between the key and the key state.
-     */
-    parentChatRoomId: String? = null,
     /** Which of the room's ceremonies to show; null takes the newest. */
     dkgSessionId: String? = null,
     initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
@@ -149,7 +144,6 @@ fun DkgRitualScreen(
         factory = DkgRitualViewModel.factory(
             chatRoomId = chatRoomId,
             activeUserPublicKey = activeUserPublicKey,
-            parentChatRoomId = parentChatRoomId,
             dkgSessionId = dkgSessionId,
             initialDkgRitualUIState = initialDkgRitualUIState,
             activeWalletStateFlow = activeWalletStateFlow,
