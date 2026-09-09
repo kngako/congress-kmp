@@ -170,7 +170,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 2
-        versionName = "0.1.1"
+        versionName = "0.1.2"
     }
     packaging {
         resources {
