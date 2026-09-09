@@ -20,9 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.types.ChatRoomType
-import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.MarmotGroupCreation
-import press.mantra.compose.managers.MarmotGroupName
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
@@ -44,9 +42,10 @@ import press.mantra.compose.ui.view.state.SelectSubgroupAdminsUIState
  * `quorumRange` and drops a proposal outside it, and the host-key approval gate is
  * where each of them agrees to the `t`-of-`n` they can now see.
  *
- * Confirming opens the ceremony -- a NIP-17 room over the picked admins, and a
- * ritual proposal in it -- and hands over to `DkgRitualViewModel`, which drives
- * the remaining three steps. See `docs/subgroups.md`.
+ * Confirming opens the ceremony -- a ritual proposal in the **parent's** room,
+ * p-tagged to the picked admins -- and hands back to the parent's transcript,
+ * where every admin answers the ceremony from the same place. See
+ * `docs/subgroups.md`.
  */
 class SelectSubgroupAdminsViewModel(
     val activeUserPublicKey: HexKey,
@@ -191,12 +190,14 @@ class SelectSubgroupAdminsViewModel(
     }
 
     /**
-     * Opens the ceremony and hands over to the ritual screen.
+     * Opens the ceremony in the parent's room and hands back to its transcript.
      *
-     * The room is stood up first and the proposal is the first thing out of it,
-     * exactly as a robust group is created: standing up a NIP-17 room sends
-     * nothing to anybody, so the proposal is how the other admins hear of it at
-     * all -- which is why it carries the name and the parent.
+     * No sibling room is made. The ceremony runs where the parent's members
+     * already are: the proposal names the picked admins in its p-tags, which is
+     * the participant set every device derives `n` from, and a parent member who
+     * is not in it drops the proposal rather than joining. It carries the name
+     * and the parent for the same reason it always did -- the child has no room
+     * of its own to read either off until the ceremony has produced its key.
      */
     fun confirm(onNavigateToRoute: (Route) -> Unit) {
         if (isActionPending.value) return
@@ -223,45 +224,36 @@ class SelectSubgroupAdminsViewModel(
                 return@launch
             }
 
-            // The ceremony room keeps the bare name. It is a NIP-17 room -- where
-            // the subgroup is made, not the subgroup -- and the `#` is what tells
-            // those two rows apart afterwards, so putting it on both would spend
-            // the mark to say nothing.
+            // The bare name goes on the ceremony, and the `#` is added where the
+            // name is used: `proposeBirthCertificate` normalises the name the
+            // parent signs and `MarmotGroupCreation` normalises the name the room
+            // carries, both reading it back off this session.
+            // `MarmotGroupName.of` is idempotent, so those are the same string --
+            // which they have to be, or the room is not called what its parent
+            // certified.
             //
-            // The subgroup gets it twice over, and never from here:
-            // `proposeBirthCertificate` normalises the name the parent signs and
-            // `MarmotGroupCreation` normalises the name the room carries, both
-            // reading this subject. `MarmotGroupName.of` is idempotent, so those
-            // are the same string -- which they have to be, or the room is not
-            // called what its parent certified.
-            val ceremonyRoom = chatRepository.createNip17ChatRoom(
-                userPublicKey = activeUserPublicKey,
-                participantPublicKeys = selectedPublicKeys.toList(),
-                subject = name.value.trim(),
-                description = "Making ${MarmotGroupName.of(name.value)} a subgroup of " +
-                    (loaded.parentRoom.chatRoom.subject ?: "this group") + "."
-            )
-
-            if (ceremonyRoom == null) {
-                isActionPending.value = false
-                uiState = SelectSubgroupAdminsUIState.Error(
-                    "Couldn't start the subgroup's key ceremony. Please try again."
-                )
-                return@launch
-            }
-
+            // Carried on the session rather than on a room, because there is no
+            // longer a room to carry it: the ceremony is held in the parent's,
+            // and the parent's name is the one name a child must not take.
             val session = dkgRepository.proposeRitual(
-                localChatRoom = ceremonyRoom,
+                localChatRoom = loaded.parentRoom,
                 userPublicKey = activeUserPublicKey,
                 nostrPrivateKey = nostrPrivateKey.value.toByteArray(),
                 threshold = threshold.value,
-                parentChatRoomId = parentChatRoomId
+                parentChatRoomId = parentChatRoomId,
+                // The admins, and only them. The room is the parent's, so the
+                // ceremony has to say who it is with -- this is the set that
+                // becomes the proposal's p-tags and every device's `n`. The
+                // coordinator is added by `proposeRitual`: opening a ceremony is
+                // being in it, and is not theirs to tick.
+                participantPublicKeys = selectedPublicKeys.toSet(),
+                subject = name.value.trim()
             )
 
             isActionPending.value = false
 
             if (session == null) {
-                logger.e("Created ${ceremonyRoom.chatRoom.id} without a key ceremony")
+                logger.e("Could not open a subgroup ceremony in $parentChatRoomId")
                 uiState = SelectSubgroupAdminsUIState.Error(
                     "Couldn't start the subgroup's key ceremony. Please try again."
                 )
@@ -269,11 +261,12 @@ class SelectSubgroupAdminsViewModel(
             }
 
             withContext(Dispatchers.Main) {
-                // The transcript, not the shared-key screen. The ceremony is
-                // already open and its first line is already in this room, so what
-                // the coordinator needs is to watch it and answer the requests as
-                // they arrive -- which is the same path every other member takes,
-                // through the ritual notices that name their own ceremony.
+                // The parent's transcript, not the shared-key screen. The ceremony
+                // is already open and its first line is already there, so what the
+                // coordinator needs is to watch it and answer the requests as they
+                // arrive -- which is now literally the same place every other
+                // admin answers from, through the ritual notices that name their
+                // own ceremony.
                 //
                 // Sending them to the shared-key screen instead was actively
                 // harmful: that screen's job is to *offer* a ceremony to a room
@@ -285,7 +278,7 @@ class SelectSubgroupAdminsViewModel(
                 onNavigateToRoute(
                     ChatRoomMessagingRoute(
                         activeUserPublicKey = activeUserPublicKey,
-                        chatRoomId = ceremonyRoom.chatRoom.id,
+                        chatRoomId = parentChatRoomId,
                         relayHint = null
                     )
                 )

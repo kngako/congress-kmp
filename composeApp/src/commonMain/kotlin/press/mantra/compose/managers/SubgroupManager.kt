@@ -4,7 +4,6 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.MantraDatabase
-import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
@@ -23,6 +22,11 @@ import press.mantra.compose.nostr.subgroup.SubgroupParentage
  *  3. key state, among the child's admins -> the child's quorum signs "C signs with K", carrying it
  *  4. the Marmot room                    -> somebody creates C and welcomes the admins
  * ```
+ *
+ * **All four happen in the parent's room**, bar the last, which makes a room of
+ * its own. Steps 1 and 3 are held there because the child has nowhere else to be:
+ * its id is derived from the key step 1 produces, so it cannot exist until
+ * afterwards. Step 2 is there because the signature is the parent's.
  *
  * None of that order is a policy choice. Step 2 needs `C`, which does not exist
  * until step 1 produces `K`; step 3 carries the certificate, so it needs step 2;
@@ -68,23 +72,6 @@ object SubgroupManager {
     const val MINIMUM_ADMINS: Int = 3
 
     /**
-     * The NIP-17 room a ceremony for these admins would run in.
-     *
-     * Pure, and the same aggregate `NostrNip17Dao.createNip17ChatRoom` and the
-     * inbound path both derive -- which is what makes a ceremony room findable
-     * without being announced, and what makes two members starting the same
-     * subgroup land in one room rather than two.
-     *
-     * It is also where the one hard limit comes from. A NIP-17 room's id is a
-     * pure function of its members, so **one admin set gets one ceremony room,
-     * forever**: picking a set that already holds a completed ceremony would hand
-     * back that ceremony's key, and the "new" subgroup would be the old group
-     * under a new name. [refuseCeremonyRoom] is where that is caught.
-     */
-    fun ceremonyRoomIdFor(adminPublicKeys: Set<HexKey>, coordinatorPublicKey: HexKey): String =
-        ChatRoom.deriveChatRoomId(adminPublicKeys + coordinatorPublicKey)
-
-    /**
      * Why these admins cannot hold a ceremony together, or null when they can.
      *
      * Read by the picker so a subgroup that could only fail is never offered, and
@@ -94,7 +81,7 @@ object SubgroupManager {
      * The message is the user's, so each one says what to do rather than what is
      * wrong.
      */
-    suspend fun refuseCeremonyRoom(
+    suspend fun refuseSubgroup(
         database: MantraDatabase,
         parentRoom: LocalChatRoom,
         adminPublicKeys: Set<HexKey>,
@@ -130,8 +117,8 @@ object SubgroupManager {
         // group agreed, and is right on both sides from the first moment.
         // Named for the parent, because `adminPublicKeys` in this function is the
         // *subgroup's* picked admins and the two must never be confused -- the
-        // ceremony room is derived from the second, and deriving it from the
-        // first would silently make a different room.
+        // ceremony is opened over the second while running in a room governed by
+        // the first.
         val parentAdminPublicKeys = runCatching {
             parentRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
         }.getOrNull()
@@ -160,23 +147,30 @@ object SubgroupManager {
         // A subgroup *may* be the whole group. It is a logical division -- a group
         // deciding that some of its work belongs to a differently-keyed room --
         // rather than a smaller membership, so "everybody" is a normal answer and
-        // was never this function's business to refuse.
+        // never this function's business to refuse.
         //
-        // What the old rule was standing in for is real and is checked below,
-        // precisely: the ceremony room is derived from its admins, so a subgroup
-        // over everybody lands in the room the group's own ceremony was held in.
-        // Sharing the room is fine; sharing a *ceremony* is not, and
-        // `DkgSession.parentChatRoomId` is what keeps them apart.
+        // The only thing left to refuse is a ceremony already under way for the
+        // same subgroup, and it is refused because a person cannot answer for two
+        // of them: every admin would be asked twice, on two ladders, for two keys,
+        // one of which nobody will ever make a room from.
         //
-        // Checking on set size was wrong twice over. It refused a legitimate
-        // subgroup, and it refused it on a proxy: a parent whose membership has
-        // changed since its own ceremony derives a different room, so the sizes
-        // could match with no collision at all, and could differ with one.
-        val ceremonyRoomId = ceremonyRoomIdFor(adminPublicKeys, coordinatorPublicKey)
-        val running = database.dkgSessionDao()
-            .getLatestSessionFor(ceremonyRoomId, parentChatRoomId)
-        if (running != null && running.stage != DkgRitualStage.FAILED) {
-            return "This group already has a subgroup run by exactly these members."
+        // A *finished* one is not refused. It means that subgroup was made, and a
+        // group is entitled to a second run by the same people -- which was
+        // impossible while the ceremony ran in a room derived from its admins,
+        // because asking again handed back the first ceremony's key and the "new"
+        // subgroup was the old one renamed. Moving the ceremony into the parent's
+        // room is what retired that, and this is the whole of what is left.
+        val running = database.dkgSessionDao().getLatestSubgroupSessionFor(
+            chatRoomId = parentChatRoomId,
+            parentChatRoomId = parentChatRoomId,
+            participantPublicKeys = DkgSession.formatParticipants(admins).orEmpty()
+        )
+        if (running != null &&
+            running.stage != DkgRitualStage.FAILED &&
+            running.stage != DkgRitualStage.COMPLETE
+        ) {
+            return "A key ceremony for a subgroup run by exactly these members is " +
+                "already under way."
         }
 
         return null
@@ -258,9 +252,9 @@ object SubgroupManager {
      * [subgroupChatRoomId], or null if this device holds none.
      *
      * **Two certificates for one child is a normal outcome, not a conflict.** Two
-     * parent admins can press the button on the same admin set: the second lands
-     * in the same ceremony room and gets the first's ceremony back, but both may
-     * go on to propose a certificate and both sessions can complete.
+     * parent admins can press the button on the same admin set: the second's
+     * `proposeRitual` folds into the ceremony the first opened, but both may go on
+     * to propose a certificate and both sessions can complete.
      * `GroupSignedEvent` is keyed on the event id, so the rows coexist -- and
      * because both say the same true thing about the same child, which one wins
      * does not matter. The `d` tag makes them replacements of each other rather
@@ -286,9 +280,15 @@ object SubgroupManager {
      * Step 3: asks the child's quorum to sign its key state, carrying the
      * certificate.
      *
-     * Runs where the ceremony ran, because it has to: `GroupKeyStateManager.propose`
-     * and `FrostSigningManager.signingPath` both tie a key state to the room its
-     * ceremony was held in, and the room the state is *about* does not exist yet.
+     * Runs where the ceremony ran -- the parent's room -- because it has to:
+     * `GroupKeyStateManager.propose` and `FrostSigningManager.signingPath` both tie
+     * a key state to the room its ceremony was held in, and the room the state is
+     * *about* does not exist yet.
+     *
+     * Signed by the **child's** quorum for all that, not the parent's. The room is
+     * only the transport; who signs comes from the ceremony's host keys, and the
+     * key it signs with is the one that ceremony produced. A parent admin outside
+     * the subgroup reads the messages and holds no share to answer them with.
      *
      * Refuses without a certificate that passes `certifies`. Every device that
      * receives the state runs the same check and drops it when it fails, so

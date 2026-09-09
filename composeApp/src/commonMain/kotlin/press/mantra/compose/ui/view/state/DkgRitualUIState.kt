@@ -102,20 +102,43 @@ sealed interface DkgRitualUIState {
         /**
          * Everyone the ceremony involves, as far as this device can tell.
          *
-         * The room's members, plus anyone who has actually taken part. The union
-         * matters because the two can disagree: `n` is fixed from the proposal's
-         * p-tags, while the room's rows are local and can drift, and a participant
-         * who has published a host key is in the ceremony whatever the room says.
+         * The ceremony's own participants, plus anyone who has actually taken
+         * part. The union matters because the two can disagree: `n` is fixed from
+         * the proposal's p-tags, and a participant who has published a host key is
+         * in the ceremony whatever any local row says.
+         *
+         * The **ceremony's** set, not the room's, and the difference is the whole
+         * ladder. A subgroup's ceremony runs in the parent's room, so the room's
+         * roster would draw a row per parent member and report the ceremony
+         * waiting on people it was never with. `participantsOf` falls back to the
+         * room for a ceremony recorded before that set was stored, which is right
+         * for those: they ran in a room whose members were exactly their
+         * participants.
+         *
+         * Profiles still come off the room, since the room is where the rows with
+         * names in them are -- for a subgroup that is the parent, which holds
+         * every admin the ceremony can have.
          */
         val ritualMembers: List<LocalParticipant> get() {
-            val known = localChatRoom.localParticipants.distinctBy { it.participant.participantPublicKey }
-            val knownKeys = known.map { it.participant.participantPublicKey }.toSet()
+            val roomMembers = localChatRoom.localParticipants
+                .distinctBy { it.participant.participantPublicKey }
+                .associateBy { it.participant.participantPublicKey }
 
-            val strangers = (hostKeyParticipants + round1Participants + round2Participants)
-                .filterNot { it in knownKeys }
-                .map { LocalParticipant(Participant(participantPublicKey = it, chatRoomId = localChatRoom.chatRoom.id, relayHint = null), null) }
+            val participants = session
+                ?.let { ChillDkgRitualManager.participantsOf(it, localChatRoom) }
+                ?: roomMembers.keys
 
-            return known + strangers
+            return (participants + hostKeyParticipants + round1Participants + round2Participants)
+                .map { publicKey ->
+                    roomMembers[publicKey] ?: LocalParticipant(
+                        Participant(
+                            participantPublicKey = publicKey,
+                            chatRoomId = localChatRoom.chatRoom.id,
+                            relayHint = null
+                        ),
+                        null
+                    )
+                }
         }
 
         /**

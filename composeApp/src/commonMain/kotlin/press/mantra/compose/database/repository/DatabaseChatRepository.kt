@@ -135,7 +135,7 @@ class DatabaseChatRepository(
         val parentRoom = database.chatRoomDao().findChatRoomById(parentChatRoomId)
             ?: return "Couldn't load this group."
 
-        SubgroupManager.refuseCeremonyRoom(
+        SubgroupManager.refuseSubgroup(
             database = database,
             parentRoom = parentRoom,
             adminPublicKeys = adminPublicKeys,
