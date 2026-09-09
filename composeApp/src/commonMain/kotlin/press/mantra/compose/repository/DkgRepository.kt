@@ -44,6 +44,26 @@ interface DkgRepository {
      */
     fun observeSessionById(sessionId: String): Flow<DkgSession?>
 
+    /**
+     * Every ceremony a room holds, newest first.
+     *
+     * For the transcript's standing notice, which has to say what a room owes
+     * this member without knowing in advance how many ceremonies are in it.
+     */
+    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>>
+
+    /**
+     * The room a finished ceremony's key derives, if this device does not hold it
+     * yet -- or null once it does, or while there is no key.
+     *
+     * What tells the coordinator they still have work. A ceremony reaching
+     * COMPLETE is not the end of anything on its own: the group has a key and
+     * somebody still has to get its state signed and make the room. Once that
+     * room exists there is nothing left to do, and asking whether it exists is
+     * how this knows without keeping a flag that could be wrong.
+     */
+    suspend fun roomAwaitingCreation(session: DkgSession): String?
+
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
     /**
@@ -177,6 +197,11 @@ interface DkgRepository {
             override fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>> = flowOf(emptyList())
 
             override fun observeSessionById(sessionId: String): Flow<DkgSession?> = flowOf(null)
+
+            override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>> =
+                flowOf(emptyList())
+
+            override suspend fun roomAwaitingCreation(session: DkgSession): String? = null
 
             override suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession? = null
 

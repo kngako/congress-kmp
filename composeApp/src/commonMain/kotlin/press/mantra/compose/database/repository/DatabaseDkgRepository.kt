@@ -3,6 +3,7 @@ package press.mantra.compose.database.repository
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
@@ -30,6 +31,19 @@ class DatabaseDkgRepository(
 
     override fun observeSessionById(sessionId: String): Flow<DkgSession?> =
         database.dkgSessionDao().observeSessionById(sessionId)
+
+    override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>> =
+        database.dkgSessionDao().observeSessionsForChatRoom(chatRoomId)
+
+    override suspend fun roomAwaitingCreation(session: DkgSession): String? {
+        if (session.stage != DkgRitualStage.COMPLETE) return null
+
+        val roomId = session.thresholdPublicKey
+            ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
+            ?: return null
+
+        return roomId.takeIf { database.chatRoomDao().findChatRoomById(it) == null }
+    }
 
     override fun observeLatestSessionForChatRoom(
         chatRoomId: String,

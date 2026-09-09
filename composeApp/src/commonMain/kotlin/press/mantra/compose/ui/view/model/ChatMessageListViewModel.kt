@@ -23,6 +23,9 @@ import press.mantra.compose.nostr.MemberProfileSync
 import press.mantra.compose.nostr.Nip17Filters
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.database.model.types.DkgApprovalStep
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.text.ProposedEvent
@@ -41,7 +44,8 @@ class ChatMessageListViewModel(
     val localChatRoom: LocalChatRoom,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
-    val frostSigningRepository: FrostSigningRepository
+    val frostSigningRepository: FrostSigningRepository,
+    val dkgRepository: DkgRepository
 ): ViewModel() {
     val logger = Logger.withTag(TAG)
     var chatMessageListUIState: ChatMessageListUIState by mutableStateOf(initialChatMessageListUIState)
@@ -92,6 +96,46 @@ class ChatMessageListViewModel(
      * moment that can wait on a query.
      */
     var proposalsAwaitingYou: List<AwaitingProposal> by mutableStateOf(emptyList())
+        private set
+
+    /**
+     * One ceremony in this room that still wants something from this member.
+     *
+     * The counterpart to [AwaitingProposal], for the other thing a room can be
+     * waiting on somebody for. A NIP-17 room is where ceremonies happen, and
+     * before this the only way to find one that wanted you was to scroll the
+     * transcript to its request line -- which for a subgroup means scrolling past
+     * whatever else the room has been used for.
+     */
+    data class AwaitingCeremony(
+        val sessionId: String,
+
+        /** What it wants, or null when what it wants is the next step rather than a signature. */
+        val step: DkgApprovalStep?,
+
+        /**
+         * The room this ceremony's key derives, when that room does not exist
+         * yet and this member is the one who would make it.
+         *
+         * A ceremony reaching COMPLETE finishes nothing on its own: the group has
+         * a key and somebody still has to get its state signed and create the
+         * room. That somebody is whoever opened it, and nothing else in the app
+         * would ever tell them so.
+         */
+        val roomAwaitingCreation: String?,
+
+        /** Whether this ceremony is making a subgroup, for what the notice says. */
+        val isSubgroup: Boolean,
+    )
+
+    /**
+     * The ceremonies in this room that still want something from this member.
+     *
+     * Every one of them, not the room's newest: a room holds more than one the
+     * moment a subgroup's admins are the whole group, and the one that wants you
+     * is routinely not the one that happened last.
+     */
+    var ceremoniesAwaitingYou: List<AwaitingCeremony> by mutableStateOf(emptyList())
         private set
 
     /**
@@ -156,6 +200,7 @@ class ChatMessageListViewModel(
         scheduleSynchronization()
         observeChatRoomFeed()
         observeProposalsAwaitingYou()
+        observeCeremoniesAwaitingYou()
         askForGroupHistory()
     }
 
@@ -188,6 +233,46 @@ class ChatMessageListViewModel(
                             eventCount = local.items.size
                         )
                     }
+                }
+        }
+    }
+
+    /**
+     * Watches which of the room's ceremonies are waiting on this member.
+     *
+     * Two different kinds of waiting, and both belong here. A participant is owed
+     * an approval gate -- `pendingApproval` is the same reading the ritual screen
+     * makes, so the two cannot disagree. The member who *opened* it is owed
+     * something the protocol has no gate for: a finished ceremony still needs its
+     * key state signed and its room created, and nothing else in the app would
+     * ever say so.
+     *
+     * A ceremony whose room exists wants nothing from anybody, which is what
+     * `roomAwaitingCreation` is asking. That keeps the notice from becoming
+     * permanent furniture in every room that has ever held a ceremony.
+     */
+    private fun observeCeremoniesAwaitingYou() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dkgRepository
+                .observeSessionsForChatRoom(localChatRoom.chatRoom.id)
+                .collect { sessions ->
+                    ceremoniesAwaitingYou = sessions
+                        .filter { it.stage != DkgRitualStage.FAILED }
+                        .mapNotNull { session ->
+                            val step = dkgRepository.pendingApproval(session)
+                            val roomAwaitingCreation = session
+                                .takeIf { it.coordinatorPublicKey == it.userPublicKey }
+                                ?.let { dkgRepository.roomAwaitingCreation(it) }
+
+                            if (step == null && roomAwaitingCreation == null) return@mapNotNull null
+
+                            AwaitingCeremony(
+                                sessionId = session.id,
+                                step = step,
+                                roomAwaitingCreation = roomAwaitingCreation,
+                                isSubgroup = session.parentChatRoomId != null,
+                            )
+                        }
                 }
         }
     }
@@ -340,7 +425,8 @@ class ChatMessageListViewModel(
             localChatRoom: LocalChatRoom,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
-            frostSigningRepository: FrostSigningRepository
+            frostSigningRepository: FrostSigningRepository,
+            dkgRepository: DkgRepository
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatMessageListViewModel(
@@ -348,7 +434,8 @@ class ChatMessageListViewModel(
                     localChatRoom = localChatRoom,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
-                    frostSigningRepository = frostSigningRepository
+                    frostSigningRepository = frostSigningRepository,
+                    dkgRepository = dkgRepository
                 )
             }
         }

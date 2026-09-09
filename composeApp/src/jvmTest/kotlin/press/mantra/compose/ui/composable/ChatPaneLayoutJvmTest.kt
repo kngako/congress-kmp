@@ -14,6 +14,7 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalProfileWithFollowing
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.widgets.ProvideSnackbarHost
@@ -96,6 +97,7 @@ class ChatPaneLayoutJvmTest {
                 nostrRepository = FixedProfile,
                 chatRepository = NoRooms,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
             )
             }
         }

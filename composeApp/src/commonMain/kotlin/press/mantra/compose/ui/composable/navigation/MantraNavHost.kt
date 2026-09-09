@@ -734,6 +734,7 @@ fun MantraNavHost(
                     nostrRepository = databaseNostrRepository,
                     chatRepository = databaseChatRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    dkgRepository = databaseDkgRepository,
                 )
             }
             composable<BlankRoute> {
@@ -834,6 +835,7 @@ fun MantraNavHost(
                     nostrRepository = databaseNostrRepository,
                     chatRepository = databaseChatRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    dkgRepository = databaseDkgRepository,
                     onNavigateToRouteAndPopUpInclusive = { chatRoomDetailRoute ->
                         navController.navigate(
                             route = chatRoomDetailRoute

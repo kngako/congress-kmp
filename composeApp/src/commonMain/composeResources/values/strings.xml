@@ -390,4 +390,12 @@
     <string name="before_the_subgroup_exists_its_parent_signs">Before the subgroup exists, its parent signs for it. That signature is what lets anyone check where this group came from.</string>
     <string name="ask_the_parent_group_to_certify">Ask the parent group to certify this subgroup</string>
     <string name="create_the_subgroup">Create the subgroup</string>
+    <string name="the_key_ceremony_needs_you">The key ceremony needs you</string>
+    <string name="the_subgroups_key_ceremony_needs_you">The subgroup's key ceremony needs you</string>
+    <string name="ceremonies_need_you">%1$s key ceremonies need you</string>
+    <string name="join_the_ceremony_by_publishing_your_key">Join it by publishing your device's key</string>
+    <string name="send_your_contribution_to_the_key">Send your contribution to the key</string>
+    <string name="check_the_combined_result">Check the combined result and confirm it</string>
+    <string name="the_group_has_its_key_finish_setting_it_up">The group has its key — finish setting it up</string>
+    <string name="open">Open</string>
 </resources>

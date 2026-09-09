@@ -64,6 +64,16 @@ interface DkgSessionDao {
     fun observeLatestSessionFor(chatRoomId: String, parentChatRoomId: String?): Flow<DkgSession?>
 
     /**
+     * Every ceremony this room holds, newest first.
+     *
+     * A room holds more than one the moment a subgroup's admins are the whole
+     * group, so the standing "this needs you" notice in the transcript cannot ask
+     * about "the room's ceremony" -- it has to look at all of them and say which.
+     */
+    @Query("SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
+    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>>
+
+    /**
      * Every ceremony this device came out of holding a share, newest first.
      *
      * Signing happens in the #admins room, whose id is derived from the key

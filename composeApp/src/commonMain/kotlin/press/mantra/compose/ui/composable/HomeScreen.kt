@@ -65,6 +65,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import androidx.compose.ui.Alignment
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.widgets.Decorative
@@ -90,6 +91,7 @@ fun HomeScreen(
     // required parameter rather than a nullable one because a home screen that silently
     // loses its detail pane on a desktop is a worse failure than a compile error.
     frostSigningRepository: FrostSigningRepository,
+    dkgRepository: DkgRepository,
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -291,6 +293,7 @@ fun HomeScreen(
                                         nostrRepository = nostrRepository,
                                         chatRepository = chatRepository,
                                         frostSigningRepository = frostSigningRepository,
+                                        dkgRepository = dkgRepository,
                                         // "Replace what is on screen" is a route push on a
                                         // phone and a change of selection here. It fires when
                                         // a conversation that did not exist yet has just been
@@ -381,6 +384,7 @@ It has survived not only five centuries, but also the leap into electronic types
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
             )
         }
     }

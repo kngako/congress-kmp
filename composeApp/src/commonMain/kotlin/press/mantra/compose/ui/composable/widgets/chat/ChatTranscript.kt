@@ -17,6 +17,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
+import mantra.composeapp.generated.resources.open
+import mantra.composeapp.generated.resources.the_group_has_its_key_finish_setting_it_up
+import mantra.composeapp.generated.resources.check_the_combined_result
+import mantra.composeapp.generated.resources.send_your_contribution_to_the_key
+import mantra.composeapp.generated.resources.join_the_ceremony_by_publishing_your_key
+import mantra.composeapp.generated.resources.the_subgroups_key_ceremony_needs_you
+import mantra.composeapp.generated.resources.the_key_ceremony_needs_you
+import mantra.composeapp.generated.resources.ceremonies_need_you
+import press.mantra.compose.database.model.types.DkgApprovalStep
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -161,6 +170,7 @@ fun ChatTranscript(
                         // of this function and not of a lazy item that may not
                         // be composed at the time.
                         val awaitingYou = viewModel.proposalsAwaitingYou
+                        val ceremoniesAwaitingYou = viewModel.ceremoniesAwaitingYou
 
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space50),
@@ -175,6 +185,23 @@ fun ChatTranscript(
                                     ProposalsAwaitingYouNotice(
                                         proposals = awaitingYou,
                                         onClick = onOpenProposals
+                                    )
+                                }
+                            }
+
+                            // Beside the signing notice and above it in the
+                            // reversed layout, so a room owing both puts the
+                            // ceremony nearest the composer. A ceremony is the
+                            // thing everything else in the room is waiting on:
+                            // until it finishes there is no key to sign anything
+                            // with.
+                            if (ceremoniesAwaitingYou.isNotEmpty()) {
+                                item {
+                                    CeremoniesAwaitingYouNotice(
+                                        ceremonies = ceremoniesAwaitingYou,
+                                        onClick = { dkgSessionId ->
+                                            onOpenSharedKey(dkgSessionId)
+                                        }
                                     )
                                 }
                             }
@@ -526,6 +553,92 @@ fun ChatTranscript(
  * of what is owed, and the queue is the screen that answers the question it
  * raises -- including for the one it could not name.
  */
+/**
+ * What a ceremony in this room still wants from this member, under the newest
+ * message.
+ *
+ * The counterpart to [ProposalsAwaitingYouNotice], for the other thing a room can
+ * be owed. It matters more in a NIP-17 room than a signing notice does, because a
+ * NIP-17 room is where ceremonies happen and a ceremony cannot finish until every
+ * member has taken part -- so one member not finding their request stalls everyone
+ * indefinitely, with nothing on any screen saying why.
+ *
+ * Unlike the signing notice this opens the ceremony it names rather than a queue.
+ * There is no queue of ceremonies to open, and naming one is honest: with several,
+ * the count is shown and the newest is opened, which is the one a member is most
+ * likely to have just been asked about.
+ *
+ * The coordinator's case has no approval gate behind it at all. A ceremony that
+ * has produced a key still needs its state signed and its room created, and the
+ * member who opened it is the one who does that -- so `roomAwaitingCreation`
+ * earns a place here beside the gates, and stops being asked for the moment the
+ * room exists.
+ */
+@Composable
+private fun CeremoniesAwaitingYouNotice(
+    ceremonies: List<ChatMessageListViewModel.AwaitingCeremony>,
+    onClick: (dkgSessionId: String) -> Unit,
+) {
+    val single = ceremonies.singleOrNull()
+
+    val headline = when {
+        single == null -> stringResource(Res.string.ceremonies_need_you, ceremonies.size)
+        single.isSubgroup -> stringResource(Res.string.the_subgroups_key_ceremony_needs_you)
+        else -> stringResource(Res.string.the_key_ceremony_needs_you)
+    }
+
+    // What it wants, in the words the approval screens use for the same step, so
+    // a member is not asked twice in two vocabularies. The gate comes first: an
+    // approval is owed by this member and cannot be done by anybody else, while
+    // finishing the setup is work the coordinator can come back to.
+    val detail = single?.let {
+        when (it.step) {
+            DkgApprovalStep.HOST_KEY -> stringResource(Res.string.join_the_ceremony_by_publishing_your_key)
+            DkgApprovalStep.ROUND_1 -> stringResource(Res.string.send_your_contribution_to_the_key)
+            DkgApprovalStep.ROUND_2 -> stringResource(Res.string.check_the_combined_result)
+            null -> stringResource(Res.string.the_group_has_its_key_finish_setting_it_up)
+        }
+    }
+
+    Card(
+        onClick = { onClick(ceremonies.first().sessionId) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space50),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space150),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space125),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Key, contentDescription = Decorative)
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space25)
+            ) {
+                Text(text = headline, style = MaterialTheme.typography.labelMedium)
+
+                if (detail != null) {
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(Res.string.open),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
 @Composable
 private fun ProposalsAwaitingYouNotice(
     proposals: List<ChatMessageListViewModel.AwaitingProposal>,

@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
+import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
@@ -82,6 +83,7 @@ fun ChatRoomMessagingScreen(
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     frostSigningRepository: FrostSigningRepository,
+    dkgRepository: DkgRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
 ) {
@@ -119,7 +121,8 @@ fun ChatRoomMessagingScreen(
                         localChatRoom = chatRoomDetailUIState.localChatRoom,
                         nostrRepository = nostrRepository,
                         chatRepository = chatRepository,
-                        frostSigningRepository = frostSigningRepository
+                        frostSigningRepository = frostSigningRepository,
+                        dkgRepository = dkgRepository
                     )
                 )
 
@@ -486,6 +489,7 @@ private fun ChatRoomMessagingScreenPreview() {
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {}
             )
