@@ -40,6 +40,8 @@ import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
+import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
+import press.mantra.compose.ui.composable.EditGroupRelaysScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
@@ -122,6 +124,8 @@ import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
+import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
@@ -965,6 +969,46 @@ fun MantraNavHost(
                         navController.navigate(
                             route = actionRoute
                         )
+                    }
+                )
+            }
+            composable<EditGroupNostrProfileRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<EditGroupNostrProfileRoute>()
+
+                EditGroupNostrProfileScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace the form so back returns to the group rather than
+                        // to an edit whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<EditGroupNostrProfileRoute> {
+                                inclusive = true
+                            }
+                        }
+                    }
+                )
+            }
+            composable<EditGroupRelaysRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<EditGroupRelaysRoute>()
+
+                EditGroupRelaysScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace the editor so back returns to the group rather
+                        // than to lists whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<EditGroupRelaysRoute> {
+                                inclusive = true
+                            }
+                        }
                     }
                 )
             }
