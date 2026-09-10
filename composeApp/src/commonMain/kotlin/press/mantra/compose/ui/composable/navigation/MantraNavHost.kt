@@ -41,6 +41,7 @@ import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
+import press.mantra.compose.ui.composable.AddGroupPostScreen
 import press.mantra.compose.ui.composable.EditGroupRelaysScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
@@ -125,6 +126,7 @@ import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
@@ -1006,6 +1008,26 @@ fun MantraNavHost(
                         // than to lists whose proposal has already gone out.
                         navController.navigate(route = signingRoute) {
                             popUpTo<EditGroupRelaysRoute> {
+                                inclusive = true
+                            }
+                        }
+                    }
+                )
+            }
+            composable<AddGroupPostRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddGroupPostRoute>()
+
+                AddGroupPostScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace the composer so back returns to the group rather
+                        // than to a draft whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddGroupPostRoute> {
                                 inclusive = true
                             }
                         }
