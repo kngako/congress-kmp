@@ -10,7 +10,9 @@ import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.nostr.GroupNostrProfile
+import press.mantra.compose.nostr.GroupCuratedSchema
 import press.mantra.compose.nostr.GroupPost
+import press.mantra.compose.nostr.curated.CuratedSchemaEvent
 import press.mantra.compose.nostr.GroupRelayList
 import press.mantra.compose.nostr.GroupRelaySet
 import press.mantra.compose.database.model.ChatMessage
@@ -167,6 +169,17 @@ class DatabaseChatRepository(
         )
     } catch (e: Throwable) {
         logger.e("Error reading the posts of $chatRoomId", e)
+        emptyList()
+    }
+
+    override suspend fun groupCuratedSchemas(chatRoomId: String): List<GroupCuratedSchema> = try {
+        GroupCuratedSchema.newestPerListAmong(
+            signedEvents = database.groupSignedEventDao()
+                .getByChatRoomIdAndKind(chatRoomId, CuratedSchemaEvent.KIND),
+            chatRoomId = chatRoomId,
+        )
+    } catch (e: Throwable) {
+        logger.e("Error reading the curated schemas of $chatRoomId", e)
         emptyList()
     }
 

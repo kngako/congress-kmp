@@ -42,6 +42,7 @@ import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
 import press.mantra.compose.ui.composable.AddGroupPostScreen
+import press.mantra.compose.ui.composable.EditGroupCuratedSchemaScreen
 import press.mantra.compose.ui.composable.EditGroupRelaysScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
@@ -127,6 +128,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
+import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
@@ -1028,6 +1030,27 @@ fun MantraNavHost(
                         // than to a draft whose proposal has already gone out.
                         navController.navigate(route = signingRoute) {
                             popUpTo<AddGroupPostRoute> {
+                                inclusive = true
+                            }
+                        }
+                    }
+                )
+            }
+            composable<EditGroupCuratedSchemaRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<EditGroupCuratedSchemaRoute>()
+
+                EditGroupCuratedSchemaScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    identifier = route.identifier,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace the editor so back returns to the group rather
+                        // than to a schema whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<EditGroupCuratedSchemaRoute> {
                                 inclusive = true
                             }
                         }
