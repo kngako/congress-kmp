@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Ballot
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -78,6 +79,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProposeGroupEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
@@ -108,6 +110,7 @@ import mantra.composeapp.generated.resources.curated_schemas
 import mantra.composeapp.generated.resources.this_group_has_not_published_a_curated_schema_yet
 import mantra.composeapp.generated.resources.add_schema
 import mantra.composeapp.generated.resources.fields_colon
+import mantra.composeapp.generated.resources.propose_event
 import mantra.composeapp.generated.resources.posted_on
 import mantra.composeapp.generated.resources.this_group_has_not_posted_anything_yet
 import mantra.composeapp.generated.resources.edit_relays
@@ -610,6 +613,44 @@ fun ChatRoomDetailScreen(
                                             )
 
                                             Text(stringResource(Res.string.add_schema))
+                                        }
+                                    }
+                                }
+
+                                // The untyped way into everything above it. Each
+                                // section has a form that builds one kind of event;
+                                // this takes any of those kinds as JSON, pasted from
+                                // wherever it was made, and it lands in whichever
+                                // section is its kind's once the quorum signs --
+                                // the same reading, off the same signed events.
+                                // Last in the block because it is about the block
+                                // rather than about any one section of it, and
+                                // behind the same gate for the same reason.
+                                if (chatRoomDetailUIState.canEditNostrProfile) {
+                                    item {
+                                        TextButton(
+                                            onClick = {
+                                                onNavigateToRoute.invoke(
+                                                    ProposeGroupEventRoute(
+                                                        activeUserPublicKey = activeUserPublicKey,
+                                                        chatRoomId = chatRoomId,
+                                                        relayHint = relayHint
+                                                    )
+                                                )
+                                            }
+                                        ) {
+                                            Icon(
+                                                Icons.Default.DataObject,
+                                                contentDescription = Decorative
+                                            )
+
+                                            Spacer(
+                                                modifier = Modifier.width(
+                                                    MaterialTheme.spacing.space125
+                                                )
+                                            )
+
+                                            Text(stringResource(Res.string.propose_event))
                                         }
                                     }
                                 }
