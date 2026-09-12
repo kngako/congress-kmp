@@ -52,6 +52,7 @@ import press.mantra.compose.ui.composable.KeyRecoveryScreen
 import press.mantra.compose.ui.composable.LandingScreen
 import press.mantra.compose.ui.composable.LoadingScreen
 import press.mantra.compose.ui.composable.NostrEventDetailScreen
+import press.mantra.compose.ui.composable.NostrSecretScreen
 import press.mantra.compose.ui.composable.RecoveryPhraseScreen
 import press.mantra.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import press.mantra.compose.ui.composable.SearchResultScreen
@@ -87,6 +88,7 @@ import press.mantra.compose.ui.composable.navigation.routes.KeyRecoveryRoute
 import press.mantra.compose.ui.composable.navigation.routes.LandingRoute
 import press.mantra.compose.ui.composable.navigation.routes.LoadingRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.NostrSecretRoute
 import press.mantra.compose.ui.composable.navigation.routes.RecoveryPhraseRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
@@ -863,6 +865,27 @@ fun MantraNavHost(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
+                )
+            }
+            composable<NostrSecretRoute> {
+                NostrSecretScreen(
+                    phoenixGlobal = phoenixGlobal,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
+                    nostrRepository = databaseNostrRepository,
+                    forgetNostrKey = { identity -> sovereignWalletViewModel.forgetNostrKey(identity) },
+                    hideIdentityMetadata = { identity -> sovereignWalletViewModel.hideIdentityMetadata(identity) },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    // The device no longer holds the key. Re-list so the selector drops it,
+                    // then clear the active identity: the navigation observer sends a null
+                    // identity to startup, which shows the selector -- or Landing, if this
+                    // was the last one.
+                    onForgotten = {
+                        sovereignWalletViewModel.listIdentities {
+                            sovereignWalletViewModel.resetToSelector()
+                        }
+                    },
                 )
             }
             composable<ChatRoomMessagingRoute> { backStackEntry ->
