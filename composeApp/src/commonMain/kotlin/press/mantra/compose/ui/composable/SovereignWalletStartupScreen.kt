@@ -29,6 +29,7 @@ import press.mantra.compose.identity.Identity
 import press.mantra.compose.identity.IdentityKind
 import press.mantra.compose.identity.StoredIdentity
 import press.mantra.compose.repository.NostrRepository
+import press.mantra.compose.ui.composable.widgets.wallet.AddProfileRows
 import press.mantra.compose.ui.composable.widgets.wallet.rememberProfilesOf
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
@@ -52,6 +53,9 @@ fun SovereignWalletStartupScreen(
     nostrRepository: NostrRepository,
     onNavigateToWalletLandingPage: () -> Unit,
     onSuccessfulStartup: () -> Unit,
+    /** The two ways to add a profile from the selector; a device with one profile can be given a second without opening the first. */
+    onNavigateToSignIn: () -> Unit,
+    onNavigateToCreateProfile: () -> Unit,
     forceWalletId: WalletId?,
 ) {
     val sovereignWalletStartupViewModel = viewModel<press.mantra.compose.ui.view.model.SovereignWalletStartupViewModel>(
@@ -168,8 +172,13 @@ fun SovereignWalletStartupScreen(
                                                 Spacer(Modifier.height(MaterialTheme.spacing.space200))
                                             },
                                             bottomContent = {
+                                                AddProfileRows(
+                                                    onSignIn = onNavigateToSignIn,
+                                                    onCreateProfile = onNavigateToCreateProfile,
+                                                    caption = false,
+                                                )
                                                 // m3-spacing-exempt: room to scroll the
-                                                // last wallet clear of the bottom of the
+                                                // last row clear of the bottom of the
                                                 // window, not a step in the spacing
                                                 // rhythm. The scale tops out at 72dp and
                                                 // rounding to it would put the last row
