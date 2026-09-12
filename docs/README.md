@@ -16,6 +16,7 @@ silent, or a decision that looked arbitrary and was not.
 | [mls-skipped-keys.md](./mls-skipped-keys.md) | why a group event that arrives a moment late is dropped for good, which flows trigger it, the quartz fix, and the partial mitigation in this app |
 | [long-running-sync.md](./long-running-sync.md) | the chat subscriptions that stay open instead of pulling once per screen — why the request queue could not simply hold one, and how the group filter follows the room list |
 | [dead-code.md](./dead-code.md) | code in the sync and relay stack that nothing calls, why each piece is still there, and which of it is a bug rather than a leftover |
+| [nsec-sign-in.md](./nsec-sign-in.md) | signing in with an existing nostr key — why an nsec can never have a wallet behind it, the ten call sites that make it small, and the sign-in machine that was already built and unreachable |
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
@@ -39,3 +40,7 @@ jvm-target note first if you want to know why its adaptive-layout phase exists.
 The curated-to-mantra note is a phased plan that has not been built, though its dry
 run has: it is about the repository rather than the app, and reads alone, except that
 its first decision leans on the derivation note's one rule.
+The nsec sign-in note is a phased plan that has not been built; it inherits the
+key-storage decision from the jvm-target note and drives the navigation state
+machine `NavigationViewModel.processLocalAccount` implements, so read it with the
+code open.
