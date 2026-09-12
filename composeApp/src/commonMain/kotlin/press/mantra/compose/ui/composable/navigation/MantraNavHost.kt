@@ -85,7 +85,11 @@ import press.mantra.compose.ui.composable.navigation.routes.LandingRoute
 import press.mantra.compose.ui.composable.navigation.routes.LoadingRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrSecretRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProfilesRoute
 import press.mantra.compose.ui.composable.navigation.routes.RecoveryPhraseRoute
+import press.mantra.compose.ui.composable.ProfilesScreen
+import press.mantra.compose.ui.view.model.ProfilesViewModel
+import press.mantra.compose.ui.view.model.getAvailableWalletsMeta
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
@@ -455,6 +459,7 @@ fun MantraNavHost(
 
                 SovereignWalletStartupScreen(
                     sovereignWalletViewModel = sovereignWalletViewModel,
+                    nostrRepository = databaseNostrRepository,
                     // No seed on this device, so there is no wallet to start: the user has to make or
                     // restore one, and that lives behind the landing screen. This used to park them on
                     // a loading screen with nothing left to load.
@@ -887,6 +892,31 @@ fun MantraNavHost(
                             route = route
                         )
                     }
+                )
+            }
+            composable<ProfilesRoute> {
+                val profilesViewModel: ProfilesViewModel = viewModel(
+                    factory = ProfilesViewModel.factory(
+                        listWalletState = sovereignWalletViewModel.listWalletState,
+                        availableIdentities = sovereignWalletViewModel.availableIdentities,
+                        activeIdentity = sovereignWalletViewModel.activeIdentity,
+                        walletsMetadata = getAvailableWalletsMeta(phoenixGlobal),
+                        nostrRepository = databaseNostrRepository,
+                    ),
+                )
+                ProfilesScreen(
+                    viewModel = profilesViewModel,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    // The switch is the whole of it: the observer above sends the null
+                    // identity to startup, and startup opens the one named.
+                    onSwitch = { walletId ->
+                        sovereignWalletViewModel.switchToIdentity(walletId)
+                    },
+                    onRetry = {
+                        sovereignWalletViewModel.listIdentities {}
+                    },
                 )
             }
             composable<KeyRecoveryRoute> { backStackEntry ->
