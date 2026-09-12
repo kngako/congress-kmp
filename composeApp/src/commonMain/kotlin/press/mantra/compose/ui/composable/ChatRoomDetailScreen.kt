@@ -1,6 +1,9 @@
 package press.mantra.compose.ui.composable
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Draw
@@ -79,6 +83,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendin
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
+import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
 import press.mantra.compose.ui.composable.navigation.routes.CuratedSuggestionListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposeGroupEventRoute
@@ -170,6 +175,7 @@ import mantra.composeapp.generated.resources.this_room_signs_as
 import mantra.composeapp.generated.resources.derivation_path
 import mantra.composeapp.generated.resources.key_ceremony
 import mantra.composeapp.generated.resources.agreed_on
+import mantra.composeapp.generated.resources.broadcast
 import mantra.composeapp.generated.resources.the_signed_event
 import mantra.composeapp.generated.resources.copy_the_signed_event
 import mantra.composeapp.generated.resources.copied_the_signed_event
@@ -184,7 +190,7 @@ import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
 import kotlin.time.Instant
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ChatRoomDetailScreen(
     activeUserPublicKey: HexKey,
@@ -239,6 +245,19 @@ fun ChatRoomDetailScreen(
                         modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
                     ) {
                         var isShowingGroupKeyState by rememberSaveable { mutableStateOf(false) }
+
+                        // The one way into the broadcast screen, for every signed
+                        // event in the identity block below.
+                        val broadcast: (GroupSignedEvent) -> Unit = { signedEvent ->
+                            onNavigateToRoute.invoke(
+                                BroadcastGroupSignedEventRoute(
+                                    activeUserPublicKey = activeUserPublicKey,
+                                    chatRoomId = chatRoomId,
+                                    relayHint = relayHint,
+                                    signedEventId = signedEvent.id
+                                )
+                            )
+                        }
 
                         LazyColumn(
                             modifier = Modifier.weight(1f).fillMaxWidth().padding(MaterialTheme.spacing.space250),
@@ -381,10 +400,29 @@ fun ChatRoomDetailScreen(
 
                                 item {
                                     chatRoomDetailUIState.groupNostrProfile?.let { groupNostrProfile ->
-                                        GroupNostrProfileCard(
-                                            groupNostrProfile = groupNostrProfile,
-                                            publicKey = chatRoomId
-                                        )
+                                        // The card and its broadcast button as one
+                                        // item, so the button stays under the event
+                                        // it sends however the list is arranged.
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            GroupNostrProfileCard(
+                                                groupNostrProfile = groupNostrProfile,
+                                                publicKey = chatRoomId
+                                            )
+
+                                            // Behind no gate, here and under every
+                                            // other signed event in the block: sending
+                                            // what the group has already signed takes
+                                            // no share of the key, since the
+                                            // signature on it is the group's whoever
+                                            // repeats it. Only *making* a statement
+                                            // is gated.
+                                            BroadcastButton(
+                                                onClick = { broadcast(groupNostrProfile.signedEvent) }
+                                            )
+                                        }
                                     } ?: Text(
                                         stringResource(
                                             Res.string.this_group_has_not_said_anything_about_itself
@@ -439,7 +477,8 @@ fun ChatRoomDetailScreen(
 
                                 item {
                                     GroupRelayListsCard(
-                                        relayLists = chatRoomDetailUIState.groupRelayLists
+                                        relayLists = chatRoomDetailUIState.groupRelayLists,
+                                        onBroadcast = broadcast
                                     )
                                 }
 
@@ -498,12 +537,21 @@ fun ChatRoomDetailScreen(
                                         items = chatRoomDetailUIState.groupPosts,
                                         key = { post -> post.signedEvent.id }
                                     ) { post ->
-                                        GroupPostCard(
-                                            post = post,
-                                            publicKey = chatRoomId,
-                                            groupNostrProfile =
-                                                chatRoomDetailUIState.groupNostrProfile
-                                        )
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            GroupPostCard(
+                                                post = post,
+                                                publicKey = chatRoomId,
+                                                groupNostrProfile =
+                                                    chatRoomDetailUIState.groupNostrProfile
+                                            )
+
+                                            BroadcastButton(
+                                                onClick = { broadcast(post.signedEvent) }
+                                            )
+                                        }
                                     }
                                 }
 
@@ -602,30 +650,48 @@ fun ChatRoomDetailScreen(
                                             // strangers, and reading the answers
                                             // takes no share of the key. Per card
                                             // because each list has its own queue.
-                                            TextButton(
-                                                onClick = {
-                                                    onNavigateToRoute.invoke(
-                                                        CuratedSuggestionListRoute(
-                                                            activeUserPublicKey = activeUserPublicKey,
-                                                            chatRoomId = chatRoomId,
-                                                            relayHint = relayHint,
-                                                            identifier = curated.identifier
+                                            //
+                                            // Beside the broadcast button rather
+                                            // than over it, wrapping where the two
+                                            // will not fit on one line: both are
+                                            // about this one card and a column of
+                                            // buttons under every schema would
+                                            // read as a menu.
+                                            FlowRow(
+                                                horizontalArrangement = Arrangement.spacedBy(
+                                                    MaterialTheme.spacing.itemGap,
+                                                    Alignment.CenterHorizontally
+                                                )
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        onNavigateToRoute.invoke(
+                                                            CuratedSuggestionListRoute(
+                                                                activeUserPublicKey = activeUserPublicKey,
+                                                                chatRoomId = chatRoomId,
+                                                                relayHint = relayHint,
+                                                                identifier = curated.identifier
+                                                            )
+                                                        )
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Inbox,
+                                                        contentDescription = Decorative
+                                                    )
+
+                                                    Spacer(
+                                                        modifier = Modifier.width(
+                                                            MaterialTheme.spacing.space125
                                                         )
                                                     )
+
+                                                    Text(stringResource(Res.string.view_suggestions))
                                                 }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Inbox,
-                                                    contentDescription = Decorative
-                                                )
 
-                                                Spacer(
-                                                    modifier = Modifier.width(
-                                                        MaterialTheme.spacing.space125
-                                                    )
+                                                BroadcastButton(
+                                                    onClick = { broadcast(curated.signedEvent) }
                                                 )
-
-                                                Text(stringResource(Res.string.view_suggestions))
                                             }
                                         }
                                     }
@@ -1461,7 +1527,8 @@ internal fun GroupKeyStateSheetContent(
  * The signing date is here because a group's profile is standing state with no
  * other clue to its age -- and because the alternative reading, that this arrived
  * from a relay a moment ago, is exactly what has not happened. Nothing on this card
- * has been published: see `GroupNostrProfile`.
+ * was published by being signed -- see `GroupNostrProfile` -- and the broadcast
+ * button under it is how it gets to a relay.
  */
 @Composable
 private fun GroupNostrProfileCard(
@@ -1537,7 +1604,10 @@ private fun GroupNostrProfileCard(
  * deliberate withdrawal behind an oversight.
  */
 @Composable
-private fun GroupRelayListsCard(relayLists: List<GroupRelayList>) {
+private fun GroupRelayListsCard(
+    relayLists: List<GroupRelayList>,
+    onBroadcast: (GroupSignedEvent) -> Unit
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         relayLists.forEach { list ->
             ListItem(
@@ -1563,7 +1633,39 @@ private fun GroupRelayListsCard(relayLists: List<GroupRelayList>) {
                     )
                 }
             )
+
+            // Under the row it sends, and only where there is something signed
+            // to send: a list the group has never agreed is not an event. Inside
+            // the card because the four rows share one, so "under the event" has
+            // to mean under the row -- and at the end, where M3 puts a card's
+            // actions. An agreed empty list gets one too: a withdrawal is a
+            // statement, and relays still holding the old list need to hear it.
+            list.signedEvent?.let { signedEvent ->
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.compactPadding),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    BroadcastButton(onClick = { onBroadcast(signedEvent) })
+                }
+            }
         }
+    }
+}
+
+/**
+ * The way into `BroadcastGroupSignedEventScreen`, drawn the same under every
+ * signed event in the identity block so that it reads as one action wherever it
+ * sits. The icon is decorative because the label is beside it.
+ */
+@Composable
+private fun BroadcastButton(onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Icon(Icons.Default.CellTower, contentDescription = Decorative)
+
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
+
+        Text(stringResource(Res.string.broadcast))
     }
 }
 

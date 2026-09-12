@@ -32,7 +32,7 @@ class RelaysSocketManager(
     private val nostrSocketClientFactory: press.mantra.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: press.mantra.compose.repository.CachingImportRepository,
     private val relayRepository: press.mantra.compose.repository.RelayRepository,
-) : LiveSubscriptionTransport {
+) : LiveSubscriptionTransport, EventPublishTransport {
     val logger = Logger.withTag("RelaysSocketManager")
     private val scope = CoroutineScope(Dispatchers.IO)
     private val relayPoolsMutex = Mutex()
@@ -116,7 +116,7 @@ class RelaysSocketManager(
     }
 
     @Throws(press.mantra.compose.exceptions.NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: press.mantra.compose.database.model.NostrEvent, relays: Set<press.mantra.compose.network.dto.RelayDTO>): Flow<NostrPublishResult> {
+    override suspend fun publishEvent(nostrEvent: press.mantra.compose.database.model.NostrEvent, relays: Set<press.mantra.compose.network.dto.RelayDTO>): Flow<NostrPublishResult> {
         logger.d("publishEvent: $nostrEvent")
         return relayPool.publishEvent(
             nostrEvent = nostrEvent,

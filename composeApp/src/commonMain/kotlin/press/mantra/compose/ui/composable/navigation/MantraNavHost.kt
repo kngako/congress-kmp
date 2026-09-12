@@ -43,6 +43,7 @@ import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
 import press.mantra.compose.ui.composable.AddGroupPostScreen
 import press.mantra.compose.ui.composable.EditGroupCuratedSchemaScreen
+import press.mantra.compose.ui.composable.BroadcastGroupSignedEventScreen
 import press.mantra.compose.ui.composable.CuratedSuggestionListScreen
 import press.mantra.compose.ui.composable.ProposeGroupEventScreen
 import press.mantra.compose.ui.composable.EditGroupRelaysScreen
@@ -133,6 +134,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
+import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.CuratedSuggestionListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposeGroupEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
@@ -1124,6 +1126,25 @@ fun MantraNavHost(
                     identifier = route.identifier,
                     nostrRepository = databaseNostrRepository,
                     chatRepository = databaseChatRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<BroadcastGroupSignedEventRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<BroadcastGroupSignedEventRoute>()
+
+                BroadcastGroupSignedEventScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    signedEventId = route.signedEventId,
+                    chatRepository = databaseChatRepository,
+                    // The one screen handed the pool itself rather than a queue
+                    // to write to: a group-signed event must not become a
+                    // `NostrEvent` row, and the queue hangs off one. See
+                    // `BroadcastGroupSignedEventViewModel`.
+                    publishTransport = synchronizationViewModel.relaysSocketManager,
                     onNavigateBack = {
                         navController.popBackStack()
                     }
