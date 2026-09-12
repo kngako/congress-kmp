@@ -701,7 +701,8 @@ fun MantraNavHost(
             composable<UnsyncedProfileRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
                 UnsyncedProfileScreen(
-                    unsyncedProfilePublicKey = route.publicKey
+                    unsyncedProfilePublicKey = route.publicKey,
+                    nostrRepository = databaseNostrRepository,
                 )
             }
             composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
