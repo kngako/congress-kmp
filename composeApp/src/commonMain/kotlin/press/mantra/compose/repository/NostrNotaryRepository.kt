@@ -4,8 +4,8 @@ import press.mantra.compose.cryptography.signOrThrow
 import press.mantra.compose.network.asClientTag
 import com.vitorpamplona.quartz.nip19Bech32.toNsec
 import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
-import fr.acinq.phoenix.managers.WalletManager
-import fr.acinq.phoenix.managers.nostrPrivateKey
+import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -23,7 +23,7 @@ import kotlinx.coroutines.sync.withLock
  */
 class NostrNotaryRepository(
     private val nostrRepository: NostrRepository,
-    private val walletManager: WalletManager,
+    private val activeIdentityStateFlow: StateFlow<Identity?>,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -67,7 +67,7 @@ class NostrNotaryRepository(
 
     private fun findNsecOrThrow(activeUserPublicKey: String): String =
         runCatching {
-            walletManager.keyManager.value?.nostrPrivateKey()?.value?.toByteArray()?.toNsec()
+            activeIdentityStateFlow.value?.nostrPrivateKey?.value?.toByteArray()?.toNsec()
         }.getOrNull() ?: throw press.mantra.compose.exceptions.SigningKeyNotFoundException()
 
     private fun signNostrEvent(publicKey: String, event: press.mantra.compose.database.model.UnsignedNostrEvent): press.mantra.compose.database.model.NostrEvent {

@@ -1,7 +1,7 @@
 package press.mantra.compose.ui.view.model
 
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -102,7 +102,7 @@ class NavigationRoutingTest {
     private fun bootedOn(vararg accounts: LocalAccount): NavigationViewModel {
         val scope = CoroutineScope(Job())
         return NavigationViewModel(
-            activeWalletStateFlow = MutableStateFlow<ActiveWallet?>(null),
+            activeIdentityStateFlow = MutableStateFlow<Identity?>(null),
             initialNavigationUIState = stranded,
             nostrRepository = Device(accounts.toList()),
             scope = scope,

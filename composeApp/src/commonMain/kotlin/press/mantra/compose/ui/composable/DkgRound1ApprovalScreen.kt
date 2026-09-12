@@ -12,7 +12,7 @@ import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
@@ -37,7 +37,7 @@ fun DkgRound1ApprovalScreen(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     dkgSessionId: String? = null,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
     onDone: () -> Unit,
@@ -49,7 +49,7 @@ fun DkgRound1ApprovalScreen(
         activeUserPublicKey = activeUserPublicKey,
         chatRoomId = chatRoomId,
         dkgSessionId = dkgSessionId,
-        activeWalletStateFlow = activeWalletStateFlow,
+        activeIdentityStateFlow = activeIdentityStateFlow,
         chatRepository = chatRepository,
         dkgRepository = dkgRepository,
         onDone = onDone

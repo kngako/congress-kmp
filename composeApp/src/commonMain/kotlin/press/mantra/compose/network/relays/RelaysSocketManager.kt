@@ -8,8 +8,7 @@ import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
-import fr.acinq.phoenix.data.ActiveWallet
-import fr.acinq.phoenix.managers.nostrPublicKey
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +28,7 @@ import kotlinx.coroutines.sync.withLock
  * https://github.com/PrimalHQ/primal-android-app/blob/6db2e6862239335dede4162338d7c4f10ad35031/app/src/main/kotlin/net/primal/android/networking/relays/RelaysSocketManager.kt
  */
 class RelaysSocketManager(
-    private val activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    private val activeIdentityStateFlow: StateFlow<Identity?>,
     private val nostrSocketClientFactory: press.mantra.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: press.mantra.compose.repository.CachingImportRepository,
     private val relayRepository: press.mantra.compose.repository.RelayRepository,
@@ -61,19 +60,18 @@ class RelaysSocketManager(
 
     private fun observeActiveUserId() =
         scope.launch {
-            activeWalletStateFlow.collectLatest { activeWallet ->
-                if (activeWallet == null) {
+            activeIdentityStateFlow.collectLatest { identity ->
+                if (identity == null) {
                     // TODO: Cancel all pending jobs?
                 }
-                activeWallet?.business?.walletManager?.keyManager?.collectLatest { keyManager ->
-                    keyManager?.nostrPublicKey()?.let { pubkey ->
-                        observeRelayJobs[pubkey]?.cancel()
-                        observeRelayJobs[pubkey] = observeRelays(pubkey)
-                    }
+                // The identity carries its pubkey, so this no longer waits on the node's key
+                // manager to fill in. The relay observer is still a job on `scope` keyed by
+                // pubkey and replaced per pubkey, exactly as before.
+                identity?.nostrPublicKey?.let { pubkey ->
+                    observeRelayJobs[pubkey]?.cancel()
+                    observeRelayJobs[pubkey] = observeRelays(pubkey)
                 }
             }
-
-
         }
 
     private fun observeRelays(publicKey: String): Job =

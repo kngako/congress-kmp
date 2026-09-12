@@ -35,7 +35,7 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.view.model.DkgRitualViewModel
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.composable.widgets.Decorative
@@ -65,7 +65,7 @@ internal fun DkgApprovalScaffold(
     activeUserPublicKey: HexKey,
     chatRoomId: String,
     dkgSessionId: String? = null,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
     onDone: () -> Unit,
@@ -76,7 +76,7 @@ internal fun DkgApprovalScaffold(
             chatRoomId = chatRoomId,
             dkgSessionId = dkgSessionId,
             activeUserPublicKey = activeUserPublicKey,
-            activeWalletStateFlow = activeWalletStateFlow,
+            activeIdentityStateFlow = activeIdentityStateFlow,
             chatRepository = chatRepository,
             dkgRepository = dkgRepository
         )

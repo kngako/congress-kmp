@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.acinq.phoenix.PhoenixGlobal
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.StateFlow
 import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.backup_confirmation
@@ -82,13 +82,13 @@ import press.mantra.compose.ui.view.state.RecoveryPhraseUIState
 @Composable
 fun RecoveryPhraseScreen(
     phoenixGlobal: PhoenixGlobal,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     onNavigateBack: () -> Unit,
 ) {
     val recoveryPhraseViewModel: RecoveryPhraseViewModel = viewModel(
         factory = RecoveryPhraseViewModel.factory(
             phoenixGlobal = phoenixGlobal,
-            activeWalletStateFlow = activeWalletStateFlow
+            activeIdentityStateFlow = activeIdentityStateFlow
         )
     )
 
