@@ -909,7 +909,7 @@ fun MantraNavHost(
                     phoenixGlobal = phoenixGlobal,
                     activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     nostrRepository = databaseNostrRepository,
-                    forgetNostrKey = { identity -> sovereignWalletViewModel.forgetNostrKey(identity) },
+                    forgetNostrCredential = { identity -> sovereignWalletViewModel.forgetNostrCredential(identity) },
                     hideIdentityMetadata = { identity -> sovereignWalletViewModel.hideIdentityMetadata(identity) },
                     onNavigateBack = {
                         navController.popBackStack()
