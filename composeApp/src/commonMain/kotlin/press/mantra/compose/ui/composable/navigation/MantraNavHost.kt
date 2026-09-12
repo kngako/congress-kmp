@@ -42,6 +42,7 @@ import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
 import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
 import press.mantra.compose.ui.composable.AddGroupPostScreen
+import press.mantra.compose.ui.composable.AcceptCuratedSuggestionScreen
 import press.mantra.compose.ui.composable.EditGroupCuratedSchemaScreen
 import press.mantra.compose.ui.composable.BroadcastGroupSignedEventScreen
 import press.mantra.compose.ui.composable.CuratedSuggestionListScreen
@@ -133,6 +134,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
+import press.mantra.compose.ui.composable.navigation.routes.AcceptCuratedSuggestionRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.CuratedSuggestionListRoute
@@ -1128,6 +1130,35 @@ fun MantraNavHost(
                     chatRepository = databaseChatRepository,
                     onNavigateBack = {
                         navController.popBackStack()
+                    },
+                    onNavigateToRoute = { acceptRoute ->
+                        navController.navigate(route = acceptRoute)
+                    }
+                )
+            }
+            composable<AcceptCuratedSuggestionRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AcceptCuratedSuggestionRoute>()
+
+                AcceptCuratedSuggestionScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    identifier = route.identifier,
+                    suggestionId = route.suggestionId,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace the form so back returns to the queue rather
+                        // than to an entry whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AcceptCuratedSuggestionRoute> {
+                                inclusive = true
+                            }
+                        }
                     }
                 )
             }

@@ -2,6 +2,7 @@ package press.mantra.compose.ui.view.state
 
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.nostr.GroupCuratedSchema
 import press.mantra.compose.nostr.GroupRelayList
 
 sealed interface BroadcastGroupSignedEventUIState {
@@ -16,6 +17,12 @@ sealed interface BroadcastGroupSignedEventUIState {
          * `BroadcastGroupSignedEventViewModel.defaultRelaysFor`.
          */
         val relayLists: List<GroupRelayList> = emptyList(),
+        /**
+         * The lists the group curates, for an entry into one of them: the NIP
+         * says a canonical entry goes to its schema's relays, and the entry
+         * names its schema by coordinate rather than carrying the relays itself.
+         */
+        val schemas: List<GroupCuratedSchema> = emptyList(),
     ): BroadcastGroupSignedEventUIState
 
     data class Error(
