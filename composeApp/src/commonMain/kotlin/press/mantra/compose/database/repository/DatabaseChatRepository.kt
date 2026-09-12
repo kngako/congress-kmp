@@ -10,8 +10,10 @@ import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.nostr.GroupNostrProfile
+import press.mantra.compose.nostr.GroupCuratedEntry
 import press.mantra.compose.nostr.GroupCuratedSchema
 import press.mantra.compose.nostr.GroupPost
+import press.mantra.compose.nostr.curated.CuratedEntryEvent
 import press.mantra.compose.nostr.curated.CuratedSchemaEvent
 import press.mantra.compose.nostr.GroupRelayList
 import press.mantra.compose.nostr.GroupRelaySet
@@ -180,6 +182,20 @@ class DatabaseChatRepository(
         )
     } catch (e: Throwable) {
         logger.e("Error reading the curated schemas of $chatRoomId", e)
+        emptyList()
+    }
+
+    override suspend fun groupCuratedEntries(chatRoomId: String): List<GroupCuratedEntry> = try {
+        // The schemas first, because an entry is read against the list it
+        // replies to and there is nothing to read one by without them.
+        GroupCuratedEntry.newestPerEntryAmong(
+            signedEvents = database.groupSignedEventDao()
+                .getByChatRoomIdAndKind(chatRoomId, CuratedEntryEvent.CANONICAL_KIND),
+            chatRoomId = chatRoomId,
+            schemas = groupCuratedSchemas(chatRoomId),
+        )
+    } catch (e: Throwable) {
+        logger.e("Error reading the curated entries of $chatRoomId", e)
         emptyList()
     }
 

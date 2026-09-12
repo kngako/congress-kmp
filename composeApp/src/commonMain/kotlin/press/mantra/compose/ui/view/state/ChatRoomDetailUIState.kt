@@ -7,6 +7,7 @@ import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.nostr.GroupCuratedEntry
 import press.mantra.compose.nostr.GroupCuratedSchema
 import press.mantra.compose.nostr.GroupNostrProfile
 import press.mantra.compose.nostr.GroupPost
@@ -96,6 +97,16 @@ sealed interface ChatRoomDetailUIState {
          * proposes a schema.
          */
         val groupCuratedSchemas: List<GroupCuratedSchema> = emptyList(),
+        /**
+         * The entries this group has accepted into the lists it curates, most
+         * recently signed first.
+         *
+         * Under the schemas because they are what a schema is *for*: the schema
+         * asks, strangers suggest, and these are what the group decided to
+         * stand behind. Empty in a group that has accepted nothing, which is
+         * every group until a quorum signs an entry.
+         */
+        val groupCuratedEntries: List<GroupCuratedEntry> = emptyList(),
         /**
          * Whether this device could sign a profile for the group.
          *
