@@ -27,7 +27,7 @@ import mantra.composeapp.generated.resources.keep_the_feed_alive
 import mantra.composeapp.generated.resources.learn_more
 import mantra.composeapp.generated.resources.mantra
 import mantra.composeapp.generated.resources.sign_in
-import mantra.composeapp.generated.resources.sign_in_to_torch_via_nsec_or_remote_signer
+import mantra.composeapp.generated.resources.sign_in_with_a_recovery_phrase_or_an_nsec
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
@@ -82,7 +82,7 @@ fun LandingScreen(
                 }
 
                 Text(
-                    text = stringResource(Res.string.sign_in_to_torch_via_nsec_or_remote_signer),
+                    text = stringResource(Res.string.sign_in_with_a_recovery_phrase_or_an_nsec),
                     modifier = Modifier.padding(MaterialTheme.spacing.space125),
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
