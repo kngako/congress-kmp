@@ -104,6 +104,7 @@ import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
@@ -268,6 +269,7 @@ fun EditGroupCuratedSchemaScreen(
     chatRepository: ChatRepository,
     frostSigningRepository: FrostSigningRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val editGroupCuratedSchemaViewModel: EditGroupCuratedSchemaViewModel = viewModel(
         factory = EditGroupCuratedSchemaViewModel.factory(
@@ -344,7 +346,8 @@ fun EditGroupCuratedSchemaScreen(
                         TopAppBar(
                             title = {
                                 editGroupCuratedSchemaUIState.localChatRoom.RenderChatRoomTitleText()
-                            }
+                            },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     },
                     bottomBar = {
@@ -1514,7 +1517,8 @@ private fun EditGroupCuratedSchemaScreenPreview() {
                 ),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
-                onNavigateToRouteAndPopUpInclusive = {}
+                onNavigateToRouteAndPopUpInclusive = {},
+                onNavigateBack = {},
             )
         }
     }

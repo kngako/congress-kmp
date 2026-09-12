@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Visibility
@@ -27,7 +26,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -48,7 +46,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import mantra.composeapp.generated.resources.Res
-import mantra.composeapp.generated.resources.back
 import mantra.composeapp.generated.resources.backup_confirmation
 import mantra.composeapp.generated.resources.cancel
 import mantra.composeapp.generated.resources.copied_the_nsec
@@ -86,6 +83,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
@@ -201,14 +199,7 @@ private fun NostrSecretContent(
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(Res.string.nostr_secret_key)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.back)
-                        )
-                    }
-                }
+                navigationIcon = { NavigateBackButton(onNavigateBack) }
             )
         }
     ) { innerPadding ->

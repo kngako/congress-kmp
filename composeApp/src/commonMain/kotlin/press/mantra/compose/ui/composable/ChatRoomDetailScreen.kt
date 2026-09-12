@@ -192,6 +192,7 @@ import mantra.composeapp.generated.resources.recovered_of_event_s
 import mantra.composeapp.generated.resources.recovered_of_still_unreadable
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -208,7 +209,8 @@ fun ChatRoomDetailScreen(
     chatRepository: ChatRepository,
     mantraRepository: MantraRepository,
     onNavigateToRoute: (Route) -> Unit,
-    onPopBackToRoute: (Route) -> Unit
+    onPopBackToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
@@ -245,6 +247,7 @@ fun ChatRoomDetailScreen(
                             title = {
                                 chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
                             },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     }
                 ) { innerPadding ->
@@ -2213,7 +2216,8 @@ private fun ChatRoomMessagingScreenPreview() {
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 onNavigateToRoute = {},
-                onPopBackToRoute = {}
+                onPopBackToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

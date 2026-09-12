@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.ContentCopy
@@ -98,6 +97,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.theme.readableContent
@@ -216,11 +216,7 @@ fun BroadcastGroupSignedEventScreen(
                             title = {
                                 broadcastGroupSignedEventUIState.localChatRoom.RenderChatRoomTitleText()
                             },
-                            navigationIcon = {
-                                IconButton(onClick = onNavigateBack) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                }
-                            }
+                            navigationIcon = { NavigateBackButton(onNavigateBack) }
                         )
                     },
                     bottomBar = {

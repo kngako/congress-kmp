@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Spellcheck
@@ -40,7 +39,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.a_password_protected_key_ncryptsec_is_not
 import mantra.composeapp.generated.resources.an_npub_is_a_public_key_mantra_needs_the
-import mantra.composeapp.generated.resources.back
 import mantra.composeapp.generated.resources.enter_a_recovery_phrase_or_an_nsec_to_sign_in
 import mantra.composeapp.generated.resources.next
 import mantra.composeapp.generated.resources.paste
@@ -73,6 +71,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
@@ -121,14 +120,7 @@ fun SignInToProfileScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.sign_in)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.back)
-                        )
-                    }
-                }
+                navigationIcon = { NavigateBackButton(onNavigateBack) }
             )
         }
     ) { innerPadding ->
