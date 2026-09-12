@@ -704,6 +704,7 @@ fun MantraNavHost(
                 SignInToProfileScreen(
                     nostrRepository = databaseNostrRepository,
                     writeNostrKey = { privateKey -> sovereignWalletViewModel.writeNostrKey(privateKey) },
+                    writeNostrPublicKey = { publicKey -> sovereignWalletViewModel.writeNostrPublicKey(publicKey) },
                     writeRecoveryPhrase = { words, onWritten, onError ->
                         sovereignWalletViewModel.writeSeed(
                             words,
