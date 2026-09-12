@@ -124,6 +124,7 @@ import press.mantra.compose.ui.view.state.NavigationUIState
 import press.mantra.compose.ui.view.state.NostrEventDetailUIState
 import press.mantra.compose.ui.view.state.SearchUIState
 import press.mantra.compose.ui.theme.NavigationMotion
+import press.mantra.compose.ui.composable.SignOutDependencies
 import press.mantra.compose.ui.composable.widgets.ProvideSigningCapability
 import press.mantra.compose.ui.theme.breakpoint
 import co.touchlab.kermit.Logger
@@ -429,6 +430,24 @@ fun MantraNavHost(
         databaseNostrRepository.observeProfileWithFollowing(publicKey).collect { profile ->
             activeProfileNostrEventId = profile?.nostrEvent?.id
         }
+    }
+
+    // What signing out of a read-only identity takes, for the two screens that offer it.
+    // The tail is the nsec forget's: the device no longer holds anything for the
+    // identity, so re-list -- the selector drops it -- then clear the active identity,
+    // and the navigation observer sends a null identity to startup, which shows the
+    // selector or, if this was the last one, Landing.
+    val signOutOfReadOnlyIdentity = remember(sovereignWalletViewModel) {
+        SignOutDependencies(
+            activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
+            forgetNostrCredential = { identity -> sovereignWalletViewModel.forgetNostrCredential(identity) },
+            hideIdentityMetadata = { identity -> sovereignWalletViewModel.hideIdentityMetadata(identity) },
+            onSignedOut = {
+                sovereignWalletViewModel.listIdentities {
+                    sovereignWalletViewModel.resetToSelector()
+                }
+            },
+        )
     }
 
     // Once, above every screen: what a read-only identity may not be offered is decided
@@ -747,6 +766,7 @@ fun MantraNavHost(
                 UnsyncedProfileScreen(
                     unsyncedProfilePublicKey = route.publicKey,
                     nostrRepository = databaseNostrRepository,
+                    signOut = signOutOfReadOnlyIdentity,
                 )
             }
             composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
@@ -847,7 +867,8 @@ fun MantraNavHost(
                         navController.navigate(
                             route = route
                         )
-                    }
+                    },
+                    signOut = signOutOfReadOnlyIdentity,
                 )
             }
             composable<ShareProfileRoute> { backStackEntry ->
