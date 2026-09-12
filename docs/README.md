@@ -40,7 +40,7 @@ jvm-target note first if you want to know why its adaptive-layout phase exists.
 The curated-to-mantra note is a phased plan that has not been built, though its dry
 run has: it is about the repository rather than the app, and reads alone, except that
 its first decision leans on the derivation note's one rule.
-The nsec sign-in note is a phased plan that has not been built; it inherits the
+The nsec sign-in note is a phased plan that has been built; it inherits the
 key-storage decision from the jvm-target note and drives the navigation state
 machine `NavigationViewModel.processLocalAccount` implements, so read it with the
-code open.
+code open, and read its table of where the build chose differently first.
