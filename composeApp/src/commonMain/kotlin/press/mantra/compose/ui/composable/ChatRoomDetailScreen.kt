@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Ballot
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.DataObject
@@ -79,6 +80,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
+import press.mantra.compose.ui.composable.navigation.routes.CuratedSuggestionListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposeGroupEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
 import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
@@ -109,6 +111,7 @@ import mantra.composeapp.generated.resources.a_reply
 import mantra.composeapp.generated.resources.curated_schemas
 import mantra.composeapp.generated.resources.this_group_has_not_published_a_curated_schema_yet
 import mantra.composeapp.generated.resources.add_schema
+import mantra.composeapp.generated.resources.view_suggestions
 import mantra.composeapp.generated.resources.fields_colon
 import mantra.composeapp.generated.resources.propose_event
 import mantra.composeapp.generated.resources.posted_on
@@ -561,18 +564,48 @@ fun ChatRoomDetailScreen(
                                         items = chatRoomDetailUIState.groupCuratedSchemas,
                                         key = { curated -> curated.signedEvent.id }
                                     ) { curated ->
-                                        GroupCuratedSchemaCard(
-                                            curatedSchema = curated,
-                                            // Into the editor for a member who
-                                            // could propose a revision, and a plain
-                                            // card for one who could not: the same
-                                            // gate as every button in this block,
-                                            // applied to the card because each
-                                            // schema is edited on its own.
-                                            onEdit = if (chatRoomDetailUIState.canEditNostrProfile) {
-                                                {
+                                        // The card and its queue as one item, so
+                                        // the button stays under the schema it is
+                                        // about however the list is arranged.
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            GroupCuratedSchemaCard(
+                                                curatedSchema = curated,
+                                                // Into the editor for a member who
+                                                // could propose a revision, and a plain
+                                                // card for one who could not: the same
+                                                // gate as every button in this block,
+                                                // applied to the card because each
+                                                // schema is edited on its own.
+                                                onEdit = if (chatRoomDetailUIState.canEditNostrProfile) {
+                                                    {
+                                                        onNavigateToRoute.invoke(
+                                                            EditGroupCuratedSchemaRoute(
+                                                                activeUserPublicKey = activeUserPublicKey,
+                                                                chatRoomId = chatRoomId,
+                                                                relayHint = relayHint,
+                                                                identifier = curated.identifier
+                                                            )
+                                                        )
+                                                    }
+                                                } else {
+                                                    null
+                                                }
+                                            )
+
+                                            // Under every schema and behind no
+                                            // gate, because the queue is the one
+                                            // thing here the group did not write:
+                                            // a schema exists to be answered by
+                                            // strangers, and reading the answers
+                                            // takes no share of the key. Per card
+                                            // because each list has its own queue.
+                                            TextButton(
+                                                onClick = {
                                                     onNavigateToRoute.invoke(
-                                                        EditGroupCuratedSchemaRoute(
+                                                        CuratedSuggestionListRoute(
                                                             activeUserPublicKey = activeUserPublicKey,
                                                             chatRoomId = chatRoomId,
                                                             relayHint = relayHint,
@@ -580,10 +613,21 @@ fun ChatRoomDetailScreen(
                                                         )
                                                     )
                                                 }
-                                            } else {
-                                                null
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Inbox,
+                                                    contentDescription = Decorative
+                                                )
+
+                                                Spacer(
+                                                    modifier = Modifier.width(
+                                                        MaterialTheme.spacing.space125
+                                                    )
+                                                )
+
+                                                Text(stringResource(Res.string.view_suggestions))
                                             }
-                                        )
+                                        }
                                     }
                                 }
 
