@@ -9,6 +9,7 @@ import press.mantra.compose.ui.composable.navigation.routes.SovereignWalletStart
 import press.mantra.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.data.ActiveWallet
+import fr.acinq.phoenix.managers.nostrPublicKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
-import press.mantra.compose.extensions.nostrPublicKey
 import kotlin.time.Duration.Companion.milliseconds
 
 class NavigationViewModel(
