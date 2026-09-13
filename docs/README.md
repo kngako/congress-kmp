@@ -18,6 +18,7 @@ silent, or a decision that looked arbitrary and was not.
 | [dead-code.md](./dead-code.md) | code in the sync and relay stack that nothing calls, why each piece is still there, and which of it is a bug rather than a leftover |
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
+| [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
 
 Start with the ceremony if you are new to this area; the Marmot notes all assume it.
 Read the skipped-keys note before debugging any "the other device never got it"
@@ -35,3 +36,6 @@ once it has a key, and what it can say about a group that does not yet.
 The Material Design note is a phased plan that has not been built, and is the
 only one about what the app looks like rather than what it does; read the
 jvm-target note first if you want to know why its adaptive-layout phase exists.
+The curated-to-mantra note is a phased plan that has not been built, though its dry
+run has: it is about the repository rather than the app, and reads alone, except that
+its first decision leans on the derivation note's one rule.
