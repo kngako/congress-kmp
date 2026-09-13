@@ -24,6 +24,7 @@ silent, or a decision that looked arbitrary and was not.
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
 | [curated-to-mantra-profiles.md](./curated-to-mantra-profiles.md) | the second pull: the fork's several-profiles line, ten commits and its first schema migration — which of it is a fix Mantra has today, who allocates a schema version number when two trees share one history, and the one conflict, which was Mantra's own |
+| [curated-to-mantra-preview.md](./curated-to-mantra-preview.md) | the third pull: the profile preview and the extended FAB, eleven commits — a brand token hidden in CamelCase, a commit half in a removed line taken as a partial pick, and the two conflicts the compiler found where git saw none |
 
 Start with the ceremony if you are new to this area; the Marmot notes all assume it.
 Read the skipped-keys note before debugging any "the other device never got it"
@@ -50,7 +51,8 @@ npub sign-in notes arrived with it and record what they built. The profiles pull
 is the same exercise a second time, planned with its dry run already done and built
 the same day; read it after the first, because it assumes the method and the three
 decisions and only says what changed — chiefly that the tree is no longer a superset,
-and what the check for an exact pull becomes when it is not.
+and what the check for an exact pull becomes when it is not. The preview pull note is
+the third and shortest; read it for the two kinds of resolution the first two never needed.
 The nsec sign-in note is a phased plan that has been built; it inherits the
 key-storage decision from the jvm-target note and drives the navigation state
 machine `NavigationViewModel.processLocalAccount` implements, so read it with the

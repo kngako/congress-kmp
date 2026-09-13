@@ -16,6 +16,9 @@ lessons; this document assumes both and adds what changed. The one rule everythi
 still rests on is the derivation note's: two strings in this tree are hash inputs and
 are never renamed, and the normaliser cannot touch them by construction.
 
+A third pull followed the same day — eleven commits for a profile preview and an
+extended FAB — and is recorded in [curated-to-mantra-preview.md](./curated-to-mantra-preview.md).
+
 **Built 2026-09-13**, the same day, on the branch that carries this plan: the ten
 commits landed by cherry-pick in four phases, each with a `Pulled-From` trailer, at
 the dry run's numbers exactly; the phases below carry a *Built* paragraph each with
