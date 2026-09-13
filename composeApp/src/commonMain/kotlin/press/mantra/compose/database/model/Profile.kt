@@ -24,6 +24,7 @@ import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRout
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
 import press.mantra.compose.ui.theme.MantraTheme
+import press.mantra.compose.database.GENESIS_AT
 import kotlin.time.Clock
 import kotlin.time.Instant
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -72,6 +73,14 @@ data class Profile(
     press.mantra.compose.database.model.traits.UserViewableEntity,
     press.mantra.compose.database.model.traits.BroadcastableEntity,
     press.mantra.compose.database.model.traits.SoftDeletableEntity {
+    /**
+     * Read off a kind 0, as against the "LOADING..." placeholder minted when a pubkey
+     * is first seen (`NostrDao.indexNostrEvent`), which is stamped [GENESIS_AT] so that
+     * the two can be told apart. A missing row and a placeholder row mean the same
+     * thing to a reader: nobody has read a kind 0 for that pubkey.
+     */
+    fun isResolved(): Boolean = createdAt > GENESIS_AT
+
     fun humanReadableNameOrPubkey(): String {
         return if (!displayName.isNullOrBlank()) {
             displayName
