@@ -60,7 +60,9 @@ resolution is to drop it.
 The upstream moved before this landed: `curated/curated` went from `86cb876b` to
 `29027f2b`, ten commits for several profiles on one device, one of them the fork's
 first schema migration (version 20). They are the next pull, and the schema change is
-why they get their own decision rather than a ride on this one.
+why they get their own decision rather than a ride on this one — which is
+[curated-to-mantra-profiles.md](./curated-to-mantra-profiles.md), planned and dry-run the
+same day.
 
 Written against `origin/mantra` at `ba26c0b1` and `curated/curated` at `86cb876b`;
 executed on 2026-09-13.

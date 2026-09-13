@@ -2,7 +2,8 @@
 """Land rewritten Curated commits on a Mantra branch, one cherry-pick at a time.
 
 The companion of curated-unbrand.py, and the second half of docs/curated-to-mantra.md's
-pipeline as it was actually run. The rewrite (filter-branch with curated-unbrand.py as the
+pipeline as it was actually run; docs/curated-to-mantra-profiles.md is the second pull it
+served, and added the one rule that pull needed. The rewrite (filter-branch with curated-unbrand.py as the
 tree filter and a `Pulled-From: curated/curated@<sha>` trailer stamped by its message
 filter) leaves a branch `tmp/curated-src` in Mantra's names; this replays commits off it
 by their *original* sha, in the order you give, onto the current branch of <worktree>.
@@ -56,10 +57,12 @@ THEIRS = {
     ('42f3a697', 'composeApp/src/commonMain/kotlin/press/mantra/compose/network/relays/RelaysSocketManager.kt'),
     ('42f3a697', 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui/view/model/NavigationViewModel.kt'),
     ('e3cc23ae', UI + 'KeyRecoveryScreen.kt'),
+    ('2f420230', 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui/view/model/CreateProfileViewModel.kt'),
 }
 THEIRS_WHY = {
     '42f3a697': "this commit's import block taken whole -- Mantra had already moved the nostrPublicKey() import to the library's (39fb64b6), and this commit removes the call it served",
     'e3cc23ae': 'the class comment this commit rewrites is taken whole; the only base difference was the dropped rebrand capitalising the brand in one word of it',
+    '2f420230': "this commit's import block taken whole -- Mantra had already moved the nostrPublicKey() import to the library's (39fb64b6), and this commit removes the seed derivation that import served; the file is identical on both sides afterwards (docs/curated-to-mantra-profiles.md, the third decision)",
 }
 DELETE = {('55664cc7', 'composeApp/src/jvmTest/kotlin/press/mantra/compose/ui/composable/GroupNostrProfileSectionJvmTest.kt')}
 
