@@ -91,6 +91,12 @@ object ChillDkgRitualManager {
      * be the nostr identity key: reusing one secret across two protocols means a
      * flaw in either can reach the other. Deriving it from the same seed keeps it
      * recoverable from the wallet backup without being the same key.
+     *
+     * The `mantra/` prefix is not a brand string and must never follow one. It is an
+     * input to the hash, so renaming it derives a different host key from the same
+     * seed -- which loses the outputs of every DKG session already run, since ChillDKG
+     * needs the host secret key to recover them. The Curated fork of this app keeps it
+     * byte for byte. Renaming it is a protocol fork.
      */
     private const val HOST_KEY_DERIVATION_TAG = "mantra/chilldkg/host-key/v1"
 

@@ -6,6 +6,10 @@ import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayInfo
 import com.vitorpamplona.quartz.nip65RelayList.tags.AdvertisedRelayType
 
 object Relays {
+    // A running relay, not a brand string: it is in the bootstrap, publish, finder and
+    // DM sets, so pointing it at a name nobody has stood up would take the app off the
+    // network. The Curated fork of this app still talks to this same host, so the two
+    // apps' users find each other here.
     val ephemeral = RelayUrlNormalizer.normalize("wss://ephemeral.mantra.press")
 
     val nos = RelayUrlNormalizer.normalize("wss://nos.lol")

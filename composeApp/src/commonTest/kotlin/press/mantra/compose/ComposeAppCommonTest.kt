@@ -1,4 +1,4 @@
-package press.auxiliary.compose
+package press.mantra.compose
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

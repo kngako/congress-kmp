@@ -61,6 +61,16 @@ object SharedKeyDerivation {
      * Domain separation for the tweak scalars. Versioned so a future scheme can
      * coexist with keys already derived under this one, and distinct from any other
      * use of the same threshold key.
+     *
+     * The `mantra/` prefix is not a brand string and must never follow one. It is an
+     * input to the derivation, so changing it changes every key derived under it,
+     * for the same reason [MARMOT_ADMIN_GROUP_PATH] has to stay put: every room
+     * already created would be orphaned, and a device on the old string and a device
+     * on the new one would derive different keys from the same threshold key, so
+     * their partial signatures would aggregate to nothing that verifies. The Curated
+     * fork of this app keeps this string byte for byte for exactly that reason -- a
+     * Mantra member and a Curated member of one group sign under one key. Renaming
+     * it is a protocol fork, and belongs in a `v2` tag if it is ever wanted.
      */
     private const val TWEAK_TAG = "mantra/shared-key/tweak/v1"
 
