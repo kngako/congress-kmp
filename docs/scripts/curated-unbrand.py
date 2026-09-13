@@ -85,6 +85,9 @@ _RULES = [
     (r'(?<![A-Za-z0-9])curare(?=_)', 'mantra'), (r'(?<=_)curare(?![A-Za-z0-9])', 'mantra'),
     # a package name in prose, without its trailing dot
     (r'to\.curare\b', 'press.mantra'), (r'com\.it\.curated\b', 'press.mantra'),
+    # the brand embedded in a CamelCase identifier, where \b cannot fire: `NotYetOnCurare`
+    # (a Readiness state of the profile preview, 8973c005) -> `NotYetOnMantra`
+    (r'(?<=[a-z0-9])Curare(?=[A-Z]|\b)', 'Mantra'),
     # the brand word itself, in comments, string values and docs
     (r'\bCurare\b', 'Mantra'),
     (r'\bcurare\b', 'mantra'),
