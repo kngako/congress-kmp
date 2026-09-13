@@ -27,7 +27,12 @@ aborted, so a new conflict is a decision rather than a guess. What the rules enc
     compiled against the pin it recorded; `5efeae76` named a branch commit that no longer
     exists and is mapped to the master commit with the identical tree.
   * a handful of (commit, file) pairs where one side simply wins (THEIRS, DELETE), each
-    with the reason written into the commit.
+    with the reason written into the commit. DELETE is also how a sweep over screens
+    lands on a tree that no longer has some of them: the modify/delete conflict on each
+    removed screen resolves as "still deleted".
+  * a commit of which Mantra wants only some files (PARTIAL): the diff restricted to those
+    paths is applied and committed under the original message, and the note names what
+    was left out. For a commit half in a removed line and half in a kept one.
 
 Every resolution is appended to the landed commit's message as a paragraph, ahead of the
 trailers, so the branch explains itself.
@@ -64,7 +69,24 @@ THEIRS_WHY = {
     'e3cc23ae': 'the class comment this commit rewrites is taken whole; the only base difference was the dropped rebrand capitalising the brand in one word of it',
     '2f420230': "this commit's import block taken whole -- Mantra had already moved the nostrPublicKey() import to the library's (39fb64b6), and this commit removes the seed derivation that import served; the file is identical on both sides afterwards (docs/curated-to-mantra-profiles.md, the third decision)",
 }
-DELETE = {('55664cc7', 'composeApp/src/jvmTest/kotlin/press/mantra/compose/ui/composable/GroupNostrProfileSectionJvmTest.kt')}
+DELETE = {('55664cc7', 'composeApp/src/jvmTest/kotlin/press/mantra/compose/ui/composable/GroupNostrProfileSectionJvmTest.kt')} | {
+    # the extended-FAB sweep touches twenty screens; these seven were taken out with lines B, D and H
+    ('ca6c16be', UI + f) for f in (
+        'AcceptCuratedSuggestionScreen.kt', 'AddGroupPostScreen.kt', 'EditGroupCuratedSchemaScreen.kt',
+        'EditGroupNostrProfileScreen.kt', 'EditGroupRelaysScreen.kt', 'GroupCuratedEntriesScreen.kt',
+        'ProposeGroupEventScreen.kt',
+    )
+}
+VM = 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui/view/model/'
+PARTIAL = {  # orig -> (paths to take, why the rest stays out)
+    'd2a4298d': ([
+        'composeApp/src/commonMain/kotlin/press/mantra/compose/database/model/GroupSignedEvent.kt',
+        UI + 'BroadcastGroupSignedEventScreen.kt',
+        UI + 'widgets/RelayOutcomeLabel.kt',
+        VM + 'BroadcastGroupSignedEventViewModel.kt',
+    ], "only its broadcast half: sendToRelays lifted into the view model's companion, the RelayOutcomeLabel widget and the screen reading it, and the GroupSignedEvent comment. "
+       "The entries screen's Broadcast-all button, its view model and state, its tests, its five strings and its nav-host wiring are line D, which Mantra took out (docs/curated-to-mantra.md)"),
+}
 
 
 def main():
@@ -113,6 +135,14 @@ def main():
 
     for orig in args:
         o8 = orig[:8]; sha = rw(o8); subject = git('log', '-1', '--format=%s', sha).stdout.strip(); notes = []
+        if o8 in PARTIAL:
+            paths, why = PARTIAL[o8]
+            patch = git('diff', '--binary', f'{sha}^', sha, '--', *paths).stdout
+            r = subprocess.run(['git', 'apply', '--index', '--3way'], cwd=wt, input=patch, capture_output=True, text=True)
+            if r.returncode != 0: sys.exit(f'STUCK at {o8} {subject}: the partial pick did not apply: {r.stderr.strip()[:300]}')
+            git('commit', '-q', '-C', sha)
+            amend_note(f'Replayed onto Mantra by docs/curated-to-mantra.md, in part: {why}.')
+            print(f"{o8} partial  {subject[:80]}"); continue
         r = git('-c', 'merge.conflictStyle=diff3', 'cherry-pick', '--allow-empty', sha, check=False)
         if r.returncode != 0:
             stuck = []
