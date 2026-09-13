@@ -14,11 +14,31 @@ rule this whole exercise is built around — that two strings in this tree are h
 and must never be renamed — and the rebrands upstream were careful about it, which is the
 only reason a mechanical pull is possible at all.
 
-**Not built.** Phase 1's dry run *has* been done, once, on 2026-09-13, on a scratch
-worktree that was thrown away; every number below is measured on that run, not
-estimated. Written against `origin/mantra` at `ba26c0b1` (with `f4434ab1` and
-`39fb64b6` on the update branch) and `curated/curated` at `86cb876b`. Curated moves
-daily: the numbers will drift, the method will not.
+**Built, Phases 0–5, on 2026-09-13**, on the branch that also carries `f4434ab1` and
+`39fb64b6`: thirty commits pulled from the fork, each with a `Pulled-From` trailer, on
+top of Phase 0's two native ones. Phase 6 is not done: its two reverse-pulls land in the
+other repository, and its last item is a decision. The plan below is kept as written,
+because the code reads better against the argument it came from than against a summary
+of itself; where the execution chose differently the [Phase 1 record](#phase-1--the-dry-run)
+says so, and it did so in seven places worth reading:
+
+| what the plan said | what it turned out to be |
+|---|---|
+| each phase is a `rebase --rebase-merges --onto` of a cut | a cherry-pick per commit, in topological order. A recreated merge whose other parent was replayed in an earlier phase would be pointed at the *pre*-replay commit; so the four merges land as nothing and their resolutions are folded in where the conflicts surface. The driver is [`docs/scripts/curated-replay.py`](./scripts/curated-replay.py) |
+| the pin stays at `84cc44c` throughout | it follows the commit. The nsec line writes through `NostrKeyManager`, which `84cc44c` renamed away; the compiler produced eight unresolved references at the Phase 3 cut. `366b0177` moves the pin to `59c11ed` and `5efeae76` brings it to `84cc44c`, so every commit builds against the library it names. A populated submodule made git fast-forward the gitlink past the rule once, silently; the rule is now unconditional |
+| take the rebrand residue *or* leave it for Phase 2 | Phase 0 took it, natively worded, so the three rewritten brand commits were dropped outright rather than squashed |
+| Phase 2, 3 and 5 replay with no conflicts | Phase 3 had two, both foreseen in kind: the import block `39fb64b6` had already moved (theirs), and one word of a class comment the dropped rebrand had capitalised (theirs). Phase 5 had none |
+| Phase 4's three conflicts, resolved by hand | the same three, but the join files are taken from upstream's own merges (`c8de3a1f`, `fedbe724`) rather than unioned: a union duplicates shared lines, ignores the other side's deletions, and — the one that hid longest — orders the joined blocks its own way so later commits miss their base. `fcc19f95`'s deletion of two strings survived two attempts before that was understood |
+| the exactness diff is the logo plus `808a3459`'s three files | plus the fourteen files Mantra changed on its own side: Phase 0's prose at the protected names, `39fb64b6`'s four, and this document with its two scripts. Seventeen files, every one accounted for, at every cut |
+| 1,036 jvm tests at the end | 1,039 — the three from `39fb64b6` — and per phase 736, 864, 905, 1,007, 1,039; `testDebugUnitTest` 403, 486, 495, 530, 530; every phase clean on both compilers with every audit budget met |
+
+The upstream moved before this landed: `curated/curated` went from `86cb876b` to
+`29027f2b`, ten commits for several profiles on one device, one of them the fork's
+first schema migration (version 20). They are the next pull, and the schema change is
+why they get their own decision rather than a ride on this one.
+
+Written against `origin/mantra` at `ba26c0b1` and `curated/curated` at `86cb876b`;
+executed on 2026-09-13.
 
 ## The shape of the fork
 
