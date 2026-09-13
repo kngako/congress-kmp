@@ -493,6 +493,19 @@ trap `00fc9969` recorded — and Mantra's own future tests inherit that rule.
 Exit: the full suite at the dry run's numbers or above; the audit green; the README's
 table has the new row between the npub note and the jvm-target note.
 
+**Built 2026-09-13**, `8edb52ff`, `72b9d3d2`, `ba5ef723`, three clean picks — including
+the two into `docs/README.md`, where the `UNION` rule stood ready and was not needed:
+git placed the fork's row between the npub and jvm-target rows and its reading-order
+sentence after the npub note's, beside this document's own. Exactness at the tip: 135
+residual files, `CreateProfileViewModel.kt` the only one gone since the base, nothing
+moved. Both compilers clean; `jvmTest` 864 → 868 (`MultipleProfilesRoundTripJvmTest` and
+`ReadOnlyEntrancesJvmTest`'s three); `testDebugUnitTest` 420; audit all budgets met —
+exactly the dry run's numbers, which is what a deterministic rewrite replayed onto an
+unchanged base ought to give. The round trip reads the saved default through the app's
+`getGlobalPrefs` rather than building a `GlobalPrefs` of its own, with a comment saying
+why, so the trap the phase warned of is documented at the place a copy-and-paste would
+start from.
+
 ### Phase 6 — close the loop
 
 Five things, none of them a merge.
