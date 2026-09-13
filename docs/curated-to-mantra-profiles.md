@@ -462,8 +462,21 @@ full compile, then `git status` — nothing under `composeApp/schemas/`.
 
 Exit: `OwnedRequestQueueJvmTest` and `ReadOnlyGiftWrapDaoJvmTest` green; an npub
 signed in, sent a DM by someone else, then upgraded with its nsec reads the DM on the
-next activation;
-schema files 1–20 committed and regenerated identically.
+next activation; schema files 1–20 committed and regenerated identically.
+
+**Built 2026-09-13**, `72afe8aa`, a clean pick. Exactness unchanged at 135, nothing
+moved. Both compilers clean; `jvmTest` 858 → 864 (`OwnedRequestQueueJvmTest` and the
+sweep cases added to `ReadOnlyGiftWrapDaoJvmTest`); `testDebugUnitTest` 420; audit all
+budgets met. The schema check, which is what this phase is for: after a full build of
+both targets `git status` shows nothing under `composeApp/schemas/`, and the committed
+`20.json` is byte-identical to the rewritten fork's, identity hash `4414c373…` — Room
+computed the same twenty tables from Mantra's entities as from Curare's, which is the
+second decision's rule holding on its first use. Read in review: the sweep runs inside
+`identity.canSign`, before the broadcast pump and the live subscriptions are launched;
+it returns 0 without a query for a key pair with no private key; each wrap is re-indexed
+in its own transaction and a failure is logged and skipped rather than thrown; the DAO's
+own requests carry no owner; `GiftWrapMessage.toGiftWrapSeal` sets `giftWrapMessageId`;
+the migration's comment says why the broadcast queue has no owner column.
 
 ### Phase 5 — the exits, the round trip, the record
 
