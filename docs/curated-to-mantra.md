@@ -456,6 +456,54 @@ touched a seam; a non-empty exactness diff means a new brand token the normalise
 not know. Delete the worktree and the `tmp/` branches when done; the script recreates
 them in under two minutes.
 
+**Run on 2026-09-13, after Phase 0, and it changed the plan in three places.** The
+record, so the next pull starts from what happened rather than from what was planned:
+
+*The upstream moved first.* `curated/curated` was `86cb876b` when the plan was written
+and `29027f2b` when Phase 1 ran: ten more commits, a "multiple profiles on a device"
+line, one of which (`759199f2`) adds schema version 20 — the fork's first migration.
+They are outside this plan's scope and are the next pull; the schema change is why
+they get a decision of their own rather than a ride on this one.
+
+*Landing is by cherry-pick in topological order, not by `rebase --rebase-merges`.* The
+phased cuts cannot be expressed as rebases: a recreated merge whose other parent was
+replayed in an earlier phase would be pointed at the *pre*-replay commit, dragging the
+unrebased lineage in beside the rebased one. So the ordinary commits are picked one by
+one, the four merge commits land as nothing, and their content — the resolutions — is
+folded in where the conflicts actually surface: at each branch join the join files
+(`strings.xml`, `MantraNavHost.kt`, `CuratedSuggestionListScreen.kt`) are taken exactly
+as upstream's own merge left them, and the two files the merges edited outside their
+conflicts are folded into the back-button commit. Every landed commit carries a
+`Pulled-From: curated/curated@<sha>` trailer, stamped by the rewrite, and a paragraph
+naming any resolution made on the way in. The driver is
+[`docs/scripts/curated-replay.py`](./scripts/curated-replay.py).
+
+*The library pin goes backwards for Phases 3 and 4, on purpose.* The nsec line was
+written against lightning-kmp-app `59c11ed`, whose `NostrKeyManager` it writes through;
+`84cc44c` — Mantra's pin — renamed that class to a read-only `LegacyNostrKeysFile`, and
+the compiler says so at the Phase 3 cut (`Unresolved reference 'NostrKeyManager'` in
+`IdentityWriter.kt`, eight errors). So `366b0177` moves the pin back to `59c11ed`, whose
+nested chain is identical, and `5efeae76` brings it forward again — to `84cc44c` rather
+than the `01962f3` it named upstream, which is an unfetchable branch commit whose tree
+`84cc44c` reproduces exactly. Every commit on the branch compiles against the pin it
+records, which is the property upstream's history had and a fixed pin would have lost.
+
+*Three ways a "keep both sides" resolution is wrong,* each caught by the exactness
+check and each now handled: it duplicates lines both sides already hold when a hunk
+widens; it never applies the other side's deletions (the copy-suggestion strings
+`fcc19f95` removes survived one attempt); and, subtlest, a join resolved in a different
+*order* from upstream's merge leaves later commits unable to find the block they edit,
+so their deletions silently miss. Hence: conflicts are picked with `diff3` markers and
+resolved as a line-set three-way merge for files whose lines are unique by
+construction, and never at a join, where upstream's merge is the answer.
+
+The numbers, on the trial worktree: 30 commits replayed (4, 8, 6, 12), 0 stuck, 9
+carrying a resolution note; residual diff against the rewritten `86cb876b` exactly
+the known set (Phase 0's prose, `39fb64b6`'s files, `808a3459`'s three, this document
+and its scripts); `compileDebugKotlinAndroid` and `compileKotlinJvm` clean;
+`jvmTest` 1,039 tests, `testDebugUnitTest` 530, both 0 failures; `m3Audit` all budgets
+met.
+
 ### Phase 2 — The group's identity, and the lists' read side
 
 Cut at `392b90b8'`: `4c0ed0c1`, `334e6dd1`, `930d37c8`, `392b90b8`, with `808a3459`
