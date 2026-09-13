@@ -438,6 +438,20 @@ data class ChatMessage(
         const val TYPE_MEMBER_INVITE_FAILED = "memberInviteFailed"
 
         /**
+         * A Welcome that arrived for another profile on this device, for a group this
+         * device already holds, and was refused.
+         *
+         * Written by the invitee's side, into the room the other profile holds, since
+         * that is the only room on the device the group has. ChatRoom is keyed by the
+         * group id alone and everything that hangs off it -- MLS state, ceremonies,
+         * shares -- by the room, so a second local member would overwrite the first.
+         * The inviter's device sees nothing of this and believes the invite landed,
+         * which is why the line names both profiles: the one who was invited and the
+         * one who holds the group. See docs/curated-to-mantra-profiles.md.
+         */
+        const val TYPE_WELCOME_REFUSED_OTHER_PROFILE = "welcomeRefusedOtherProfile"
+
+        /**
          * Every membership line, for the one check the transcript dispatches on.
          *
          * A type missing from here renders as a chat bubble -- silently, and looking
@@ -447,6 +461,7 @@ data class ChatMessage(
             TYPE_MEMBER_INVITED,
             TYPE_MEMBER_INVITE_SENT,
             TYPE_MEMBER_INVITE_FAILED,
+            TYPE_WELCOME_REFUSED_OTHER_PROFILE,
         )
 
         const val TYPE_UNDECRYPTABLE_OUTER_LAYER = "undecryptableOuterLayer"

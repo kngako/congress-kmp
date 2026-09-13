@@ -14,6 +14,8 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.utils.TimeUtils
 import press.mantra.compose.database.model.MarmotKeyPackage
+import press.mantra.compose.database.model.MarmotKeyPackageBundle
+import press.mantra.compose.extensions.toHex
 
 /**
  * A real MLS key package for [publicKey], built the same way
@@ -21,7 +23,19 @@ import press.mantra.compose.database.model.MarmotKeyPackage
  * three key generations, a signed leaf node and a signed key package. No relay, no network,
  * nothing to stub.
  */
-internal fun marmotKeyPackageFor(publicKey: HexKey): MarmotKeyPackage {
+internal fun marmotKeyPackageFor(publicKey: HexKey): MarmotKeyPackage = marmotKeyPackageBundleFor(publicKey).keyPackage
+
+/**
+ * The key package and the private keys behind it, as the invitee's own device would hold
+ * them: [keyPackage] is what the inviter reads off a relay, [bundle] is the row the
+ * invitee's `processWelcome` opens the Welcome with. [id] is the kind 443 event id the
+ * Welcome names in its `e` tag, and both rows carry it.
+ */
+internal class MarmotKeyPackagePair(val keyPackage: MarmotKeyPackage, val bundle: MarmotKeyPackageBundle) {
+    val id: HexKey get() = keyPackage.id
+}
+
+internal fun marmotKeyPackageBundleFor(publicKey: HexKey, id: HexKey = publicKey): MarmotKeyPackagePair {
     val initKp = X25519.generateKeyPair()
     val encKp = X25519.generateKeyPair()
     val sigKp = Ed25519.generateKeyPair()
@@ -65,9 +79,22 @@ internal fun marmotKeyPackageFor(publicKey: HexKey): MarmotKeyPackage {
         ),
     )
 
-    return MarmotKeyPackage(
-        id = publicKey,
-        publicKey = publicKey,
-        tlsEncodedMarmotKeyPackage = keyPackage.toTlsBytes(),
+    val tls = keyPackage.toTlsBytes()
+    return MarmotKeyPackagePair(
+        keyPackage = MarmotKeyPackage(
+            id = id,
+            publicKey = publicKey,
+            tlsEncodedMarmotKeyPackage = tls,
+        ),
+        // The same three private keys the app stores raw, hex-encoded -- see
+        // DatabaseMarmotRepository.publishMarmotKeyPackageBundle.
+        bundle = MarmotKeyPackageBundle(
+            id = id,
+            publicKey = publicKey,
+            tlsEncodedMarmotKeyPackage = tls,
+            ncryptsecInitPrivateKey = initKp.privateKey.toHex(),
+            ncryptsecEncryptionPrivateKey = encKp.privateKey.toHex(),
+            ncryptsecSignaturePrivateKey = sigKp.privateKey.toHex(),
+        ),
     )
 }

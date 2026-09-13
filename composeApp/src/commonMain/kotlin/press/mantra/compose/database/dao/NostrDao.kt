@@ -29,6 +29,7 @@ import press.mantra.compose.exceptions.MarmotMissingKeyPackageBundleException
 import press.mantra.compose.exceptions.MarmotMissingNostrGroupDataExtension
 import press.mantra.compose.exceptions.MarmotNotMemberOfChatGroupException
 import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
+import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.nostr.Relays
@@ -53,6 +54,7 @@ import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -915,6 +917,23 @@ abstract class NostrDao(
 //                                            content = "Coming soon.", // TODO: Figure out what to do here...
 //                                        )
 //                                    )
+                                } else if (localChatRoom.chatRoom.userPublicKey != activeKeyPair.pubKey.toHex()) {
+                                    // Another profile on this device already holds this
+                                    // group. ChatRoom is keyed by the group id alone, and
+                                    // every table that hangs off it -- the MLS state, the
+                                    // DKG sessions, the FROST shares -- is keyed by the
+                                    // room, so letting a second local member in would
+                                    // overwrite the first's state with the joiner's and
+                                    // break both. Refuse, and say so where the group is:
+                                    // in the room, under the profile that holds it. See
+                                    // docs/curated-to-mantra-profiles.md, the fourth
+                                    // decision.
+                                    refuseWelcomeForOtherProfile(
+                                        localChatRoom = localChatRoom,
+                                        inviteePublicKey = activeKeyPair.pubKey.toHex(),
+                                        inviterPublicKey = decryptedGiftWrapPayload.publicKey,
+                                        welcomePayloadId = decryptedGiftWrapPayload.id,
+                                    )
                                 } else {
                                     logger.w("Chat Room already exists for $nostrGroupId")
                                 }
@@ -1652,6 +1671,53 @@ abstract class NostrDao(
      * room needs. Creating a group locally sends nothing to anyone, which is why the
      * first arrival for a group is just as likely to be a key ceremony as a message.
      */
+    /**
+     * A Welcome for a group this device already holds under another of its profiles,
+     * refused, and the refusal written into the room as a membership line.
+     *
+     * The line goes into the room that exists -- the other profile's -- because that is
+     * the only place on this device the group has, and the profile that holds it is the
+     * one who can do something about it: leave, or tell the inviter which profile to
+     * invite instead. The invitee's key package bundle is left unconsumed, as the
+     * "already exists" branch has always left it; nothing here changes what a second
+     * Welcome for the same package would do, which is arrive here again and write a
+     * second line.
+     *
+     * Content is a whole sentence with both names written in, the way the other
+     * membership lines are, so nothing prefixes an author to it: this is nobody's words.
+     */
+    private suspend fun refuseWelcomeForOtherProfile(
+        localChatRoom: LocalChatRoom,
+        inviteePublicKey: HexKey,
+        inviterPublicKey: HexKey,
+        welcomePayloadId: HexKey,
+    ) {
+        val holder = localChatRoom.chatRoom.userPublicKey
+        logger.w(
+            "Refusing Welcome $welcomePayloadId for ${localChatRoom.chatRoom.id}: this device already holds the group " +
+                "as $holder, and $inviteePublicKey is another profile on it"
+        )
+
+        suspend fun nameOf(publicKey: HexKey): String =
+            database.profileDao().getProfileByPublicKey(publicKey)?.humanReadableNameOrPubkey()
+                ?: publicKey.shortened()
+
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = "${nameOf(inviterPublicKey)} invited ${nameOf(inviteePublicKey)}, another profile on this device, " +
+                    "to this group. The invitation was not accepted: this device already holds the group as " +
+                    "${nameOf(holder)}, and one device cannot hold a group twice.",
+                messageType = ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE,
+                chatRoomId = localChatRoom.chatRoom.id,
+                senderPublicKey = holder,
+                isUserMessage = true,
+                giftWrapPayloadId = welcomePayloadId,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null,
+            )
+        )
+    }
+
     private suspend fun getOrCreateNip17ChatRoom(
         decryptedGiftWrapPayload: GiftWrapPayload,
         activeKeyPair: KeyPair,
