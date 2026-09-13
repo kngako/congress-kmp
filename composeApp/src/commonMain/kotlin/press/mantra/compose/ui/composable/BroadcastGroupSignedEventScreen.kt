@@ -69,11 +69,6 @@ import mantra.composeapp.generated.resources.copied_the_raw_json
 import mantra.composeapp.generated.resources.copy_raw_json
 import mantra.composeapp.generated.resources.eg_wss_relay_example_com
 import mantra.composeapp.generated.resources.no_relays_to_broadcast_to
-import mantra.composeapp.generated.resources.relay_accepted
-import mantra.composeapp.generated.resources.relay_could_not_send
-import mantra.composeapp.generated.resources.relay_no_answer
-import mantra.composeapp.generated.resources.relay_rejected
-import mantra.composeapp.generated.resources.relay_sending
 import mantra.composeapp.generated.resources.relay_url
 import mantra.composeapp.generated.resources.relays
 import mantra.composeapp.generated.resources.sends_the_event_exactly_as_the_group_signed_it
@@ -95,6 +90,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.label
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -533,15 +529,7 @@ private fun BroadcastRelayRow(
 
             outcome?.let {
                 Text(
-                    text = when (it) {
-                        RelayOutcome.Sending -> stringResource(Res.string.relay_sending)
-                        RelayOutcome.Accepted -> stringResource(Res.string.relay_accepted)
-                        is RelayOutcome.Rejected ->
-                            stringResource(Res.string.relay_rejected, it.reason)
-                        is RelayOutcome.Failed ->
-                            stringResource(Res.string.relay_could_not_send, it.reason)
-                        RelayOutcome.NoAnswer -> stringResource(Res.string.relay_no_answer)
-                    },
+                    text = it.label(),
                     style = MaterialTheme.typography.bodySmall,
                     color = when (it) {
                         RelayOutcome.Accepted -> MaterialTheme.colorScheme.primary
