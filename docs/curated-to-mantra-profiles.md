@@ -425,6 +425,23 @@ switcher and switched to; the previous node is stopped once; a cold boot opens t
 last-used profile without asking; `IdentitySwitchJvmTest`, `ProfilesScreenJvmTest`,
 `AddProfileFromInsideJvmTest`, `CreateProfileScreenJvmTest` green.
 
+**Built 2026-09-13**, `84ac84cc`, `73a0e5b9`, `5654e462`, `ccb9942a`: three clean picks
+and the one the rule was written for — `2f420230` × `CreateProfileViewModel.kt`, taken
+theirs, with the reason in its message. Exactness: 136 → 135 residual files, the one
+gone being that file, as the third decision said; nothing else moved. Both compilers
+clean; `jvmTest` 837 → 858 (`IdentitySwitchJvmTest`, `RelaysSocketManagerSwitchJvmTest`,
+`ProfilesScreenJvmTest`, `AddProfileFromInsideJvmTest`, `CreateProfileScreenJvmTest`, and
+the three added to `ReadOnlyEntrancesJvmTest`); `testDebugUnitTest` 413 → 420, the seven
+being `StartupChoiceTest`; audit all budgets met, and the composable-literal count the
+audit reports without a budget went 40 → 30 as the startup screen's words moved to the
+catalogue; `strings.xml` 444 → 455. Read in review, as the phase asked: the observer is
+one `collectLatest` child with no map; `switchToIdentity` sets the desired id, sets
+`startWalletImmediately` back, clears the identity, and only then stops a node, and only
+if there was one; `StartupChoice.resolve` reads *force, desired, "show me the list",
+the only one, the default*; `CreateProfileRoute(withWallet = true)` appears once, under
+Landing; the jvm target reaches `loadGlobalPrefsForWallet` through `JvmGlobalPrefs`
+alone; `ProfilesScreen` puts `NavigateBackButton` in its bar.
+
 ### Phase 4 — the queue owner and the inbox, with the migration
 
 `759199f2`, alone, because it is the schema change and upstream's rollout says it can
