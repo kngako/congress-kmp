@@ -23,7 +23,7 @@ import com.vitorpamplona.quartz.nip51Lists.relayLists.RelayFeedsListEvent
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import kotlin.time.Clock
 import kotlin.time.Instant
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -180,7 +180,7 @@ fun ProfileRenderAsListItemPreview() {
         about = "I am the stone that the builder refused.",
         nostrEventId = "nostrEventId"
     )
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

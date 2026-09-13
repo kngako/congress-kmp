@@ -43,11 +43,11 @@ _RULES = [
     (r'\bCurareShapes\b', 'MantraShapes'),
     (r'\bCurareConverters\b', 'MantraConverters'),
     (r'\bdefaultCurareDir\b', 'defaultMantraDir'),
-    (r'\bCurareTheme\b', 'TorchTheme'),                 # Mantra's theme is still TorchTheme; change here if Phase 0 renames it
+    (r'\bCurareTheme\b', 'MantraTheme'),
     (r'Res\.string\.curare\b', 'Res.string.mantra'),
     (r'<string name="curare">Curare</string>', '<string name="mantra">Mantra</string>'),
-    (r'const val APP_NAME = "Curare"', 'const val APP_NAME = "Torch"'),        # and here
-    (r'const val CLIENT_NAME = "Curare"', 'const val CLIENT_NAME = "Torch"'),  # and here
+    (r'const val APP_NAME = "Curare"', 'const val APP_NAME = "Mantra"'),
+    (r'const val CLIENT_NAME = "Curare"', 'const val CLIENT_NAME = "Mantra"'),
     (r'APP_DIR_NAME = "curated"', 'APP_DIR_NAME = "mantra"'),
     (r'rootProject\.name = "Curare"', 'rootProject.name = "Mantra"'),
     (r'namespace = "to\.curare\.android"', 'namespace = "press.mantra.android"'),
@@ -68,17 +68,17 @@ _RULES = [
     (r'\bCuratedShapes\b', 'MantraShapes'),
     (r'\bCuratedConverters\b', 'MantraConverters'),
     (r'\bdefaultCuratedDir\b', 'defaultMantraDir'),
-    (r'\bCuratedTheme\b', 'TorchTheme'),
-    (r'const val APP_NAME = "Curated"', 'const val APP_NAME = "Torch"'),
-    (r'const val CLIENT_NAME = "Curated"', 'const val CLIENT_NAME = "Torch"'),
+    (r'\bCuratedTheme\b', 'MantraTheme'),
+    (r'const val APP_NAME = "Curated"', 'const val APP_NAME = "Mantra"'),
+    (r'const val CLIENT_NAME = "Curated"', 'const val CLIENT_NAME = "Mantra"'),
     (r'rootProject\.name = "Curated"', 'rootProject.name = "Mantra"'),
     (r'namespace = "com\.it\.curated\.android"', 'namespace = "press.mantra.android"'),
     (r'applicationId = "com\.it\.curated"', 'applicationId = "press.mantra.android"'),
-    # ios: Mantra never left Torch / ac.aux.compose.Aux (see the plan's Phase 0)
-    (r'PRODUCT_NAME=Curare\b', 'PRODUCT_NAME=Torch'), (r'PRODUCT_NAME=Curated\b', 'PRODUCT_NAME=Torch'),
-    (r'PRODUCT_BUNDLE_IDENTIFIER=to\.curare\b', 'PRODUCT_BUNDLE_IDENTIFIER=ac.aux.compose.Aux'),
-    (r'PRODUCT_BUNDLE_IDENTIFIER=com\.it\.curated\b', 'PRODUCT_BUNDLE_IDENTIFIER=ac.aux.compose.Aux'),
-    (r'\bCurare\.app\b', 'Torch.app'), (r'\bCurated\.app\b', 'Torch.app'),
+    # ios: Mantra is `Mantra` / press.mantra.ios since the plan's Phase 0
+    (r'PRODUCT_NAME=Curare\b', 'PRODUCT_NAME=Mantra'), (r'PRODUCT_NAME=Curated\b', 'PRODUCT_NAME=Mantra'),
+    (r'PRODUCT_BUNDLE_IDENTIFIER=to\.curare\.ios', 'PRODUCT_BUNDLE_IDENTIFIER=press.mantra.ios'),
+    (r'PRODUCT_BUNDLE_IDENTIFIER=com\.it\.curated\b', 'PRODUCT_BUNDLE_IDENTIFIER=press.mantra.ios'),
+    (r'\bCurare\.app\b', 'Mantra.app'), (r'\bCurated\.app\b', 'Mantra.app'),
     # string keys carrying the brand: `_` is a word character, so \b never fires inside them
     (r'sign_in_is_not_yet_available_while_curare_is', 'sign_in_is_not_yet_available_while_mantra_is'),
     (r'sign_in_is_not_yet_available_while_curated_is', 'sign_in_is_not_yet_available_while_mantra_is'),

@@ -42,7 +42,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.widgets.DetailRow
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.TranslationArtifactVersionDetailViewModel
 import press.mantra.compose.ui.view.state.TranslationArtifactVersionDetailUIState
 import press.mantra.compose.ui.theme.spacing
@@ -287,7 +287,7 @@ fun TranslationArtifactVersionDetailScreen(
 @ConformancePreviews
 @Composable
 private fun TranslationArtifactVersionDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             TranslationArtifactVersionDetailScreen(
                 activeUserPublicKey = "",

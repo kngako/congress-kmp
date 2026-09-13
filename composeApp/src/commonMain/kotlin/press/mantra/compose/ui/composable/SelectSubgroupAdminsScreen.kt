@@ -62,7 +62,7 @@ import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.ConformancePreviews
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.view.model.SelectSubgroupAdminsViewModel
@@ -326,7 +326,7 @@ private fun QuorumStepper(
 @ConformancePreviews
 @Composable
 private fun SelectSubgroupAdminsScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             SelectSubgroupAdminsScreen(
                 activeUserPublicKey = "a".repeat(64),

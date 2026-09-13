@@ -42,7 +42,7 @@ import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.TranslationChapterViewModel
 import press.mantra.compose.ui.view.state.ChunkTranslationPair
 import press.mantra.compose.ui.view.state.TranslationChapterUIState
@@ -245,7 +245,7 @@ private fun TableRow(
 @ConformancePreviews
 @Composable
 private fun TranslationChapterScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             TranslationChapterScreen(
                 activeUserPublicKey = "",

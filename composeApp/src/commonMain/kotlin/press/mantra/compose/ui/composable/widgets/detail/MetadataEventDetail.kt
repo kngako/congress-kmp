@@ -50,7 +50,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRou
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.MetadataEventDetailType
 import press.mantra.compose.ui.view.model.MetadataEventDetailViewModel
 import press.mantra.compose.ui.view.state.MetadataEventDetailUIState
@@ -326,7 +326,7 @@ fun MetadataEventDetail(
 @Composable
 private fun MetadataEventEventDetailPreview() {
 
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

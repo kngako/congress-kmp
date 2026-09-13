@@ -230,7 +230,7 @@ fun ShareProfileScreen(
 @ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

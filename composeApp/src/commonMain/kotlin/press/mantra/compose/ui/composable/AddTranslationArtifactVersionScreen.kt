@@ -53,7 +53,7 @@ import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.AddTranslationArtifactVersionViewModel
 import press.mantra.compose.ui.view.state.AddTranslationArtifactVersionUIState
 import press.mantra.compose.ui.theme.spacing
@@ -317,7 +317,7 @@ fun AddTranslationArtifactVersionScreen(
 @ConformancePreviews
 @Composable
 private fun AddTranslationArtifactVersionScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             AddTranslationArtifactVersionScreen(
                 activeUserPublicKey = "",

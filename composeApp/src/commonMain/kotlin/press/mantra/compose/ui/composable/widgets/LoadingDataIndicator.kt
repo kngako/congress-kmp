@@ -69,7 +69,7 @@ fun LoadingDataIndicator(
 @ConformancePreviews
 @Composable
 private fun TransferHistoryScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             LoadingDataIndicator(
                 text = "Starting up"

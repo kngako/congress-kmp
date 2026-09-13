@@ -50,7 +50,7 @@ import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ProposalListViewModel
 import press.mantra.compose.ui.view.state.ProposalListUIState
 import press.mantra.compose.ui.theme.spacing
@@ -418,7 +418,7 @@ private fun ProposalListScreenPreview() {
         signerId = 1
     )
 
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             ProposalListScreen(
                 activeUserPublicKey = "u".repeat(64),

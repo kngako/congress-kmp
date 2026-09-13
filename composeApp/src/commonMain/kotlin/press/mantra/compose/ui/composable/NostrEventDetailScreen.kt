@@ -23,7 +23,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.detail.MetadataEventDetail
 import press.mantra.compose.ui.composable.widgets.detail.TextNoteEventDetail
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.NostrEventDetailViewModel
 import press.mantra.compose.ui.view.state.NostrEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -149,7 +149,7 @@ fun NostrEventDetailScreen(
 @ConformancePreviews
 @Composable
 private fun NostrEventDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

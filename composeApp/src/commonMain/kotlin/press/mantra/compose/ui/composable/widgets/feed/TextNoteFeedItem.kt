@@ -187,7 +187,7 @@ internal fun TextNoteFeedItem(
 @ConformancePreviews
 @Composable
 private fun TextNoteFeedItemPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
@@ -218,7 +218,7 @@ private fun TextNoteFeedItemPreview() {
 @ConformancePreviews
 @Composable
 private fun TextNoteFeedItemInReplyToPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
@@ -272,7 +272,7 @@ private fun TextNoteFeedItemInReplyToPreview() {
 @ConformancePreviews
 @Composable
 private fun TextNoteFeedItemQuoteNostrEventPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

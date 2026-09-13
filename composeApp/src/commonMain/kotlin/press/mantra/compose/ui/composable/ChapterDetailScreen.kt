@@ -34,7 +34,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChapterDetailViewModel
 import press.mantra.compose.ui.view.state.ChapterDetailUIState
 import press.mantra.compose.ui.theme.spacing
@@ -199,7 +199,7 @@ fun ChapterDetailScreen(
 @ConformancePreviews
 @Composable
 private fun ChapterDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             ChapterDetailScreen(
                 activeUserPublicKey = "",

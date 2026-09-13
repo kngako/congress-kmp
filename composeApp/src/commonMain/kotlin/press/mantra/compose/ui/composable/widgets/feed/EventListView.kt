@@ -129,7 +129,7 @@ fun press.mantra.compose.database.model.intermdiate.LocalNostrEvent.ListView(
 @ConformancePreviews
 @Composable
 private fun EventListViewRepostedPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
@@ -180,7 +180,7 @@ private fun EventListViewRepostedPreview() {
 @ConformancePreviews
 @Composable
 private fun EventListViewInReplyPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

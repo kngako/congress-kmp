@@ -40,7 +40,7 @@ import press.mantra.compose.MantraApp
 import press.mantra.compose.MantraGlobal
 import press.mantra.compose.PlatformContext
 import press.mantra.compose.defaultMantraDir
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import java.awt.Dimension
 import java.io.File
 
@@ -80,16 +80,16 @@ fun main() = application {
         // 400x600 is the narrowest window the phase's acceptance widths name.
         LaunchedEffect(window) { window.minimumSize = Dimension(400, 600) }
 
-        // TorchTheme wraps both branches, not just the app. PassphraseGate used to sit
+        // MantraTheme wraps both branches, not just the app. PassphraseGate used to sit
         // beside MantraApp -- which applies the theme itself -- so it composed under the
         // default MaterialTheme and its colorScheme and typography were baseline M3
         // rather than this app's. It is the first screen a desktop user sees.
         //
-        // MantraApp still applies TorchTheme, so the unlocked branch is wrapped twice.
+        // MantraApp still applies MantraTheme, so the unlocked branch is wrapped twice.
         // That is deliberate: android and ios enter through MantraApp and would lose the
         // theme entirely if it moved out, and a second application of the same values
         // costs one composition of a CompositionLocalProvider.
-        TorchTheme {
+        MantraTheme {
             if (unlocked) {
                 val navController = rememberNavController()
                 MantraApp(

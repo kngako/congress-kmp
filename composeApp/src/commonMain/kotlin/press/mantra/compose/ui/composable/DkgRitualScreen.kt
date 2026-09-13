@@ -63,7 +63,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.ui.composable.navigation.routes.DkgJoinApprovalRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRound1ApprovalRoute
@@ -865,7 +865,7 @@ private fun QuorumStepper(
 @ConformancePreviews
 @Composable
 private fun DkgRitualScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             DkgRitualScreen(
                 activeUserPublicKey = "",

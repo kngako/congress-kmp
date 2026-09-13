@@ -44,7 +44,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ArtifactDetailViewModel
 import press.mantra.compose.ui.view.state.ArtifactDetailUIState
 import press.mantra.compose.ui.theme.spacing
@@ -333,7 +333,7 @@ fun ArtifactDetailScreen(
 @ConformancePreviews
 @Composable
 private fun ArtifactDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             ArtifactDetailScreen(
                 activeUserPublicKey = "",

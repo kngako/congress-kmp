@@ -120,7 +120,7 @@ fun QuotedNote(
 @ConformancePreviews
 @Composable
 private fun QuotedNotePreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

@@ -48,7 +48,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
 import press.mantra.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomListViewModel
 import press.mantra.compose.ui.view.model.HomeScreenType
 import press.mantra.compose.ui.view.model.HomeViewModel
@@ -155,10 +155,12 @@ fun HomeScreen(
                             title = {
                                 // "Mantra". The launcher label, the desktop window title, the
                                 // landing screen and the package name all say so; this bar was
-                                // the last place still saying "Torch". `UserAgent.APP_NAME` is
-                                // the other, and is left alone -- it goes on the wire to relay
-                                // operators, so it is a network identity question rather than
-                                // a content one.
+                                // the last place still saying "Torch", the brand before this
+                                // one, and `UserAgent.CLIENT_NAME` was the other. That one went
+                                // last, because it goes on the wire: it is the `client` tag on
+                                // every relay list this app publishes. It could move because it
+                                // is attribution and nothing derives from it -- unlike the two
+                                // `mantra/` hash tags, which must never move at all.
                                 Text(stringResource(Res.string.mantra))
                             },
                             // No navigation icon and no actions. The avatar in the leading
@@ -350,7 +352,7 @@ fun HomeScreen(
 @ConformancePreviews
 @Composable
 private fun HomeScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

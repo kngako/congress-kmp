@@ -468,7 +468,7 @@ fun WriteNewNoteScreen(
 @ConformancePreviews
 @Composable
 private fun WriteNewNoteScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

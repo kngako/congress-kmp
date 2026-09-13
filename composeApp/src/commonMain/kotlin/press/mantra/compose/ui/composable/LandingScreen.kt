@@ -115,7 +115,7 @@ fun LandingScreen(
 @ConformancePreviews
 @Composable
 private fun LandingScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

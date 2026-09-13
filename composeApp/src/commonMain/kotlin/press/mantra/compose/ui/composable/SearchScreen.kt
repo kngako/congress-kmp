@@ -58,7 +58,7 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SearchViewModel
 import press.mantra.compose.ui.view.state.SearchUIState
 import press.mantra.compose.ui.theme.spacing
@@ -426,7 +426,7 @@ fun SearchScreen(
 @ConformancePreviews
 @Composable
 private fun SearchScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

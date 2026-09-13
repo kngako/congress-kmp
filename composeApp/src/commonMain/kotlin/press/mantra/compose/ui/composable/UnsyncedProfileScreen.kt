@@ -75,7 +75,7 @@ fun UnsyncedProfileScreen(
 @ConformancePreviews
 @Composable
 private fun UnsyncedProfileScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

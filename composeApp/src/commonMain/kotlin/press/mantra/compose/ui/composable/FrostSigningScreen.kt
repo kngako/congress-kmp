@@ -52,7 +52,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.FrostSigningViewModel
 import press.mantra.compose.ui.view.state.FrostSigningUIState
 import press.mantra.compose.ui.theme.spacing
@@ -410,7 +410,7 @@ private fun statusOf(session: FrostSigningSession): String = when (session.stage
 @ConformancePreviews
 @Composable
 private fun FrostSigningScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             FrostSigningScreen(
                 activeUserPublicKey = "",

@@ -93,7 +93,7 @@ fun ProfileAvatar(
 @ConformancePreviews
 @Composable
 fun ProfileAvatarPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

@@ -77,7 +77,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -1222,7 +1222,7 @@ private fun ReindexMarmotGroupEventsButton(
 @ConformancePreviews
 @Composable
 private fun ChatRoomMessagingScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

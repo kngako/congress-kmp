@@ -460,7 +460,7 @@ private fun RecoveryPhraseCheckbox(
 @ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -487,7 +487,7 @@ private fun RecoveryPhraseScreenPreview() {
 @ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenHiddenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

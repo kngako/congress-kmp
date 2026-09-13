@@ -36,7 +36,7 @@ import press.mantra.compose.extensions.bech32ToHexOrNull
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.utils.Parser
 import kotlinx.coroutines.CoroutineScope
@@ -190,7 +190,7 @@ fun StartDirectMessageToNpubOrNip05Dialog(
 @ConformancePreviews
 @Composable
 private fun StartDirectMessageToNpubOrNip05DialogPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

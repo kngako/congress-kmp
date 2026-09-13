@@ -52,7 +52,7 @@ import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomMessagingViewModel
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -466,7 +466,7 @@ fun ChatRoomMessagingScreen(
 @ConformancePreviews
 @Composable
 private fun ChatRoomMessagingScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

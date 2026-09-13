@@ -47,7 +47,7 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomTypeViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomTypeUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -465,7 +465,7 @@ private fun QuorumPicker(
 @ConformancePreviews
 @Composable
 private fun SelectChatRoomTypeScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

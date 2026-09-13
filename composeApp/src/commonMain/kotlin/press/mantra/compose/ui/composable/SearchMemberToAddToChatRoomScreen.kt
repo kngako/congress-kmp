@@ -35,7 +35,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddMemberToChatRoomC
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SearchMemberToAddToChatRoomViewModel
 import press.mantra.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -226,7 +226,7 @@ fun SearchMemberToAddToChatRoomScreen(
 @ConformancePreviews
 @Composable
 private fun ChatRoomDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

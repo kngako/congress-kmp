@@ -59,7 +59,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.repository.MantraRepository
@@ -405,7 +405,7 @@ fun AddArtifactScreen(
 @ConformancePreviews
 @Composable
 private fun AddArtifactScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

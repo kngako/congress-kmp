@@ -49,7 +49,7 @@ import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.TranslateChunkViewModel
 import press.mantra.compose.ui.view.state.TranslateChunkUIState
 import press.mantra.compose.ui.theme.spacing
@@ -270,7 +270,7 @@ fun TranslateChunkScreen(
 @ConformancePreviews
 @Composable
 private fun TranslateChunkScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             TranslateChunkScreen(
                 activeUserPublicKey = "",

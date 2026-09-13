@@ -299,7 +299,7 @@ private fun KeyRecoveryOption(
 @ConformancePreviews
 @Composable
 private fun KeyRecoveryScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

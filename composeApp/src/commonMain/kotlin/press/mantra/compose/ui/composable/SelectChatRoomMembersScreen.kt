@@ -37,7 +37,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -283,7 +283,7 @@ fun SelectChatRoomMembersScreen(
 @ConformancePreviews
 @Composable
 private fun SelectChatRoomMembersScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
