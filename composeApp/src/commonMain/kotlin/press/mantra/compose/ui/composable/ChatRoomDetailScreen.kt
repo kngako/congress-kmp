@@ -67,6 +67,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProfilePreviewRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
@@ -693,11 +694,19 @@ fun ChatRoomDetailScreen(
                                 key = { localParticipant -> localParticipant.participant.participantPublicKey}
                             ) { localParticipant ->
 
+                                // The preview, not the profile detail: the detail is
+                                // keyed by a kind 0's event id, and a member whose
+                                // profile has not arrived yet -- the "LOADING..." row
+                                // the sync exists for -- has none. The preview is
+                                // keyed by the public key, which is the one thing
+                                // every row here has, and it shows the cached
+                                // profile at once while the relays refresh it.
                                 Card(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Profile detail"
+                                            ProfilePreviewRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                profilePublicKey = localParticipant.participant.participantPublicKey
                                             )
                                         )
                                     }
