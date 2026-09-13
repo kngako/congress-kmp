@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -61,6 +60,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.MantraTheme
@@ -123,7 +123,9 @@ fun SelectSubgroupAdminsScreen(
                     )
                 },
                 floatingActionButton = {
-                    ExtendedFloatingActionButton(
+                    ExtendedFab(
+                        label = stringResource(Res.string.start_the_key_ceremony),
+                        icon = { Icon(Icons.Default.AccountTree, contentDescription = Decorative) },
                         onClick = {
                             scope.launch {
                                 // The refusal is recomputed rather than cached on
@@ -137,9 +139,7 @@ fun SelectSubgroupAdminsScreen(
                                     viewModel.confirm(onNavigateToRoute)
                                 }
                             }
-                        },
-                        icon = { Icon(Icons.Default.AccountTree, contentDescription = Decorative) },
-                        text = { Text(stringResource(Res.string.start_the_key_ceremony)) }
+                        }
                     )
                 }
             ) { innerPadding ->

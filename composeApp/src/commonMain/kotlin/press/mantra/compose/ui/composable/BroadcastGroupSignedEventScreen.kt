@@ -24,12 +24,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -41,7 +38,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -101,6 +97,7 @@ import press.mantra.compose.ui.view.model.BroadcastGroupSignedEventViewModel
 import press.mantra.compose.ui.view.model.BroadcastGroupSignedEventViewModel.RelayOutcome
 import press.mantra.compose.ui.view.state.BroadcastGroupSignedEventUIState
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.Instant
@@ -193,9 +190,6 @@ fun BroadcastGroupSignedEventScreen(
                 val json = signedEvent.toEvent().toJson()
                 val summary = ProposedEvent.summarize(signedEvent.toEvent())
 
-                // M3 gives a FAB no `enabled`, so borrow the disabled colours every
-                // other button in the app uses rather than inventing a shade here.
-                val buttonColors = ButtonDefaults.buttonColors()
                 val canSend = !isPending
 
                 Scaffold(
@@ -213,26 +207,11 @@ fun BroadcastGroupSignedEventScreen(
                         BottomAppBar(
                             actions = {},
                             floatingActionButton = {
-                                ExtendedFloatingActionButton(
-                                    modifier = if (canSend) {
-                                        Modifier
-                                    } else {
-                                        // Looking unavailable is not being unavailable.
-                                        Modifier.semantics { disabled() }
-                                    },
-                                    containerColor = if (canSend) {
-                                        FloatingActionButtonDefaults.containerColor
-                                    } else {
-                                        buttonColors.disabledContainerColor
-                                    },
-                                    contentColor = if (canSend) {
-                                        contentColorFor(FloatingActionButtonDefaults.containerColor)
-                                    } else {
-                                        buttonColors.disabledContentColor
-                                    },
+                                ExtendedFab(
+                                    label = stringResource(Res.string.broadcast),
+                                    icon = { Icon(Icons.Default.CellTower, contentDescription = "Broadcast to these relays") },
+                                    enabled = canSend,
                                     onClick = {
-                                        if (!canSend) return@ExtendedFloatingActionButton
-
                                         broadcastGroupSignedEventViewModel.broadcast(
                                             signedEvent = signedEvent,
                                             // Stays on the screen: an empty list is
@@ -240,13 +219,7 @@ fun BroadcastGroupSignedEventScreen(
                                             onNoRelays = { notify(noRelays) }
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        Icons.Default.CellTower,
-                                        contentDescription = "Broadcast to these relays"
-                                    )
-                                    Text(stringResource(Res.string.broadcast))
-                                }
+                                )
                             }
                         )
                     }
