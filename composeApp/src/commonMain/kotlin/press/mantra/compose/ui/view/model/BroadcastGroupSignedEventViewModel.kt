@@ -15,7 +15,9 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.isLocalHost
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -32,12 +34,7 @@ import press.mantra.compose.network.relays.EventPublishTransport
 import press.mantra.compose.network.relays.NostrPublishResult
 import press.mantra.compose.network.relays.RelayPool
 import press.mantra.compose.network.sockets.NostrIncomingMessage
-import press.mantra.compose.nostr.GroupCuratedSchema
-import press.mantra.compose.nostr.GroupRelayList
-import press.mantra.compose.nostr.GroupRelaySet
 import press.mantra.compose.nostr.Relays
-import press.mantra.compose.nostr.curated.CuratedEntryEvent
-import press.mantra.compose.nostr.curated.CuratedSchemaEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.ui.view.state.BroadcastGroupSignedEventUIState
 import kotlin.time.Duration.Companion.milliseconds
@@ -67,11 +64,19 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * ### Where the relays come from
  *
- * [defaultRelaysFor]: the group's own General list where it has agreed one, the
- * app's publish set where it has not, plus the indexers for a relay list and the
- * list's own relays for a schema and for an entry into it, minus anything the
- * group has blocked. The member can add and remove before sending, and the
- * seeded list is a suggestion rather than a rule.
+ * [defaultRelaysFor]: the app's own publish set, the same relays everything the
+ * app publishes as itself goes to. A group has no relay list of its own to
+ * prefer, so the seed is the same for every event of every kind. The member can
+ * add and remove before sending, and the seeded list is a suggestion rather
+ * than a rule.
+ *
+ * ### Nothing opens this screen yet
+ *
+ * The rows that carried a Broadcast button under each signed event -- the
+ * group's profile, relay lists, posts and curated lists -- have gone, and no
+ * screen that stayed has one. `BroadcastGroupSignedEventRoute` is still
+ * registered and `BroadcastButton` still built, so wiring a button in is all it
+ * takes to reach this again.
  */
 class BroadcastGroupSignedEventViewModel(
     val chatRoomId: String,
@@ -177,32 +182,24 @@ class BroadcastGroupSignedEventViewModel(
                 else -> BroadcastGroupSignedEventUIState.Loaded(
                     localChatRoom = localChatRoom,
                     signedEvent = signedEvent,
-                    relayLists = chatRepository.groupRelayLists(chatRoomId),
-                    schemas = chatRepository.groupCuratedSchemas(chatRoomId),
                 )
             }
         }
     }
 
     /**
-     * Fills the list from what the group has said, once.
+     * Fills the list with the defaults, once.
      *
-     * Called from the screen rather than from the loader, for the reason the
-     * relay editor's `seedWorkingCopy` gives: a preview and a layout test hand a
-     * loaded state straight in. Once and only once, so a member who emptied the
-     * list on purpose does not find it refilled by a state the view model re-emits.
+     * Called from the screen rather than from the loader, because a preview and
+     * a layout test hand a loaded state straight in. Once and only once, so a
+     * member who emptied the list on purpose does not find it refilled by a
+     * state the view model re-emits.
      */
-    fun seedRelays(
-        relayLists: List<GroupRelayList>,
-        kind: Kind,
-        tags: Array<Array<String>>,
-        content: String,
-        schemas: List<GroupCuratedSchema> = emptyList(),
-    ) {
+    fun seedRelays(kind: Kind) {
         if (isSeeded) return
         isSeeded = true
 
-        relays.addAll(defaultRelaysFor(relayLists, kind, tags, content, schemas))
+        relays.addAll(defaultRelaysFor(kind))
     }
 
     fun clearAddFailure() {
@@ -215,7 +212,7 @@ class BroadcastGroupSignedEventViewModel(
      * True when the row appeared, which is the caller's cue to clear the field.
      */
     fun addRelay(url: String): Boolean {
-        val relayUrl = GroupRelaySet.relayUrlOrNull(url) ?: run {
+        val relayUrl = relayUrlOrNull(url) ?: run {
             addFailure = AddFailure.NotARelay
             return false
         }
@@ -375,66 +372,32 @@ class BroadcastGroupSignedEventViewModel(
         /**
          * Where an event of [kind] should go, before the member has said otherwise.
          *
-         * The group's General list is the answer NIP-65 gives -- its write relays,
-         * where it has agreed any -- and the app's own publish set stands in for a
-         * group that has not, since a list of nothing would make the button a
-         * no-op on every group until somebody edits it. Two kinds add to that:
-         *
-         * - A relay list goes to the indexers as well. The list says where to find
-         *   the group, so sending it only to the relays it names is circular -- a
-         *   reader who already knew those relays would not need the list.
-         * - A curated schema goes to the relays it names for its own replies, so a
-         *   client reading suggestions there finds what they are replying to.
-         *
-         * - An entry into a curated list goes to the same relays as its schema,
-         *   which the NIP makes a MUST: that is where the list's readers look,
-         *   and where the queue screen reads the entry back to mark the
-         *   suggestion it came from. The entry names its schema by coordinate,
-         *   so the relays are read off the group's own copy of it in [schemas].
-         *
-         * And nothing goes to a relay the group has blocked, whatever the other
-         * lists say; that is what a blocked list is for.
+         * The app's own publish set, for every kind alike. A group says nothing
+         * about where it lives -- it signs no relay list of its own -- so there
+         * is no list of the group's to prefer and nothing of the group's to
+         * exclude, and the set the app publishes its own events to is what
+         * stops the button being a no-op on every group until somebody types a
+         * relay in. The kind is taken so a caller that has one to route by need
+         * not change its call when there is something to route on again.
          */
-        fun defaultRelaysFor(
-            relayLists: List<GroupRelayList>,
-            kind: Kind,
-            tags: Array<Array<String>> = emptyArray(),
-            content: String = "",
-            schemas: List<GroupCuratedSchema> = emptyList(),
-        ): List<NormalizedRelayUrl> {
-            val general = relayLists.firstOrNull { it.set == GroupRelaySet.General }
-                ?.relays.orEmpty()
-                .filter { it.write }
-                .map { it.url }
+        @Suppress("UNUSED_PARAMETER")
+        fun defaultRelaysFor(kind: Kind): List<NormalizedRelayUrl> =
+            Relays.eventPublishRelaySet.toList()
 
-            val where = general.ifEmpty { Relays.eventPublishRelaySet.toList() }
+        /**
+         * [url] as a relay an event could be sent to, or null.
+         *
+         * Structural only, and deliberately narrow: `wss://` because what is
+         * sent is read by strangers over the open network and `ws://` would ask
+         * them to fetch it in the clear, and no loopback because a relay only
+         * this device can reach is not somewhere a broadcast goes. Wisp's
+         * `RelayConfig.isValidUrl` refuses the same three things.
+         */
+        fun relayUrlOrNull(url: String): NormalizedRelayUrl? {
+            val trimmed = url.trim()
+            if (!trimmed.startsWith("wss://", ignoreCase = true)) return null
 
-            val indexers = if (kind in GroupRelaySet.KINDS) {
-                Relays.DefaultIndexerRelayList.toList()
-            } else {
-                emptyList()
-            }
-
-            val schemaRelays = when (kind) {
-                CuratedSchemaEvent.KIND ->
-                    runCatching { CuratedSchemaEvent.read(tags, content).relays }
-                        .getOrDefault(emptyList())
-                        .mapNotNull { GroupRelaySet.relayUrlOrNull(it) }
-
-                CuratedEntryEvent.CANONICAL_KIND ->
-                    schemas.firstOrNull { it.isRepliedToBy(tags) }
-                        ?.schema?.relays.orEmpty()
-                        .mapNotNull { GroupRelaySet.relayUrlOrNull(it) }
-
-                else -> emptyList()
-            }
-
-            val blocked = relayLists.firstOrNull { it.set == GroupRelaySet.Blocked }
-                ?.relays.orEmpty()
-                .map { it.url }
-                .toSet()
-
-            return (where + indexers + schemaRelays).distinct().filterNot { it in blocked }
+            return RelayUrlNormalizer.normalizeOrNull(trimmed)?.takeUnless { it.isLocalHost() }
         }
 
         fun factory(

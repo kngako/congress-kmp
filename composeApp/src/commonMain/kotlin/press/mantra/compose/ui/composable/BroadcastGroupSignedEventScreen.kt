@@ -81,13 +81,12 @@ import mantra.composeapp.generated.resources.signed_by_the_group_on
 import mantra.composeapp.generated.resources.that_is_not_a_relay_address
 import mantra.composeapp.generated.resources.that_relay_is_already_in_this_list
 import mantra.composeapp.generated.resources.the_signed_event
-import mantra.composeapp.generated.resources.where_the_group_has_said_it_lives_is_filled_in
+import mantra.composeapp.generated.resources.the_relays_this_app_publishes_to_are_filled_in
 import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.network.relays.EventPublishTransport
-import press.mantra.compose.nostr.GroupRelayList
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.Decorative
@@ -114,18 +113,19 @@ import kotlin.time.Instant
  * One event the group signed, and the relays to send it to.
  *
  * The group's screen shows what the group has signed; this is where one of those
- * leaves the device. The list starts at where the group has said it lives and the
- * member can change it, the button sends to every relay in it at once, and each
- * row then says what its relay answered -- accepted, rejected in the relay's own
+ * leaves the device. The list starts at the app's own publish set and the member
+ * can change it, the button sends to every relay in it at once, and each row
+ * then says what its relay answered -- accepted, rejected in the relay's own
  * words, or nothing. The raw JSON is at the bottom for anyone who would rather
  * hand it to some other tool.
  *
- * **The button sends rather than proposes.** Every other screen off the identity
- * block opens a signing session, because what it makes is a statement by the
- * group. This one moves a statement the group has already made, which any member
- * holding it may do: the signature is the group's, and no share of the key is
- * needed to repeat it. See `BroadcastGroupSignedEventViewModel` for why the send
- * goes to the pool directly rather than through the app's broadcast queue.
+ * **The button sends rather than proposes.** Every screen that opens a signing
+ * session makes a statement by the group. This one moves a statement the group
+ * has already made, which any member holding it may do: the signature is the
+ * group's, and no share of the key is needed to repeat it. See
+ * `BroadcastGroupSignedEventViewModel` for why the send goes to the pool
+ * directly rather than through the app's broadcast queue -- and for the fact
+ * that, at present, nothing in the app opens this screen.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -180,13 +180,7 @@ fun BroadcastGroupSignedEventScreen(
                 // test -- fills in the same as the app does. Once only, so a list
                 // the member emptied stays empty.
                 LaunchedEffect(broadcastGroupSignedEventUIState) {
-                    broadcastGroupSignedEventViewModel.seedRelays(
-                        relayLists = broadcastGroupSignedEventUIState.relayLists,
-                        kind = signedEvent.kind,
-                        tags = signedEvent.tags,
-                        content = signedEvent.content,
-                        schemas = broadcastGroupSignedEventUIState.schemas,
-                    )
+                    broadcastGroupSignedEventViewModel.seedRelays(kind = signedEvent.kind)
                 }
 
                 // A refusal is about what is in the field, so it goes the moment
@@ -317,7 +311,7 @@ fun BroadcastGroupSignedEventScreen(
 
                             Text(
                                 text = stringResource(
-                                    Res.string.where_the_group_has_said_it_lives_is_filled_in
+                                    Res.string.the_relays_this_app_publishes_to_are_filled_in
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -605,10 +599,6 @@ private fun BroadcastGroupSignedEventScreenPreview() {
                         signature = "f".repeat(128),
                         createdAt = Instant.fromEpochSeconds(1_700_000_000)
                     ),
-                    // Nothing agreed, so the list fills in from the app's own
-                    // publish set -- the state a group meets this screen in
-                    // before it has edited its relays.
-                    relayLists = GroupRelayList.allAmong(emptyList(), chatRoomId),
                 ),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 publishTransport = object : EventPublishTransport {

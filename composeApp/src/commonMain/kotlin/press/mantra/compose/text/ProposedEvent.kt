@@ -1,13 +1,7 @@
 package press.mantra.compose.text
 
 import com.vitorpamplona.quartz.nip01Core.core.Event
-import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
-import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
-import press.mantra.compose.extensions.shortened
 import press.mantra.compose.managers.SharedKeyDerivation
-import press.mantra.compose.nostr.GroupRelaySet
-import press.mantra.compose.nostr.curated.CuratedEntryEvent
-import press.mantra.compose.nostr.curated.CuratedSchemaEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
@@ -159,70 +153,6 @@ object ProposedEvent {
                     .takeIf { it > 0 }
                     ?.let { "run by $it members" }
             ).joinToString(" · ")
-        )
-
-        // The group's own profile. Named by what the group would be called and
-        // what it would say about itself, which is the whole of what is being
-        // decided; the JSON in the content is the one thing a signer should not
-        // have to read to find that out.
-        MetadataEvent.KIND -> Summary(
-            label = "Nostr profile",
-            detail = MetadataEvent(
-                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
-            ).contactMetaData()?.let { metadata ->
-                listOfNotNull(
-                    metadata.anyName()?.takeIf { it.isNotBlank() },
-                    metadata.about?.takeIf { it.isNotBlank() }
-                ).joinToString(" · ").ifEmpty { "An empty profile" }
-            } ?: "Unreadable profile"
-        )
-
-        // A post in the group's name. The words are what is being decided, so
-        // they are the detail rather than a count of them -- the same call the
-        // translated-passage arm makes.
-        TextNoteEvent.KIND -> Summary(label = "Post", detail = event.content)
-
-        // One of the group's relay lists, shown as hosts: every entry in one
-        // starts wss://, so the scheme is the part that never tells two apart.
-        // An empty one is a list the group is withdrawing, and says so.
-        in GroupRelaySet.KINDS -> {
-            val set = GroupRelaySet.entries.first { it.kind == event.kind }
-
-            Summary(
-                label = "${set.name} relay list",
-                detail = set.parse(event.tags).joinToString { it.displayUrl() }.ifEmpty { "No relays" }
-            )
-        }
-
-        // A list the group would curate. A member signing this is agreeing to
-        // take suggestions from whoever the visibility admits and to be the one
-        // key that accepts them, so the summary is the list's name, who may
-        // suggest, and how much an entry asks for -- the content is only the
-        // description, which the detail screen shows whole.
-        CuratedSchemaEvent.KIND -> Summary(
-            label = "Curated schema",
-            detail = CuratedSchemaEvent.read(event.tags, event.content).let { schema ->
-                listOfNotNull(
-                    schema.displayName().ifBlank { null },
-                    schema.visibility?.value,
-                    schema.fields.size.let { "$it ${if (it == 1) "field" else "fields"}" }
-                ).joinToString(" · ")
-            }
-        )
-
-        // An entry the group would take into one of its lists. A member signing
-        // this is agreeing that the list stands behind this title, so the
-        // summary is the title and who suggested it -- the credit the entry
-        // carries -- and not its fields, which the form showed whole before the
-        // proposal was made and the queue shows again once it lands.
-        CuratedEntryEvent.CANONICAL_KIND -> Summary(
-            label = "Curated entry",
-            detail = CuratedEntryEvent.headline(event).let { entry ->
-                listOfNotNull(
-                    entry.title.ifBlank { entry.identifier }.ifBlank { null },
-                    entry.source?.let { "suggested by ${it.pubKey.shortened()}" }
-                ).joinToString(" · ").ifEmpty { "An untitled entry" }
-            }
         )
 
         else -> Summary(label = "Event of kind ${event.kind}", detail = event.content)

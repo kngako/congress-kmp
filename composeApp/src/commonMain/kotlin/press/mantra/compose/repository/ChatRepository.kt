@@ -9,11 +9,6 @@ import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
-import press.mantra.compose.nostr.GroupNostrProfile
-import press.mantra.compose.nostr.GroupCuratedEntry
-import press.mantra.compose.nostr.GroupCuratedSchema
-import press.mantra.compose.nostr.GroupPost
-import press.mantra.compose.nostr.GroupRelayList
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -83,61 +78,6 @@ interface ChatRepository {
      * state and gets null here even when the room really is a subgroup.
      */
     suspend fun parentOf(chatRoomId: String): HexKey?
-
-    /**
-     * The kind:0 this group signed about itself, or null while it has signed
-     * none.
-     *
-     * The group's identity on nostr is the room's own id, so it has one to
-     * describe whether or not it ever has. Read off the group's signed events and
-     * verified there -- see `GroupNostrProfile` -- so a room shows the profile its
-     * own key signed or shows that it has none.
-     */
-    suspend fun groupNostrProfile(chatRoomId: String): GroupNostrProfile?
-
-    /**
-     * Where this group has said it lives on nostr: one entry per relay set, always
-     * all of them.
-     *
-     * A set the group has never agreed comes back unsigned and empty rather than
-     * missing, because "never said" is a state the screen has to show and a gap in
-     * a list is not one. See `GroupRelayList.isAgreed`.
-     */
-    suspend fun groupRelayLists(chatRoomId: String): List<GroupRelayList>
-
-    /**
-     * The kind:1s this group signed, newest first.
-     *
-     * The group speaking as itself, which is a different thing from a member
-     * speaking in the room -- the transcript is the second. Unlike the profile and
-     * the relay lists these accumulate rather than replace, so this is a list and
-     * an empty one means the group has said nothing publicly.
-     */
-    suspend fun groupPosts(chatRoomId: String): List<GroupPost>
-
-    /**
-     * The curated schemas this group signed -- the lists it curates -- one per
-     * identifier, most recently signed first.
-     *
-     * Kind 31889 is addressable, so an edit is a newer event under the same
-     * identifier and the newest wins per list, the way the profile does; two
-     * identifiers are two lists and both come back. Empty in a group that
-     * curates nothing, which is every group until somebody proposes one.
-     */
-    suspend fun groupCuratedSchemas(chatRoomId: String): List<GroupCuratedSchema>
-
-    /**
-     * The canonical entries this group signed -- the suggestions it accepted
-     * into the lists it curates -- one per coordinate, most recently signed
-     * first.
-     *
-     * Kind 31890 is addressable, so a re-curation is a newer event under the
-     * same identifier and the newest wins, the way a schema's edit does. Each
-     * is read against the schema it replies to, and an entry whose list this
-     * device holds no schema for is left out. Empty in a group that has
-     * accepted nothing, which is every group until a quorum signs an entry.
-     */
-    suspend fun groupCuratedEntries(chatRoomId: String): List<GroupCuratedEntry>
 
     /**
      * One event the group signed, as the group signed it, or null when this
@@ -330,21 +270,6 @@ interface ChatRepository {
                 emptyList()
 
             override suspend fun parentOf(chatRoomId: String): HexKey? = null
-
-            override suspend fun groupNostrProfile(chatRoomId: String): GroupNostrProfile? = null
-
-            override suspend fun groupRelayLists(chatRoomId: String): List<GroupRelayList> =
-                GroupRelayList.allAmong(emptyList(), chatRoomId)
-
-            override suspend fun groupPosts(chatRoomId: String): List<GroupPost> = emptyList()
-
-            override suspend fun groupCuratedSchemas(
-                chatRoomId: String
-            ): List<GroupCuratedSchema> = emptyList()
-
-            override suspend fun groupCuratedEntries(
-                chatRoomId: String
-            ): List<GroupCuratedEntry> = emptyList()
 
             override suspend fun groupSignedEvent(
                 chatRoomId: String,

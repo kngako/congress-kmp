@@ -40,19 +40,7 @@ import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
-import press.mantra.compose.ui.composable.EditGroupNostrProfileScreen
-import press.mantra.compose.ui.composable.AddGroupPostScreen
-import press.mantra.compose.ui.composable.AcceptCuratedSuggestionScreen
-import press.mantra.compose.ui.composable.EditGroupCuratedSchemaScreen
 import press.mantra.compose.ui.composable.BroadcastGroupSignedEventScreen
-import press.mantra.compose.ui.composable.CuratedSuggestionListScreen
-import press.mantra.compose.ui.composable.ProposeGroupEventScreen
-import press.mantra.compose.ui.composable.EditGroupRelaysScreen
-import press.mantra.compose.ui.composable.GroupNostrProfileScreen
-import press.mantra.compose.ui.composable.GroupRelaysScreen
-import press.mantra.compose.ui.composable.GroupPostsScreen
-import press.mantra.compose.ui.composable.GroupCuratedSchemasScreen
-import press.mantra.compose.ui.composable.GroupCuratedEntriesScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
@@ -139,19 +127,7 @@ import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
-import press.mantra.compose.ui.composable.navigation.routes.EditGroupNostrProfileRoute
-import press.mantra.compose.ui.composable.navigation.routes.AddGroupPostRoute
-import press.mantra.compose.ui.composable.navigation.routes.AcceptCuratedSuggestionRoute
-import press.mantra.compose.ui.composable.navigation.routes.EditGroupCuratedSchemaRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
-import press.mantra.compose.ui.composable.navigation.routes.CuratedSuggestionListRoute
-import press.mantra.compose.ui.composable.navigation.routes.ProposeGroupEventRoute
-import press.mantra.compose.ui.composable.navigation.routes.EditGroupRelaysRoute
-import press.mantra.compose.ui.composable.navigation.routes.GroupNostrProfileRoute
-import press.mantra.compose.ui.composable.navigation.routes.GroupRelaysRoute
-import press.mantra.compose.ui.composable.navigation.routes.GroupPostsRoute
-import press.mantra.compose.ui.composable.navigation.routes.GroupCuratedSchemasRoute
-import press.mantra.compose.ui.composable.navigation.routes.GroupCuratedEntriesRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
@@ -1116,223 +1092,6 @@ fun MantraNavHost(
                     }
                 )
             }
-            composable<GroupNostrProfileRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<GroupNostrProfileRoute>()
-
-                GroupNostrProfileScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    onNavigateToRoute = { actionRoute ->
-                        navController.navigate(route = actionRoute)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<GroupRelaysRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<GroupRelaysRoute>()
-
-                GroupRelaysScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    onNavigateToRoute = { actionRoute ->
-                        navController.navigate(route = actionRoute)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<GroupPostsRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<GroupPostsRoute>()
-
-                GroupPostsScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    onNavigateToRoute = { actionRoute ->
-                        navController.navigate(route = actionRoute)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<GroupCuratedSchemasRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<GroupCuratedSchemasRoute>()
-
-                GroupCuratedSchemasScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    onNavigateToRoute = { actionRoute ->
-                        navController.navigate(route = actionRoute)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<GroupCuratedEntriesRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<GroupCuratedEntriesRoute>()
-
-                GroupCuratedEntriesScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    onNavigateToRoute = { actionRoute ->
-                        navController.navigate(route = actionRoute)
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<EditGroupNostrProfileRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<EditGroupNostrProfileRoute>()
-
-                EditGroupNostrProfileScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the form so back returns to the group rather than
-                        // to an edit whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<EditGroupNostrProfileRoute> {
-                                inclusive = true
-                            }
-                        }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<EditGroupRelaysRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<EditGroupRelaysRoute>()
-
-                EditGroupRelaysScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the editor so back returns to the group rather
-                        // than to lists whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<EditGroupRelaysRoute> {
-                                inclusive = true
-                            }
-                        }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<AddGroupPostRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<AddGroupPostRoute>()
-
-                AddGroupPostScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the composer so back returns to the group rather
-                        // than to a draft whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<AddGroupPostRoute> {
-                                inclusive = true
-                            }
-                        }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<EditGroupCuratedSchemaRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<EditGroupCuratedSchemaRoute>()
-
-                EditGroupCuratedSchemaScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    identifier = route.identifier,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the editor so back returns to the group rather
-                        // than to a schema whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<EditGroupCuratedSchemaRoute> {
-                                inclusive = true
-                            }
-                        }
-                    },
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<CuratedSuggestionListRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<CuratedSuggestionListRoute>()
-
-                CuratedSuggestionListScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    identifier = route.identifier,
-                    nostrRepository = databaseNostrRepository,
-                    chatRepository = databaseChatRepository,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigateToRoute = { acceptRoute ->
-                        navController.navigate(route = acceptRoute)
-                    }
-                )
-            }
-            composable<AcceptCuratedSuggestionRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<AcceptCuratedSuggestionRoute>()
-
-                AcceptCuratedSuggestionScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    identifier = route.identifier,
-                    suggestionId = route.suggestionId,
-                    nostrRepository = databaseNostrRepository,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the form so back returns to the queue rather
-                        // than to an entry whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<AcceptCuratedSuggestionRoute> {
-                                inclusive = true
-                            }
-                        }
-                    }
-                )
-            }
             composable<BroadcastGroupSignedEventRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<BroadcastGroupSignedEventRoute>()
 
@@ -1347,29 +1106,6 @@ fun MantraNavHost(
                     // `NostrEvent` row, and the queue hangs off one. See
                     // `BroadcastGroupSignedEventViewModel`.
                     publishTransport = synchronizationViewModel.relaysSocketManager,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-            composable<ProposeGroupEventRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<ProposeGroupEventRoute>()
-
-                ProposeGroupEventScreen(
-                    activeUserPublicKey = route.activeUserPublicKey,
-                    chatRoomId = route.chatRoomId,
-                    relayHint = route.relayHint,
-                    chatRepository = databaseChatRepository,
-                    frostSigningRepository = databaseFrostSigningRepository,
-                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
-                        // Replace the paste so back returns to the group rather
-                        // than to an event whose proposal has already gone out.
-                        navController.navigate(route = signingRoute) {
-                            popUpTo<ProposeGroupEventRoute> {
-                                inclusive = true
-                            }
-                        }
-                    },
                     onNavigateBack = {
                         navController.popBackStack()
                     }

@@ -40,8 +40,10 @@ only one about what the app looks like rather than what it does; read the
 jvm-target note first if you want to know why its adaptive-layout phase exists.
 The curated-to-mantra note is a phased plan that has been built, save for its last
 phase, which is a decision: it is about the repository rather than the app, and reads
-alone, except that its first decision leans on the derivation note's one rule. The
-nsec and npub sign-in notes arrived with it and record what they built.
+alone, except that its first decision leans on the derivation note's one rule. Two of
+the lines it pulled -- the group's nostr identity and the curated lists -- were taken
+out again the same day, and its record says what went and what stayed. The nsec and
+npub sign-in notes arrived with it and record what they built.
 The nsec sign-in note is a phased plan that has been built; it inherits the
 key-storage decision from the jvm-target note and drives the navigation state
 machine `NavigationViewModel.processLocalAccount` implements, so read it with the

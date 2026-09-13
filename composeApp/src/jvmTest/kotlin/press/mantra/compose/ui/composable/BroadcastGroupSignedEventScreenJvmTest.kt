@@ -7,13 +7,14 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runDesktopComposeUiTest
-import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
+import com.vitorpamplona.quartz.nip01Core.relay.normalizer.displayUrl
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -26,9 +27,6 @@ import press.mantra.compose.network.dto.RelayDTO
 import press.mantra.compose.network.relays.EventPublishTransport
 import press.mantra.compose.network.relays.NostrPublishResult
 import press.mantra.compose.network.sockets.NostrIncomingMessage
-import press.mantra.compose.nostr.GroupRelay
-import press.mantra.compose.nostr.GroupRelayList
-import press.mantra.compose.nostr.GroupRelaySet
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.ui.composable.widgets.ProvideSnackbarHost
@@ -41,19 +39,21 @@ import kotlin.time.Instant
 /**
  * What the broadcast screen shows before, and after, the button.
  *
- * Before: the event named as the signing screen would name it, the relays the
- * group has said it lives at already in the list, and a way to add one. After:
- * each relay's answer under its own row, in the relay's words where it gave
- * any, and the sum above them -- because the sum is what the member came for and
- * the words are what they can act on.
+ * Before: the event named as the signing screen would name it, the app's own
+ * publish relays already in the list, and a way to add one. After: each relay's
+ * answer under its own row, in the relay's words where it gave any, and the sum
+ * above them -- because the sum is what the member came for and the words are
+ * what they can act on.
  */
 @OptIn(ExperimentalTestApi::class)
 class BroadcastGroupSignedEventScreenJvmTest {
 
     private val chatRoomId = "d4c3b2a1".repeat(8)
 
-    private val one = RelayUrlNormalizer.normalize("wss://relay.one.example")
-    private val two = RelayUrlNormalizer.normalize("wss://relay.two.example")
+    /** The first two relays the screen seeds, in the order it lists them. */
+    private val seeded = Relays.eventPublishRelaySet.toList()
+    private val one = seeded[0]
+    private val two = seeded[1]
 
     /** A pool that answers as told and never opens a socket. */
     private class FakeTransport(
@@ -66,21 +66,24 @@ class BroadcastGroupSignedEventScreenJvmTest {
     }
 
     @Test
-    fun `the event is named, the group's relays are filled in, and the JSON is there to copy`() =
+    fun `the event is named, the app's relays are filled in, and the JSON is there to copy`() =
         render(state()) {
-            onNodeWithText("Post").assertIsDisplayed()
+            // A plain note, which the signing screen has no words of its own
+            // for, so it is named by its number over its content.
+            onNodeWithText("Event of kind 1").assertIsDisplayed()
             onNodeWithText("The first chapter is out.").assertIsDisplayed()
 
-            // The group's own General list, as hosts.
-            onNodeWithText("relay.one.example").assertIsDisplayed()
-            onNodeWithText("relay.two.example").assertIsDisplayed()
+            // The app's own publish set, as hosts.
+            seeded.forEach { relay ->
+                onNodeWithText(relay.displayUrl()).assertIsDisplayed()
+            }
 
             onNodeWithText("Broadcast").assertIsDisplayed()
             onNodeWithText("Copy raw JSON").assertIsDisplayed()
 
             // The relays come before the JSON: the list is the screen's job and
             // the JSON is for whoever would rather use a different tool.
-            val relays = onNodeWithText("relay.one.example").getBoundsInRoot().top
+            val relays = onNodeWithText(one.displayUrl()).getBoundsInRoot().top
             val json = onNodeWithText("The signed event").getBoundsInRoot().top
             assertTrue(relays < json, "the JSON climbed above the relay list")
         }
@@ -120,26 +123,32 @@ class BroadcastGroupSignedEventScreenJvmTest {
         ) {
             onNodeWithContentDescription("Broadcast to these relays").performClick()
 
+            // The two that answered are counted; the rest of the seeded list
+            // never did, and the sum says so by counting them as asked.
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Accepted by 1 of 2 relays.").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Accepted by 1 of ${seeded.size} relays.")
+                    .fetchSemanticsNodes().isNotEmpty()
             }
 
             onNodeWithText("Accepted").assertIsDisplayed()
             onNodeWithText("Rejected: blocked: not on the allow list").assertIsDisplayed()
 
             // The answer under the relay it came from, not in a list of its own.
-            val relayOne = onNodeWithText("relay.one.example").getBoundsInRoot().top
+            val relayOne = onNodeWithText(one.displayUrl()).getBoundsInRoot().top
             val accepted = onNodeWithText("Accepted").getBoundsInRoot().top
-            val relayTwo = onNodeWithText("relay.two.example").getBoundsInRoot().top
+            val relayTwo = onNodeWithText(two.displayUrl()).getBoundsInRoot().top
             val rejected = onNodeWithText("Rejected: blocked: not on the allow list").getBoundsInRoot().top
             assertTrue(relayOne < accepted && accepted < relayTwo, "the OK is not under its relay")
             assertTrue(relayTwo < rejected, "the rejection is not under its relay")
         }
 
     @Test
-    fun `an empty list asks nobody and says to add one`() = render(
-        state(relayLists = GroupRelayList.allAmong(emptyList(), chatRoomId), seedNothing = true)
-    ) {
+    fun `an empty list asks nobody and says to add one`() = render(state()) {
+        // Emptied by hand, since the seed always has something in it.
+        repeat(seeded.size) {
+            onAllNodesWithContentDescription("Remove relay")[0].performClick()
+        }
+
         onNodeWithText("No relays to broadcast to. Add one above.").assertIsDisplayed()
     }
 
@@ -154,37 +163,7 @@ class BroadcastGroupSignedEventScreenJvmTest {
         createdAt = Instant.fromEpochSeconds(1_700_000_000),
     )
 
-    /** A General list of two relays, agreed, so the screen has something of the group's to fill in. */
-    private fun agreedRelayLists(): List<GroupRelayList> =
-        GroupRelayList.allAmong(emptyList(), chatRoomId).map { list ->
-            if (list.set != GroupRelaySet.General) return@map list
-
-            GroupRelayList(
-                set = list.set,
-                signedEvent = GroupSignedEvent(
-                    id = "a".repeat(64),
-                    chatRoomId = chatRoomId,
-                    publicKey = chatRoomId,
-                    kind = list.set.kind,
-                    tags = emptyArray(),
-                    content = "",
-                    signature = "f".repeat(128),
-                    createdAt = Instant.fromEpochSeconds(1_700_000_000),
-                ),
-                relays = listOf(GroupRelay(one), GroupRelay(two)),
-            )
-        }
-
-    /**
-     * [seedNothing] blocks every relay the seed would otherwise fall back to, so
-     * the screen can be seen with an empty list -- a group that has agreed
-     * nothing is filled in from the app's own set, which is the point of the
-     * fallback and the opposite of what this fixture wants.
-     */
-    private fun state(
-        relayLists: List<GroupRelayList> = agreedRelayLists(),
-        seedNothing: Boolean = false,
-    ) = BroadcastGroupSignedEventUIState.Loaded(
+    private fun state() = BroadcastGroupSignedEventUIState.Loaded(
         localChatRoom = LocalChatRoom(
             chatRoom = ChatRoom(
                 id = chatRoomId,
@@ -196,26 +175,13 @@ class BroadcastGroupSignedEventScreenJvmTest {
             )
         ),
         signedEvent = signedEvent(),
-        relayLists = if (seedNothing) {
-            relayLists.map { list ->
-                if (list.set != GroupRelaySet.Blocked) return@map list
-
-                GroupRelayList(
-                    set = list.set,
-                    signedEvent = null,
-                    relays = Relays.eventPublishRelaySet.map { GroupRelay(it) },
-                )
-            }
-        } else {
-            relayLists
-        },
     )
 
     private fun render(
         uiState: BroadcastGroupSignedEventUIState,
         transport: EventPublishTransport = FakeTransport(emptyList()),
         assertions: ComposeUiTest.() -> Unit
-    ) = runDesktopComposeUiTest(width = 400, height = 1600) {
+    ) = runDesktopComposeUiTest(width = 400, height = 2400) {
         setContent {
             MantraTheme {
                 ProvideSnackbarHost {

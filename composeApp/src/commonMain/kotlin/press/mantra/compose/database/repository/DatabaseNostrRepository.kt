@@ -749,12 +749,6 @@ class DatabaseNostrRepository(
         }
     }
 
-    override suspend fun observeNostrEventsMatching(synchronizationFilter: SynchronizationFilter): Flow<List<press.mantra.compose.database.model.intermdiate.LocalNostrEvent>> {
-        return database.nostrEventDao().observeNostrEventsMatchingFilter(
-            NostrEventFilterQuery.build(synchronizationFilter)
-        )
-    }
-
     override suspend fun getNegentropicNostrFeedIds(
         synchronizationFilters: Array<SynchronizationFilter>,
         applyLimits: Boolean

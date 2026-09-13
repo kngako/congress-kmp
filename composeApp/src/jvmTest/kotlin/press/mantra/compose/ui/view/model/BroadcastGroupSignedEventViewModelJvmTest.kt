@@ -1,10 +1,8 @@
 package press.mantra.compose.ui.view.model
 
-import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.RelayUrlNormalizer
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
-import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -22,15 +20,8 @@ import press.mantra.compose.network.dto.RelayDTO
 import press.mantra.compose.network.relays.EventPublishTransport
 import press.mantra.compose.network.relays.NostrPublishResult
 import press.mantra.compose.network.sockets.NostrIncomingMessage
-import press.mantra.compose.nostr.GroupRelay
-import press.mantra.compose.nostr.GroupRelayList
-import press.mantra.compose.nostr.GroupRelaySet
 import press.mantra.compose.nostr.Relays
-import press.mantra.compose.nostr.GroupCuratedSchema
-import press.mantra.compose.nostr.curated.CuratedEntryEvent
-import press.mantra.compose.nostr.curated.CuratedSchema
-import press.mantra.compose.nostr.curated.CuratedSchemaEvent
-import press.mantra.compose.nostr.curated.CuratedVisibility
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.ui.view.model.BroadcastGroupSignedEventViewModel.RelayOutcome
 import press.mantra.compose.ui.view.state.BroadcastGroupSignedEventUIState
@@ -48,9 +39,8 @@ import kotlin.time.Instant
  *
  * **Where an event goes before anyone says otherwise.** The seeded list is what a
  * member who reads nothing and presses the button sends to, so it has to be the
- * group's own answer where the group has given one, has to leave out what the
- * group has blocked, and has to widen for the two kinds whose readers would not
- * otherwise find them.
+ * app's own publish set -- a group has no relay list of its own to prefer -- and
+ * it has to be seeded once, so a list the member emptied stays empty.
  *
  * **What each relay's answer becomes.** The pool answers once per relay in three
  * shapes -- an OK, a rejection wrapped in one exception type, and any other error
@@ -118,27 +108,6 @@ class BroadcastGroupSignedEventViewModelJvmTest {
             createdAt = Instant.fromEpochSeconds(1_700_000_000),
         )
 
-    private fun relaySignedEvent(set: GroupRelaySet) = GroupSignedEvent(
-        id = "a" + set.kind.toString().padStart(5, '0') + "0".repeat(58),
-        chatRoomId = chatRoomId,
-        publicKey = chatRoomId,
-        kind = set.kind,
-        tags = emptyArray(),
-        content = "",
-        signature = "f".repeat(128),
-        createdAt = Instant.fromEpochSeconds(1_700_000_000),
-    )
-
-    /** Every set unsigned, which is a group that has never said where it lives. */
-    private fun nothingAgreed() = GroupRelayList.allAmong(emptyList(), chatRoomId)
-
-    private fun agreed(vararg lists: Pair<GroupRelaySet, List<GroupRelay>>) =
-        nothingAgreed().map { list ->
-            lists.firstOrNull { it.first == list.set }
-                ?.let { GroupRelayList(list.set, relaySignedEvent(list.set), it.second) }
-                ?: list
-        }
-
     private fun ok(relay: NormalizedRelayUrl) = NostrPublishResult(
         result = NostrIncomingMessage.OkMessage(eventId = "b".repeat(64), success = true),
         relayUrl = relay.url,
@@ -158,142 +127,32 @@ class BroadcastGroupSignedEventViewModelJvmTest {
     // -- where an event goes before anyone says otherwise ------------------------
 
     @Test
-    fun `a group that has not said where it lives sends to the app's publish set`() {
+    fun `every kind is seeded with the app's publish set`() {
+        // A group has no relay list of its own, so a post and a key state go to
+        // the same place before the member says otherwise -- the set the app
+        // publishes its own events to, which is what keeps the button from
+        // being a no-op on a group nobody has typed a relay in for.
         assertEquals(
             Relays.eventPublishRelaySet.toList(),
-            BroadcastGroupSignedEventViewModel.defaultRelaysFor(nothingAgreed(), TextNoteEvent.KIND),
+            BroadcastGroupSignedEventViewModel.defaultRelaysFor(TextNoteEvent.KIND),
         )
-    }
-
-    @Test
-    fun `a group's own general list wins, and only the relays it writes to`() {
-        val relayLists = agreed(
-            GroupRelaySet.General to listOf(
-                GroupRelay(one),
-                // Read-only: where the group looks, not where it puts things.
-                GroupRelay(two, read = true, write = false),
-            )
-        )
-
-        // The group's answer and nothing from the app's set beside it: a member
-        // who edited the relays meant them, and padding the list would send the
-        // group's post somewhere the group decided not to be.
         assertEquals(
-            listOf(one),
-            BroadcastGroupSignedEventViewModel.defaultRelaysFor(relayLists, TextNoteEvent.KIND),
-        )
-    }
-
-    @Test
-    fun `a blocked relay is dropped whatever the other lists say`() {
-        val relayLists = agreed(
-            GroupRelaySet.General to listOf(GroupRelay(one), GroupRelay(two)),
-            GroupRelaySet.Blocked to listOf(GroupRelay(two)),
-        )
-
-        assertEquals(
-            listOf(one),
-            BroadcastGroupSignedEventViewModel.defaultRelaysFor(relayLists, TextNoteEvent.KIND),
-        )
-    }
-
-    @Test
-    fun `a relay list also goes to the indexers, since its readers do not yet know the relays it names`() {
-        val relayLists = agreed(GroupRelaySet.General to listOf(GroupRelay(one)))
-
-        val seeded = BroadcastGroupSignedEventViewModel.defaultRelaysFor(
-            relayLists, AdvertisedRelayListEvent.KIND
-        )
-
-        assertEquals(one, seeded.first())
-        Relays.DefaultIndexerRelayList.forEach { indexer ->
-            assertTrue(indexer in seeded, "the relay list would not reach ${indexer.url}")
-        }
-
-        // And a post does not: nobody looks an indexer up for a kind 1.
-        val post = BroadcastGroupSignedEventViewModel.defaultRelaysFor(relayLists, TextNoteEvent.KIND)
-        Relays.DefaultIndexerRelayList.forEach { indexer ->
-            assertFalse(indexer in post, "a post was sent to the indexer ${indexer.url}")
-        }
-    }
-
-    @Test
-    fun `a curated schema also goes to the relays it names for its own replies`() {
-        val relayLists = agreed(GroupRelaySet.General to listOf(GroupRelay(one)))
-
-        val seeded = BroadcastGroupSignedEventViewModel.defaultRelaysFor(
-            relayLists = relayLists,
-            kind = CuratedSchemaEvent.KIND,
-            tags = arrayOf(
-                arrayOf("d", "films"),
-                arrayOf("relay", three.url),
-            ),
-            content = "Films worth translating.",
-        )
-
-        // The group's relay first, then the list's own -- a client reading
-        // suggestions on the list's relay finds the schema they answer.
-        assertEquals(listOf(one, three), seeded)
-    }
-
-    @Test
-    fun `an entry into a curated list goes to the list's relays, found by the coordinate it replies to`() {
-        val relayLists = agreed(GroupRelaySet.General to listOf(GroupRelay(one)))
-
-        val films = GroupCuratedSchema(
-            signedEvent = relaySignedEvent(GroupRelaySet.General).copy(kind = CuratedSchemaEvent.KIND),
-            schema = CuratedSchema(
-                identifier = "films",
-                title = "Film suggestion",
-                name = "Films worth translating",
-                description = "Films the group would subtitle.",
-                visibility = CuratedVisibility.Public,
-                relays = listOf(three.url),
-            ).normalized(),
-        )
-        val books = films.copy(schema = films.schema.copy(identifier = "books", relays = listOf(two.url)))
-
-        val seeded = BroadcastGroupSignedEventViewModel.defaultRelaysFor(
-            relayLists = relayLists,
-            kind = CuratedEntryEvent.CANONICAL_KIND,
-            tags = arrayOf(
-                arrayOf("d", "magic-money"),
-                arrayOf("title", "Magic Money"),
-                arrayOf("a", films.coordinate(), "", "root"),
-            ),
-            content = "",
-            schemas = listOf(books, films),
-        )
-
-        // The group's relay, then the relays of the list replied to -- and not
-        // the other list's: the NIP sends an entry where its own schema says.
-        assertEquals(listOf(one, three), seeded)
-
-        // An entry whose schema this device does not hold goes where the group
-        // publishes, since there is nothing else to go on.
-        assertEquals(
-            listOf(one),
-            BroadcastGroupSignedEventViewModel.defaultRelaysFor(
-                relayLists = relayLists,
-                kind = CuratedEntryEvent.CANONICAL_KIND,
-                tags = arrayOf(arrayOf("a", "31889:${"0".repeat(64)}:elsewhere", "", "root")),
-                schemas = listOf(books, films),
-            )
+            BroadcastGroupSignedEventViewModel.defaultRelaysFor(TextNoteEvent.KIND),
+            BroadcastGroupSignedEventViewModel.defaultRelaysFor(GroupKeyStateEvent.KIND),
         )
     }
 
     @Test
     fun `seeding happens once, so an emptied list stays empty`() {
         val viewModel = viewModel()
-        val relayLists = agreed(GroupRelaySet.General to listOf(GroupRelay(one)))
         val event = signedEvent()
 
-        viewModel.seedRelays(relayLists, event.kind, event.tags, event.content)
-        viewModel.seedRelays(relayLists, event.kind, event.tags, event.content)
-        assertEquals(listOf(one), viewModel.relays.toList())
+        viewModel.seedRelays(event.kind)
+        viewModel.seedRelays(event.kind)
+        assertEquals(Relays.eventPublishRelaySet.toList(), viewModel.relays.toList())
 
-        viewModel.removeRelay(one)
-        viewModel.seedRelays(relayLists, event.kind, event.tags, event.content)
+        viewModel.relays.toList().forEach { viewModel.removeRelay(it) }
+        viewModel.seedRelays(event.kind)
         assertEquals(emptyList(), viewModel.relays.toList())
     }
 
@@ -403,8 +262,8 @@ class BroadcastGroupSignedEventViewModelJvmTest {
     @Test
     fun `what goes on the wire is the event the group signed, field for field`() {
         val event = signedEvent(
-            kind = MetadataEvent.KIND,
-            tags = arrayOf(arrayOf("alt", "The group's profile")),
+            kind = GroupKeyStateEvent.KIND,
+            tags = arrayOf(arrayOf("alt", "The group's signing key")),
         )
 
         val wire = BroadcastGroupSignedEventViewModel.wireEventOf(event).toNostrJsonObject()
@@ -415,6 +274,6 @@ class BroadcastGroupSignedEventViewModelJvmTest {
         assertEquals(event.kind.toString(), wire["kind"]!!.jsonPrimitive.content)
         assertEquals(event.content, wire["content"]!!.jsonPrimitive.content)
         assertEquals(event.signature, wire["sig"]!!.jsonPrimitive.content)
-        assertEquals("""[["alt","The group's profile"]]""", wire["tags"].toString())
+        assertEquals("""[["alt","The group's signing key"]]""", wire["tags"].toString())
     }
 }

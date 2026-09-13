@@ -9,14 +9,6 @@ import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
-import press.mantra.compose.nostr.GroupNostrProfile
-import press.mantra.compose.nostr.GroupCuratedEntry
-import press.mantra.compose.nostr.GroupCuratedSchema
-import press.mantra.compose.nostr.GroupPost
-import press.mantra.compose.nostr.curated.CuratedEntryEvent
-import press.mantra.compose.nostr.curated.CuratedSchemaEvent
-import press.mantra.compose.nostr.GroupRelayList
-import press.mantra.compose.nostr.GroupRelaySet
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -33,8 +25,6 @@ import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
-import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
-import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import com.vitorpamplona.quartz.nip01Core.relay.normalizer.NormalizedRelayUrl
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
@@ -128,75 +118,6 @@ class DatabaseChatRepository(
     } catch (e: Throwable) {
         logger.e("Error reading the parent of $chatRoomId", e)
         null
-    }
-
-    override suspend fun groupNostrProfile(chatRoomId: String): GroupNostrProfile? = try {
-        GroupNostrProfile.newestAmong(
-            signedEvents = database.groupSignedEventDao()
-                .getByChatRoomIdAndKind(chatRoomId, MetadataEvent.KIND),
-            chatRoomId = chatRoomId,
-        )
-    } catch (e: Throwable) {
-        // Reading one parses content off the wire and checks a signature, and a
-        // room that shows no profile is wrong and survivable where one that will
-        // not open is neither -- the same trade the readings above make.
-        logger.e("Error reading the nostr profile of $chatRoomId", e)
-        null
-    }
-
-    override suspend fun groupRelayLists(chatRoomId: String): List<GroupRelayList> = try {
-        // One query per set rather than one for the room: the four kinds are
-        // indexed and a room's whole signed history is every artifact, chunk and
-        // translation it has ever agreed.
-        GroupRelaySet.entries.map { set ->
-            GroupRelayList.newestAmong(
-                signedEvents = database.groupSignedEventDao()
-                    .getByChatRoomIdAndKind(chatRoomId, set.kind),
-                chatRoomId = chatRoomId,
-                set = set,
-            )
-        }
-    } catch (e: Throwable) {
-        logger.e("Error reading the relay lists of $chatRoomId", e)
-        // Four unsigned, empty sets: the screen draws "not set yet" rather than
-        // failing to draw, which is the trade every reading above makes.
-        GroupRelayList.allAmong(emptyList(), chatRoomId)
-    }
-
-    override suspend fun groupPosts(chatRoomId: String): List<GroupPost> = try {
-        GroupPost.newestFirstAmong(
-            signedEvents = database.groupSignedEventDao()
-                .getByChatRoomIdAndKind(chatRoomId, TextNoteEvent.KIND),
-            chatRoomId = chatRoomId,
-        )
-    } catch (e: Throwable) {
-        logger.e("Error reading the posts of $chatRoomId", e)
-        emptyList()
-    }
-
-    override suspend fun groupCuratedSchemas(chatRoomId: String): List<GroupCuratedSchema> = try {
-        GroupCuratedSchema.newestPerListAmong(
-            signedEvents = database.groupSignedEventDao()
-                .getByChatRoomIdAndKind(chatRoomId, CuratedSchemaEvent.KIND),
-            chatRoomId = chatRoomId,
-        )
-    } catch (e: Throwable) {
-        logger.e("Error reading the curated schemas of $chatRoomId", e)
-        emptyList()
-    }
-
-    override suspend fun groupCuratedEntries(chatRoomId: String): List<GroupCuratedEntry> = try {
-        // The schemas first, because an entry is read against the list it
-        // replies to and there is nothing to read one by without them.
-        GroupCuratedEntry.newestPerEntryAmong(
-            signedEvents = database.groupSignedEventDao()
-                .getByChatRoomIdAndKind(chatRoomId, CuratedEntryEvent.CANONICAL_KIND),
-            chatRoomId = chatRoomId,
-            schemas = groupCuratedSchemas(chatRoomId),
-        )
-    } catch (e: Throwable) {
-        logger.e("Error reading the curated entries of $chatRoomId", e)
-        emptyList()
     }
 
     override suspend fun groupSignedEvent(chatRoomId: String, id: HexKey): GroupSignedEvent? = try {

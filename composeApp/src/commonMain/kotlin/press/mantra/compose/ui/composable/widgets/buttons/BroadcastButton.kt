@@ -17,9 +17,10 @@ import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.theme.spacing
 
 /**
- * The way into `BroadcastGroupSignedEventScreen`, drawn the same under every
- * event the group signed -- its profile, each relay list, each post, each schema
- * and each entry -- so that it reads as one action on whichever screen it sits.
+ * The way into `BroadcastGroupSignedEventScreen`, to be drawn the same under
+ * every event the group signed so that it reads as one action on whichever
+ * screen it sits. Nothing draws it at present -- the screens that did have
+ * gone -- and it is kept, with the screen it opens, for whatever next does.
  *
  * Behind no gate anywhere it appears: sending what the group has already signed
  * takes no share of the key, since the signature on it is the group's whoever

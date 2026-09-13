@@ -32,6 +32,31 @@ says so, and it did so in seven places worth reading:
 | the exactness diff is the logo plus `808a3459`'s three files | plus the fourteen files Mantra changed on its own side: Phase 0's prose at the protected names, `39fb64b6`'s four, and this document with its two scripts. Seventeen files, every one accounted for, at every cut |
 | 1,036 jvm tests at the end | 1,039 — the three from `39fb64b6` — and per phase 736, 864, 905, 1,007, 1,039; `testDebugUnitTest` 403, 486, 495, 530, 530; every phase clean on both compilers with every audit budget met |
 
+**Lines B and D were taken out again the same day**, and H with them, by a product
+decision rather than a merge problem: the group's nostr profile, its relay lists, its
+posts, the curated schemas and the curated entries are not Mantra's product, and the
+[third decision](#3-curated-lists-are-not-mantras-product-and-mantra-should-take-them-anyway)'s
+"hide the two rows behind a constant" was not enough once the profile, relays and
+posts rows went with them. What went: the five rows and the twelve screens behind
+them, `nostr/curated/`, the readings (`GroupNostrProfile`, `GroupRelayList`,
+`GroupPost`, `GroupCuratedSchema`, `GroupCuratedEntry`, `CuratedSuggestion`), the
+`applyInnerEvent` arms for kinds 0, 1, the four relay-list kinds, 31889 and 31890,
+the `ChatRepository` and `NostrRepository` reads that fed them, the pasted-event
+proposal (`GroupEventProposal`, whose accepted kinds were exactly those), the
+`ProposedEvent` summaries for the same kinds, 226 strings, and every test that came
+with them. What stayed from the pull: F (the back button), G and I (sign-in), J (the
+library chore), and E (broadcast) -- which nothing opens now, since its button sat on
+the five removed screens and its relay seeding read the group's relay lists and
+schemas; `defaultRelaysFor` is the app's publish set, and the route and the button
+are kept against the day something wires one in. Every pre-existing file the removed
+commits touched is back at its pre-pull content plus the kept lines' hunks; the
+exactness check for that is `git diff ba0830a3 -- <file>` showing only the back
+button, broadcast's `groupSignedEvent`, and the sign-in reads. Tests afterwards: 826
+jvm, 413 common, every audit budget met. The seam this leaves for the next pull is the
+one the third decision predicted: any upstream commit that touches the identity block
+will conflict at `ChatRoomDetailScreen`, `MantraNavHost` and `strings.xml`, and the
+resolution is to drop it.
+
 The upstream moved before this landed: `curated/curated` went from `86cb876b` to
 `29027f2b`, ten commits for several profiles on one device, one of them the fork's
 first schema migration (version 20). They are the next pull, and the schema change is

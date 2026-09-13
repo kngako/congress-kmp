@@ -44,42 +44,13 @@ fun ProfileAvatar(
     publicKey: String,
     profile: press.mantra.compose.database.model.Profile?
 ) {
-    ProfileAvatar(
-        size = size,
-        shape = shape,
-        publicKey = publicKey,
-        picture = profile?.picture,
-        name = profile?.displayName
-    )
-}
-
-/**
- * The same avatar for a subject that has no `Profile` row.
- *
- * A group's is the case in hand: its kind:0 is signed by the group and kept as a
- * `GroupSignedEvent`, which is not a `NostrEvent` and so cannot have a `Profile`
- * hanging off it -- see `GroupNostrProfile`. The picture and the name are all this
- * ever wanted from a profile, so they are what it takes.
- *
- * [name] only reaches the content description. The tint behind a missing picture
- * comes from [publicKey], which is what keeps the same subject the same colour
- * everywhere it appears.
- */
-@Composable
-fun ProfileAvatar(
-    size: Dp = 55.dp,
-    shape: Shape = CircleShape,
-    publicKey: String,
-    picture: String?,
-    name: String? = null
-) {
     val modifier = Modifier.size(size).clip(shape = shape)
 
     val tintColor = ProfileColor.fromPublicKey(
         publicKey
     )
 
-    if (picture == null) {
+    if (profile?.picture == null) {
         Icon(
             modifier = modifier,
             imageVector = Icons.Default.AccountCircle,
@@ -106,9 +77,9 @@ fun ProfileAvatar(
             )
 
         AsyncImage(
-            model = picture,
+            model = profile.picture,
             modifier = modifier,
-            contentDescription = "Profile picture for ${name ?: publicKey}",
+            contentDescription = "Profile picture for ${profile.displayName ?: profile.publicKey}",
             placeholder = placeHolderGraphic,
             fallback = fallbackGraphic,
             error = errorGraphic,

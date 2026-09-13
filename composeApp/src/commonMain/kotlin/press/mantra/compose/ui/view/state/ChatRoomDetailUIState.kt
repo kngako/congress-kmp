@@ -7,11 +7,6 @@ import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
-import press.mantra.compose.nostr.GroupCuratedEntry
-import press.mantra.compose.nostr.GroupCuratedSchema
-import press.mantra.compose.nostr.GroupNostrProfile
-import press.mantra.compose.nostr.GroupPost
-import press.mantra.compose.nostr.GroupRelayList
 
 sealed interface ChatRoomDetailUIState {
     data class Loaded(
@@ -55,78 +50,6 @@ sealed interface ChatRoomDetailUIState {
          * really is a subgroup.
          */
         val parentChatRoomId: HexKey? = null,
-        /**
-         * The kind:0 the group signed about itself, or null while it has signed
-         * none.
-         *
-         * Its row sits under the room's identity and above its work, because that
-         * is what it is: the name and the picture the rest of nostr sees on the
-         * key the signing key row names. The row shows the name and the address;
-         * the profile itself is read on `GroupNostrProfileScreen`. Null is an
-         * ordinary state and the row says so -- a group has an identity from the
-         * moment it has a key and describes it whenever somebody gets round to it.
-         */
-        val groupNostrProfile: GroupNostrProfile? = null,
-        /**
-         * Where the group has said it lives on nostr, one entry per relay set.
-         *
-         * Beside the profile because they are the same kind of fact -- the group's
-         * own account of itself, signed by the group -- and read in the same breath
-         * by anybody checking whether the group is reachable. The row counts how
-         * many the group has agreed; the lists are read on `GroupRelaysScreen`.
-         *
-         * Empty only in a room that has none of this to say. Every other case has
-         * four entries, some of them unsigned; see `ChatRepository.groupRelayLists`.
-         */
-        val groupRelayLists: List<GroupRelayList> = emptyList(),
-        /**
-         * What the group has said publicly, as itself, newest first.
-         *
-         * Under the relay lists because it is the thing they are *for*: the profile
-         * says who the group is, the relay lists say where to find it, and these
-         * are what a reader would find there. The row counts them; they are read
-         * on `GroupPostsScreen`. Empty in a group that has said nothing, which is
-         * every group until somebody proposes one.
-         */
-        val groupPosts: List<GroupPost> = emptyList(),
-        /**
-         * The lists this group curates, as the schemas it signed for them, most
-         * recently signed first.
-         *
-         * Under the posts because a schema is the other thing a group publishes
-         * for strangers to answer: a post is the group speaking, a schema is the
-         * group asking -- for entries to a list it will then curate. The row
-         * counts them; they are read on `GroupCuratedSchemasScreen`. Empty in a
-         * group that curates nothing, which is every group until somebody
-         * proposes a schema.
-         */
-        val groupCuratedSchemas: List<GroupCuratedSchema> = emptyList(),
-        /**
-         * The entries this group has accepted into the lists it curates, most
-         * recently signed first.
-         *
-         * Under the schemas because they are what a schema is *for*: the schema
-         * asks, strangers suggest, and these are what the group decided to
-         * stand behind. The row counts them; they are read on
-         * `GroupCuratedEntriesScreen`. Empty in a group that has accepted
-         * nothing, which is every group until a quorum signs an entry.
-         */
-        val groupCuratedEntries: List<GroupCuratedEntry> = emptyList(),
-        /**
-         * Whether this device could sign an event for the group, which on this
-         * screen gates the paste at the end of the identity block. Each of the
-         * five screens the rows open reads the same capability for its own gate.
-         *
-         * The same capability [canAddSubgroup] wants, and wanted for the same
-         * reason: proposing anything in the group's name is a signature by the
-         * group, and `FrostSigningManager.proposeSigningBatch` throws for a
-         * device holding no share of the key. It is not about permission -- any
-         * member with a share may propose -- and the quorum is what decides.
-         *
-         * A NIP-17 room is excluded by the same condition, since it has no key of
-         * its own to sign as and so no nostr identity to describe.
-         */
-        val canEditNostrProfile: Boolean = false,
         /**
          * Whether this device could open a subgroup here at all.
          *
