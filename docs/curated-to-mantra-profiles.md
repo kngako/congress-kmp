@@ -16,6 +16,16 @@ lessons; this document assumes both and adds what changed. The one rule everythi
 still rests on is the derivation note's: two strings in this tree are hash inputs and
 are never renamed, and the normaliser cannot touch them by construction.
 
+**Built 2026-09-13**, the same day, on the branch that carries this plan: the ten
+commits landed by cherry-pick in four phases, each with a `Pulled-From` trailer, at
+the dry run's numbers exactly; the phases below carry a *Built* paragraph each with
+what was measured at the cut. Phase 6's two native items are done — the refusal of a
+Welcome for a group another profile holds (`679d5249`), and the note's four line
+anchors (`2620e43d`) — and its other three are the user's: pushing the removal, the
+two reverse-pulls into the fork, and the fork decision. The reverse direction was
+measured rather than assumed: the refusal commit, rewritten into the fork's names by
+four inverse rules, applies cleanly to `curated/curated` at `29027f2b`.
+
 Written against `mantra` at `776455ec` — `origin/mantra` at `0fa807a6` plus the
 removal commit, which is where this plan starts and which `origin` does not yet carry
 — and `curated/curated` at `29027f2b`. Dry run executed 2026-09-13.
@@ -534,6 +544,38 @@ Five things, none of them a merge.
    name, invert the relationship, or keep pulling — and nothing about this pull changes
    which is best; it only shows that the third is affordable for as long as the fork's
    work stays clear of what Mantra took out.
+
+**Built 2026-09-13**, items 1 and 2; items 3 to 5 are not this repository's to land.
+
+*Item 1*, `679d5249`. The DAO's welcome branch already declined to overwrite an
+existing room — "Chat Room already exists", at warning level — so the joiner's MLS state
+never replaced the holder's; what it could not do was tell a redelivered Welcome for our
+own room from a Welcome for a room another profile holds, and it told nobody about
+either. The branch now reads the room's `userPublicKey`: the same profile's redelivery
+stays a quiet no-op, and another profile's Welcome is refused with a warning naming
+both keys and a membership line written into the room that exists — the holder's,
+since it is the only room on the device the group has and the holder is the one who
+can act. `TYPE_WELCOME_REFUSED_OTHER_PROFILE`, in `MEMBERSHIP_TYPES`, error tint,
+`PersonOff`; the content names inviter, invitee and holder. The key package bundle is
+left unconsumed as the branch always left it. The test is two databases with a real
+MLS group, a key package whose private keys the invitee's side holds — the fixture
+now returns the bundle beside the public package — and a Welcome sealed as the app
+seals one; three cases, refused, redelivered, joined. `jvmTest` 868 → 871.
+
+*Item 2*, `2620e43d`: the four anchors re-pointed at Mantra's lines — `:404`, `:741`,
+`:537`, `:118` — each still landing on the thing its sentence describes.
+
+*Item 4, measured.* `git format-patch -1 679d5249`, four inverse rules over the
+patch text (`press.mantra.` → `to.curare.`, `press/mantra/` → `to/curare/`,
+`mantra.composeapp.generated.resources` → `curare.…`, `MantraDatabase` →
+`CurareDatabase`), and `git apply --check` on a scratch worktree of `curated/curated`
+at `29027f2b`: applies cleanly, 5 files, +360 −6. That is the whole cost of offering
+a Mantra commit to the fork while both trees hold the touched files identically —
+and it is also the shape a `curated-rebrand.py`, the normaliser's inverse, would
+take if the fork wanted to pull regularly rather than by hand.
+
+*Items 3 and 5* are unchanged from the plan: two small commits in the other
+repository, and a decision.
 
 ## Risks, and the silent ones in particular
 

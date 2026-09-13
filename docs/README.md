@@ -46,10 +46,10 @@ alone, except that its first decision leans on the derivation note's one rule. T
 the lines it pulled -- the group's nostr identity and the curated lists -- were taken
 out again the same day, and its record says what went and what stayed. The nsec and
 npub sign-in notes arrived with it and record what they built. The profiles pull note
-is the same exercise a second time, planned with its dry run already done; read it
-after the first, because it assumes the method and the three decisions and only says
-what changed — chiefly that the tree is no longer a superset, and what the check for an
-exact pull becomes when it is not.
+is the same exercise a second time, planned with its dry run already done and built
+the same day; read it after the first, because it assumes the method and the three
+decisions and only says what changed — chiefly that the tree is no longer a superset,
+and what the check for an exact pull becomes when it is not.
 The nsec sign-in note is a phased plan that has been built; it inherits the
 key-storage decision from the jvm-target note and drives the navigation state
 machine `NavigationViewModel.processLocalAccount` implements, so read it with the
