@@ -134,9 +134,12 @@ def main():
         for path, src in AFTER.get(o8, []):
             open(os.path.join(wt, path), 'w').write(git('show', f'{rw(src)}:{path}').stdout); git('add', path)
             notes.append(f'{os.path.basename(path)}: brought to the state the original merge {src} left it in, an edit that merge made outside its conflicts')
-        if o8 == '5efeae76':
+        if o8 in PIN and git('ls-tree', 'HEAD', GITLINK).stdout.split()[2] != PIN[o8]:
+            # a populated submodule lets git resolve the gitlink by fast-forward and keep the newer pin;
+            # the pin has to follow the commit, since each compiles only against the library it named
             git('update-index', '--cacheinfo', f"160000,{PIN[o8]},{GITLINK}")
-            notes.append('gitlink -> 84cc44c: upstream pinned 01962f3, a branch commit since rebased onto the library\'s master as 84cc44c with an identical tree')
+            notes.append('gitlink -> 84cc44c: upstream pinned 01962f3, a branch commit since rebased onto the library\'s master as 84cc44c with an identical tree' if o8 == '5efeae76'
+                         else f'gitlink -> {PIN[o8][:8]}, the pin this commit compiles against (git had fast-forwarded it to the newer one)')
         if notes:
             git('commit', '-q', '--amend', '--no-edit', check=False)
             amend_note('Replayed onto Mantra by docs/curated-to-mantra.md: ' + '; '.join(notes) + '.')
