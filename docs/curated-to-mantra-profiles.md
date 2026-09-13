@@ -332,6 +332,15 @@ Nothing from Curare lands. Two things to settle first:
 
 Exit: `git status` clean in the scratch worktree; `origin/mantra` at `776455ec` or later.
 
+**Done 2026-09-13**, on the branch that carries this plan (`5f2414dc`, itself on
+`776455ec`): the worktree's library was at `01489b8` and its nested chain already at the
+pinned four, so one fetch from the main checkout's submodule and a detached checkout of
+`84cc44c` made the tree clean. The rewrite was rebuilt from `ba26c0b1` in 104 s and
+produced the same forty-nine rewritten commits as the dry run, hash for hash — the
+normaliser and `filter-branch` are deterministic given the same input, which makes the
+dry run's numbers the run's numbers. Item 1 is still the user's: `origin/mantra` was at
+`0fa807a6` when this landed, and the removal goes up with the pull.
+
 ### Phase 1 — the dry run
 
 **Run on 2026-09-13, against `curated/curated` at `29027f2b`, on a scratch worktree of
@@ -382,6 +391,16 @@ next repair would write it back.
 Exit: a device with a seed lists once, from the credential, with the node's key as a
 cross-check; `SeedCredentialsJvmTest` and the rewritten halves of `IdentityWriterJvmTest`
 and `StoredIdentityJvmTest` green; release note drafted.
+
+**Built 2026-09-13**, `44324c90` and `d957ee8d`, both clean picks. Exactness: the
+residual is 136 files before and after (the dry run's 135 plus this document), nothing
+moved. Both compilers clean; `jvmTest` 826 → 837 (the eleven are `SeedCredentialsJvmTest`
+and the rewritten writer and listing tests); `testDebugUnitTest` 413; audit all budgets
+met; nothing under `composeApp/schemas/` changed, as expected of a phase with no
+migration. The release note this phase owes, in one line: *the first launch after this
+build writes a credential for every recovery phrase on the device; going back to an
+older build afterwards lists each such profile twice until the next upgrade, and loses
+nothing.*
 
 ### Phase 3 — the switch, the precedence, the switcher, the entrances
 
