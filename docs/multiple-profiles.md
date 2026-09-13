@@ -106,7 +106,7 @@ Every screen from the home tab inward takes `activeUserPublicKey` as a route
 argument — `HomeRoute`, `SearchRoute`, `ActiveProfileRoute`, `ChatRoomDetailRoute`,
 all of them. The navigation component reads the signed-in key *off the current
 route* rather than holding it
-([MantraNavHost.kt:418](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt)),
+([MantraNavHost.kt:404](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt)),
 precisely so that it cannot drift from the screen underneath. That is the right
 design for one profile and it decides the shape of a switch: a stack of routes
 built for key A cannot be handed key B. The only honest switch is to clear the
@@ -142,7 +142,7 @@ application, and its switching machinery came across intact and unused.
 | `WalletsSelector`: a current section with a divider, the others below, a *read only* label, `topContent` and `bottomContent` slots | [WalletsSelector.kt:59](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/widgets/wallet/WalletsSelector.kt) | built; shows "Default name" and a random emoji for every row |
 | `BusinessManager`: a map of running nodes by wallet id; starting one that runs returns it; `stopBusiness(walletId)` on all three platforms | [BusinessManager.kt:208](../lightning-kmp-app/library/src/androidMain/kotlin/fr/acinq/phoenix/android/BusinessManager.kt) | built; nothing in the app calls `stopBusiness` |
 | `GlobalPrefs.getDefaultWallet`, `saveDefaultWallet`, `clearDefaultWallet` | [GlobalPrefs.kt:102](../lightning-kmp-app/library/src/commonMain/kotlin/fr/acinq/phoenix/utils/preferences/GlobalPrefs.kt) | read by startup; never written by anything |
-| the sign-in and create tails: re-list, select, go to startup | [MantraNavHost.kt:746](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt), [:545](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt) | built; a shape that works from inside the app as well as from Landing |
+| the sign-in and create tails: re-list, select, go to startup | [MantraNavHost.kt:741](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt), [:537](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/navigation/MantraNavHost.kt) | built; a shape that works from inside the app as well as from Landing |
 | *Change account* on the profile tab | [ActiveProfileScreen.kt:309](../composeApp/src/commonMain/kotlin/press/mantra/compose/ui/composable/ActiveProfileScreen.kt) | `ImplementationPendingRoute` |
 | `ForgetIdentity` and `SignOutViewModel` for a read-only identity; *forget this key* for an nsec | `identity/ForgetIdentity.kt`, `NostrSecretScreen` | built; the tail lands on the selector or Landing, which is right for several profiles too |
 | `NpubPreviewRoundTripJvmTest`: a real key store, a real in-memory database, real view models | `jvmTest/.../identity/` | the harness every test below reuses |
@@ -207,7 +207,7 @@ running for a profile that is not active is that finding with the sign flipped.
 **The queues belong to the device, not the identity.** `SynchronizeNostrEventRequest`,
 `NegentropySynchronizeRequest` and `BroadcastNostrEventRequest` have no owner
 column, and the pumps drain whatever is `pending` with the *active* key pair
-([DatabaseNostrRepository.kt:111](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/repository/DatabaseNostrRepository.kt)).
+([DatabaseNostrRepository.kt:118](../composeApp/src/commonMain/kotlin/press/mantra/compose/database/repository/DatabaseNostrRepository.kt)).
 Requests A queued a moment before the switch — its sign-in sync, its room
 reconciliation — are answered while B is active, and everything that comes back
 is indexed as B: a gift wrap addressed to A is stored, found not to be addressed
