@@ -70,6 +70,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendin
 import press.mantra.compose.ui.composable.navigation.routes.ProfilePreviewRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
@@ -123,6 +124,7 @@ import mantra.composeapp.generated.resources.no_projects_exists_in_this_group
 import mantra.composeapp.generated.resources.projects
 import mantra.composeapp.generated.resources.proposals
 import mantra.composeapp.generated.resources.reindex_events
+import mantra.composeapp.generated.resources.key_ceremonies
 import mantra.composeapp.generated.resources.shared_key
 import mantra.composeapp.generated.resources.signing_key
 import mantra.composeapp.generated.resources.the_key_this_room_signs_as
@@ -739,6 +741,39 @@ fun ChatRoomDetailScreen(
 
                                         Text(stringResource(Res.string.shared_key))
                                     }
+                                }
+                            }
+
+                            // Every room, including the Marmot ones the `mlsGroupState`
+                            // check above keeps "Shared key" out of. That button offers
+                            // a room a key of its own, which only a NIP-17 room can
+                            // want; this one lists the ceremonies a room *holds*, and a
+                            // parent's Marmot room holds one per subgroup the group has
+                            // ever made. Until this there was no way to reach the second
+                            // of them except by scrolling the transcript to its request
+                            // line, and no way at all to reach one whose line had never
+                            // arrived.
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            DkgRitualListRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Key,
+                                        contentDescription = "Key ceremonies"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.key_ceremonies))
                                 }
                             }
 
