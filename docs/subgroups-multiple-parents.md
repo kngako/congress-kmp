@@ -1,7 +1,35 @@
 # Adding a parent to a group that already exists
 
-What it would take for a group to gain a second parent after it was founded.
-Research, not a plan: nothing here has been built.
+How a group gains a second parent after it was founded.
+
+**Built**, five phases, one commit each. The phases below are kept as written
+because they are the reasoning, and the code reads better against the argument it
+came from than against a summary of itself. Where the implementation chose
+differently the section says so, and it did so eight times worth reading:
+
+| what the note said | what it turned out to be |
+|---|---|
+| the 30329 arm "gains a second branch" | a pure `SubgroupManager.classify` in front of it. The arm cannot tell its two callers apart and the decision wanted testing without a database, which `certifies` makes possible -- it checks a signature against a room id and needs no lookup |
+| nothing about a group certifying itself | **a real gap, found by a test.** A group can sign, truthfully by all six of `certifies`' questions, that it is its own parent. The self-parent guard began inside the offer branch, where it never ran: the child branch catches such a certificate first and reads it as an ordinary child, which would list a group as its own subgroup. It predates this work -- `subgroupsOf` would have shown it |
+| drop `ChatRoom.parentChatRoomId` | and the `parentChatRoomId` parameter threaded through four files to reach the write that was its only writer. The note counted the column and missed the thread |
+| `stateFrom` returns a state and a lineage | `LocalGroupKeyState`, a Room read model that is also a plain data class -- so the pure verifier builds one with no database near it, and `@Relation` serves the DAO |
+| the certificate's roster is the founding roster, frozen | true, and silent about adoption, where there is no founding. The adopting group's admins are asked about a group that *exists*, so the roster and name are its **current** ones -- still frozen the moment they are signed, still never read as live |
+| the summary says which parents are being dropped | not done, and it cannot be: a summary is pure and a disavowal is a difference against the row this device holds. It belongs to the screen, which has the room, and there is a comment where somebody will look |
+| `EmptyState` takes a supporting line | it does not. The reason folded into the message, which is the whole content of that absence anyway |
+| `inComparableGroups` moved to the key extensions | in the fork's tree, not this one, where it is still private to `ChatRoomDetailScreen`. A second copy to add three spaces to an id is not worth having |
+
+Two things the note got right that are worth keeping if any of this is rewritten.
+Emitting the parentage tags **pairwise** rather than as two runs, which is the one
+decision here made entirely for builds that do not exist yet -- and which has a
+test asserting the tag order, not just the round trip. And `replace` rewriting a
+lineage rather than merging it, which is what makes a disavowal expressible at all
+and is the reason that method is a transaction.
+
+**Not reachable yet:** `proposeDisavowal` is built and tested and has no button.
+Dropping a parent is a destructive-looking act that wants a confirmation step, and
+it belongs in its own change.
+
+Written against the code as it stands at `e15d31b8`.
 
 Read [subgroups.md](./subgroups.md) first. This extends it and contradicts it in
 one place — the assumption, never stated because it never had to be, that a
@@ -757,15 +785,19 @@ description is baked into the epoch-0 group context and adoption happens after i
 
 ## Rough size
 
-| | files | notes |
-|---|---|---|
-| wire | 1 | `GroupKeyStateEvent` — list instead of nullable single, in three functions |
-| lineage type | 2 | `SubgroupParentage` kept as one pair; a `SubgroupLineage` holding the set and its invariants |
-| schema | 5 | `GroupKeyState`, a new entity, `GroupKeyStateDao` (transactional `replace`), `ChatRoomDao`, `MantraDatabase` + migration |
-| managers | 2 | `GroupKeyStateManager` (`parentageOf`, `propose`), `SubgroupManager` (`parentsOf`, the two guard sets, adoption proposals) |
-| repositories | 4 | two interfaces, two implementations, mostly signature plurals |
-| text | 2 | `ProposedEvent`'s 30326 arm — the consent fix — and `ChatMessage`'s 30329 arm, for the offer line |
-| UI | 5 | `ChatRoomDetailUIState`, its view model and screen, a parent picker, strings |
-| tests | 8 | |
+What it estimated, against what it took:
 
-Around two dozen files, and the founding flow is not among them.
+| | estimated | actual |
+|---|---|---|
+| wire | 1 | 2 — `GroupKeyStateEvent` plus the `SubgroupLineage` type beside it |
+| schema | 5 | 7 — two new files (`GroupKeyStateParent`, `LocalGroupKeyState`), the migration, two DAOs, `MantraDatabase`, the builder |
+| managers | 2 | 3 — `MarmotGroupCreation` as well, losing the parameter nothing fed any more |
+| repositories | 4 | 2 — one interface and one implementation; `DkgRepository`'s changes were return types the note did not count |
+| text | 2 | 2 |
+| UI | 5 | 10 — a route, a screen, a view model and a UI state for the picker, plus the detail screen's four and the strings |
+| tests | 8 | 7 files, 53 new cases |
+
+39 files, and the founding flow is not among them: a subgroup is still founded with
+one parent, and the second arrives by adoption.
+
+454 common tests, 962 jvm tests, `m3Audit` meets every budget.
