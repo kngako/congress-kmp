@@ -777,6 +777,54 @@ class SubgroupManagerJvmTest {
         Unit
     }
 
+    @Test
+    fun `a parent this device is in is named by its room`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        childWithKeyState(parents = listOf(parentRoomId))
+
+        val parent = SubgroupManager.parentGroupsOf(db, childRoomId).single()
+
+        assertEquals(parentRoomId, parent.chatRoomId)
+        // The room, and nothing else, is where a parent's name comes from: a
+        // certificate names the child and never the certifier.
+        assertEquals("Ekklesia", parent.room?.chatRoom?.subject)
+    }
+
+    @Test
+    fun `a parent this device is not in is still listed, with nothing to name it`() = runBlocking {
+        // No parent room: the ordinary position of a subgroup member who is not
+        // also in the group above. The lineage is known -- it was checked
+        // against that group's own signature -- so the parent stays in the list
+        // and only its name is missing.
+        childWithKeyState(parents = listOf(parentRoomId))
+
+        val parent = SubgroupManager.parentGroupsOf(db, childRoomId).single()
+
+        assertEquals(parentRoomId, parent.chatRoomId)
+        assertNull(parent.room)
+    }
+
+    @Test
+    fun `two parents keep the lineage's own order, named or not`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        childWithKeyState(parents = listOf(parentRoomId, siblingRoomId))
+
+        val parents = SubgroupManager.parentGroupsOf(db, childRoomId)
+
+        // The same set in the same order -- canonical, which is sorted by id and
+        // so says nothing about which parent came first. Asserted against
+        // `parentsOf` rather than against a written-out order, since the ids are
+        // derived from keys and nobody should have to know how two of them sort.
+        assertEquals(
+            SubgroupManager.parentsOf(db, childRoomId),
+            parents.map { it.chatRoomId }
+        )
+        assertEquals(
+            mapOf(parentRoomId to "Ekklesia", siblingRoomId to null),
+            parents.associate { it.chatRoomId to it.room?.chatRoom?.subject }
+        )
+    }
+
     private suspend fun refuseAdoptionOf(adopting: LocalChatRoom): String? =
         SubgroupManager.refuseAdoption(
             database = db,

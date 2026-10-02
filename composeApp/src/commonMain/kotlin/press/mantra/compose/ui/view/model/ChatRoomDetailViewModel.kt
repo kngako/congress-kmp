@@ -83,7 +83,7 @@ class ChatRoomDetailViewModel(
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                     subgroups = chatRepository.subgroupsOf(chatRoomId),
-                    parentChatRoomIds = chatRepository.parentsOf(chatRoomId),
+                    parents = chatRepository.parentsOf(chatRoomId),
                     canAddSubgroup = localChatRoom.chatRoom.mlsGroupState != null &&
                         chatRepository.canSign(chatRoomId),
                     adoptionOffers = chatRepository.adoptionOffersFor(chatRoomId),
