@@ -10,6 +10,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactIdTag
@@ -139,6 +142,49 @@ class RumorIdAgreementTest {
         )
 
         assertEquals(rumorIdOf(template), entity?.id)
+    }
+
+    @Test
+    fun `a project's row and its rumor agree`() {
+        val template = ProjectEvent.build(
+            name = "Gospel of John into Sesotho",
+            description = "The four chapters.",
+            creatorPublicKey = author,
+            ownerPublicKeys = setOf(other, "c".repeat(64))
+        )
+
+        val entity = MantraProject.fromProjectEventTemplate(
+            projectEventTemplate = template,
+            chatRoomId = chatRoomId,
+            userPublicKey = author
+        )
+
+        assertEquals(rumorIdOf(template), entity?.id)
+    }
+
+    @Test
+    fun `a project membership's row and its rumor agree`() {
+        val source = ProjectArtifactVersionEvent.build(
+            projectId = other,
+            artifactVersionId = "c".repeat(64)
+        )
+        val translation = ProjectTranslationArtifactVersionEvent.build(
+            projectId = other,
+            translationArtifactVersionId = "c".repeat(64)
+        )
+
+        assertEquals(
+            rumorIdOf(source),
+            MantraProjectArtifactVersion
+                .fromProjectArtifactVersionEventTemplate(source, chatRoomId, author)?.id
+        )
+        assertEquals(
+            rumorIdOf(translation),
+            MantraProjectTranslationArtifactVersion
+                .fromProjectTranslationArtifactVersionEventTemplate(
+                    translation, chatRoomId, author
+                )?.id
+        )
     }
 
     @Test

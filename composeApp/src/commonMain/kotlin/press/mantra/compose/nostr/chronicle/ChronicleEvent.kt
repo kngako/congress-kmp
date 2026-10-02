@@ -19,6 +19,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -167,8 +170,8 @@ class ChronicleEvent(
          * ### What is missing from it, and why
          *
          * **Only kinds the group actually signs can be here**, because a chronicle
-         * that cannot be verified is one that has to be believed. Six of the
-         * thirteen nip30303 kinds reach a signing session; the rest travel as
+         * that cannot be verified is one that has to be believed. Eleven of the
+         * sixteen nip30303 kinds reach a signing session; the rest travel as
          * rumors -- empty signature, member author, vouched for by the MLS frame
          * they arrived in and by nothing that survives leaving it.
          *
@@ -179,6 +182,8 @@ class ChronicleEvent(
          *  - The contributor lists (30305, 30307, 30310). `applyInnerEvent` has
          *    no arm that writes a row for any of them, so chronicling them would
          *    cost bytes and restore nothing.
+         *  - `SubmissionEvent` (30312), which is the envelope rather than the
+         *    work: a chronicle carries payloads.
          *
          * Two kinds were on that list and are not any more, because the app
          * stopped leaving them unsigned. `ArtifactVersionEvent` (30301) used to be
@@ -188,6 +193,10 @@ class ChronicleEvent(
          * and is now proposed to the group like everything else. Both are
          * therefore checkable, and a chronicle that left them out would hand a new
          * member the whole structure and none of the prose.
+         *
+         * The three project kinds (30330-30332) were signed from the day they
+         * existed, so they have no such story: they are here because a group's
+         * work includes what the work is for.
          */
         private val APPLY_ORDER: List<Kind> = listOf(
             DialectEvent.KIND,
@@ -198,6 +207,20 @@ class ChronicleEvent(
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
             TranslationChunkEvent.KIND,
+            // Projects are last, and that is the whole of what this list says
+            // about them. A membership is a foreign key into both a project and
+            // a version, so it has to apply after everything it can name -- and
+            // appending gets that right by construction, since everything a
+            // project groups is already above it.
+            //
+            // Chroniclable where the contributor lists are not, for the opposite
+            // of their reason: these have an arm that writes a row, and they are
+            // signed rather than submitted, so a receiver can check them. A late
+            // member handed the whole library and no account of what any of it
+            // is for has been handed the smaller half.
+            ProjectEvent.KIND,
+            ProjectArtifactVersionEvent.KIND,
+            ProjectTranslationArtifactVersionEvent.KIND,
         )
 
         /** Every kind a chronicle may carry. */

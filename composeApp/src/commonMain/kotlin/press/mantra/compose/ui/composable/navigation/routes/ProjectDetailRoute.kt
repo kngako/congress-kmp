@@ -1,0 +1,11 @@
+package press.mantra.compose.ui.composable.navigation.routes
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ProjectDetailRoute(
+    val activeUserPublicKey: String,
+    val projectId: String,
+    val chatRoomId: String,
+    val relayHint: String?
+): Route()

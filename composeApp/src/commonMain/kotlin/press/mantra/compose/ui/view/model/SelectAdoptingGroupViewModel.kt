@@ -14,6 +14,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.ui.view.state.SelectAdoptingGroupUIState
 
@@ -94,7 +95,7 @@ class SelectAdoptingGroupViewModel(
 
             if (refusal != null) {
                 isActionPending.value = false
-                onDone(refusal)
+                finish(refusal, onDone)
                 return@launch
             }
 
@@ -108,12 +109,32 @@ class SelectAdoptingGroupViewModel(
 
             if (!proposed) {
                 logger.e("Failed to ask $adoptingChatRoomId to adopt $chatRoomId")
-                onDone("Couldn't ask that group to adopt this one. Please try again.")
+                finish("Couldn't ask that group to adopt this one. Please try again.", onDone)
                 return@launch
             }
 
-            onDone(null)
+            // Reload before handing back, so the row that was just asked leaves
+            // the list: a certificate now stands for the pair and
+            // `refuseAdoption` says so. That is the confirmation, and it is a
+            // better one than a message -- the list is the state.
+            initiate()
+            finish(null, onDone)
         }
+    }
+
+    /**
+     * Hands [message] back **on the main thread**.
+     *
+     * The work runs on `Dispatchers.IO` and a caller's callback routinely touches
+     * things that may not be touched from there -- the first version of this
+     * screen called `popBackStack()` straight out of the IO coroutine and crashed
+     * on `Method setCurrentState must be called on the main thread`. The
+     * dispatcher is this function's business rather than every caller's, which is
+     * the shape `AddArtifactViewModel` and `SelectSubgroupAdminsViewModel` already
+     * use for the same handoff.
+     */
+    private suspend fun finish(message: String?, onDone: (String?) -> Unit) {
+        withContext(Dispatchers.Main) { onDone(message) }
     }
 
     companion object {

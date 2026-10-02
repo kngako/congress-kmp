@@ -20,6 +20,11 @@
       an em dash or a comma. The compose resources plugin reports that only as
       "XML file ... is not valid. Check the file content."
     -->
+    <string name="add_an_owner">Add an owner</string>
+    <string name="add_project">Add project</string>
+    <string name="add_source_version_to_project">Add source version</string>
+    <string name="add_translation_to_project">Add translation</string>
+    <string name="an_owner_is_a_64_character_public_key">An owner is a 64-character public key.</string>
     <string name="app_name">Mantra</string>
     <string name="add_a_dialect_the_group_can_translate_into">Add a dialect the group can translate into</string>
     <string name="add_artifact_to_library">Add artifact to library</string>
@@ -58,6 +63,23 @@
     <string name="create_project">Create project</string>
     <string name="create_the_admin_room">Create the admin room</string>
     <string name="agree_the_groups_signing_key">Agree the group's signing key</string>
+    <string name="created_by">Created by</string>
+    <string name="describe_the_project">What this project is</string>
+    <string name="eg_the_four_gospels_into_sesotho">e.g. The four gospels into Sesotho</string>
+    <string name="every_translation_is_already_in_this_project">Every translation in this group is already in this project.</string>
+    <string name="everything_in_the_library_is_already_in_this_project">Everything in this group's library is already in this project.</string>
+    <string name="name_of_project">Name of project</string>
+    <string name="no_source_versions_in_this_project">No source versions in this project yet.</string>
+    <string name="no_translations_in_this_project">No translations in this project yet.</string>
+    <string name="owned_by_this_group">This group</string>
+    <string name="owner_public_key">Owner public key</string>
+    <string name="owners">Owners</string>
+    <string name="project_detail">Project detail</string>
+    <string name="propose_adding_to_the_project">Propose adding</string>
+    <string name="propose_project">Propose project</string>
+    <string name="remove_owner">Remove owner</string>
+    <string name="source_versions">Source versions</string>
+    <string name="start_a_project_in_this_group">Ask the group to sign a project into being</string>
     <string name="the_group_is_agreeing_what_the_admin_room">The group is agreeing what the admin room will sign with. It takes %1$s of %2$s members, and the request is in this chat.</string>
     <string name="the_group_has_agreed_what_the_admin_room">The group has agreed what the admin room will sign with.</string>
     <string name="the_group_could_not_agree_what_the_admin">The group could not agree what the admin room will sign with. Ask again — a fresh request is the only safe way to retry.</string>
@@ -212,6 +234,7 @@
     <string name="shared_key">Shared key</string>
     <string name="signing_key">Signing key</string>
     <string name="the_key_this_room_signs_as">The key this room signs as, and the ceremony it came from.</string>
+    <string name="this_group_has_no_library_to_build_a_project_from">This group has no library yet, so a project would have nothing in it. Add an artifact first.</string>
     <string name="what_the_group_signed">What the group signed</string>
     <string name="this_room_signs_as">This room signs as</string>
     <string name="derivation_path">Derivation path</string>
