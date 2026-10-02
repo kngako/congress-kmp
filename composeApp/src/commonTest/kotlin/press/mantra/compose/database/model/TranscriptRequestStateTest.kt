@@ -38,7 +38,7 @@ class TranscriptRequestStateTest {
     ) = ChatMessage(
         id = ++lastId,
         senderPublicKey = sender,
-        isUserMessage = sender == user,
+        senderIdentity = sender,
         giftWrapPayloadId = null,
         marmotGroupEventId = null,
         marmotInnerEventId = null,
@@ -54,7 +54,7 @@ class TranscriptRequestStateTest {
         val request = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10)
         val transcript = listOf(line(ChatMessage.TYPE_FROST_STARTED, at = 9, sender = other), request)
 
-        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript, user))
         assertEquals(emptySet(), ChatMessage.settledRequests(transcript))
     }
 
@@ -63,7 +63,7 @@ class TranscriptRequestStateTest {
         val request = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10)
         val transcript = listOf(request, line(ChatMessage.TYPE_FROST_NONCE, at = 11))
 
-        assertEquals(setOf(request.id), ChatMessage.answeredRequests(transcript))
+        assertEquals(setOf(request.id), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -73,7 +73,7 @@ class TranscriptRequestStateTest {
         val request = line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 10)
         val transcript = listOf(request, line(ChatMessage.TYPE_FROST_NONCE, at = 11, sender = other))
 
-        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -85,7 +85,7 @@ class TranscriptRequestStateTest {
         val transcript = listOf(request, line(ChatMessage.TYPE_FROST_FAILED, at = 11))
 
         assertEquals(setOf(request.id), ChatMessage.settledRequests(transcript))
-        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -97,7 +97,7 @@ class TranscriptRequestStateTest {
         val transcript = listOf(request, line(ChatMessage.TYPE_FROST_COMPLETE, at = 12, sender = other))
 
         assertEquals(setOf(request.id), ChatMessage.settledRequests(transcript))
-        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -124,7 +124,7 @@ class TranscriptRequestStateTest {
             line(ChatMessage.TYPE_FROST_NONCE, at = 12, session = "chapter")
         )
 
-        assertEquals(setOf(chapter.id), ChatMessage.answeredRequests(transcript))
+        assertEquals(setOf(chapter.id), ChatMessage.answeredRequests(transcript, user))
         assertEquals(emptySet(), ChatMessage.settledRequests(transcript))
     }
 
@@ -143,7 +143,7 @@ class TranscriptRequestStateTest {
         )
 
         assertEquals(setOf(chapter.id), ChatMessage.settledRequests(transcript))
-        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript))
+        assertEquals(emptySet(), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -155,7 +155,7 @@ class TranscriptRequestStateTest {
 
         val transcript = listOf(request, line(ChatMessage.TYPE_FROST_NONCE, at = 11))
 
-        assertEquals(setOf(request.id), ChatMessage.answeredRequests(transcript))
+        assertEquals(setOf(request.id), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -180,7 +180,7 @@ class TranscriptRequestStateTest {
         val roundOne = line(ChatMessage.TYPE_DKG_APPROVAL_NEEDED_ROUND_1, at = 12)
         val transcript = listOf(hostKey, line(ChatMessage.TYPE_DKG_HOST_KEY, at = 11), roundOne)
 
-        assertEquals(setOf(hostKey.id), ChatMessage.answeredRequests(transcript))
+        assertEquals(setOf(hostKey.id), ChatMessage.answeredRequests(transcript, user))
     }
 
     @Test
@@ -200,7 +200,7 @@ class TranscriptRequestStateTest {
             line(ChatMessage.TYPE_FROST_NONCE, at = 200L + n, session = "session-" + n)
         }
 
-        val answered = ChatMessage.answeredRequests(requests + answers)
+        val answered = ChatMessage.answeredRequests(requests + answers, user)
 
         assertEquals(
             setOf(requests[11].id, requests[6].id, requests[0].id),

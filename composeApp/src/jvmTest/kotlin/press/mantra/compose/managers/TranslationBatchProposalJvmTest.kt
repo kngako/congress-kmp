@@ -366,7 +366,7 @@ class TranslationBatchProposalJvmTest {
         // line of one was read as evidence about the other -- and the reader's
         // second proposal lost its "Review" the moment the first was answered.
         assertTrue(
-            ChatMessage.answeredRequests(lines).isEmpty(),
+            ChatMessage.answeredRequests(lines, proposer).isEmpty(),
             "a proposer is never asked to approve their own proposal"
         )
     }

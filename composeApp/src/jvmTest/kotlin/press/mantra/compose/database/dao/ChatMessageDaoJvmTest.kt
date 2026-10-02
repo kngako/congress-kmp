@@ -106,7 +106,7 @@ class ChatMessageDaoJvmTest {
             content = content,
             chatRoomId = chatRoomId,
             senderPublicKey = sender,
-            isUserMessage = sender == user,
+            senderIdentity = sender,
             giftWrapPayloadId = null,
             marmotGroupEventId = groupEventId,
             marmotInnerEventId = null,

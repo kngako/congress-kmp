@@ -205,7 +205,7 @@ abstract class MantraDao(
                 content = text,
                 chatRoomId = chatRoomId,
                 senderPublicKey = userPublicKey,
-                isUserMessage = true,
+                senderIdentity = userPublicKey,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = marmotInnerEvent.id,

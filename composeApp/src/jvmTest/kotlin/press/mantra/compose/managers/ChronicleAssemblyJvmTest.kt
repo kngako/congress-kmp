@@ -158,7 +158,7 @@ class ChronicleAssemblyJvmTest {
             marmotGroupEventId = null,
             marmotInnerEventId = null,
             senderPublicKey = chatRoomId,
-            isUserMessage = false,
+            senderIdentity = null,
             createdAt = Instant.fromEpochSeconds(event.createdAt)
         )
 

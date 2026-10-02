@@ -83,7 +83,7 @@ class ChatRoomDaoJvmTest {
             content = content,
             chatRoomId = chatRoomId,
             senderPublicKey = user,
-            isUserMessage = true,
+            senderIdentity = user,
             giftWrapPayloadId = null,
             marmotGroupEventId = null,
             marmotInnerEventId = null,

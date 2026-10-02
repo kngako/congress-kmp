@@ -190,7 +190,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 24,
+    version = 25,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -388,6 +388,13 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // Manual for two reasons: it copies before it drops, and the table it rebuilds is
         // the parent of all twenty-two of those cascades. See MIGRATION_23_24, which
         // documents the one thing it depends on and the test that proves it.
+        //
+        // v25 replaces ChatMessage.isUserMessage with senderIdentity. A boolean was the
+        // answer for one viewer stored on a row that belongs to the group: a transcript
+        // line is deduped by the group event behind it, so with two profiles in one group
+        // whichever indexed last decided whose message it looked like. The identity is the
+        // fact; whether it is yours is a question a reader asks. Manual because it copies
+        // from ChatRoomMembership before dropping the column. See MIGRATION_24_25.
         //
         // Both of these were written as 21->22 and 22->23 while the projects line above
         // took 22 on `mantra`. Renumbered here rather than there, by the rule that a

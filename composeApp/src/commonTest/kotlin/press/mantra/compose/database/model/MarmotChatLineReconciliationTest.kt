@@ -35,7 +35,7 @@ class MarmotChatLineReconciliationTest {
     ) = ChatMessage(
         id = id,
         senderPublicKey = sender,
-        isUserMessage = false,
+        senderIdentity = null,
         giftWrapPayloadId = null,
         marmotGroupEventId = groupEventId,
         marmotInnerEventId = null,

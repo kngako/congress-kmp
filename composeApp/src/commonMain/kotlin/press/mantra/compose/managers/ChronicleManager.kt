@@ -284,7 +284,7 @@ object ChronicleManager {
                 messageType = messageType,
                 chatRoomId = chatRoomId,
                 senderPublicKey = userPublicKey,
-                isUserMessage = true,
+                senderIdentity = userPublicKey,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,
@@ -589,7 +589,7 @@ object ChronicleManager {
                     marmotGroupEventId = stored.marmotGroupEventId,
                     marmotInnerEventId = stored.id,
                     senderPublicKey = payload.pubKey,
-                    isUserMessage = false,
+                    senderIdentity = null,
                     createdAt = stored.createdAt,
                     groupSignedEventId = payload.id,
                 )

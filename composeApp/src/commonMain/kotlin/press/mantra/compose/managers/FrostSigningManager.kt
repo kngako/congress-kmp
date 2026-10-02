@@ -1066,7 +1066,7 @@ object FrostSigningManager {
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,
                 senderPublicKey = session.coordinatorPublicKey,
-                isUserMessage = session.isCoordinator(),
+                senderIdentity = session.coordinatorPublicKey,
                 createdAt = Clock.System.now(),
                 groupSignedEventId = signedEvent.id.takeIf { recorded }
             )?.let { database.chatMessageDao().upsert(it) }
@@ -1889,7 +1889,7 @@ object FrostSigningManager {
         database.chatMessageDao().upsert(
             ChatMessage(
                 senderPublicKey = actor,
-                isUserMessage = actor == session.userPublicKey,
+                senderIdentity = actor,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,

@@ -309,7 +309,7 @@ class NostrDaoJvmTest {
                 content = "a sent message",
                 chatRoomId = roomId,
                 senderPublicKey = author,
-                isUserMessage = true,
+                senderIdentity = author,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = marmotGroupEventId,
                 marmotInnerEventId = null,

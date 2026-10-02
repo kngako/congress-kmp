@@ -28,27 +28,36 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
- * Two of a device's own profiles in one group, which docs/multiple-profiles.md made
- * possible and docs/curated-to-mantra-profiles.md's fourth decision refuses.
+ * Two profiles on one device, both members of one group.
  *
- * `ChatRoom` is keyed by the group id alone. Before several profiles on a device the
- * second local member could not exist; after it, a user can invite their own second
- * profile into their own collective, and a Welcome processed for it would file the
- * joiner's MLS state over the holder's. The DAO already declined to overwrite -- "Chat
- * Room already exists", at warning level, and nothing else -- so the invitee never
- * joined and nobody was told. This pins the refusal and the line that now reports it.
+ * This file used to assert the opposite. `679d5249` refused a Welcome for a group another
+ * profile here already held, because `ChatRoom` was keyed by the group id alone and the
+ * joiner's MLS state would have gone over the holder's -- breaking both members, in the
+ * shape of "the other device never got it". docs/curated-to-mantra-profiles.md called that
+ * the cheap fix and keying the room per profile the real one.
  *
- * The setup is real: an MLS group on the inviter's database, a key package whose
- * private keys the invitee's database holds, and a Welcome sealed the way
+ * The real one landed: v24 moved the MLS state onto `ChatRoomMembership`, and v25 took the
+ * last per-viewer field off a group-wide transcript row. So the refusal is gone, and what
+ * is pinned here is that a second profile joins properly -- its own membership, its own
+ * ratchet state, the holder's untouched beside it.
+ *
+ * Removing the refusal was not enough on its own, which is the thing this test is really
+ * for. The branch keyed on the *room*, so a Welcome that found one fell through and did
+ * nothing: the accidental refusal that commit was written to make legible in the first
+ * place. It asks about the membership now.
+ *
+ * The setup is real: an MLS group on the inviter's database, a key package whose private
+ * keys the invitee's database holds, and a Welcome sealed the way
  * `DatabaseChatRepository.sealGiftWrapPayload` seals one, delivered through
  * `storeNostrEvent` under the invitee's key.
  */
-class WelcomeForOtherProfileJvmTest {
+class SecondProfileJoinsGroupJvmTest {
 
     /** The inviter's device. */
     private val inviterDb: MantraDatabase = getRoomDatabase(Room.inMemoryDatabaseBuilder<MantraDatabase>())
@@ -205,41 +214,64 @@ class WelcomeForOtherProfileJvmTest {
     )
 
     @Test
-    fun `a welcome for a group another profile on the device holds is refused and said so`() = runBlocking {
-        val before = seedDeviceRoom(holder)
+    fun `a second profile on the device joins a group the first already holds`() = runBlocking {
+        val holders = seedDeviceRoom(holder)
         deviceDb.seedProfile(invitee.pubKey.toHexKey(), "second self", "4".repeat(64))
         // The holder is in the group with the inviter, so this device knows them by name.
         deviceDb.seedProfile(inviter.pubKey.toHexKey(), "inviter", "5".repeat(64))
 
         deliverToInvitee(welcomeWrapForInvitee())
 
-        // The holder's membership is untouched, and the invitee got none: the refusal
-        // leaves the device holding the group exactly as one profile's.
-        val memberships = deviceDb.chatRoomDao().membershipsOf(roomId)
-        assertEquals(
-            listOf(before.userPublicKey),
-            memberships.map { it.userPublicKey },
-            "the room changed hands",
-        )
-        assertEquals(
-            before.mlsGroupState,
-            memberships.single().mlsGroupState,
-            "the holder's MLS state was overwritten",
+        val room = assertNotNull(
+            deviceDb.chatRoomDao().findChatRoomById(roomId),
+            "the group is still here",
         )
 
-        val line = deviceDb.chatMessageDao().getChatMessagesByChatRoomId(roomId).map { it.chatMessage }
-            .singleOrNull { it.messageType == ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE }
-        assertNotNull(line, "the refusal left no line in the room")
-        assertTrue(line.content.contains("second self"), "the line does not name the invitee: ${line.content}")
-        assertTrue(line.content.contains("holder"), "the line does not name who holds the group: ${line.content}")
-        assertTrue(line.content.contains("inviter"), "the line does not name the inviter: ${line.content}")
-        assertTrue(line.messageType in ChatMessage.MEMBERSHIP_TYPES, "the line would render as a bubble")
+        // Two memberships of one room, which is the shape the whole line of work was for.
+        val memberships = deviceDb.chatRoomDao().membershipsOf(roomId).associateBy { it.userPublicKey }
+        assertEquals(
+            setOf(holder.pubKey.toHexKey(), invitee.pubKey.toHexKey()),
+            memberships.keys,
+            "the second profile did not join",
+        )
 
-        val bundle = assertNotNull(deviceDb.marmotKeyPackageBundleDao().getMarmotKeyPackageBundleById(keyPackageEventId))
-        assertFalse(bundle.consumed, "a refused welcome must not consume the key package")
+        val joined = assertNotNull(memberships[invitee.pubKey.toHexKey()])
+        assertNotNull(joined.mlsGroupState, "the joiner's own MLS state was not filed")
+        assertNotNull(joined.joinedGroupAt, "and nor was when their epoch began")
+
+        // The point of v24: the holder's ratchet state is exactly where it was.
+        assertEquals(
+            holders.mlsGroupState,
+            memberships.getValue(holder.pubKey.toHexKey()).mlsGroupState,
+            "the holder's MLS state was overwritten by the joiner's",
+        )
+        assertNotEquals(
+            holders.mlsGroupState,
+            joined.mlsGroupState,
+            "two members of a tree do not hold the same state",
+        )
+
+        // And the room reads back with both, which is what every per-profile accessor
+        // on LocalChatRoom resolves against.
+        assertNotNull(room.membershipOf(holder.pubKey.toHexKey()))
+        assertNotNull(room.membershipOf(invitee.pubKey.toHexKey()))
+
+        // No refusal line, and the key package is spent like any other join's.
+        assertEquals(
+            emptyList(),
+            deviceDb.chatMessageDao().getChatMessagesByChatRoomId(roomId).map { it.chatMessage }
+                .filter { it.messageType == ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE },
+            "a join must not leave a refusal behind",
+        )
+        assertTrue(
+            assertNotNull(
+                deviceDb.marmotKeyPackageBundleDao().getMarmotKeyPackageBundleById(keyPackageEventId)
+            ).consumed,
+            "a join consumes the key package",
+        )
     }
 
-    /** The branch the refusal was carved out of: the same profile, welcomed twice, is still a quiet no-op. */
+    /** The one case left in that branch: the same profile, welcomed twice, is a no-op. */
     @Test
     fun `a welcome for a group the same profile already holds writes nothing`() = runBlocking {
         seedDeviceRoom(invitee)
@@ -249,7 +281,7 @@ class WelcomeForOtherProfileJvmTest {
         assertEquals(
             emptyList(),
             deviceDb.chatMessageDao().getChatMessagesByChatRoomId(roomId).map { it.chatMessage.messageType },
-            "a redelivered welcome for our own room is not a refusal",
+            "a redelivered welcome for a group we are already in writes nothing",
         )
     }
 

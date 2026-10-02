@@ -1,6 +1,7 @@
 package press.mantra.compose.ui.composable.widgets.chat
 
 import androidx.compose.foundation.clickable
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -163,7 +164,7 @@ fun ChatTranscript(
                             .chatMessageList
                             .map { it.chatMessage }
 
-                        val answeredRequests = ChatMessage.answeredRequests(messages)
+                        val answeredRequests = ChatMessage.answeredRequests(messages, viewModel.activeUserPublicKey)
                         val settledRequests = ChatMessage.settledRequests(messages)
 
                         // Read out here rather than inside the list, so the
@@ -259,6 +260,7 @@ fun ChatTranscript(
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.DKG_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
+                                        activeUserPublicKey = viewModel.activeUserPublicKey,
                                         isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                         isSettled = localChatMessage.chatMessage.id in settledRequests,
                                         // The line knows which ceremony it is
@@ -295,6 +297,7 @@ fun ChatTranscript(
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.CHRONICLE_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
+                                        activeUserPublicKey = viewModel.activeUserPublicKey,
                                         isAnswered = true,
                                         isSettled = true,
                                         onClick = {}
@@ -313,6 +316,7 @@ fun ChatTranscript(
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.MEMBERSHIP_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
+                                        activeUserPublicKey = viewModel.activeUserPublicKey,
                                         isAnswered = true,
                                         isSettled = true,
                                         onClick = {}
@@ -334,6 +338,7 @@ fun ChatTranscript(
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.SUBGROUP_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
+                                        activeUserPublicKey = viewModel.activeUserPublicKey,
                                         isAnswered = true,
                                         isSettled = true,
                                         onClick = {}
@@ -349,6 +354,7 @@ fun ChatTranscript(
                                 if (localChatMessage.chatMessage.messageType in ChatMessage.FROST_TYPES) {
                                     RitualNotice(
                                         localChatMessage = localChatMessage,
+                                        activeUserPublicKey = viewModel.activeUserPublicKey,
                                         isAnswered = localChatMessage.chatMessage.id in answeredRequests,
                                         isSettled = localChatMessage.chatMessage.id in settledRequests,
                                         onClick = {
@@ -367,7 +373,7 @@ fun ChatTranscript(
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = if (localChatMessage.chatMessage.isUserMessage) {
+                                        horizontalArrangement = if (localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey)) {
                                             Arrangement.End
                                         } else {
                                             Arrangement.Start
@@ -378,7 +384,7 @@ fun ChatTranscript(
                                         // message to be private from.
                                         val canReplyPrivately =
                                             viewModel.localChatRoom.mlsGroupStateOf(viewModel.activeUserPublicKey) != null &&
-                                                !localChatMessage.chatMessage.isUserMessage &&
+                                                !localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey) &&
                                                 viewModel.participantFor(localChatMessage.chatMessage.senderPublicKey) != null
 
                                         Card(
@@ -393,14 +399,14 @@ fun ChatTranscript(
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(MaterialTheme.spacing.space125),
-                                                horizontalAlignment = if (localChatMessage.chatMessage.isUserMessage) {
+                                                horizontalAlignment = if (localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey)) {
                                                     Alignment.End
                                                 } else {
                                                     Alignment.Start
                                                 },
                                                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space75)
                                             ) {
-                                                if (localChatMessage.chatMessage.isUserMessage.not()) {
+                                                if (!localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey)) {
                                                     Text(
                                                         text = localChatMessage.profile?.humanReadableNameOrPubkey() ?: localChatMessage.chatMessage.senderPublicKey,
                                                         maxLines = 1,
@@ -427,7 +433,7 @@ fun ChatTranscript(
                                                             tint = MaterialTheme.colorScheme.primary
                                                         )
                                                         Text(
-                                                            text = if (localChatMessage.chatMessage.isUserMessage) {
+                                                            text = if (localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey)) {
                                                                 stringResource(Res.string.private_to, viewModel.nameFor(localChatMessage.chatMessage.directMessageRecipientPublicKey))
                                                             } else {
                                                                 stringResource(Res.string.private_to_you)
@@ -458,7 +464,7 @@ fun ChatTranscript(
                                                         text = localChatMessage.chatMessage.createdAt.toFormattedTimeAndDateString(),
                                                         style = MaterialTheme.typography.labelSmall
                                                     )
-                                                    if (localChatMessage.chatMessage.isUserMessage) {
+                                                    if (localChatMessage.chatMessage.isFrom(viewModel.activeUserPublicKey)) {
                                                         if (localChatMessage.chatMessageBroadcastNostrEventReceiptRelation != null) {
                                                             Icon(
                                                                 Icons.Default.Check,
@@ -775,6 +781,8 @@ private fun PrivateMessageNotice(
 @Composable
 private fun RitualNotice(
     localChatMessage: LocalChatMessage,
+    /** Whose transcript this is, for the one line that says "you". */
+    activeUserPublicKey: HexKey,
     isAnswered: Boolean,
     isSettled: Boolean,
     onClick: () -> Unit,
@@ -885,7 +893,7 @@ private fun RitualNotice(
                             SpanStyle(color = ProfileColor.fromPublicKey(chatMessage.senderPublicKey))
                         ) {
                             append(
-                                if (chatMessage.isUserMessage) {
+                                if (chatMessage.isFrom(activeUserPublicKey)) {
                                     stringResource(Res.string.you)
                                 } else {
                                     localChatMessage.profile?.humanReadableNameOrPubkey()

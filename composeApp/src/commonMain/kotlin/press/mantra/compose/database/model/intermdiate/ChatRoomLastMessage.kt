@@ -17,7 +17,7 @@ import kotlin.time.Instant
  */
 data class ChatRoomLastMessage(
     val senderPublicKey: HexKey,
-    val isUserMessage: Boolean,
+    val senderIdentity: HexKey?,
     val content: String,
     val messageType: String,
     val directMessageRecipientPublicKey: HexKey?,

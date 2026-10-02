@@ -495,7 +495,7 @@ class DatabaseChatRepository(
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
                     senderPublicKey = actingPublicKey,
-                    isUserMessage = true,
+                    senderIdentity = actingPublicKey,
                     giftWrapPayloadId = null,
                     marmotGroupEventId = null,
                     marmotInnerEventId = marmotInnerEventId,
@@ -547,7 +547,7 @@ class DatabaseChatRepository(
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
                     senderPublicKey = actingPublicKey,
-                    isUserMessage = true,
+                    senderIdentity = actingPublicKey,
                     giftWrapPayloadId = giftWrapPayloadId,
                     marmotGroupEventId = null,
                     marmotInnerEventId = null

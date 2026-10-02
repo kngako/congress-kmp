@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 24,
-    "identityHash": "1e328aab136444e802ffa7443e06ebe6",
+    "identityHash": "c99c92c14e98a35c2d2a13118bc1f727",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -282,7 +282,7 @@
       },
       {
         "tableName": "ChatMessage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `giftWrapPayloadId` TEXT, `marmotGroupEventId` TEXT, `marmotInnerEventId` TEXT, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `messageType` TEXT NOT NULL, `directMessageRecipientPublicKey` TEXT, `frostSigningSessionId` TEXT, `dkgSessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotGroupEventId`) REFERENCES `MarmotGroupEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotInnerEventId`) REFERENCES `MarmotInnerEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `senderIdentity` TEXT, `giftWrapPayloadId` TEXT, `marmotGroupEventId` TEXT, `marmotInnerEventId` TEXT, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `messageType` TEXT NOT NULL, `directMessageRecipientPublicKey` TEXT, `frostSigningSessionId` TEXT, `dkgSessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotGroupEventId`) REFERENCES `MarmotGroupEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotInnerEventId`) REFERENCES `MarmotInnerEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -297,10 +297,9 @@
             "notNull": true
           },
           {
-            "fieldPath": "isUserMessage",
-            "columnName": "isUserMessage",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "senderIdentity",
+            "columnName": "senderIdentity",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "giftWrapPayloadId",
@@ -6215,7 +6214,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1e328aab136444e802ffa7443e06ebe6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c99c92c14e98a35c2d2a13118bc1f727')"
     ]
   }
 }

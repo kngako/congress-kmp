@@ -61,7 +61,7 @@ class ChatRoomLastMessagePreviewTest {
         directMessageRecipientPublicKey: String? = null,
     ) = ChatRoomLastMessage(
         senderPublicKey = sender,
-        isUserMessage = sender == user,
+        senderIdentity = sender,
         content = content,
         messageType = messageType,
         directMessageRecipientPublicKey = directMessageRecipientPublicKey,

@@ -174,7 +174,7 @@ data class LocalChatRoom(
         } > 1
 
         return when {
-            lastChatMessage.isUserMessage -> "You: ${lastChatMessage.content}"
+            lastChatMessage.senderIdentity == userPublicKey -> "You: ${lastChatMessage.content}"
             isGroup -> "${nameFor(lastChatMessage.senderPublicKey, userPublicKey)}: ${lastChatMessage.content}"
             else -> lastChatMessage.content
         }

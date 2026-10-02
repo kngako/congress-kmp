@@ -29,7 +29,7 @@ class MarmotDeliveryTest {
     private val chatLine = ChatMessage(
         id = 42L,
         senderPublicKey = "b".repeat(64),
-        isUserMessage = true,
+        senderIdentity = "b".repeat(64),
         giftWrapPayloadId = null,
         marmotGroupEventId = null,
         marmotInnerEventId = "c".repeat(64),

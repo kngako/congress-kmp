@@ -87,7 +87,26 @@ data class ChatMessage(
     val id: Long = 0,
 
     val senderPublicKey: String,
-    val isUserMessage: Boolean,
+
+    /**
+     * The authenticated identity of whoever sent this, where the transport can say.
+     *
+     * Not [senderPublicKey], which for a Marmot line is the kind:445's signer -- a fresh
+     * ephemeral key on every send -- and for an unopenable wrap is a throwaway. This is
+     * the MLS credential identity of the leaf that sent it, resolved by the caller that
+     * holds the group, and it is the only thing [isFrom] can honestly be asked about.
+     *
+     * Null where the transport names nobody: a commit or proposal status line, a wrap this
+     * device cannot open. [isFrom] is false for those, which is what they rendered as
+     * before.
+     *
+     * Replaced a stored `isUserMessage` boolean at v25. A boolean was the answer for *one*
+     * viewer, written by whichever profile indexed the event -- and with two profiles in
+     * one group, `reconcileMarmotLine` let the later one overwrite the earlier, so a
+     * member's own messages intermittently drew as somebody else's. The identity is a fact
+     * about the message; whether it is yours is a question only a reader can ask.
+     */
+    val senderIdentity: HexKey? = null,
 
     val giftWrapPayloadId: HexKey?,
     val marmotGroupEventId: HexKey?,
@@ -150,6 +169,15 @@ data class ChatMessage(
     override val viewedAt: Instant? = null,
     override val deletedAt: Instant? = null, // Who this message should be seen by (used to derive conversationId)
 ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity {
+
+    /**
+     * Whether [userPublicKey] sent this.
+     *
+     * Asked rather than stored, because the answer depends on who is looking -- see
+     * [senderIdentity]. False for a line whose sender the transport does not name.
+     */
+    fun isFrom(userPublicKey: HexKey): Boolean =
+        senderIdentity != null && senderIdentity == userPublicKey
 
     companion object {
         private val logger = Logger.withTag("ChatMessage")
@@ -463,15 +491,22 @@ data class ChatMessage(
 
         /**
          * A Welcome that arrived for another profile on this device, for a group this
-         * device already holds, and was refused.
+         * device already held, and was refused.
          *
-         * Written by the invitee's side, into the room the other profile holds, since
-         * that is the only room on the device the group has. ChatRoom is keyed by the
-         * group id alone and everything that hangs off it -- MLS state, ceremonies,
-         * shares -- by the room, so a second local member would overwrite the first.
-         * The inviter's device sees nothing of this and believes the invite landed,
-         * which is why the line names both profiles: the one who was invited and the
-         * one who holds the group. See docs/curated-to-mantra-profiles.md.
+         * **No longer written, and deliberately still rendered.** `679d5249` refused such a
+         * Welcome because `ChatRoom` was keyed by the group id alone and everything hanging
+         * off it -- MLS state, ceremonies, shares -- by the room, so a second local member
+         * would have overwritten the first. The line went into the room the other profile
+         * held, since that was the only room on the device the group had, and it named both
+         * profiles because the inviter's device saw nothing of it and believed the invite
+         * had landed. See docs/curated-to-mantra-profiles.md, which called that the cheap
+         * fix.
+         *
+         * v24 gave each membership its own MLS state and v25 took the last per-viewer field
+         * off a group-wide row, so the refusal is gone and a second profile joins like
+         * anybody else. Every device that ran the older build may still hold lines of this
+         * type, though, and a transcript that cannot draw a line it is holding is worse
+         * than one drawing an obsolete notice -- so the arms in `ChatTranscript` stay.
          */
         const val TYPE_WELCOME_REFUSED_OTHER_PROFILE = "welcomeRefusedOtherProfile"
 
@@ -547,19 +582,26 @@ data class ChatMessage(
          * The request lines this device has since answered, by row id.
          *
          * A request is answered when the step it asked for has been published by
-         * this device -- which is exactly what approving it does. The transcript
+         * [userPublicKey] -- which is exactly what approving it does. The transcript
          * already records that as an authored line, so the answer is read from
          * the list rather than from the session, and it stays right for a room
          * that has run more than one ceremony.
+         *
+         * Whose, since v25. "Published by this device" was a stored boolean; with two
+         * profiles in one group it is the asking profile that has or has not answered, and
+         * the other's approval is not theirs to be credited with.
          */
-        fun answeredRequests(messages: List<ChatMessage>): Set<Long> = messages
+        fun answeredRequests(
+            messages: List<ChatMessage>,
+            userPublicKey: HexKey,
+        ): Set<Long> = messages
             .mapNotNull { request ->
                 val published = (DKG_REQUEST_FULFILMENTS + FROST_REQUEST_FULFILMENTS)[request.messageType]
                     ?: return@mapNotNull null
 
                 val done = messages.any {
                     it.messageType == published &&
-                        it.isUserMessage &&
+                        it.isFrom(userPublicKey) &&
                         it.isAbout(request)
                 }
 
@@ -667,7 +709,7 @@ data class ChatMessage(
                         marmotInnerEventId = wrap.id,
                         senderPublicKey = senderIdentity ?: wrap.pubKey,
                         directMessageRecipientPublicKey = recipientPublicKey,
-                        isUserMessage = false,
+                        senderIdentity = null,
                         chatRoomId = chatRoomId,
                         createdAt = Instant.fromEpochSeconds(wrap.createdAt),
                         content = ""
@@ -704,7 +746,7 @@ data class ChatMessage(
                         marmotInnerEventId = opened.rumor.id,
                         senderPublicKey = opened.seal.pubKey,
                         directMessageRecipientPublicKey = recipientPublicKey,
-                        isUserMessage = false,
+                        senderIdentity = null,
                         chatRoomId = chatRoomId,
                         createdAt = Instant.fromEpochSeconds(opened.rumor.createdAt),
                         content = opened.rumor.content
@@ -720,7 +762,7 @@ data class ChatMessage(
          * and even for kinds that do carry a pubkey the MLS frame is the authenticated
          * source while the field is merely asserted.
          *
-         * It is also the only thing [ChatMessage.isUserMessage] can honestly be computed
+         * It is also the only thing [ChatMessage.senderIdentity] can honestly be computed
          * from. Every arm below used to compare the active key against `groupEvent.pubKey`
          * -- the kind:445's signer, which is a fresh random ephemeral key on every send
          * (`NostrSignerInternal(KeyPair())` in `encryptAndSendMarmotInnerEvent`). That can
@@ -841,7 +883,7 @@ data class ChatMessage(
                             marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = event.id,
                             senderPublicKey = event.pubKey,
-                            isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupEventResult.groupId,
                             createdAt = Instant.fromEpochSeconds(event.createdAt),
                             content = event.content,
@@ -854,7 +896,7 @@ data class ChatMessage(
                             marmotGroupEventId = groupEvent.id,
                             marmotInnerEventId = event.id,
                             senderPublicKey = event.pubKey,
-                            isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                            senderIdentity = senderIdentity,
                             createdAt = Instant.fromEpochSeconds(event.createdAt),
                         )
                     }
@@ -866,7 +908,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = TYPE_PENDING_COMMIT,
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Pending Commit in epoch ${groupEventResult.epoch}", // TODO: Figure out what to do here...
@@ -879,7 +921,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = "processedCommit",
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Processed Commit in epoch ${groupEventResult.newEpoch}", // TODO: Figure out what to do here...
@@ -892,7 +934,7 @@ data class ChatMessage(
 //                        groupEventId = groupEvent.id,
 //                        messageType = "duplicate",
 //                        senderPublicKey = groupEvent.pubKey,
-//                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+//                        senderIdentity = senderIdentity,
 //                        chatRoomId = groupEventResult.groupId,
 //                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
 //                        content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
@@ -905,7 +947,7 @@ data class ChatMessage(
 //                        groupEventId = groupEvent.id,
 //                        messageType = "error",
 //                        senderPublicKey = groupEvent.pubKey,
-//                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+//                        senderIdentity = senderIdentity,
 //                        chatRoomId = groupEventResult.groupId,
 //                        createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
 //                        content = groupEventResult.innerEventJson, // TODO: Figure out what to do here...
@@ -919,7 +961,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = "proposalStaged",
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Proposal staged: ${groupEventResult.senderLeafIndex}", // TODO: Figure out what to do here...
@@ -932,7 +974,7 @@ data class ChatMessage(
                         marmotInnerEventId = null,
                         messageType = TYPE_UNDECRYPTABLE_OUTER_LAYER,
                         senderPublicKey = groupEvent.pubKey,
-                        isUserMessage = senderIdentity == activeKeyPair.pubKey.toHex(),
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupEventResult.groupId,
                         createdAt = Instant.fromEpochSeconds(groupEvent.createdAt),
                         content = "Undecryptable Message", // TODO: Figure out what to do here...
@@ -968,7 +1010,7 @@ data class ChatMessage(
             marmotGroupEventId: HexKey?,
             marmotInnerEventId: HexKey?,
             senderPublicKey: HexKey,
-            isUserMessage: Boolean,
+            senderIdentity: HexKey?,
             createdAt: Instant,
             groupSignedEventId: HexKey? = null,
         ): ChatMessage? {
@@ -980,7 +1022,7 @@ data class ChatMessage(
                         marmotGroupEventId = marmotGroupEventId,
                         marmotInnerEventId = marmotInnerEventId,
                         senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupId,
                         createdAt = createdAt,
                         content = event.content, // TODO: Figure out what to do here...
@@ -1020,7 +1062,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraArtifact.name} to artifacts"
@@ -1085,7 +1127,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraChapter.name} to chapters" // TODO: Use artifact name...
@@ -1142,7 +1184,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraDialect.name} to dialects" // TODO: Use artifact name...
@@ -1174,7 +1216,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraTranslationArtifactVersion.name} to translation artifact versions" // TODO: Use artifact name...
@@ -1287,7 +1329,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Added ${mantraTranslation.text} to translations" // TODO: Reference original text
@@ -1333,7 +1375,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "Started the ${mantraProject.name} project"
@@ -1506,7 +1548,7 @@ data class ChatMessage(
                                 marmotGroupEventId = marmotGroupEventId,
                                 marmotInnerEventId = marmotInnerEventId,
                                 senderPublicKey = senderPublicKey,
-                                isUserMessage = isUserMessage,
+                                senderIdentity = senderIdentity,
                                 chatRoomId = groupId,
                                 createdAt = createdAt,
                                 content = "The group made ${name ?: "a subgroup"} a subgroup, " +
@@ -1525,7 +1567,7 @@ data class ChatMessage(
                             marmotGroupEventId = marmotGroupEventId,
                             marmotInnerEventId = marmotInnerEventId,
                             senderPublicKey = senderPublicKey,
-                            isUserMessage = isUserMessage,
+                            senderIdentity = senderIdentity,
                             chatRoomId = groupId,
                             createdAt = createdAt,
                             content = "${arriving.parentChatRoomId.take(16)} has offered to " +
@@ -1544,7 +1586,7 @@ data class ChatMessage(
                         marmotGroupEventId = marmotGroupEventId,
                         marmotInnerEventId = marmotInnerEventId,
                         senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
+                        senderIdentity = senderIdentity,
                         chatRoomId = groupId,
                         createdAt = createdAt,
                         content = event.toJson(),

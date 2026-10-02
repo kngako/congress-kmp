@@ -397,7 +397,7 @@ abstract class MarmotOutboundDao(
                 messageType = messageType,
                 chatRoomId = chatRoomId,
                 senderPublicKey = userPublicKey,
-                isUserMessage = true,
+                senderIdentity = userPublicKey,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,

@@ -1289,7 +1289,7 @@ object ChillDkgRitualManager {
         database.chatMessageDao().upsert(
             ChatMessage(
                 senderPublicKey = actor,
-                isUserMessage = actor == session.userPublicKey,
+                senderIdentity = actor,
                 giftWrapPayloadId = null,
                 marmotGroupEventId = null,
                 marmotInnerEventId = null,

@@ -161,7 +161,7 @@ class ProjectApplyJvmTest {
         marmotGroupEventId = null,
         marmotInnerEventId = null,
         senderPublicKey = roomId,
-        isUserMessage = false,
+        senderIdentity = null,
         createdAt = Instant.fromEpochSeconds(event.createdAt),
     )
 

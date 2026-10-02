@@ -149,7 +149,7 @@ class MantraDaoJvmTest {
         assertNotNull(chatMessage, "no chat line was written for the submission")
         assertEquals("Added isiZulu as a dialect", chatMessage.content)
         assertEquals(roomId, chatMessage.chatRoomId)
-        assertTrue(chatMessage.isUserMessage)
+        assertTrue(chatMessage.isFrom(author))
     }
 
     /**

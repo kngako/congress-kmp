@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.Flow
 private const val CHAT_ROOM_WITH_LAST_MESSAGE =
     "SELECT ChatRoom.*, " +
         "lastMessage.senderPublicKey AS lastMessage_senderPublicKey, " +
-        "lastMessage.isUserMessage AS lastMessage_isUserMessage, " +
+        "lastMessage.senderIdentity AS lastMessage_senderIdentity, " +
         "lastMessage.content AS lastMessage_content, " +
         "lastMessage.messageType AS lastMessage_messageType, " +
         "lastMessage.directMessageRecipientPublicKey AS lastMessage_directMessageRecipientPublicKey, " +

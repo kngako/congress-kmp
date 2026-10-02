@@ -322,7 +322,7 @@ class GroupSignedEventDaoJvmTest {
             marmotGroupEventId = null,
             marmotInnerEventId = null,
             senderPublicKey = chatRoomId,
-            isUserMessage = false,
+            senderIdentity = null,
             createdAt = Instant.fromEpochSeconds(dialect.createdAt),
             groupSignedEventId = dialect.id,
         )
