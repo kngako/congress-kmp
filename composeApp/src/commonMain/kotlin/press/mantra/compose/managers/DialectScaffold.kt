@@ -1,7 +1,11 @@
 package press.mantra.compose.managers
 
+import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
+import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
+import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.language.AfricanLanguage
 import press.mantra.compose.language.AfricanLanguages
 import press.mantra.compose.nostr.nip30303.DialectEvent
@@ -71,6 +75,73 @@ object DialectScaffold {
         val held = existing.mapTo(mutableSetOf(), ::keyOf) + pending.map(::keyOf)
 
         return catalogue.filterNot { keyOf(it) in held }
+    }
+
+    /**
+     * The catalogue entries an open session is already signing.
+     *
+     * Without this the feature has a race it will hit on its first real use: two
+     * admins open the picker, both see the same forty missing, both propose, and
+     * the room gets eighty dialects -- forty of them duplicates that nothing will
+     * ever merge, because nothing makes a dialect unique.
+     *
+     * Readable because [unsignedEvents] gives a batch's events *at proposal
+     * time*, before any signature, which is exactly when this has to be known.
+     * It is passed in rather than imported for the reason
+     * `ProposedEvent.summarize` takes a resolver: it keeps this testable without
+     * a database and callable from a composable.
+     *
+     * [FrostSigningStage.COMPLETE] and [FrostSigningStage.FAILED] are both
+     * excluded, for opposite reasons. A complete session's dialects are rows by
+     * now, so counting them here would hide them behind the wrong explanation --
+     * "waiting for the group" rather than "already yours". A failed session left
+     * nothing behind and must be proposable again; the signing screen tells a
+     * member as much, and a batch retried has to be a fresh one anyway.
+     *
+     * A session whose items cannot be read contributes nothing rather than
+     * throwing. That is a trade and worth naming: the cost is that its dialects
+     * look selectable and may be proposed twice, and the alternative is a picker
+     * that will not open at all. A duplicate dialect is visible and recoverable;
+     * a dead screen leaves an admin with no way to act. `unsignedEventJson` is
+     * written by this device from a template it built, so reaching this branch
+     * means the database is damaged rather than the proposal being odd.
+     */
+    fun pendingIn(
+        sessions: List<LocalFrostSigningSession>,
+        unsignedEvents: (List<FrostSigningItem>) -> List<Event>,
+        catalogue: List<AfricanLanguage> = AfricanLanguages.ALL,
+    ): List<AfricanLanguage> {
+        val inFlight = sessions
+            .filter { it.session.stage in OPEN_STAGES }
+            .flatMap { session ->
+                runCatching { unsignedEvents(session.items) }.getOrDefault(emptyList())
+            }
+            .mapNotNullTo(mutableSetOf(), ::keyOfDialectEvent)
+
+        return catalogue.filter { keyOf(it) in inFlight }
+    }
+
+    /** The stages where a session is still going, and so is still a claim on a dialect. */
+    private val OPEN_STAGES = setOf(
+        FrostSigningStage.COLLECTING_NONCES,
+        FrostSigningStage.COLLECTING_PARTIAL_SIGNATURES,
+    )
+
+    /**
+     * [event] as a dialect's [Key], or null when it is not a dialect or is
+     * missing one of the two tags the identity is made of.
+     */
+    private fun keyOfDialectEvent(event: Event): Key? {
+        if (event.kind != DialectEvent.KIND) return null
+
+        val dialect = DialectEvent(
+            event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+        )
+
+        val code = dialect.language() ?: return null
+        val country = dialect.country() ?: return null
+
+        return keyOf(code, country)
     }
 
     /**
