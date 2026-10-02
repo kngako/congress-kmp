@@ -165,7 +165,11 @@ fun FrostSigningScreen(
                         .padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
-                    WhatIsBeingSigned(proposed, state.items.size)
+                    WhatIsBeingSigned(
+                        events = proposed,
+                        expected = state.items.size,
+                        chatRoomId = state.localChatRoom.chatRoom.id,
+                    )
 
                     HorizontalDivider()
 
@@ -335,7 +339,7 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
  * sign something they cannot check.
  */
 @Composable
-private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
+private fun WhatIsBeingSigned(events: List<Event>, expected: Int, chatRoomId: String) {
     if (expected == 0 || events.size != expected) {
         Text(
             text = if (expected <= 1) {
@@ -361,7 +365,7 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
         events.forEachIndexed { index, event ->
             if (index > 0) HorizontalDivider()
 
-            OneThingBeingSigned(event)
+            OneThingBeingSigned(event, chatRoomId)
         }
 
         Text(
@@ -376,8 +380,9 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
 
 /** One event of the batch, described as the thing it is. */
 @Composable
-private fun OneThingBeingSigned(event: Event) {
-    val summary = ProposedEvent.summarize(event)
+private fun OneThingBeingSigned(event: Event, chatRoomId: String) {
+    // The room, so a project owned by this group does not say so on every line.
+    val summary = ProposedEvent.summarize(event, chatRoomId = chatRoomId)
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)) {
         Text(text = summary.label, style = MaterialTheme.typography.labelMedium)

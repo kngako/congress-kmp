@@ -86,7 +86,7 @@ class ProposalListViewModel(
                 else -> local.proposer?.humanReadableNameOrPubkey()
                     ?: local.session.coordinatorPublicKey.shortened()
             },
-            signs = events.map { ProposedEvent.summarize(it) },
+            signs = events.map { ProposedEvent.summarize(it, chatRoomId = chatRoomId) },
             unreadable = items.size - events.size,
             awaitsYou = FrostSigningManager.isAwaitingApproval(local.session, items)
         )
