@@ -83,6 +83,7 @@ import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
@@ -519,6 +520,31 @@ fun ChatRoomDetailScreen(
                                             }
                                         )
                                     }
+                                }
+                            }
+
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            AddProjectRoute(
+                                                chatRoomId = chatRoomId,
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Schema,
+                                        contentDescription = Decorative
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.create_project))
                                 }
                             }
 

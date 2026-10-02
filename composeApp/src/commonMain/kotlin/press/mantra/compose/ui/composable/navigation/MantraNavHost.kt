@@ -135,6 +135,7 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
@@ -147,6 +148,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
+import press.mantra.compose.ui.composable.AddProjectScreen
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.ProjectDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
@@ -1090,6 +1092,38 @@ fun MantraNavHost(
                     onNavigateBack = {
                         navController.popBackStack()
                     },
+                )
+            }
+            composable<AddProjectRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddProjectRoute>()
+
+                AddProjectScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this add screen so back returns to the group rather
+                        // than to a form whose proposal has already gone out.
+                        navController.navigate(
+                            route = signingRoute
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
                 )
             }
             composable<AddArtifactRoute> { backStackEntry ->
