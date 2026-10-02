@@ -21,6 +21,7 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChapterProposal
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
@@ -102,10 +103,19 @@ class AddChapterViewModel(
         val originalText = originalTextField.text.toString()
         val paragraphs = Markdown.splitParagraphs(originalText)
 
-        // The cap is the group's, not this screen's, and proposing past it
-        // throws rather than failing softly. The form says so as it is typed;
-        // this is the check that has to hold when it does not.
-        if (name.isBlank() || paragraphs.isEmpty() || paragraphs.size > MAX_CHUNKS_PER_CHAPTER) {
+        // Both caps are the group's, not this screen's, and proposing past
+        // either throws rather than failing softly. The form says so as it is
+        // typed; these are the checks that have to hold when it does not.
+        //
+        // Two caps rather than one because they bound different things: how many
+        // events a session signs, and how many bytes the proposal carrying them
+        // weighs. A chapter of sixty-three one-word paragraphs passes the second
+        // and fails the first; one of three very long ones does the reverse.
+        if (name.isBlank() ||
+            paragraphs.isEmpty() ||
+            paragraphs.size > MAX_CHUNKS_PER_CHAPTER ||
+            !ChapterProposal.fits(originalText, paragraphs)
+        ) {
             onFailure.invoke()
             return
         }

@@ -495,4 +495,10 @@
     <string name="choose_chapter_files">Choose chapter files</string>
     <string name="that_file_isn_t_text">That file isn't text. A chapter is markdown or plain text.</string>
     <string name="that_file_is_too_large">That file is too large to be a chapter.</string>
+    <string name="this_group_has_no_shared_key_for_a_chapter">This group has no shared key, so it cannot sign a chapter into existence. Run a shared key ceremony first.</string>
+    <string name="d_chunks_is_more_than_the_group_can_sign">%1$d chunks is more than the group can sign in one go. Split the chapter so that no part of it is over %2$d paragraphs.</string>
+    <string name="this_chapter_is_too_long_to_propose">This chapter is too long to propose. Asking the group to sign it and its %1$d chunks would send %2$s, and a group message carries %3$s. Split it in two.</string>
+    <string name="words_characters_size_chunks">%1$d words · %2$d characters · %3$s · %4$d of %5$d chunks</string>
+    <string name="s_of_s">%1$s of %2$s</string>
+    <string name="s_kib">%1$s KiB</string>
 </resources>

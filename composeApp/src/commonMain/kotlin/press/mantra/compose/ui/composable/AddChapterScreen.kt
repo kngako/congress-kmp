@@ -42,9 +42,11 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.files.rememberFilePicker
+import press.mantra.compose.nostr.nip30303.ChapterProposal
 import press.mantra.compose.text.ChapterNaming
 import press.mantra.compose.text.ChapterText
 import press.mantra.compose.text.Markdown
+import press.mantra.compose.text.kibibytes
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -64,6 +66,12 @@ import mantra.composeapp.generated.resources.propose_chapter
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
 import mantra.composeapp.generated.resources.add_chapter_to
 import mantra.composeapp.generated.resources.choose_chapter_files
+import mantra.composeapp.generated.resources.d_chunks_is_more_than_the_group_can_sign
+import mantra.composeapp.generated.resources.s_kib
+import mantra.composeapp.generated.resources.s_of_s
+import mantra.composeapp.generated.resources.this_chapter_is_too_long_to_propose
+import mantra.composeapp.generated.resources.this_group_has_no_shared_key_for_a_chapter
+import mantra.composeapp.generated.resources.words_characters_size_chunks
 import mantra.composeapp.generated.resources.load_from_file
 import mantra.composeapp.generated.resources.that_file_is_too_large
 import mantra.composeapp.generated.resources.that_file_isn_t_text
@@ -160,7 +168,8 @@ fun AddChapterScreen(
                 val originalText = originalTextFieldState.text.toString()
                 val wordCount = Markdown.wordCount(originalText)
                 val characterCount = Markdown.characterCount(originalText)
-                val paragraphCount = Markdown.splitParagraphs(originalText).size
+                val chunks = Markdown.splitParagraphs(originalText)
+                val paragraphCount = chunks.size
 
                 // A chapter hangs off a version, and the group has to be able to
                 // sign; without both there is nothing this screen can propose.
@@ -172,10 +181,19 @@ fun AddChapterScreen(
                 // is still a cursor in the text rather than after a failed propose.
                 val tooManyChunks = paragraphCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
 
+                // The other cap, and the one that had been enforced nowhere: a
+                // proposal carries the chapter whole and every chunk cut from
+                // it, so it weighs a little over twice the prose plus an
+                // envelope per event. Past what a group event holds, the session
+                // used to go out and stall.
+                val proposalBytes = ChapterProposal.proposalBytes(originalText, chunks)
+                val tooLargeToPropose = !tooManyChunks && proposalBytes > ChapterProposal.MAX_PROPOSAL_BYTES
+
                 val canProposeChapter = artifactVersion != null &&
                     addChapterUIState.canSign &&
                     paragraphCount > 0 &&
-                    !tooManyChunks
+                    !tooManyChunks &&
+                    !tooLargeToPropose
 
                 // imePadding: this screen has a text field, and without it the software
                 // keyboard covers whatever is being typed into.
@@ -236,8 +254,7 @@ fun AddChapterScreen(
                     ) {
                         if (!addChapterUIState.canSign) {
                             Text(
-                                text = "This group has no shared key, so it cannot sign a " +
-                                    "chapter into existence. Run a shared key ceremony first.",
+                                text = stringResource(Res.string.this_group_has_no_shared_key_for_a_chapter),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -249,9 +266,25 @@ fun AddChapterScreen(
                             )
                         } else if (tooManyChunks) {
                             Text(
-                                text = "$paragraphCount chunks is more than the group can sign in " +
-                                    "one go. Split the chapter so that no part of it is over " +
-                                    "${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER} paragraphs.",
+                                text = stringResource(
+                                    Res.string.d_chunks_is_more_than_the_group_can_sign,
+                                    paragraphCount,
+                                    AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (tooLargeToPropose) {
+                            Text(
+                                text = stringResource(
+                                    Res.string.this_chapter_is_too_long_to_propose,
+                                    paragraphCount,
+                                    stringResource(Res.string.s_kib, kibibytes(proposalBytes)),
+                                    stringResource(
+                                        Res.string.s_kib,
+                                        kibibytes(ChapterProposal.MAX_PROPOSAL_BYTES),
+                                    ),
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -287,14 +320,28 @@ fun AddChapterScreen(
                         )
 
                         Text(
-                            // The chunk count is what the group is asked to sign
-                            // alongside the chapter, so it is a count of the work
-                            // being proposed rather than a curiosity about the text.
-                            text = "$wordCount words · $characterCount characters · " +
-                                "$paragraphCount ${if (paragraphCount == 1) "chunk" else "chunks"} " +
-                                "of ${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER}",
+                            // Both caps, as the text is typed. The chunk count and
+                            // the proposal's size are what the group is asked to
+                            // carry, so they are a measure of the work being
+                            // proposed rather than a curiosity about the text --
+                            // and either of them can be the one that binds.
+                            text = stringResource(
+                                Res.string.words_characters_size_chunks,
+                                wordCount,
+                                characterCount,
+                                stringResource(
+                                    Res.string.s_of_s,
+                                    stringResource(Res.string.s_kib, kibibytes(proposalBytes)),
+                                    stringResource(
+                                        Res.string.s_kib,
+                                        kibibytes(ChapterProposal.MAX_PROPOSAL_BYTES),
+                                    ),
+                                ),
+                                paragraphCount,
+                                AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
+                            ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (tooManyChunks) {
+                            color = if (tooManyChunks || tooLargeToPropose) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.typography.labelMedium.color

@@ -289,36 +289,50 @@ title; `03 - The Wreck.md` is.
 
 **Half a day. A fix to the path that exists, and a prerequisite for Phase 4.**
 
-A chapter whose markdown is over roughly 28 KiB cannot be proposed today and
+A chapter whose markdown is over roughly 24 KiB cannot be proposed today and
 nothing says so. Make the limit explicit and check it where the paragraph cap is
 already checked.
 
-```kotlin
-// ChapterEvent companion, beside build()
-/**
- * The most markdown a chapter may carry.
- *
- * A chapter is proposed with a chunk per paragraph, so the proposal carries its
- * text roughly twice -- whole in the chapter's `original_text` tag, and again
- * split across the chunks -- before any framing. The group event that carries
- * the proposal is sized by ChronicleEvent.MAX_PAGE_BYTES; half of it, less room
- * for k event envelopes, is what is left for prose.
- *
- * Measure it against a real proposal rather than trusting this arithmetic, the
- * way MAX_PAGE_BYTES itself says to.
- */
-const val MAX_ORIGINAL_TEXT_BYTES = 24 * 1024
-```
+**Built differently, in three ways, and the measurement is why.** Encoding real
+proposals gave a per-event overhead of 357–388 bytes across chapters from 1 KiB
+to 24 KiB and from 1 to 63 chunks — the plan's ~370 estimate, arrived at for the
+wrong reason: a proposal carries *unsigned* events, so there is no 128-character
+signature in it, and the figure is instead an id, a pubkey, an empty `sig`, the
+JSON structure and, on a chunk, the 64-character chapter id it points at.
 
-24 KiB rather than 28: the envelopes are not free (an id, a pubkey and a
-signature are ~370 bytes before an event says anything, times `k`), and a cap
-that is comfortably under the wire limit fails in the form instead of on the
-wire. It should be arrived at by measuring an encoded proposal for a 63-chunk
-chapter, not by this paragraph.
+What that measurement changed:
 
-**And the number is provisional until Phase 8 lands.** Block splitting produces
-more chunks than blank-line splitting, so the same prose carries more envelopes;
-whichever of the two phases goes second re-runs the measurement.
+**One. A flat `MAX_ORIGINAL_TEXT_BYTES` is wrong by half.** Measured, a
+63-chunk chapter fits about 20 KiB of markdown and a 10-chunk chapter fits about
+30, because the envelopes are what varies. A single constant safe for the first
+refuses a third of the second's text for nothing; one sized for the second
+stalls sessions. The chunk count is known as the text is typed, so the limit may
+as well be — `ChapterProposal.proposalBytes(text, chunks)` and
+`maxOriginalTextBytes(chunkCount)` instead of a constant.
+
+**Two. The limit belongs to the manager, not to the chapter.**
+`FrostSigningManager.MAX_PROPOSAL_BYTES = 64 * 1024`, beside `MAX_BATCH_SIZE`,
+enforced in `proposeSigningBatch` against the real encoding and *independently*
+in `acceptProposal` — before parsing, since that is the cheaper refusal. The
+count cap already had exactly this two-sided treatment for exactly this reason:
+the proposal is where a remote party decides how much work everybody else does,
+and until now its *size* was unbounded. Both propose forms funnel into the
+`lead`/`dependents` one, so a single check covers them.
+
+**Three. `ChapterProposal` estimates what the manager measures.** The exact
+answer needs the chapter built and the chunks cut, which is one line from
+opening a session — too late to tell somebody with a cursor in a text field.
+So: a cheap estimate for the form at 448 bytes per event, rounded up from the
+measured 388, and a test asserting the estimate never falls under the real
+encoding. Over-estimating costs an author a slightly shorter chapter;
+under-estimating costs the group a stalled session, so the rounding goes that
+way on purpose.
+
+**The number is still provisional until Phase 8 lands.** Block splitting
+produces more chunks than blank-line splitting, so the same prose carries more
+envelopes; `ChapterProposalSizeTest` pins where the fit runs out (24 KiB over
+forty paragraphs), so that phase will move a pinned figure rather than quietly
+narrow the limit.
 
 Where it goes:
 
@@ -326,8 +340,11 @@ Where it goes:
   `paragraphs.size > MAX_CHUNKS_PER_CHAPTER` guard, same early `onFailure`.
 - `AddChapterScreen` — the counter line already reads
   `"$wordCount words · $characterCount characters · $paragraphCount chunks of N"`;
-  it gains the byte figure against the cap and turns `error`-coloured on the
-  same rule the chunk count does.
+  it gains the proposal's size against the cap and turns `error`-coloured on the
+  same rule the chunk count does. The message compares like with like — what
+  proposing would send, against what a group message carries — rather than a
+  character count against a byte budget, which was the first draft of it and was
+  comparing UTF-16 units to bytes.
 - The two existing hardcoded English literals on that screen (the no-shared-key
   message and the too-many-chunks message) move into
   `composeApp/src/commonMain/composeResources/values/strings.xml` while the file
@@ -335,13 +352,15 @@ Where it goes:
   title-case strings with literals reported; a third one added by this work
   would be the wrong direction.
 
-**Test:** extend `ChapterBatchProposalJvmTest`, which already asserts the
-paragraph cap's boundary (`MAX_BATCH_SIZE - 1` proposes, `MAX_BATCH_SIZE`
-throws). Add the byte boundary the same way: one chapter at the cap proposes,
-one a byte over does not. And one that measures the *encoded proposal* for a
-cap-sized, 63-chunk chapter and asserts it is under `MAX_PAGE_BYTES` — that is
-the assertion that makes the constant honest, and the only one that will catch
-it drifting when a tag is added to either kind.
+**Tests:** a `ChapterProposalSizeTest` in `commonTest` — pure, since the
+estimate and the encoding are both pure — over the grid the overhead was
+measured on, asserting the estimate never falls under the real encoding and
+stays within a tenth of it. Plus the round trip the form's offer rests on: the
+longest text the estimate allows at the worst chunk count really does encode
+under the cap. Plus the boundary pinned as a number, so a tag added to either
+kind moves a figure in a test rather than producing a quorum that never
+arrives. And the byte-vs-character one, in Amharic, because an ASCII-only test
+suite would never have caught the UTF-16 slip above.
 
 ---
 
