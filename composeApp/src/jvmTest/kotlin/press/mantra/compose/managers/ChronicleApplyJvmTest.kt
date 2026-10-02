@@ -27,6 +27,7 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
@@ -44,6 +45,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -306,6 +310,43 @@ class ChronicleApplyJvmTest {
                     createdAt = 1_700_000_060L
                 )
             )
+        )
+
+        // What the work is for. Unlike everything above it, a project has to be
+        // *recorded* as well as applied to reach a chronicle: there is no
+        // `toProjectEvent`, so the deprecated rebuild cannot produce one, and
+        // the record is its only source. That is deliberate -- the rebuild
+        // serves rooms older than schema v13 and projects arrive at v21 -- and
+        // it is why `record` appears here and nowhere else in this seed.
+        val project = signed(
+            ProjectEvent.build(
+                name = "In Detention into isiZulu",
+                description = "The first chapter, with its back-translation.",
+                creatorPublicKey = oldMember,
+                ownerPublicKeys = setOf(chatRoomId),
+                createdAt = 1_700_000_070L,
+            )
+        ).also { apply(sender, it) }
+
+        val sourceMembership = signed(
+            ProjectArtifactVersionEvent.membershipsOf(project, listOf(version.id)).single()
+        ).also { apply(sender, it) }
+
+        val translationMembership = signed(
+            ProjectTranslationArtifactVersionEvent
+                .membershipsOf(project, listOf(translationVersion.id))
+                .single()
+        ).also { apply(sender, it) }
+
+        sender.groupSignedEventDao().recordAll(
+            listOf(project, sourceMembership, translationMembership).map {
+                GroupSignedEvent.fromEvent(
+                    event = it,
+                    chatRoomId = chatRoomId,
+                    derivationPath = SharedKeyDerivation.formatPath(),
+                    frostSigningSessionId = "session-1",
+                )
+            }
         )
     }
 

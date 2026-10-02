@@ -34,6 +34,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -408,15 +411,45 @@ class ChronicleRoundTripTest {
         }
     }
 
+    /**
+     * The kinds that reach a chronicle only off the record, never by rebuild.
+     *
+     * Everything else here has two sources, because a room whose work predates
+     * `GroupSignedEvent` at schema v13 has rows and no events, and the rebuild is
+     * what makes such a room whole. Projects arrive at v21, so no project row
+     * anywhere is in that position and a `toProjectEvent` would be new code for
+     * a mechanism with a removal checklist already written against it -- see
+     * `MantraProject` and docs/member-chronicle.md.
+     *
+     * The cost is real and is asserted rather than assumed:
+     * `ChronicleAssemblyJvmTest.a project is only ever chronicled off the record`
+     * is what happens when the record is missing.
+     */
+    private val notRebuildable = setOf(
+        ProjectEvent.KIND,
+        ProjectArtifactVersionEvent.KIND,
+        ProjectTranslationArtifactVersionEvent.KIND,
+    )
+
     @Test
     fun `every chroniclable kind has a round-trip test above`() {
         // The list and this file have to move together. A kind added to the
         // allowlist without a case here is one nobody has checked can be rebuilt,
         // and the failure is silent: the receiver drops it as a forgery.
+        //
+        // Unless it is a kind with no rebuild at all, which is a decision rather
+        // than an omission -- see [notRebuildable]. Those are excluded here and
+        // pinned in `ChronicleAssemblyJvmTest` instead, so adding one is still a
+        // thing somebody has to write down.
         assertEquals(
             8,
-            ChronicleEvent.CHRONICLABLE_KINDS.size,
+            (ChronicleEvent.CHRONICLABLE_KINDS - notRebuildable).size,
             "a chroniclable kind was added or removed; add or remove its round-trip case"
+        )
+
+        assertTrue(
+            notRebuildable.all { it in ChronicleEvent.CHRONICLABLE_KINDS },
+            "a kind cannot be exempted from the rebuild unless it is chroniclable at all"
         )
     }
 }
