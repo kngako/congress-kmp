@@ -3,6 +3,7 @@ package press.mantra.compose.database.dao
 import androidx.room3.Room
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
@@ -15,6 +16,7 @@ import press.mantra.compose.database.model.types.DkgRitualStage
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
@@ -85,6 +87,8 @@ class DkgSessionDaoJvmTest {
         secretShare: String? = null,
         stage: DkgRitualStage = DkgRitualStage.COLLECTING_HOST_KEYS,
         userPublicKey: String = user,
+        parentChatRoomId: String? = null,
+        participantPublicKeys: String? = null,
     ): DkgSession = DkgSession(
         id = id,
         chatRoomId = chatRoomId,
@@ -98,6 +102,8 @@ class DkgSessionDaoJvmTest {
         round2AuxRandom = "bb".repeat(32),
         thresholdPublicKey = thresholdPublicKey,
         secretShare = secretShare,
+        parentChatRoomId = parentChatRoomId,
+        participantPublicKeys = participantPublicKeys,
         createdAt = createdAt,
     ).also { db.dkgSessionDao().upsert(it) }
 
@@ -293,4 +299,140 @@ class DkgSessionDaoJvmTest {
         assertEquals(1, db.dkgSessionDao().countMessagesByKind("s2", user, hostKeyKind))
         assertNull(db.dkgSessionDao().getMessage("s2", user, round1Kind, alice))
     }
+
+    /**
+     * The one read that names no profile, and the property it was added for.
+     *
+     * `completedKey` and everything around it is scoped because a row carries secrets.
+     * This projects the ceremony's published result, which is the same value on every
+     * participant's row, and two screens want it to work out which room a ceremony's
+     * key derives. Scoping it would have them resolve nothing while no profile is open,
+     * for a fact that does not depend on one.
+     */
+    @Test
+    fun `a ceremonys key answers whichever profile asks`() = runBlocking {
+        seedRooms()
+        val key = "dd".repeat(32)
+        session("shared", thresholdPublicKey = key, secretShare = "ee".repeat(32), userPublicKey = alice)
+
+        assertEquals(
+            key,
+            db.dkgSessionDao().getCeremonyThresholdPublicKey("shared"),
+            "the profile that holds the row gets the key",
+        )
+
+        // The point of it. Bob holds no row of this ceremony at all, and still gets the
+        // key -- which is what every member of the group has anyway.
+        session("bobs-own", thresholdPublicKey = "aa".repeat(32), userPublicKey = bob)
+        assertEquals(
+            key,
+            db.dkgSessionDao().getCeremonyThresholdPublicKey("shared"),
+            "and so does a profile holding no row of it",
+        )
+    }
+
+    /** A ceremony with no key yet answers null rather than throwing: both callers run before it finishes. */
+    @Test
+    fun `a ceremony that has produced no key answers null`() = runBlocking {
+        seedRooms()
+        session("running", thresholdPublicKey = null)
+
+        assertNull(db.dkgSessionDao().getCeremonyThresholdPublicKey("running"))
+        assertNull(db.dkgSessionDao().getCeremonyThresholdPublicKey("no-such-ceremony"))
+    }
+
+    /**
+     * Which subgroup a room is already making, for one profile.
+     *
+     * The predicate matters because the answer is a refusal: `proposeRitual` folds into
+     * a ceremony this finds rather than opening another, and `refuseSubgroup` turns it
+     * into a message. A ritual the *other* profile on the device is running is not one
+     * this person can answer for, so finding it would refuse them a ceremony of their
+     * own with a notice about somebody else's.
+     */
+    @Test
+    fun `a subgroup ceremony is found only by the profile running it`() = runBlocking {
+        seedRooms()
+        val admins = DkgSession.formatParticipants(setOf(alice, bob, user)).orEmpty()
+        session(
+            "alices-subgroup",
+            chatRoomId = roomOne,
+            parentChatRoomId = roomOne,
+            participantPublicKeys = admins,
+            userPublicKey = alice,
+        )
+
+        assertEquals(
+            "alices-subgroup",
+            db.dkgSessionDao().getLatestSubgroupSessionFor(roomOne, roomOne, admins, alice)?.id,
+        )
+        assertNull(
+            db.dkgSessionDao().getLatestSubgroupSessionFor(roomOne, roomOne, admins, bob),
+            "the other profile is running nothing and must be refused nothing",
+        )
+        assertNull(
+            db.dkgSessionDao().getLatestSubgroupSessionFor(roomOne, roomOne, "other,admins", alice),
+            "and a different admin set is a different subgroup",
+        )
+    }
+
+    /**
+     * The room-and-purpose read the ceremony screen watches, scoped the same way: a
+     * room holds its own ceremony and a subgroup's at once, and now one of each per
+     * profile.
+     */
+    @Test
+    fun `the watched ceremony for a purpose is the asking profiles`() = runBlocking {
+        seedRooms()
+        session("alices-own", userPublicKey = alice)
+        session("bobs-own", userPublicKey = bob)
+        session("alices-child", parentChatRoomId = roomTwo, userPublicKey = alice)
+
+        assertEquals(
+            "alices-own",
+            db.dkgSessionDao().observeLatestSessionFor(roomOne, null, alice).first()?.id,
+        )
+        assertEquals(
+            "bobs-own",
+            db.dkgSessionDao().observeLatestSessionFor(roomOne, null, bob).first()?.id,
+        )
+        assertEquals(
+            "alices-child",
+            db.dkgSessionDao().observeLatestSessionFor(roomOne, roomTwo, alice).first()?.id,
+            "and the subgroup's is told apart from the room's own",
+        )
+        assertNull(
+            db.dkgSessionDao().observeLatestSessionFor(roomOne, roomTwo, bob).first(),
+            "which the other profile is not running",
+        )
+    }
+
+    /** The transcript's view of a ritual's messages, which is one profile's view. */
+    @Test
+    fun `the watched messages are the asking profiles`() = runBlocking {
+        seedRooms()
+        session("s1", userPublicKey = alice)
+        session("s1-bob", userPublicKey = bob)
+        message("s1", alice, userPublicKey = alice)
+        message("s1", bob, userPublicKey = alice)
+        message("s1-bob", bob, userPublicKey = bob)
+
+        assertEquals(
+            listOf(alice, bob).sorted(),
+            db.dkgSessionDao().observeMessages("s1", alice).first()
+                .map { it.participantPublicKey }
+                .sorted(),
+            "Alice's view holds both messages she received",
+        )
+        assertEquals(
+            emptyList(),
+            db.dkgSessionDao().observeMessages("s1", bob).first(),
+            "and Bob has received none of that ritual's",
+        )
+        assertEquals(
+            1,
+            assertNotNull(db.dkgSessionDao().observeMessages("s1-bob", bob).first()).size,
+        )
+    }
+
 }
