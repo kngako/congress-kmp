@@ -1,5 +1,7 @@
 package press.mantra.compose.ui.view.state
 
+import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
@@ -37,6 +39,27 @@ sealed interface DialectDetailUIState {
          * missing and what to do about it.
          */
         val canAddSubgroup: Boolean = false,
+        /**
+         * The rooms this group has made for this dialect.
+         *
+         * The other direction of a birth certificate, and the reason the
+         * certificate carries an origin at all. Empty says only that this device
+         * holds no certificate naming it -- a room made for it by a group this
+         * device is not in is invisible here, as everywhere else.
+         */
+        val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
+
+        /**
+         * Key ceremonies already under way for this dialect.
+         *
+         * Shown rather than refused. Two admins opening this screen at the same
+         * time both see no room and both start one, which is the race the whole
+         * pair exists for -- the screen that invites the act is the screen that
+         * cannot otherwise see the act in progress. A group may still want two
+         * rooms for one dialect, and that is the group's business.
+         */
+        val subgroupCeremonies: List<DkgSession> = emptyList(),
+
     ): DialectDetailUIState
 
     data class Error(

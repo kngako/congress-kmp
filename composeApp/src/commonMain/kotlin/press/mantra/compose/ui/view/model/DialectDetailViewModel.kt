@@ -1,5 +1,9 @@
 package press.mantra.compose.ui.view.model
 
+import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.database.model.traits.SubgroupOriginEntity
+import press.mantra.compose.database.model.DkgSession
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -60,15 +64,39 @@ class DialectDetailViewModel(
                 // the dialect actually lives in.
                 val room = chatRepository.getChatRoomByIdentifier(dialect.chatRoomId)
 
+                // Read before the state is built so both halves come from one
+                // call, and so the room is resolved once rather than twice.
+                val (madeFor, ceremoniesFor) = subgroupsAndCeremoniesFor(dialect)
+
                 DialectDetailUIState.Loaded(
                     dialect = dialect,
                     artifacts = mantraRepository.getArtifactsForDialect(dialectId),
                     translations = mantraRepository.getTranslationsForDialect(dialectId),
                     canAddSubgroup = room?.chatRoom?.mlsGroupState != null &&
                         chatRepository.canSign(dialect.chatRoomId),
+                    subgroups = madeFor,
+                    subgroupCeremonies = ceremoniesFor,
                 )
             }
         }
+    }
+
+
+    /**
+     * The rooms made for [entity] and the ceremonies under way for it.
+     *
+     * Both off the entity's own room, which `SubgroupOrigin.of` is the one
+     * authority on -- a subgroup made for this thing is a child of the room the
+     * thing lives in, and asking any other room would answer about somebody
+     * else's children.
+     */
+    private suspend fun subgroupsAndCeremoniesFor(
+        entity: SubgroupOriginEntity
+    ): Pair<List<SubgroupManager.Subgroup>, List<DkgSession>> {
+        val candidate = SubgroupOrigin.of(entity)
+
+        return chatRepository.subgroupsFor(candidate.parentChatRoomId, candidate.origin) to
+            chatRepository.subgroupCeremoniesFor(candidate.parentChatRoomId, candidate.origin)
     }
 
     companion object {

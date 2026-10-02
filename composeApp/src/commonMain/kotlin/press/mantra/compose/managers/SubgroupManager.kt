@@ -840,6 +840,60 @@ object SubgroupManager {
             .sortedByDescending { it.certificate.createdAt }
 
     /**
+     * The subgroups [parentChatRoomId] has made for one particular thing.
+     *
+     * The other direction of the certificate: [subgroupsOf] answers "what has
+     * this group made", and this answers "what has been made for this project".
+     * It is a filter over that list rather than a query of its own, because the
+     * certificates are already the record and a second read could disagree with
+     * the first about which of them verify.
+     *
+     * Empty is the ordinary answer and says only that this device holds no
+     * certificate naming that entity. A subgroup made for it by a parent whose
+     * room this device is not in is invisible here, as it is everywhere else.
+     */
+    suspend fun subgroupsFor(
+        database: MantraDatabase,
+        parentChatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<Subgroup> =
+        subgroupsOf(database, parentChatRoomId).filter { it.origin == origin }
+
+    /**
+     * Ceremonies under way in [parentChatRoomId] for one particular thing.
+     *
+     * The race this exists for: two admins open a project's screen, both see no
+     * room, and the group gets two ceremonies and two rooms for one project. The
+     * screen that invites the act is the screen that cannot otherwise see the act
+     * in progress, so it is shown what is already running.
+     *
+     * Nothing is refused on the strength of it. A group may legitimately want two
+     * rooms for one artifact -- two teams, two bodies of work -- and deciding
+     * otherwise would be this device deciding a group's structure. What this
+     * prevents is the *accidental* second one, which is the only one anybody
+     * regrets.
+     *
+     * Finished and failed are both left out, and for different reasons. A
+     * complete ceremony is a subgroup that was made, and [subgroupsFor] is where
+     * it shows; a failed one is nothing, and offering it back would be offering a
+     * ceremony nobody can finish.
+     */
+    suspend fun ceremoniesFor(
+        database: MantraDatabase,
+        parentChatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<DkgSession> =
+        database.dkgSessionDao()
+            .getSessionsForOrigin(
+                chatRoomId = parentChatRoomId,
+                originKind = origin.kind,
+                originId = origin.id
+            )
+            .filter {
+                it.stage != DkgRitualStage.FAILED && it.stage != DkgRitualStage.COMPLETE
+            }
+
+    /**
      * Every group that has certified a room as its child, verified, in canonical
      * order -- empty for a room that is nobody's child.
      *

@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.ui.composable.widgets.subgroupsForEntitySection
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
@@ -232,48 +233,15 @@ fun TranslationArtifactVersionDetailScreen(
                             }
                         }
 
-                        item { HorizontalDivider() }
-
-                        item {
-                            // Hidden rather than disabled where it cannot work,
-                            // the way the room's own subgroup entry is: a device
-                            // with no share of the key cannot open the
-                            // certificate session at all, and a NIP-17 room has
-                            // no admins to be a parent's.
-                            if (translationDetailUIState.canAddSubgroup) {
-                                TextButton(
-                                    onClick = {
-                                        val candidate = SubgroupOrigin.of(translation)
-
-                                        onNavigateToRoute.invoke(
-                                            SelectSubgroupAdminsRoute(
-                                                activeUserPublicKey = activeUserPublicKey,
-                                                parentChatRoomId = candidate.parentChatRoomId,
-                                                relayHint = relayHint,
-                                                name = candidate.name,
-                                                originKind = candidate.origin.kind,
-                                                originId = candidate.origin.id,
-                                            )
-                                        )
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.AccountTree,
-                                        contentDescription = Decorative
-                                    )
-                                    Spacer(
-                                        modifier = Modifier.width(
-                                            MaterialTheme.spacing.itemGap
-                                        )
-                                    )
-                                    Text(
-                                        stringResource(
-                                            Res.string.give_this_a_room_of_its_own
-                                        )
-                                    )
-                                }
-                            }
-                        }
+                        subgroupsForEntitySection(
+                            activeUserPublicKey = activeUserPublicKey,
+                            relayHint = relayHint,
+                            candidate = SubgroupOrigin.of(translation),
+                            subgroups = translationDetailUIState.subgroups,
+                            ceremonies = translationDetailUIState.subgroupCeremonies,
+                            canAddSubgroup = translationDetailUIState.canAddSubgroup,
+                            onNavigateToRoute = onNavigateToRoute,
+                        )
                         item { HorizontalDivider() }
 
                         // Details

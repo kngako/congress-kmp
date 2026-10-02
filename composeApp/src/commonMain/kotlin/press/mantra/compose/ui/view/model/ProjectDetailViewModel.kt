@@ -1,5 +1,7 @@
 package press.mantra.compose.ui.view.model
 
+import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.database.model.DkgSession
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -47,6 +49,10 @@ class ProjectDetailViewModel(
             projectDetailUIState = if (project == null) {
                 ProjectDetailUIState.Error("Couldn't find the project")
             } else {
+                // Read before the state is built so both halves come from one
+                // call, and so the room is resolved once rather than twice.
+                val (madeFor, ceremoniesFor) = subgroupsAndCeremoniesFor(project)
+
                 ProjectDetailUIState.Loaded(
                     project = project,
                     sourceVersions = mantraRepository.getProjectArtifactVersions(projectId),
@@ -59,6 +65,8 @@ class ProjectDetailViewModel(
                     ),
                     canSign = frostSigningRepository.canSign(chatRoomId),
                     canAddSubgroup = canAddSubgroupFor(project),
+                    subgroups = madeFor,
+                    subgroupCeremonies = ceremoniesFor,
                 )
             }
         }
@@ -85,6 +93,24 @@ class ProjectDetailViewModel(
         publicKeys.mapNotNull { publicKey ->
             nostrRepository.getProfileWithPublicKey(publicKey)?.let { publicKey to it }
         }.toMap()
+
+
+    /**
+     * The rooms made for [entity] and the ceremonies under way for it.
+     *
+     * Both off the entity's own room, which `SubgroupOrigin.of` is the one
+     * authority on -- a subgroup made for this thing is a child of the room the
+     * thing lives in, and asking any other room would answer about somebody
+     * else's children.
+     */
+    private suspend fun subgroupsAndCeremoniesFor(
+        entity: SubgroupOriginEntity
+    ): Pair<List<SubgroupManager.Subgroup>, List<DkgSession>> {
+        val candidate = SubgroupOrigin.of(entity)
+
+        return chatRepository.subgroupsFor(candidate.parentChatRoomId, candidate.origin) to
+            chatRepository.subgroupCeremoniesFor(candidate.parentChatRoomId, candidate.origin)
+    }
 
     companion object {
         private const val TAG = "ProjectDetailViewModel"

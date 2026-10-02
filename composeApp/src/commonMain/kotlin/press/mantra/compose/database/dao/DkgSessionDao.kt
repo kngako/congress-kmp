@@ -121,6 +121,30 @@ interface DkgSessionDao {
     ): DkgSession?
 
     /**
+     * Every ceremony in [chatRoomId] opened for one particular thing, newest
+     * first.
+     *
+     * Both halves of the origin are matched, because a row holding one of them is
+     * a row written by a version that disagreed with this one -- see
+     * `DkgSession.origin`.
+     *
+     * The stage is deliberately not in the `WHERE`. `DkgRitualStage` is stored
+     * through a converter, so a SQL comparison against it would be this query
+     * deciding what the converter's output looks like; the caller filters in
+     * Kotlin, where the enum is the enum.
+     */
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
+            "originKind = :originKind AND originId = :originId " +
+            "ORDER BY createdAt DESC"
+    )
+    suspend fun getSessionsForOrigin(
+        chatRoomId: String,
+        originKind: Int,
+        originId: String
+    ): List<DkgSession>
+
+    /**
      * Every ceremony this room holds, newest first.
      *
      * A room holds more than one the moment a subgroup's admins are the whole
