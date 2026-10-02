@@ -136,6 +136,7 @@ import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddToProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
@@ -149,6 +150,7 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.AddProjectScreen
+import press.mantra.compose.ui.composable.AddToProjectScreen
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.ProjectDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
@@ -1094,6 +1096,39 @@ fun MantraNavHost(
                     },
                 )
             }
+            composable<AddToProjectRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddToProjectRoute>()
+
+                AddToProjectScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    projectId = route.projectId,
+                    chatRoomId = route.chatRoomId,
+                    translations = route.translations,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this picker so back returns to the project
+                        // rather than to a form whose proposal has gone out.
+                        navController.navigate(
+                            route = signingRoute
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable<AddProjectRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<AddProjectRoute>()
 
@@ -1215,6 +1250,8 @@ fun MantraNavHost(
                     sessionId = route.sessionId,
                     chatRepository = databaseChatRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    mantraRepository = databaseMantraRepository,
+                    nostrRepository = databaseNostrRepository,
                     onNavigateBack = {
                         navController.popBackStack()
                     }

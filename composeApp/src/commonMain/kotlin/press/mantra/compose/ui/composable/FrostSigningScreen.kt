@@ -48,6 +48,8 @@ import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.MantraTheme
@@ -93,6 +95,8 @@ fun FrostSigningScreen(
     initialFrostSigningUIState: FrostSigningUIState = FrostSigningUIState.Loading,
     chatRepository: ChatRepository,
     frostSigningRepository: FrostSigningRepository,
+    mantraRepository: MantraRepository,
+    nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
 ) {
     val frostSigningViewModel: FrostSigningViewModel = viewModel(
@@ -102,7 +106,9 @@ fun FrostSigningScreen(
             activeUserPublicKey = activeUserPublicKey,
             initialFrostSigningUIState = initialFrostSigningUIState,
             chatRepository = chatRepository,
-            frostSigningRepository = frostSigningRepository
+            frostSigningRepository = frostSigningRepository,
+            mantraRepository = mantraRepository,
+            nostrRepository = nostrRepository
         )
     )
 
@@ -169,6 +175,7 @@ fun FrostSigningScreen(
                         events = proposed,
                         expected = state.items.size,
                         chatRoomId = state.localChatRoom.chatRoom.id,
+                        names = state.names,
                     )
 
                     HorizontalDivider()
@@ -339,7 +346,12 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
  * sign something they cannot check.
  */
 @Composable
-private fun WhatIsBeingSigned(events: List<Event>, expected: Int, chatRoomId: String) {
+private fun WhatIsBeingSigned(
+    events: List<Event>,
+    expected: Int,
+    chatRoomId: String,
+    names: Map<HexKey, String>,
+) {
     if (expected == 0 || events.size != expected) {
         Text(
             text = if (expected <= 1) {
@@ -365,7 +377,7 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int, chatRoomId: St
         events.forEachIndexed { index, event ->
             if (index > 0) HorizontalDivider()
 
-            OneThingBeingSigned(event, chatRoomId)
+            OneThingBeingSigned(event, chatRoomId, names)
         }
 
         Text(
@@ -380,9 +392,18 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int, chatRoomId: St
 
 /** One event of the batch, described as the thing it is. */
 @Composable
-private fun OneThingBeingSigned(event: Event, chatRoomId: String) {
-    // The room, so a project owned by this group does not say so on every line.
-    val summary = ProposedEvent.summarize(event, chatRoomId = chatRoomId)
+private fun OneThingBeingSigned(
+    event: Event,
+    chatRoomId: String,
+    names: Map<HexKey, String>,
+) {
+    // The room, so a project owned by this group does not say so on every line;
+    // and the names, so what is being signed is a thing rather than a hash.
+    val summary = ProposedEvent.summarize(
+        event = event,
+        chatRoomId = chatRoomId,
+        resolve = names::get,
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)) {
         Text(text = summary.label, style = MaterialTheme.typography.labelMedium)
@@ -430,6 +451,8 @@ private fun FrostSigningScreenPreview() {
                 ),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {}
             )
         }

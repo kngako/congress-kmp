@@ -22,6 +22,8 @@
     -->
     <string name="add_an_owner">Add an owner</string>
     <string name="add_project">Add project</string>
+    <string name="add_source_version_to_project">Add source version</string>
+    <string name="add_translation_to_project">Add translation</string>
     <string name="an_owner_is_a_64_character_public_key">An owner is a 64-character public key.</string>
     <string name="app_name">Mantra</string>
     <string name="add_a_dialect_the_group_can_translate_into">Add a dialect the group can translate into</string>
@@ -64,6 +66,8 @@
     <string name="created_by">Created by</string>
     <string name="describe_the_project">What this project is</string>
     <string name="eg_the_four_gospels_into_sesotho">e.g. The four gospels into Sesotho</string>
+    <string name="every_translation_is_already_in_this_project">Every translation in this group is already in this project.</string>
+    <string name="everything_in_the_library_is_already_in_this_project">Everything in this group's library is already in this project.</string>
     <string name="name_of_project">Name of project</string>
     <string name="no_source_versions_in_this_project">No source versions in this project yet.</string>
     <string name="no_translations_in_this_project">No translations in this project yet.</string>
@@ -71,6 +75,7 @@
     <string name="owner_public_key">Owner public key</string>
     <string name="owners">Owners</string>
     <string name="project_detail">Project detail</string>
+    <string name="propose_adding_to_the_project">Propose adding</string>
     <string name="propose_project">Propose project</string>
     <string name="remove_owner">Remove owner</string>
     <string name="source_versions">Source versions</string>
