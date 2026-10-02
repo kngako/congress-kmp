@@ -103,7 +103,7 @@ class MarmotGroupCreationJvmTest {
 
         val room = assertNotNull(db.chatRoomDao().findChatRoomById(groupId))
         val data = assertNotNull(
-            room.chatRoom.toMlsGroup()?.currentMarmotData(),
+            room.toMlsGroup(user)?.currentMarmotData(),
             "a room created here has to be able to read its own group data back",
         )
 
@@ -137,7 +137,7 @@ class MarmotGroupCreationJvmTest {
         )
 
         val room = assertNotNull(db.chatRoomDao().findChatRoomById(groupId))
-        val data = assertNotNull(room.chatRoom.toMlsGroup()?.currentMarmotData())
+        val data = assertNotNull(room.toMlsGroup(user)?.currentMarmotData())
 
         // Both, and the same string in each: the row is what this device draws in
         // its room list, and the group data is what every other member reads.

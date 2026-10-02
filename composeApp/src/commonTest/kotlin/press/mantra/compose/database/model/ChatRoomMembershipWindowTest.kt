@@ -26,17 +26,18 @@ class ChatRoomMembershipWindowTest {
     private val roomId = "a".repeat(64)
     private val user = "b".repeat(64)
 
+    /**
+     * The membership rather than the room, since v23 -- the window is one member's, and
+     * the group's row never knew whose it was being asked about.
+     */
     private fun room(
         joinedGroupAt: Instant?,
         createdAt: Instant = Instant.fromEpochSeconds(5_000),
-    ) = ChatRoom(
-        id = roomId,
+    ) = ChatRoomMembership(
+        chatRoomId = roomId,
         userPublicKey = user,
-        subject = null,
-        description = null,
-        mlsGroupState = null,
         joinedGroupAt = joinedGroupAt,
-        createdAt = createdAt,
+        createdAt = createdAt
     )
 
     @Test

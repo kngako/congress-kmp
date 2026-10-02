@@ -58,10 +58,8 @@ class MantraDaoJvmTest {
         db.profileDao().upsert(Profile(publicKey = author, userName = "author", nostrEventId = nostrEventId))
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = author,
             subject = "a translation room",
-            description = null,
-            mlsGroupState = null,
+            description = null
         )
         db.chatRoomDao().upsert(chatRoom)
         return LocalChatRoom(chatRoom = chatRoom)

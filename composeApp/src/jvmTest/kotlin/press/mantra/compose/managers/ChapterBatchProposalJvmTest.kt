@@ -97,10 +97,8 @@ class ChapterBatchProposalJvmTest {
 
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = proposer,
             subject = "#Ekklesia",
-            description = SharedKeyDerivation.describe("Admins of the group."),
-            mlsGroupState = null
+            description = SharedKeyDerivation.describe("Admins of the group.")
         )
         db.chatRoomDao().upsert(chatRoom)
 

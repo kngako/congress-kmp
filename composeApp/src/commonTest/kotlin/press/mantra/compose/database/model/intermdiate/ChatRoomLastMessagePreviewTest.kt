@@ -30,10 +30,8 @@ class ChatRoomLastMessagePreviewTest {
     ) = LocalChatRoom(
         chatRoom = ChatRoom(
             id = "11".repeat(32),
-            userPublicKey = user,
             subject = null,
-            description = null,
-            mlsGroupState = null,
+            description = null
         ),
         localParticipants = (participants + user).map { publicKey ->
             LocalParticipant(
@@ -72,7 +70,7 @@ class ChatRoomLastMessagePreviewTest {
 
     @Test
     fun `a room with nothing said in it has no preview`() {
-        assertNull(room(listOf(alice), lastChatMessage = null).lastChatMessagePreviewText())
+        assertNull(room(listOf(alice), lastChatMessage = null).lastChatMessagePreviewText(user))
     }
 
     /** The other party's name is the row's title already; repeating it says nothing. */
@@ -80,7 +78,7 @@ class ChatRoomLastMessagePreviewTest {
     fun `a two-person room shows the words alone`() {
         assertEquals(
             "hello",
-            room(listOf(alice), message(content = "hello")).lastChatMessagePreviewText()
+            room(listOf(alice), message(content = "hello")).lastChatMessagePreviewText(user)
         )
     }
 
@@ -88,7 +86,7 @@ class ChatRoomLastMessagePreviewTest {
     fun `a group names who spoke`() {
         assertEquals(
             "Alice: hello",
-            room(listOf(alice, bob), message(content = "hello")).lastChatMessagePreviewText()
+            room(listOf(alice, bob), message(content = "hello")).lastChatMessagePreviewText(user)
         )
     }
 
@@ -97,11 +95,11 @@ class ChatRoomLastMessagePreviewTest {
     fun `the reader's own message is prefixed either way`() {
         assertEquals(
             "You: hello",
-            room(listOf(alice), message(content = "hello", sender = user)).lastChatMessagePreviewText()
+            room(listOf(alice), message(content = "hello", sender = user)).lastChatMessagePreviewText(user)
         )
         assertEquals(
             "You: hello",
-            room(listOf(alice, bob), message(content = "hello", sender = user)).lastChatMessagePreviewText()
+            room(listOf(alice, bob), message(content = "hello", sender = user)).lastChatMessagePreviewText(user)
         )
     }
 
@@ -116,7 +114,7 @@ class ChatRoomLastMessagePreviewTest {
             room(
                 listOf(alice, bob),
                 message(content = "published their share", messageType = ChatMessage.TYPE_DKG_ROUND_1)
-            ).lastChatMessagePreviewText()
+            ).lastChatMessagePreviewText(user)
         )
     }
 
@@ -134,7 +132,7 @@ class ChatRoomLastMessagePreviewTest {
                     content = "The group now has a shared key",
                     messageType = ChatMessage.TYPE_DKG_COMPLETE
                 )
-            ).lastChatMessagePreviewText()
+            ).lastChatMessagePreviewText(user)
         )
     }
 
@@ -149,7 +147,7 @@ class ChatRoomLastMessagePreviewTest {
                     content = "Caught up on 12 items",
                     messageType = ChatMessage.TYPE_CHRONICLE_RECEIVED
                 )
-            ).lastChatMessagePreviewText()
+            ).lastChatMessagePreviewText(user)
         )
     }
 
@@ -166,7 +164,7 @@ class ChatRoomLastMessagePreviewTest {
                 room(
                     listOf(alice, bob),
                     message(content = "Invited Bob to the group", messageType = messageType)
-                ).lastChatMessagePreviewText(),
+                ).lastChatMessagePreviewText(user),
                 "$messageType should not be attributed to its sender"
             )
         }
@@ -188,7 +186,7 @@ class ChatRoomLastMessagePreviewTest {
                     messageType = ChatMessage.TYPE_DIRECT_MESSAGE,
                     directMessageRecipientPublicKey = bob,
                 )
-            ).lastChatMessagePreviewText()
+            ).lastChatMessagePreviewText(user)
         )
     }
 
@@ -204,7 +202,7 @@ class ChatRoomLastMessagePreviewTest {
                     messageType = ChatMessage.TYPE_DIRECT_MESSAGE,
                     directMessageRecipientPublicKey = user,
                 )
-            ).lastChatMessagePreviewText()
+            ).lastChatMessagePreviewText(user)
         )
     }
 
@@ -219,7 +217,7 @@ class ChatRoomLastMessagePreviewTest {
 
         assertEquals(
             "${stranger.take(8)}: hello",
-            room(listOf(alice, bob), message(sender = stranger)).lastChatMessagePreviewText()
+            room(listOf(alice, bob), message(sender = stranger)).lastChatMessagePreviewText(user)
         )
     }
 }

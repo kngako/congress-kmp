@@ -164,7 +164,12 @@ object ChronicleManager {
         userPublicKey: HexKey,
     ): Boolean {
         val chatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom ?: return false
-        if (chatRoom.chronicleRequestedAt != null) return false
+
+        // One member's outstanding request, not the group's: the other profile on this
+        // device asking for a chronicle is no reason for this one to stay silent.
+        val membership = database.chatRoomDao().findMembership(chatRoomId, userPublicKey)
+            ?: return false
+        if (membership.chronicleRequestedAt != null) return false
 
         val holdsWork = database.mantraDialectDao().getDialectsByChatRoomId(chatRoomId).isNotEmpty() ||
             database.mantraArtifactDao().getArtifactsByChatRoomId(chatRoomId).isNotEmpty()
@@ -180,7 +185,7 @@ object ChronicleManager {
             content = "",
         )
 
-        database.chatRoomDao().upsert(chatRoom.copy(chronicleRequestedAt = Clock.System.now()))
+        database.chatRoomDao().upsert(membership.copy(chronicleRequestedAt = Clock.System.now()))
 
         announce(
             database = database,
@@ -459,9 +464,9 @@ object ChronicleManager {
         // transfer, not about the group's record, and a member who left work out
         // would otherwise have the last word.
         if (pass.applied > 0) {
-            database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.let { chatRoom ->
-                if (chatRoom.chronicleRequestedAt != null) {
-                    database.chatRoomDao().upsert(chatRoom.copy(chronicleRequestedAt = null))
+            database.chatRoomDao().findMembership(chatRoomId, userPublicKey)?.let { membership ->
+                if (membership.chronicleRequestedAt != null) {
+                    database.chatRoomDao().upsert(membership.copy(chronicleRequestedAt = null))
 
                     // One line per answered request, which is as close to one per
                     // chronicle as this can get: the pages of a chronicle are not

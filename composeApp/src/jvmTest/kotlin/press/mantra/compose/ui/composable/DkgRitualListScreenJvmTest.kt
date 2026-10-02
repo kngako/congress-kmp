@@ -130,10 +130,8 @@ class DkgRitualListScreenJvmTest {
             localChatRoom = LocalChatRoom(
                 chatRoom = ChatRoom(
                     id = chatRoomId,
-                    userPublicKey = me,
                     subject = "Ekklesia",
-                    description = null,
-                    mlsGroupState = null,
+                    description = null
                 )
             ),
             ceremonies = ceremonies.toList()

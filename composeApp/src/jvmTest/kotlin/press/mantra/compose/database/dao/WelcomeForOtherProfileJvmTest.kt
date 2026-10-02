@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -99,13 +100,19 @@ class WelcomeForOtherProfileJvmTest {
         )
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = inviterHex,
             subject = "the collective",
-            description = null,
-            mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
+            description = null
         )
         inviterDb.chatRoomDao().upsert(chatRoom)
-        return LocalChatRoom(chatRoom = chatRoom)
+        // The inviter's own membership, which is what holds the MLS state they invite from.
+        inviterDb.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = roomId,
+                userPublicKey = inviterHex,
+                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
+            )
+        )
+        return assertNotNull(inviterDb.chatRoomDao().findChatRoomById(roomId))
     }
 
     /**
@@ -122,6 +129,7 @@ class WelcomeForOtherProfileJvmTest {
 
         inviterDb.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = inviter.pubKey.toHexKey(),
             peerPublicKey = invitee.pubKey.toHexKey(),
             peerKeyPackage = pair.keyPackage,
         )
@@ -162,18 +170,30 @@ class WelcomeForOtherProfileJvmTest {
     }
 
     /** The group, already on the device under [owner], with state that is recognisably not the joiner's. */
-    private suspend fun seedDeviceRoom(owner: KeyPair): ChatRoom {
+    /**
+     * The room, plus the membership that makes [owner] its holder on this device.
+     *
+     * The membership is the point of the fixture since v23: a room is the group's and
+     * says nothing about who holds it, so what a second Welcome would have overwritten
+     * -- and what the refusal protects -- is this row.
+     */
+    private suspend fun seedDeviceRoom(owner: KeyPair): ChatRoomMembership {
         val ownerHex = owner.pubKey.toHexKey()
         deviceDb.seedProfile(ownerHex, "holder", "3".repeat(64))
-        val chatRoom = ChatRoom(
-            id = roomId,
-            userPublicKey = ownerHex,
-            subject = "the collective",
-            description = null,
-            mlsGroupState = "0123456789abcdef",
+        deviceDb.chatRoomDao().upsert(
+            ChatRoom(
+                id = roomId,
+                subject = "the collective",
+                description = null
+            )
         )
-        deviceDb.chatRoomDao().upsert(chatRoom)
-        return chatRoom
+        val membership = ChatRoomMembership(
+            chatRoomId = roomId,
+            userPublicKey = ownerHex,
+            mlsGroupState = "a1".repeat(32),
+        )
+        deviceDb.chatRoomDao().upsert(membership)
+        return membership
     }
 
     private suspend fun deliverToInvitee(wrap: NostrEvent) = deviceDb.nostrDao().storeNostrEvent(
@@ -193,9 +213,19 @@ class WelcomeForOtherProfileJvmTest {
 
         deliverToInvitee(welcomeWrapForInvitee())
 
-        val room = assertNotNull(deviceDb.chatRoomDao().findChatRoomById(roomId)).chatRoom
-        assertEquals(before.userPublicKey, room.userPublicKey, "the room changed hands")
-        assertEquals(before.mlsGroupState, room.mlsGroupState, "the holder's MLS state was overwritten")
+        // The holder's membership is untouched, and the invitee got none: the refusal
+        // leaves the device holding the group exactly as one profile's.
+        val memberships = deviceDb.chatRoomDao().membershipsOf(roomId)
+        assertEquals(
+            listOf(before.userPublicKey),
+            memberships.map { it.userPublicKey },
+            "the room changed hands",
+        )
+        assertEquals(
+            before.mlsGroupState,
+            memberships.single().mlsGroupState,
+            "the holder's MLS state was overwritten",
+        )
 
         val line = deviceDb.chatMessageDao().getChatMessagesByChatRoomId(roomId).map { it.chatMessage }
             .singleOrNull { it.messageType == ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE }
@@ -230,9 +260,15 @@ class WelcomeForOtherProfileJvmTest {
 
         deliverToInvitee(welcomeWrapForInvitee())
 
-        val room = assertNotNull(deviceDb.chatRoomDao().findChatRoomById(roomId), "the invitee did not join").chatRoom
-        assertEquals(invitee.pubKey.toHexKey(), room.userPublicKey)
-        assertNotNull(room.mlsGroupState, "the joiner's MLS state was not filed")
+        val room = assertNotNull(
+            deviceDb.chatRoomDao().findChatRoomById(roomId),
+            "the invitee did not join",
+        )
+        val membership = assertNotNull(
+            room.membershipOf(invitee.pubKey.toHexKey()),
+            "the joiner got no membership",
+        )
+        assertNotNull(membership.mlsGroupState, "the joiner's MLS state was not filed")
         assertTrue(
             assertNotNull(deviceDb.marmotKeyPackageBundleDao().getMarmotKeyPackageBundleById(keyPackageEventId)).consumed,
             "a join consumes the key package",

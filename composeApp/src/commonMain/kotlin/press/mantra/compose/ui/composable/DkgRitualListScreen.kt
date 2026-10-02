@@ -470,11 +470,8 @@ private fun DkgRitualListScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "chatRoomId",
-                            userPublicKey = "u".repeat(64),
                             subject = "#Ekklesia",
-                            description = null,
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = null
                         )
                     ),
                     ceremonies = listOf(

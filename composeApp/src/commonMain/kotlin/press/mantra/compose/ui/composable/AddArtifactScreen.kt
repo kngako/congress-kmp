@@ -151,7 +151,7 @@ fun AddArtifactScreen(
                     topBar = {
                         TopAppBar(
                             title = {
-                                addArtifactUIState.localChatRoom.RenderChatRoomTitleText()
+                                addArtifactUIState.localChatRoom.RenderChatRoomTitleText(activeUserPublicKey)
                             },
                             navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
@@ -385,11 +385,8 @@ private fun AddArtifactScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "See something. Say somethin",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something. Say somethin"
                         ),
                     )
                 ),

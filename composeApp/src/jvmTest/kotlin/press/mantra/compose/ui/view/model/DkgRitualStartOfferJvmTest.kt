@@ -192,10 +192,8 @@ class DkgRitualStartOfferJvmTest {
     private fun room() = LocalChatRoom(
         chatRoom = ChatRoom(
             id = chatRoomId,
-            userPublicKey = me,
             subject = "Ekklesia",
-            description = null,
-            mlsGroupState = null,
+            description = null
         ),
         localParticipants = listOf(me, peer).map { publicKey ->
             LocalParticipant(

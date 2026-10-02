@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
@@ -84,10 +85,8 @@ class MarmotOutboundDaoJvmTest {
         seedProfile(user, "user", "c".repeat(64))
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = user,
             subject = "a restored room",
-            description = null,
-            mlsGroupState = null,
+            description = null
         )
         db.chatRoomDao().upsert(chatRoom)
         return LocalChatRoom(chatRoom = chatRoom)
@@ -123,11 +122,15 @@ class MarmotOutboundDaoJvmTest {
                 ).toExtension()
             ),
         )
-        val chatRoom = stateless.chatRoom.copy(
-            mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
+        // The MLS state is this member's, so it goes on their membership rather than on
+        // the room -- which is the whole of what v23 changed.
+        val membership = ChatRoomMembership(
+            chatRoomId = stateless.chatRoom.id,
+            userPublicKey = user,
+            mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
         )
-        db.chatRoomDao().upsert(chatRoom)
-        return LocalChatRoom(chatRoom = chatRoom)
+        db.chatRoomDao().upsert(membership)
+        return assertNotNull(db.chatRoomDao().findChatRoomById(stateless.chatRoom.id))
     }
 
     @Test
@@ -137,6 +140,7 @@ class MarmotOutboundDaoJvmTest {
         assertFailsWith<MarmotMissingChatGroupException> {
             db.marmotOutboundDao().inviteMemberToChatRoom(
                 localChatRoom = localChatRoom,
+                userPublicKey = user,
                 peerPublicKey = peer,
                 peerKeyPackage = keyPackage(),
             )
@@ -156,6 +160,7 @@ class MarmotOutboundDaoJvmTest {
         runCatching {
             db.marmotOutboundDao().inviteMemberToChatRoom(
                 localChatRoom = localChatRoom,
+                userPublicKey = user,
                 peerPublicKey = peer,
                 peerKeyPackage = keyPackage(),
             )
@@ -175,6 +180,7 @@ class MarmotOutboundDaoJvmTest {
         assertFailsWith<MarmotMissingChatGroupException> {
             db.marmotOutboundDao().addMembersToChatRoom(
                 localChatRoom = localChatRoom,
+                userPublicKey = user,
                 peers = listOf(peer to keyPackage()),
             )
         }
@@ -191,6 +197,7 @@ class MarmotOutboundDaoJvmTest {
 
         val failed = db.marmotOutboundDao().addMembersToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = user,
             peers = emptyList(),
         )
 
@@ -208,6 +215,7 @@ class MarmotOutboundDaoJvmTest {
 
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
@@ -228,19 +236,20 @@ class MarmotOutboundDaoJvmTest {
     @Test
     fun `inviting a member persists the advanced group state`() = runBlocking {
         val localChatRoom = seedMlsRoom()
-        val stateBefore = localChatRoom.chatRoom.mlsGroupState
+        val stateBefore = localChatRoom.mlsGroupStateOf(user)
 
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
 
-        val stateAfter = assertNotNull(db.chatRoomDao().findChatRoomById(roomId)).chatRoom.mlsGroupState
+        val stateAfter = assertNotNull(db.chatRoomDao().findChatRoomById(roomId)).mlsGroupStateOf(user)
         assertNotNull(stateAfter)
         assertTrue(stateAfter != stateBefore, "the advanced epoch was never written back")
         val group = assertNotNull(
-            db.chatRoomDao().findChatRoomById(roomId)!!.chatRoom.toMlsGroup(),
+            db.chatRoomDao().findChatRoomById(roomId)!!.toMlsGroup(user),
             "the persisted state no longer restores",
         )
         assertEquals(2, group.members().size.toInt(), "the invitee is not in the restored group")
@@ -257,6 +266,7 @@ class MarmotOutboundDaoJvmTest {
 
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
@@ -284,6 +294,7 @@ class MarmotOutboundDaoJvmTest {
 
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = localChatRoom,
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
@@ -303,6 +314,7 @@ class MarmotOutboundDaoJvmTest {
     fun `an invite into an established group is in the room before its welcome goes out`() = runBlocking {
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = seedMlsRoom(),
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
@@ -312,6 +324,7 @@ class MarmotOutboundDaoJvmTest {
         val established = assertNotNull(db.chatRoomDao().findChatRoomById(roomId))
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = established,
+            userPublicKey = user,
             peerPublicKey = secondPeer,
             peerKeyPackage = marmotKeyPackageFor(secondPeer),
         )
@@ -340,6 +353,7 @@ class MarmotOutboundDaoJvmTest {
     fun `the invite line is a membership line and not a bubble`() = runBlocking {
         db.marmotOutboundDao().inviteMemberToChatRoom(
             localChatRoom = seedMlsRoom(),
+            userPublicKey = user,
             peerPublicKey = peer,
             peerKeyPackage = marmotKeyPackageFor(peer),
         )
@@ -362,6 +376,7 @@ class MarmotOutboundDaoJvmTest {
         runCatching {
             db.marmotOutboundDao().inviteMemberToChatRoom(
                 localChatRoom = seedStatelessRoom(),
+                userPublicKey = user,
                 peerPublicKey = peer,
                 peerKeyPackage = keyPackage(),
             )

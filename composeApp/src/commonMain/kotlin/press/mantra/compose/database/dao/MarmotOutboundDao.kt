@@ -9,6 +9,7 @@ import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import press.mantra.compose.database.model.ChatMessageNostrEventRelation
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.MarmotCommitResult
 import press.mantra.compose.database.model.MarmotGroupEvent
@@ -60,6 +61,28 @@ abstract class MarmotOutboundDao(
 ) {
     val logger = Logger.withTag(TAG)
 
+    /**
+     * Files the acting profile's advanced MLS state.
+     *
+     * The state is one member's position in the tree, so it belongs to their membership
+     * and not to the room -- writing it on the room was what let a second profile's join
+     * overwrite the first's. Four callers below persist after advancing the group, each
+     * for the same reason: an epoch advanced in memory and not written down means the next
+     * send encrypts under an epoch nobody else is at.
+     */
+    private suspend fun persistMlsState(
+        chatRoomId: String,
+        userPublicKey: HexKey,
+        mlsGroup: MlsGroup,
+    ) {
+        val membership = database.chatRoomDao().findMembership(chatRoomId, userPublicKey)
+            ?: ChatRoomMembership(chatRoomId = chatRoomId, userPublicKey = userPublicKey)
+
+        database.chatRoomDao().upsert(
+            membership.copy(mlsGroupState = mlsGroup.saveState().encodeTls().toHex())
+        )
+    }
+
     @Transaction
     open suspend fun createMlsDirectMessageChatRoom(
         name: String? = null,
@@ -89,15 +112,24 @@ abstract class MarmotOutboundDao(
         val createdAt = Clock.System.now()
         val chatRoom = ChatRoom(
             id = nostrGroupId,
-            userPublicKey = userPublicKey,
-            mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             subject = name,
             description = description,
-            joinedGroupAt = createdAt,
-            createdAt = createdAt,
+            createdAt = createdAt
         )
         database.chatRoomDao().upsert(
             chatRoom
+        )
+
+        // And this profile's membership of it. Member since the group existed, because
+        // this device is what created it: there is no epoch of this group that predates
+        // us, and so nothing in it for predatesMembership to hold back.
+        database.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = chatRoom.id,
+                userPublicKey = userPublicKey,
+                joinedGroupAt = createdAt,
+                createdAt = createdAt,
+            )
         )
 
         // Save Participants...
@@ -126,12 +158,7 @@ abstract class MarmotOutboundDao(
             relays = relays
         )
 
-        // Update chatRoom
-        database.chatRoomDao().upsert(
-            chatRoom.copy(
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
-            )
-        )
+        persistMlsState(chatRoom.id, userPublicKey, mlsGroup)
 
         return nostrGroupId
     }
@@ -139,13 +166,14 @@ abstract class MarmotOutboundDao(
     @Transaction
     open suspend fun inviteMemberToChatRoom(
         localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
         peerPublicKey: HexKey,
         peerKeyPackage: MarmotKeyPackage,
     ) {
         // A room restored from an inbound gift wrap has no persisted MLS state, so there is
         // nothing to add a member to. Say so instead of silently doing nothing and letting the
         // caller report success.
-        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+        val mlsGroup = localChatRoom.toMlsGroup(userPublicKey)
             ?: throw MarmotMissingChatGroupException(
                 "No MLS group state for chat room ${localChatRoom.chatRoom.id}; cannot invite $peerPublicKey"
             )
@@ -168,7 +196,7 @@ abstract class MarmotOutboundDao(
         inviteMember(
             nostrGroupId = localChatRoom.chatRoom.id,
             mlsGroup = mlsGroup,
-            userPublicKey = localChatRoom.chatRoom.userPublicKey,
+            userPublicKey = userPublicKey,
             peerPublicKey = peerPublicKey,
             peerKeyPackage = peerKeyPackage,
             relays = relays
@@ -177,11 +205,7 @@ abstract class MarmotOutboundDao(
         // `addMember` advanced the in-memory group to the next epoch. Without persisting it the
         // creator kept encrypting under the old epoch — which the new member cannot decrypt —
         // and the next invite would re-derive from stale state and produce a conflicting commit.
-        database.chatRoomDao().upsert(
-            localChatRoom.chatRoom.copy(
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-            )
-        )
+        persistMlsState(localChatRoom.chatRoom.id, userPublicKey, mlsGroup)
     }
 
     /**
@@ -211,11 +235,12 @@ abstract class MarmotOutboundDao(
     @Transaction
     open suspend fun addMembersToChatRoom(
         localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
         peers: List<Pair<HexKey, MarmotKeyPackage>>
     ): List<HexKey> {
         if (peers.isEmpty()) return emptyList()
 
-        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+        val mlsGroup = localChatRoom.toMlsGroup(userPublicKey)
             ?: throw MarmotMissingChatGroupException(
                 "No MLS state for chat room ${localChatRoom.chatRoom.id}; cannot add members"
             )
@@ -235,13 +260,13 @@ abstract class MarmotOutboundDao(
                 }
 
                 runCatching {
-                    inviteMemberToChatRoom(current, peerPublicKey, peerKeyPackage)
+                    inviteMemberToChatRoom(current, userPublicKey, peerPublicKey, peerKeyPackage)
                 }.onFailure {
                     logger.e("Failed to invite $peerPublicKey to ${localChatRoom.chatRoom.id}", it)
                     notAdded.add(peerPublicKey)
                     announceInviteFailed(
                         chatRoomId = localChatRoom.chatRoom.id,
-                        userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                        userPublicKey = userPublicKey,
                         peerPublicKey = peerPublicKey,
                         reason = it.message,
                     )
@@ -295,11 +320,7 @@ abstract class MarmotOutboundDao(
         // `commit` advanced the in-memory group. Persist before delivering, so a
         // crash between the two leaves the group at the epoch the Welcomes describe
         // rather than one behind it.
-        database.chatRoomDao().upsert(
-            localChatRoom.chatRoom.copy(
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-            )
-        )
+        persistMlsState(localChatRoom.chatRoom.id, userPublicKey, mlsGroup)
 
         // One line each, as `inviteMember` writes for the invites it makes -- this
         // path does its own commit and never goes through it. Written before the
@@ -308,7 +329,7 @@ abstract class MarmotOutboundDao(
         peers.forEach { (peerPublicKey, _) ->
             announceMembership(
                 chatRoomId = localChatRoom.chatRoom.id,
-                userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                userPublicKey = userPublicKey,
                 messageType = ChatMessage.TYPE_MEMBER_INVITED,
                 content = "Invited ${memberName(peerPublicKey)} to the group",
             )
@@ -320,7 +341,7 @@ abstract class MarmotOutboundDao(
             peers.forEach { (peerPublicKey, _) ->
                 announceInviteFailed(
                     chatRoomId = localChatRoom.chatRoom.id,
-                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    userPublicKey = userPublicKey,
                     peerPublicKey = peerPublicKey,
                     reason = "the group produced no invitation to send",
                 )
@@ -340,7 +361,7 @@ abstract class MarmotOutboundDao(
             // was reached -- a runCatching here would see nothing to catch.
             val delivered = deliveryWelcome(
                 nostrGroupId = localChatRoom.chatRoom.id,
-                userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                userPublicKey = userPublicKey,
                 welcomeBytes = welcomeBytes,
                 peerKeyPackageEventId = peerKeyPackage.id,
                 relays = relays,
@@ -734,6 +755,7 @@ abstract class MarmotOutboundDao(
     @Transaction
     open suspend fun encryptAndSendMarmotInnerEvent(
         localChatRoom: LocalChatRoom,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         marmotInnerEvent: MarmotInnerEvent,
         nostrSignerSync: NostrSignerSync
@@ -801,11 +823,7 @@ abstract class MarmotOutboundDao(
         logger.d("groupEvent: ${groupEvent.toJson()}")
 
         // May need to update chatRoom mlsGroupState... or last sent message
-        database.chatRoomDao().upsert(
-            localChatRoom.chatRoom.copy(
-                mlsGroupState = mlsGroup.saveState().encodeTls().toHex()
-            )
-        )
+        persistMlsState(localChatRoom.chatRoom.id, userPublicKey, mlsGroup)
 
         database.nostrEventDao().upsert(
             NostrEvent(

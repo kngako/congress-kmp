@@ -300,10 +300,8 @@ class ProfileScopedSigningKeyJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = id,
-                userPublicKey = userPublicKey,
                 subject = "Ekklesia",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
 

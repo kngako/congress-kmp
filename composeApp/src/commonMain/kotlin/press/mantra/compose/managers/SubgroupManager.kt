@@ -137,7 +137,7 @@ object SubgroupManager {
         // ceremony is opened over the second while running in a room governed by
         // the first.
         val parentAdminPublicKeys = runCatching {
-            parentRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+            parentRoom.toMlsGroup(coordinatorPublicKey)?.currentMarmotData()?.adminPubkeys
         }.getOrNull()
 
         if (parentAdminPublicKeys == null) {
@@ -411,7 +411,7 @@ object SubgroupManager {
         // arriving commit, so on a room this device created it is null for
         // everybody, including the creator.
         val adoptingAdmins = runCatching {
-            adoptingRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+            adoptingRoom.toMlsGroup(userPublicKey)?.currentMarmotData()?.adminPubkeys
         }.getOrNull()
             ?: return "A group can only adopt another if it has admins."
 
@@ -591,7 +591,7 @@ object SubgroupManager {
             )
 
         val childAdmins = runCatching {
-            childRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+            childRoom.toMlsGroup(userPublicKey)?.currentMarmotData()?.adminPubkeys
         }.getOrNull().orEmpty()
 
         val childName = MarmotGroupName.of(childRoom.chatRoom.subject.orEmpty().ifBlank { "a group" })

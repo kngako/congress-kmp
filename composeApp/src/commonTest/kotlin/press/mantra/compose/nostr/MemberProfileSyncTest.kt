@@ -117,10 +117,8 @@ class MemberProfileSyncTest {
     ) = LocalChatRoom(
         chatRoom = ChatRoom(
             id = id,
-            userPublicKey = me,
             subject = null,
-            description = null,
-            mlsGroupState = "state",
+            description = null
         ),
         localParticipants = members,
     )

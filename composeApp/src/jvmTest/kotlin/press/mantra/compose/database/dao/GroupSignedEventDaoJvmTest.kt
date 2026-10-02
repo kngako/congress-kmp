@@ -160,10 +160,8 @@ class GroupSignedEventDaoJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = member,
                 subject = "#Ekklesia",
-                description = SharedKeyDerivation.describe("Admins"),
-                mlsGroupState = null,
+                description = SharedKeyDerivation.describe("Admins")
             )
         )
     }

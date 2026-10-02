@@ -146,15 +146,20 @@ class DatabaseMarmotRepository(
                 "Cannot send ${marmotInnerEvent.id}: no chat room ${marmotInnerEvent.chatRoomId}"
             )
 
-        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+        // The sender's own MLS state. The event says who wrote it, which is the one
+        // answer here that cannot be wrong: a rumor is encrypted under the epoch its
+        // author is at, and since v23 each member's epoch is on their own membership.
+        val mlsGroup = localChatRoom.toMlsGroup(marmotInnerEvent.publicKey)
             ?: throw MarmotMissingChatGroupException(
-                "Cannot send ${marmotInnerEvent.id}: ${marmotInnerEvent.chatRoomId} holds no MLS group state"
+                "Cannot send ${marmotInnerEvent.id}: ${marmotInnerEvent.publicKey} holds no " +
+                    "MLS group state for ${marmotInnerEvent.chatRoomId}"
             )
 
         logger.d("mlsGroup: $mlsGroup")
 
         database.marmotOutboundDao().encryptAndSendMarmotInnerEvent(
             localChatRoom = localChatRoom,
+            userPublicKey = marmotInnerEvent.publicKey,
             mlsGroup = mlsGroup,
             marmotInnerEvent = marmotInnerEvent,
             nostrSignerSync = nostrSignerSync

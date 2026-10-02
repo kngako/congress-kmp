@@ -42,6 +42,14 @@ import kotlinx.coroutines.launch
 class ChatMessageListViewModel(
     initialChatMessageListUIState: ChatMessageListUIState,
     val localChatRoom: LocalChatRoom,
+    /**
+     * Whose view of the room this is.
+     *
+     * The room used to say, on `ChatRoom.userPublicKey`. It is the group's row now and
+     * says nothing about who is reading it, so the screen that opened this has to --
+     * which is also the only place that actually knows.
+     */
+    val activeUserPublicKey: HexKey,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val frostSigningRepository: FrostSigningRepository,
@@ -314,7 +322,7 @@ class ChatMessageListViewModel(
             runCatching {
                 chatRepository.requestGroupHistoryIfMissing(
                     chatRoomId = localChatRoom.chatRoom.id,
-                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    userPublicKey = activeUserPublicKey,
                 )
             }.onFailure { logger.w(throwable = it) { "Could not ask for this group's history" } }
         }
@@ -358,7 +366,7 @@ class ChatMessageListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val unnamedMembers = MemberProfileSync.unresolvedMemberPublicKeys(
                 rooms = listOf(localChatRoom),
-                activeUserPublicKey = localChatRoom.chatRoom.userPublicKey,
+                activeUserPublicKey = activeUserPublicKey,
             )
 
             if (unnamedMembers.isNotEmpty()) {
@@ -368,8 +376,8 @@ class ChatMessageListViewModel(
                 )
             }
 
-            if (localChatRoom.chatRoom.mlsGroupState == null) {
-                localChatRoom.localParticipants.filter { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }.forEach { recipients ->
+            if (localChatRoom.mlsGroupStateOf(activeUserPublicKey) == null) {
+                localChatRoom.localParticipants.filter { it.participant.participantPublicKey != activeUserPublicKey }.forEach { recipients ->
 
                     val chatMessageRelayListEvent = chatRepository.getChatMessageRelayForPublicKey(recipients.participant.participantPublicKey)
 
@@ -442,6 +450,7 @@ class ChatMessageListViewModel(
         fun factory(
             initialChatMessageListUIState: ChatMessageListUIState = ChatMessageListUIState.Loading,
             localChatRoom: LocalChatRoom,
+            activeUserPublicKey: HexKey,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
             frostSigningRepository: FrostSigningRepository,
@@ -449,6 +458,7 @@ class ChatMessageListViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ChatMessageListViewModel(
+                    activeUserPublicKey = activeUserPublicKey,
                     initialChatMessageListUIState = initialChatMessageListUIState,
                     localChatRoom = localChatRoom,
                     nostrRepository = nostrRepository,

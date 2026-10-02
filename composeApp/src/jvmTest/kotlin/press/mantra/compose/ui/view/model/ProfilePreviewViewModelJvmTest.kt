@@ -314,10 +314,8 @@ class ProfilePreviewViewModelJvmTest {
     private fun roomWith(peer: HexKey) = LocalChatRoom(
         chatRoom = ChatRoom(
             id = "room",
-            userPublicKey = me,
             subject = null,
-            description = null,
-            mlsGroupState = "state",
+            description = null
         ),
         localParticipants = listOf(me, peer).map { publicKey ->
             LocalParticipant(

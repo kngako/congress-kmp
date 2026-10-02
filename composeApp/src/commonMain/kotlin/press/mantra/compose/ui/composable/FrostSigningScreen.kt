@@ -415,11 +415,8 @@ private fun FrostSigningScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "chatRoomId",
-                            userPublicKey = "",
                             subject = "#Ekklesia",
-                            description = null,
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = null
                         )
                     )
                 ),

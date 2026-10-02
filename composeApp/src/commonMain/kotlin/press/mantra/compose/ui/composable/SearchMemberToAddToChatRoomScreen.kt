@@ -241,11 +241,8 @@ private fun ChatRoomDetailScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "See something... say something.",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something... say something."
                         ),
                     ),
                     contacts = listOf(

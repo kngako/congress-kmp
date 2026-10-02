@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.repository.DatabaseDkgRepository
 import press.mantra.compose.database.model.ChatRoom
@@ -150,7 +151,7 @@ class SignedGroupKeyStateTest {
         val roomId: String get() = room.chatRoom.id
 
         /** Which transport this device's room puts a signing message on. */
-        val isMarmotRoom: Boolean get() = room.chatRoom.mlsGroupState != null
+        val isMarmotRoom: Boolean get() = room.mlsGroupStateOf(publicKey) != null
 
         /**
          * Files an arriving message where the inbound path would have filed it,
@@ -237,12 +238,19 @@ class SignedGroupKeyStateTest {
 
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = publicKey,
             subject = "#Ekklesia",
-            description = description,
-            mlsGroupState = mlsGroupState
+            description = description
         )
         db.chatRoomDao().upsert(chatRoom)
+        // The MLS state is this member's, and `signingPath` reads it to tell a Marmot room
+        // from the NIP-17 room a ceremony ran in.
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = roomId,
+                userPublicKey = publicKey,
+                mlsGroupState = mlsGroupState,
+            )
+        )
 
         // A NIP-17 room's membership is its participant rows, and that is what a
         // gift wrap is addressed from. A Marmot room's is the MLS tree, which
@@ -621,10 +629,8 @@ class SignedGroupKeyStateTest {
         device.db.chatRoomDao().upsert(
             ChatRoom(
                 id = adminRoomId,
-                userPublicKey = device.publicKey,
                 subject = "#Ekklesia",
-                description = adminRoomDescription,
-                mlsGroupState = "00"
+                description = adminRoomDescription
             )
         )
     }
@@ -840,10 +846,8 @@ class SignedGroupKeyStateTest {
         // single member is asked to sign anything.
         val bystanderRoom = ChatRoom(
             id = "bystanderroom".padEnd(64, '0'),
-            userPublicKey = member.publicKey,
             subject = "some other chat",
-            description = null,
-            mlsGroupState = null
+            description = null
         )
         member.db.chatRoomDao().upsert(bystanderRoom)
 
@@ -1430,10 +1434,8 @@ class SignedGroupKeyStateTest {
 
         val bystanderRoom = ChatRoom(
             id = "bystanderroom".padEnd(64, '0'),
-            userPublicKey = member.publicKey,
             subject = "some other chat",
-            description = null,
-            mlsGroupState = null
+            description = null
         )
         member.db.chatRoomDao().upsert(bystanderRoom)
 

@@ -65,10 +65,8 @@ class TranslationChunkApplyJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = roomId,
-                userPublicKey = author,
                 subject = "a translation room",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
 

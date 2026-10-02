@@ -167,11 +167,8 @@ class BroadcastGroupSignedEventScreenJvmTest {
         localChatRoom = LocalChatRoom(
             chatRoom = ChatRoom(
                 id = chatRoomId,
-                userPublicKey = "a".repeat(64),
                 subject = "Translation room",
-                description = "A group translating hard books.",
-                initialGiftWrapPayloadId = "sdfaer",
-                mlsGroupState = "state"
+                description = "A group translating hard books."
             )
         ),
         signedEvent = signedEvent(),

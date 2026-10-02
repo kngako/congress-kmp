@@ -226,11 +226,8 @@ private fun ChatRoomDetailScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "hex",
-                            userPublicKey = "hex",
                             subject = "Room title",
-                            description = "See something... say something.",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something... say something."
                         ),
                     ),
                         profile = Profile(

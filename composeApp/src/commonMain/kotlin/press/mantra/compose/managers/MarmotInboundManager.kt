@@ -28,6 +28,7 @@ import com.vitorpamplona.quartz.marmot.mls.group.RetainedEpochSecrets
 import com.vitorpamplona.quartz.marmot.mls.schedule.KeySchedule
 import com.vitorpamplona.quartz.marmot.mls.schedule.SecretTree
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -227,6 +228,11 @@ object MarmotInboundManager {
         mlsGroup: MlsGroup,
         groupEvent: GroupEvent
     ): GroupEventResult? {
+        // Whose membership this path advances. The event was fetched and decrypted for
+        // this profile, so its key pair is the honest answer -- and the MLS state the
+        // commits below reach lives on that profile's membership now, not on the room.
+        val userPublicKey = activeKeyPair.pubKey.toHexKey()
+
         groupEvent.groupId()?.let { groupId ->
             return try {
                 val mlsBytes = tryDecryptOuterLayer(
@@ -257,6 +263,7 @@ object MarmotInboundManager {
                         WireFormat.PRIVATE_MESSAGE -> {
                             processPrivateMessage(
                                 database = database,
+                                userPublicKey = userPublicKey,
                                 mlsGroup = mlsGroup,
                                 mlsMessage = mlsMessage,
                                 groupEvent = groupEvent
@@ -265,6 +272,7 @@ object MarmotInboundManager {
                         WireFormat.PUBLIC_MESSAGE -> {
                             processPublicMessage(
                                 database = database,
+                                userPublicKey = userPublicKey,
                                 mlsGroup = mlsGroup,
                                 mlsMessage = mlsMessage,
                                 groupEvent = groupEvent
@@ -289,6 +297,7 @@ object MarmotInboundManager {
 
     suspend fun processPrivateMessage(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         mlsMessage: MlsMessage,
         groupEvent: GroupEvent
@@ -303,6 +312,7 @@ object MarmotInboundManager {
                 // MLS decrypt to get the inner plaintext
                 val decrypted = decryptMessageBytes(
                     database,
+                    userPublicKey,
                     mlsGroup,
                     mlsMessage.toTlsBytes()
                 )
@@ -337,6 +347,7 @@ object MarmotInboundManager {
             ContentType.COMMIT -> {
                 handleCommitEvent(
                     database,
+                    userPublicKey,
                     mlsGroup,
                     groupEvent
                 )
@@ -350,6 +361,7 @@ object MarmotInboundManager {
 
     private suspend fun decryptMessageBytes(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         messageBytes: ByteArray,
     ): DecryptedMessage {
@@ -377,6 +389,7 @@ object MarmotInboundManager {
                     pushRetainedEpoch(nostrGroupId, retainedBefore)
                     persistGroup(
                         database,
+                        userPublicKey,
                         mlsGroup
                     )
                 }
@@ -396,6 +409,7 @@ object MarmotInboundManager {
 
     public suspend fun processPublicMessage(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         mlsMessage: MlsMessage,
         groupEvent: GroupEvent
@@ -408,6 +422,7 @@ object MarmotInboundManager {
             ContentType.COMMIT -> {
                 handleCommitEvent(
                     database,
+                    userPublicKey,
                     mlsGroup,
                     groupEvent
                 )
@@ -440,6 +455,7 @@ object MarmotInboundManager {
 
     private suspend fun handleCommitEvent(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         groupEvent: GroupEvent
     ): GroupEventResult {
@@ -454,6 +470,7 @@ object MarmotInboundManager {
         return if (pending.size == 1) {
             val result = applyCommit(
                 database,
+                userPublicKey,
                 mlsGroup,
                 groupEvent
             )
@@ -491,6 +508,7 @@ object MarmotInboundManager {
 
     private suspend fun applyCommit(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         commitEvent: GroupEvent,
     ): GroupEventResult =
@@ -540,7 +558,7 @@ object MarmotInboundManager {
                             if (decrypted.contentType == ContentType.COMMIT) {
                                 if (mlsGroup.epoch != preEpoch) {
                                     pushRetainedEpoch(groupId, retainedBefore)
-                                    persistGroup(database, mlsGroup)
+                                    persistGroup(database, userPublicKey, mlsGroup)
                                 }
                                 GroupEventResult.CommitProcessed(groupId, mlsGroup.epoch)
                             } else {
@@ -598,6 +616,7 @@ object MarmotInboundManager {
                             } else {
                                 processCommit(
                                     database,
+                                    userPublicKey,
                                     mlsGroup,
                                     commitBytes = pubMsg.content,
                                     senderLeafIndex = pubMsg.sender.leafIndex,
@@ -632,6 +651,7 @@ object MarmotInboundManager {
      */
     suspend fun processCommit(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup,
         commitBytes: ByteArray,
         senderLeafIndex: Int,
@@ -655,6 +675,7 @@ object MarmotInboundManager {
         )
         persistGroup(
             database,
+            userPublicKey,
             mlsGroup
         )
     }
@@ -703,8 +724,21 @@ object MarmotInboundManager {
         return null
     }
 
+    /**
+     * Files the group this profile now holds, at the epoch it has reached.
+     *
+     * Whose matters since v23: an MLS state is one member's position in the tree and
+     * lives on their `ChatRoomMembership`. It used to be written on the room, where a
+     * second profile joining the same group would have written over it -- which is the
+     * fault this whole path was most exposed to, since it is the path that advances an
+     * epoch.
+     *
+     * The profile comes from the `activeKeyPair` the inbound entry is already given, so
+     * it is the profile the event was addressed to rather than a guess.
+     */
     private suspend fun persistGroup(
         database: MantraDatabase,
+        userPublicKey: HexKey,
         mlsGroup: MlsGroup
     ) {
         val nostrGroupId = mlsGroup.currentMarmotData()?.nostrGroupId ?: mlsGroup.groupId.toHex()
@@ -728,7 +762,14 @@ object MarmotInboundManager {
                 //  TODO(security): Encrypt `mlsGroupState` at rest with a
                 //   platform-backed key-encryption-key before this ships.
                 database.chatRoomDao().upsert(
-                    localChatRoom.chatRoom.copy(
+                    (
+                        database.chatRoomDao()
+                            .findMembership(localChatRoom.chatRoom.id, userPublicKey)
+                            ?: press.mantra.compose.database.model.ChatRoomMembership(
+                                chatRoomId = localChatRoom.chatRoom.id,
+                                userPublicKey = userPublicKey,
+                            )
+                        ).copy(
                         mlsGroupState = encoded.toHex()
                     )
                 )

@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -67,10 +68,16 @@ class MarmotPreJoinIndexingJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = roomId,
-                userPublicKey = user,
                 subject = null,
                 description = null,
-                mlsGroupState = null,
+                createdAt = joinedGroupAt ?: joinedAt
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = roomId,
+                userPublicKey = user,
+                // The window this test is about, now measured off the membership.
                 joinedGroupAt = joinedGroupAt,
                 createdAt = joinedGroupAt ?: joinedAt,
             )

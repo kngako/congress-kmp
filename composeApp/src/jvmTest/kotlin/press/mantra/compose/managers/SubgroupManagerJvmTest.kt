@@ -31,6 +31,7 @@ import kotlin.time.Instant
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -953,9 +954,14 @@ class SubgroupManagerJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = user,
                 subject = name,
-                description = metadata.description,
+                description = metadata.description
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = chatRoomId,
+                userPublicKey = user,
                 mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
         )
@@ -1038,10 +1044,14 @@ class SubgroupManagerJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = id,
-                userPublicKey = user,
                 subject = null,
-                description = null,
-                mlsGroupState = null,
+                description = null
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = id,
+                userPublicKey = user,
             )
         )
     }

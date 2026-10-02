@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -349,12 +350,19 @@ class LiveSubscriptionReconcileTest {
     ) = LocalChatRoom(
         chatRoom = ChatRoom(
             id = id,
-            userPublicKey = me,
             subject = null,
-            description = null,
-            mlsGroupState = mlsGroupState,
-            leftGroupAt = leftGroupAt,
-        )
+            description = null
+        ),
+        // Whether we are in a room, and still in it, is the membership's answer since
+        // v23 -- the room itself is the group's and says neither.
+        memberships = listOf(
+            ChatRoomMembership(
+                chatRoomId = id,
+                userPublicKey = me,
+                mlsGroupState = mlsGroupState,
+                leftGroupAt = leftGroupAt,
+            )
+        ),
     )
 
     private fun event(id: String) = NostrEvent(

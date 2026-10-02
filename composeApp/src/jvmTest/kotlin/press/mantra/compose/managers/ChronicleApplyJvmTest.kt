@@ -26,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
@@ -190,10 +191,14 @@ class ChronicleApplyJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = user,
                 subject = "#Ekklesia",
-                description = null,
-                mlsGroupState = null,
+                description = null
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = chatRoomId,
+                userPublicKey = user,
             )
         )
     }
@@ -767,7 +772,7 @@ class ChronicleApplyJvmTest {
         seedRoom(receiver, newMember)
 
         ChronicleManager.requestIfEmpty(receiver, chatRoomId, newMember)
-        assertNotNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
+        assertNotNull(receiver.chatRoomDao().findMembership(chatRoomId, newMember)?.chronicleRequestedAt)
 
         senderChronicle().forEach { deliver(it) }
 
@@ -775,7 +780,7 @@ class ChronicleApplyJvmTest {
         // chronicle was complete. A page count is the sender's word about the
         // transfer, not about the group's record, so a member who left work out
         // must not get the last word on whether to ask again.
-        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
+        assertNull(receiver.chatRoomDao().findMembership(chatRoomId, newMember)?.chronicleRequestedAt)
     }
 
     @Test
@@ -848,7 +853,7 @@ class ChronicleApplyJvmTest {
         }
 
         assertEquals(rowCounts(sender), rowCounts(receiver))
-        assertNull(receiver.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom?.chronicleRequestedAt)
+        assertNull(receiver.chatRoomDao().findMembership(chatRoomId, newMember)?.chronicleRequestedAt)
     }
 
     // ---- The push behind a Welcome ---------------------------------------

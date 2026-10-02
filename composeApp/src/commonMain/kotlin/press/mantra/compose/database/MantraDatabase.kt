@@ -69,6 +69,7 @@ import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventReceipt
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import press.mantra.compose.database.model.ChatMessageNostrEventRelation
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.Connection
 import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
@@ -131,6 +132,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         ChatMessageBroadcastNostrEventReceiptRelation::class,
         ChatMessageNostrEventRelation::class,
         ChatRoom::class,
+        ChatRoomMembership::class,
         DkgParticipantMessage::class,
         DkgSession::class,
         FrostSignerMessage::class,
@@ -179,7 +181,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 22,
+    version = 23,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -345,6 +347,18 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // to the messages is NOT NULL off a value read from another table, so this is
         // manual too and passed to the builder rather than listed here. See
         // MIGRATION_21_22.
+        //
+        // v23 splits ChatRoomMembership off ChatRoom. The room held the group's own
+        // facts and the asking profile's membership of it in one row keyed by the group
+        // id, so a second profile joining the same group wrote over the first's MLS
+        // ratchet state. The group's half stays where nineteen tables already point at
+        // it; the profile's half -- the MLS state, the join and leave times, the
+        // chronicle request, the archive flag -- moves to a row keyed by
+        // (chatRoomId, userPublicKey).
+        //
+        // Not an AutoMigration twice over: it copies before it drops, and the table it
+        // rebuilds is the parent of nineteen cascades, which is why it renames rather
+        // than drops. See MIGRATION_22_23.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

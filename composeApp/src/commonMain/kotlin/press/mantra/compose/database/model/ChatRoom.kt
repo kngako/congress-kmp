@@ -1,17 +1,11 @@
 package press.mantra.compose.database.model
 
 import androidx.room3.Entity
-import androidx.room3.ForeignKey
 import androidx.room3.Ignore
 import androidx.room3.PrimaryKey
 import press.mantra.compose.database.model.traits.LocalStoreEntity
-import press.mantra.compose.database.model.traits.SoftDeletableEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
-import press.mantra.compose.database.model.traits.UserViewableEntity
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroup
-import com.vitorpamplona.quartz.marmot.mls.group.MlsGroupState
-import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.hexToByteArray
 import fr.acinq.bitcoin.PrivateKey
 import fr.acinq.bitcoin.PublicKey
@@ -19,22 +13,24 @@ import fr.acinq.bitcoin.crypto.musig2.Musig2
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-@Entity(
-    foreignKeys = [
-        ForeignKey(
-            entity = Profile::class,
-            parentColumns = ["publicKey"],
-            childColumns = ["userPublicKey"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-        ForeignKey(
-            entity = GiftWrapPayload::class,
-            parentColumns = ["id"],
-            childColumns = ["initialGiftWrapPayloadId"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-    ],
-)
+/**
+ * A group, as every member of it sees it.
+ *
+ * Only the group's own facts live here. What belongs to one member -- their MLS state,
+ * when they joined, whether they have archived it -- is [ChatRoomMembership], keyed by
+ * (`chatRoomId`, `userPublicKey`). The two were one row until v23, which made this both
+ * the group and one profile's membership of it and meant a second profile joining the
+ * same group wrote over the first's ratchet state.
+ *
+ * Keyed by [id] alone, which is what the nineteen tables referencing a room depend on:
+ * most of them hold the group's signed work, which is nobody's in particular. See
+ * [ChatRoomMembership] for why the room was split rather than its key widened.
+ *
+ * No foreign keys of its own any more. The ones it had -- onto `Profile` for the owning
+ * profile and onto `GiftWrapPayload` for the wrap it was opened from -- were both facts
+ * about a membership and went with it.
+ */
+@Entity
 data class ChatRoom(
     /**
      * Derived from the participants...
@@ -43,11 +39,6 @@ data class ChatRoom(
      */
     @PrimaryKey
     val id: String,
-
-    /**
-     * Logged in user PublicKey... should help us have multiple user support...
-     */
-    val userPublicKey: HexKey,
 
     /**
      * Optional retrieved from tags...
@@ -60,65 +51,11 @@ data class ChatRoom(
 
     val description: String?,
 
-    val mlsGroupState: String?,
-
-    /**
-     * Derived from kind14/15 tags
-     * [
-     *     ["p", "<receiver-1-pubkey>", "<relay-url>"],
-     *     ["p", "<receiver-2-pubkey>", "<relay-url>"],
-     *     // rest of tags...
-     *   ]
-     *
-     *   TODO: Might want to add a relation for this...
-     */
-    // TODO: Add a LastChatMessageRelation
-//    val lastChatMessageId: String? = null,
-    // Might want to focus on the other last messages...
-    val initialGiftWrapPayloadId: HexKey? = null,
-
-    val leftGroupAt: Instant? = null,
-
-    /**
-     * When this device became a member of the group, or null for a room that
-     * predates the column.
-     *
-     * The pair to [leftGroupAt], and the thing [memberSince] is really asking
-     * for. Written from the moment the group's own clock says our epoch began:
-     * the Welcome's `created_at`, which the inviter stamps as it mints the
-     * Welcome out of the Add commit that made us a member, or the room's own
-     * creation for a group this device started at epoch 0.
-     *
-     * Stored rather than read off [createdAt] because the two are only
-     * incidentally equal. [createdAt] is row bookkeeping -- when this device
-     * first wrote the row down -- and the question asked here decides which of
-     * the group's messages are ours to read at all. That is not a fact to leave
-     * hanging off a timestamp somebody could reasonably repurpose.
-     */
-    val joinedGroupAt: Instant? = null,
-
-    /**
-     * When this device last asked the group for its signed history, or null if
-     * it never has or the answer has since arrived.
-     *
-     * A device with no signed work in a room asks for a chronicle -- see
-     * `ChronicleManager.requestIfEmpty` and docs/member-chronicle.md. This is the
-     * only thing stopping it asking again on every launch while an answer is in
-     * flight, and it is cleared as soon as a chronicle applies anything, so a
-     * partial answer is followed by another request rather than by silence.
-     *
-     * Not a claim that anybody replied. Nothing acknowledges a request, and the
-     * room having work in it is the only evidence that ever arrives.
-     */
-    val chronicleRequestedAt: Instant? = null,
-
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = createdAt,
-    override val viewedAt: Instant? = null,
-    override val deletedAt: Instant? = null,
 
-    ): TimestampedEntity, LocalStoreEntity, UserViewableEntity, SoftDeletableEntity
+    ): TimestampedEntity, LocalStoreEntity
 {
     companion object {
         const val TAG = "ChatRoom"
@@ -160,52 +97,5 @@ data class ChatRoom(
             return chatRoomXOnlyPublicKey.publicKey.toHex()
         }
 
-    }
-
-    /**
-     * The moment this device joined, falling back to when it wrote the room down.
-     *
-     * A room joined before [joinedGroupAt] existed has no recorded answer, and
-     * [createdAt] is both the best one available and the one every path that
-     * writes [joinedGroupAt] would have written anyway: a joiner's row is created
-     * from the Welcome, and a creator's when it creates the group.
-     */
-    val memberSince: Instant get() = joinedGroupAt ?: createdAt
-
-    /**
-     * Whether something the group published at [publishedAt] belongs to an epoch
-     * this device was never in.
-     *
-     * MLS gives a joiner the key schedule from their own epoch forward and
-     * nothing before it, so a kind:445 older than [memberSince] cannot be read
-     * now and cannot be read later -- not by waiting, and not by replaying it.
-     * The point of asking is to leave those alone rather than file a line saying
-     * a message arrived that nobody can show.
-     *
-     * Time is the only thing to ask it of. The epoch a kind:445 was encrypted
-     * under is inside the outer layer, so an event this device cannot decrypt
-     * cannot be asked what epoch it is from, and "before we joined", "from an
-     * epoch we have not caught up to" and "from an epoch that fell out of the
-     * retention window" all look identical from the outside. What separates the
-     * first from the other two is that it was published before the group made
-     * the epoch we joined at.
-     *
-     * Strictly before, so an event stamped in the same second as our Welcome is
-     * still read. The error worth avoiding runs one way: an unreadable event
-     * costs a wasted decrypt, and a discarded readable one is a message the
-     * member never sees. The commit that added us sits exactly on that boundary
-     * and is unreadable by construction -- it is the last act of the epoch
-     * before ours -- so a room may still show one placeholder for it.
-     */
-    fun predatesMembership(publishedAt: Instant): Boolean = publishedAt < memberSince
-
-    fun toMlsGroup(): MlsGroup? {
-        return mlsGroupState?.let {
-            return MlsGroup.restore(
-                MlsGroupState.decodeTls(
-                    mlsGroupState.hexToByteArray()
-                )
-            )
-        }
     }
 }

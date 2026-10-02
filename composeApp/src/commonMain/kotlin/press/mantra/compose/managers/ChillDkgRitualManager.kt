@@ -240,7 +240,7 @@ object ChillDkgRitualManager {
         // participant outside it is an `n` that can never be met. Checked here
         // because `SubgroupManager.refuseSubgroup` checking it is a screen not
         // drawing something, which is not a guard.
-        val room = memberPublicKeys(localChatRoom) + localChatRoom.chatRoom.userPublicKey
+        val room = memberPublicKeys(localChatRoom) + userPublicKey
         require(room.containsAll(members)) {
             "A ceremony in ${localChatRoom.chatRoom.id} cannot include " +
                 "${(members - room).joinToString { it.take(8) }}, who are not in it"
@@ -515,7 +515,7 @@ object ChillDkgRitualManager {
     ) {
         val kinds = DkgRitualEvents.ALL.toList()
 
-        val received = if (localChatRoom.chatRoom.mlsGroupState != null) {
+        val received = if (localChatRoom.mlsGroupStateOf(session.userPublicKey) != null) {
             database.marmotInnerEventDao()
                 .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
                 .map { stored ->
@@ -1420,7 +1420,7 @@ object ChillDkgRitualManager {
         // `NostrNip17Dao.getOrCreateChatRoom` writes, `sendChatMessage` makes when
         // it chooses between a group event and gift wraps, and
         // [replayStoredMessages] has to make again to find this message later.
-        if (localChatRoom.chatRoom.mlsGroupState != null) {
+        if (localChatRoom.mlsGroupStateOf(session.userPublicKey) != null) {
             database.marmotInnerEventDao().upsert(
                 MarmotInnerEvent(
                     id = id,

@@ -23,6 +23,7 @@ import kotlin.time.Instant
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.MarmotInnerEvent
@@ -459,9 +460,14 @@ class SubgroupCeremonyInParentRoomTest {
         parent.chatRoomDao().upsert(
             ChatRoom(
                 id = parentRoomId,
-                userPublicKey = user,
                 subject = "Ekklesia",
-                description = metadata.description,
+                description = metadata.description
+            )
+        )
+        parent.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = parentRoomId,
+                userPublicKey = user,
                 mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
         )
@@ -534,9 +540,16 @@ class SubgroupCeremonyInParentRoomTest {
         receiver.chatRoomDao().upsert(
             ChatRoom(
                 id = parentRoomId,
-                userPublicKey = alice,
                 subject = "Ekklesia",
-                description = metadata.description,
+                description = metadata.description
+            )
+        )
+        receiver.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = parentRoomId,
+                // Alice's: this is her device, and an MLS state belongs to the member
+                // whose tree position it is.
+                userPublicKey = alice,
                 mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
         )

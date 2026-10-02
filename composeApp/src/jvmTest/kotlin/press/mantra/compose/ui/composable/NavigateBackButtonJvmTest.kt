@@ -80,11 +80,8 @@ class NavigateBackButtonJvmTest {
                         localChatRoom = LocalChatRoom(
                             chatRoom = ChatRoom(
                                 id = "b".repeat(64),
-                                userPublicKey = "a".repeat(64),
                                 subject = "Reading group",
-                                description = null,
-                                initialGiftWrapPayloadId = null,
-                                mlsGroupState = null,
+                                description = null
                             ),
                         ),
                     ),

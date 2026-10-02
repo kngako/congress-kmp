@@ -198,7 +198,7 @@ fun BroadcastGroupSignedEventScreen(
                     topBar = {
                         TopAppBar(
                             title = {
-                                broadcastGroupSignedEventUIState.localChatRoom.RenderChatRoomTitleText()
+                                broadcastGroupSignedEventUIState.localChatRoom.RenderChatRoomTitleText(activeUserPublicKey)
                             },
                             navigationIcon = { NavigateBackButton(onNavigateBack) }
                         )
@@ -543,11 +543,8 @@ private fun BroadcastGroupSignedEventScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = chatRoomId,
-                            userPublicKey = "",
                             subject = "Translation room",
-                            description = "A group translating hard books.",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = "state"
+                            description = "A group translating hard books."
                         ),
                     ),
                     signedEvent = GroupSignedEvent(

@@ -82,14 +82,14 @@ class ChatRoomDetailViewModel(
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                     subgroups = chatRepository.subgroupsOf(chatRoomId),
                     parentChatRoomIds = chatRepository.parentsOf(chatRoomId),
-                    canAddSubgroup = localChatRoom.chatRoom.mlsGroupState != null &&
+                    canAddSubgroup = localChatRoom.mlsGroupStateOf(activeUserPublicKey) != null &&
                         chatRepository.canSign(chatRoomId),
                     adoptionOffers = chatRepository.adoptionOffersFor(chatRoomId),
                     // A key state as well as a share: the certificate carries
                     // this group's threshold key, and the acceptance re-announces
                     // that very state, so a room that has agreed nothing has
                     // neither half to work with.
-                    canAddParent = localChatRoom.chatRoom.mlsGroupState != null &&
+                    canAddParent = localChatRoom.mlsGroupStateOf(activeUserPublicKey) != null &&
                         chatRepository.groupKeyState(chatRoomId) != null &&
                         chatRepository.canSign(chatRoomId),
                 )

@@ -197,7 +197,7 @@ class NostrNip17DaoJvmTest {
 
         val room = assertNotNull(db.nostrNip17Dao().createNip17ChatRoom(user, listOf(alice)))
 
-        assertNull(room.chatRoom.mlsGroupState, "MLS state is what tells the two room kinds apart")
+        assertNull(room.mlsGroupStateOf(user), "MLS state is what tells the two room kinds apart")
     }
 
     /**
@@ -231,10 +231,8 @@ class NostrNip17DaoJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = user,
                 subject = "already here",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
 

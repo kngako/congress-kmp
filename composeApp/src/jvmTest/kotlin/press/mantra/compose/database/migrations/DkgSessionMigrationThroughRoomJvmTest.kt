@@ -82,6 +82,16 @@ class DkgSessionMigrationThroughRoomJvmTest {
     private val round1Random = "aa".repeat(32)
     private val hostKeyPayload = "01".repeat(33)
 
+    /** The highest schema version committed, which is what Room migrates a file up to. */
+    private fun newestSchemaVersion(): Int =
+        listOf(File("schemas"), File("composeApp/schemas"))
+            .map { File(it, "press.mantra.compose.database.MantraDatabase") }
+            .firstOrNull { it.isDirectory }
+            ?.listFiles { f -> f.name.endsWith(".json") }
+            ?.mapNotNull { it.name.removeSuffix(".json").toIntOrNull() }
+            ?.maxOrNull()
+            ?: error("no schema exports found")
+
     /** The exported schema of a version, as a v21 device actually holds it. */
     private fun schema(version: Int): SchemaExport {
         val candidates = listOf(
@@ -230,18 +240,26 @@ class DkgSessionMigrationThroughRoomJvmTest {
         assertEquals(hostKeyPayload, message.payload)
     }
 
-    /** Room records the upgrade, rather than quietly recreating the file. */
+    /**
+     * Room records the upgrade, rather than quietly recreating the file.
+     *
+     * Against the newest schema export rather than a literal version, so the next
+     * migration does not have to remember to come back here: what is under test is that
+     * Room ran the chain from 21 and stamped what it validated at the end of it, not which
+     * number it reached. A v21 file now migrates twice, since 22->23 landed after this.
+     */
     @Test
-    fun `the file is left at version 22 with the new identity`() = runBlocking {
+    fun `the file is left at the current version with its identity`() = runBlocking {
         createV21Database()
 
         openThroughRoom().dkgSessionDao().getSessionById("ceremony-1", alice)
         database?.close()
         database = null
 
-        assertEquals(22, readOnce("PRAGMA user_version") { it.getInt(0) })
+        val current = newestSchemaVersion()
+        assertEquals(current, readOnce("PRAGMA user_version") { it.getInt(0) })
         assertEquals(
-            schema(22).identityHash,
+            schema(current).identityHash,
             readOnce("SELECT identity_hash FROM room_master_table WHERE id = 42") { it.getText(0) },
             "Room stamps the schema it validated, so this is its own verdict on the migration",
         )

@@ -84,10 +84,8 @@ class DatabaseDkgRepositoryProfileScopeJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = roomId,
-                userPublicKey = alice,
                 subject = "Ekklesia",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
         seedCeremony("alices", alice)

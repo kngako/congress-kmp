@@ -21,11 +21,8 @@ internal object GroupSignedWorkFixtures {
     fun localChatRoom(mlsGroupState: String? = "state") = LocalChatRoom(
         chatRoom = ChatRoom(
             id = chatRoomId,
-            userPublicKey = activeUserPublicKey,
             subject = "Translation room",
-            description = "A group translating hard books.",
-            initialGiftWrapPayloadId = "sdfaer",
-            mlsGroupState = mlsGroupState
+            description = "A group translating hard books."
         )
     )
 }

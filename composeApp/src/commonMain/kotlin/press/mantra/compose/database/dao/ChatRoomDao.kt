@@ -6,6 +6,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import kotlinx.coroutines.flow.Flow
 
@@ -39,18 +40,37 @@ private const val CHAT_ROOM_WITH_LAST_MESSAGE =
 private const val ORDER_BY_LAST_ACTIVITY =
     "ORDER BY COALESCE(lastMessage.createdAt, ChatRoom.createdAt) DESC, ChatRoom.createdAt DESC"
 
+/**
+ * Whose rooms a listing is of, and which of them they have tidied away.
+ *
+ * Both are the membership's now rather than the room's -- a room belongs to the group,
+ * and "mine" and "archived" are things one profile says about it. Joined rather than
+ * filtered on the embedded row, so the other profile's archiving cannot take a room out
+ * of this one's list.
+ */
+private const val FOR_MEMBER =
+    "JOIN ChatRoomMembership AS membership ON membership.chatRoomId = ChatRoom.id " +
+        "AND membership.userPublicKey = :userPublicKey " +
+        "AND membership.deletedAt IS NULL "
+
 @Dao
 interface ChatRoomDao {
+    /**
+     * A group by its id, whoever is asking.
+     *
+     * Deliberately not scoped by profile and deliberately not filtered by anybody's
+     * `deletedAt`. What a caller wants from this is the group it is about to act in --
+     * its name, its description, the row the nineteen tables hang off -- and that exists
+     * whether or not somebody archived their chat-list row for it. The memberships come
+     * with it, so a caller needing one profile's MLS state asks
+     * `LocalChatRoom.membershipOf`.
+     */
     @Transaction
-    @Query(CHAT_ROOM_WITH_LAST_MESSAGE + "WHERE ChatRoom.id = :id AND ChatRoom.deletedAt IS NULL")
+    @Query(CHAT_ROOM_WITH_LAST_MESSAGE + "WHERE ChatRoom.id = :id")
     suspend fun findChatRoomById(id: String): LocalChatRoom?
 
     @Transaction
-    @Query(
-        CHAT_ROOM_WITH_LAST_MESSAGE +
-            "WHERE ChatRoom.userPublicKey = :userPublicKey AND ChatRoom.deletedAt IS NULL " +
-            ORDER_BY_LAST_ACTIVITY
-    )
+    @Query(CHAT_ROOM_WITH_LAST_MESSAGE + FOR_MEMBER + ORDER_BY_LAST_ACTIVITY)
     suspend fun getChatRoomListByUserPublicKey(userPublicKey: String): List<LocalChatRoom>
 
     /**
@@ -59,12 +79,24 @@ interface ChatRoomDao {
      * and its place in the order current without the list asking.
      */
     @Transaction
-    @Query(
-        CHAT_ROOM_WITH_LAST_MESSAGE +
-            "WHERE ChatRoom.userPublicKey = :userPublicKey AND ChatRoom.deletedAt IS NULL " +
-            ORDER_BY_LAST_ACTIVITY
-    )
+    @Query(CHAT_ROOM_WITH_LAST_MESSAGE + FOR_MEMBER + ORDER_BY_LAST_ACTIVITY)
     fun observeChatRoomListByUserPublicKey(userPublicKey: String): Flow<List<LocalChatRoom>>
+
+    @Query(
+        "SELECT * FROM ChatRoomMembership WHERE chatRoomId = :chatRoomId " +
+            "AND userPublicKey = :userPublicKey"
+    )
+    suspend fun findMembership(chatRoomId: String, userPublicKey: String): ChatRoomMembership?
+
+    /** Every profile on this device that is a member of the group. */
+    @Query("SELECT * FROM ChatRoomMembership WHERE chatRoomId = :chatRoomId")
+    suspend fun membershipsOf(chatRoomId: String): List<ChatRoomMembership>
+
+    @Upsert
+    suspend fun upsert(membership: ChatRoomMembership)
+
+    @Delete
+    suspend fun delete(membership: ChatRoomMembership)
 
     // "The subgroups of this room" used to be a column filter here, over a
     // ChatRoom.parentChatRoomId that production never read -- the live answer

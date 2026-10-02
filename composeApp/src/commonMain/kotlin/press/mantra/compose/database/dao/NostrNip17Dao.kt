@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.model.BroadcastNostrEventRequest
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import press.mantra.compose.database.model.ChatMessageNostrEventRelation
 import press.mantra.compose.database.model.ChatRoom
@@ -59,14 +60,17 @@ abstract class NostrNip17Dao(
 
         val chatRoom = ChatRoom(
             id = chatRoomId,
-            userPublicKey = userPublicKey,
             subject = subject,
             description = description,
-            // No MLS state is what marks this a NIP-17 room: `sendChatMessage` reads
-            // exactly this to decide between a group event and gift wraps.
-            mlsGroupState = null
         )
         database.chatRoomDao().upsert(chatRoom)
+
+        // And this profile's membership of it. No MLS state is what marks a NIP-17 room:
+        // `sendChatMessage` reads exactly that to decide between a group event and gift
+        // wraps, and since v23 it reads it off the membership.
+        database.chatRoomDao().upsert(
+            ChatRoomMembership(chatRoomId = chatRoomId, userPublicKey = userPublicKey)
+        )
 
         database.participantDao().upsert(
             memberPublicKeys.map { participantPublicKey ->
@@ -110,12 +114,20 @@ abstract class NostrNip17Dao(
                 // Create new chatRoom
                 val chatRoom = ChatRoom(
                     id = chatRoomId,
-                    userPublicKey = activeUserPublicKey,
                     subject = defaultSubject,
-                    mlsGroupState = mlsGroupState,
                     description = description
                 )
                 database.chatRoomDao().upsert(chatRoom)
+                database.chatRoomDao().upsert(
+                    ChatRoomMembership(
+                        chatRoomId = chatRoomId,
+                        userPublicKey = activeUserPublicKey,
+                        // Carried from the caller as it always was. A Marmot room reaches
+                        // here with the state it was restored from; a NIP-17 one with
+                        // null, which is what tells the two apart.
+                        mlsGroupState = mlsGroupState,
+                    )
+                )
 
                 database.participantDao().upsert(
                     profiles.map {

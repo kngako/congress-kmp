@@ -70,10 +70,8 @@ class DkgSessionDaoJvmTest {
             db.chatRoomDao().upsert(
                 ChatRoom(
                     id = id,
-                    userPublicKey = user,
                     subject = null,
-                    description = null,
-                    mlsGroupState = null,
+                    description = null
                 )
             )
         }

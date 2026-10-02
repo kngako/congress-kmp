@@ -158,8 +158,14 @@ class LiveSubscriptionManager(
          */
         internal fun groupIdsFrom(rooms: List<LocalChatRoom>): List<HexKey> =
             rooms
-                .filter { it.chatRoom.mlsGroupState != null }
-                .filter { it.chatRoom.leftGroupAt == null && it.chatRoom.deletedAt == null }
+                // Any membership this device holds that is still live. The room is the
+                // group's now, so "are we in it" is a question about the memberships --
+                // and a room one profile has left is still subscribed for the other.
+                .filter { room ->
+                    room.memberships.any {
+                        it.mlsGroupState != null && it.leftGroupAt == null && it.deletedAt == null
+                    }
+                }
                 .map { it.chatRoom.id }
                 .sorted()
 

@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -87,10 +88,15 @@ class MarmotOutboundQueueJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = statelessRoomId,
-                userPublicKey = user,
                 subject = "a room restored without its group",
-                description = null,
-                mlsGroupState = null,
+                description = null
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = statelessRoomId,
+                userPublicKey = user,
+                // No MLS state, which is the whole point of this fixture.
             )
         )
     }
@@ -110,9 +116,14 @@ class MarmotOutboundQueueJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = mlsRoomId,
-                userPublicKey = user,
                 subject = "a room this device created",
-                description = null,
+                description = null
+            )
+        )
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = mlsRoomId,
+                userPublicKey = user,
                 mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
         )
@@ -267,7 +278,7 @@ class MarmotOutboundQueueJvmTest {
     fun `two messages for one room each ratchet the group forward`() = runBlocking {
         seedProfile()
         seedMlsRoom()
-        val stateBefore = assertNotNull(db.chatRoomDao().findChatRoomById(mlsRoomId)).chatRoom.mlsGroupState
+        val stateBefore = assertNotNull(db.chatRoomDao().findChatRoomById(mlsRoomId)).mlsGroupStateOf(user)
         queue(id = "1".repeat(64), chatRoomId = mlsRoomId, text = "first", atEpochSeconds = 100)
         queue(id = "2".repeat(64), chatRoomId = mlsRoomId, text = "second", atEpochSeconds = 200)
 
@@ -277,7 +288,7 @@ class MarmotOutboundQueueJvmTest {
         val sent = db.marmotInnerEventDao().getByChatRoomAndKinds(mlsRoomId, listOf(ChatEvent.KIND))
         assertEquals(2, sent.mapNotNull { it.marmotGroupEventId }.distinct().size, "both were sent as the same event")
         assertTrue(
-            assertNotNull(db.chatRoomDao().findChatRoomById(mlsRoomId)).chatRoom.mlsGroupState != stateBefore,
+            assertNotNull(db.chatRoomDao().findChatRoomById(mlsRoomId)).mlsGroupStateOf(user) != stateBefore,
             "the ratchet never reached the database",
         )
     }

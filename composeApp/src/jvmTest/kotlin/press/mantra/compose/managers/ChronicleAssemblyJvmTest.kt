@@ -200,10 +200,8 @@ class ChronicleAssemblyJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = newMember,
                 subject = "#Ekklesia",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
     }

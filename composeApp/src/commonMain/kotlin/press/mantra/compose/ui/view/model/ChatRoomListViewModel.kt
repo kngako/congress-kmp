@@ -181,7 +181,7 @@ class ChatRoomListViewModel(
                                                 press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute(
                                                     activeUserPublicKey = publicKey,
                                                     chatRoomId = localChatRoom.chatRoom.id,
-                                                    relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey }?.participant?.relayHint
+                                                    relayHint = localChatRoom.localParticipants.firstOrNull { it.participant.participantPublicKey != publicKey }?.participant?.relayHint
                                                 )
                                             )
                                         }
@@ -199,8 +199,8 @@ class ChatRoomListViewModel(
                                                 modifier = Modifier.weight(1f),
                                                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.relatedGap)
                                             ) {
-                                                localChatRoom.RenderChatRoomTitleText()
-                                                localChatRoom.RenderChatRoomLastMessageText()
+                                                localChatRoom.RenderChatRoomTitleText(publicKey)
+                                                localChatRoom.RenderChatRoomLastMessageText(publicKey)
                                             }
 
                                             // Absent rather than blank for a room with

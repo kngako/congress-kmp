@@ -877,11 +877,8 @@ private fun DkgRitualScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Group discussions",
-                            description = "See something... say something.",
-                            initialGiftWrapPayloadId = null,
-                            mlsGroupState = null
+                            description = "See something... say something."
                         ),
                     )
                 ),

@@ -11,6 +11,7 @@ import androidx.room3.Embedded
 import androidx.room3.Relation
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.extensions.memberName
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
@@ -18,6 +19,22 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 
 data class LocalChatRoom(
     @Embedded val chatRoom: ChatRoom,
+
+    /**
+     * Every profile on this device that is a member, which is usually one.
+     *
+     * A list rather than the asking profile's row, because a `@Relation` cannot be
+     * filtered by a query parameter and a room reached by its id is the *group's* row --
+     * there is no profile in that question to narrow it with. So the narrowing happens
+     * where it is actually needed: [membershipOf] and the accessors over it take the
+     * profile, and a call site that reads an MLS state has to say whose.
+     */
+    @Relation(
+        entity = ChatRoomMembership::class,
+        parentColumns = ["id"],
+        entityColumns = ["chatRoomId"],
+    )
+    val memberships: List<ChatRoomMembership> = emptyList(),
 
     @Relation(
         entity = Participant::class,
@@ -37,8 +54,24 @@ data class LocalChatRoom(
     @Embedded(prefix = "lastMessage_")
     val lastChatMessage: ChatRoomLastMessage? = null,
 ) {
+    /** This profile's membership, or null when it is not a member of the group. */
+    fun membershipOf(userPublicKey: HexKey): ChatRoomMembership? =
+        memberships.firstOrNull { it.userPublicKey == userPublicKey }
+
+    /** This profile's MLS state, or null for a NIP-17 room and for a non-member. */
+    fun mlsGroupStateOf(userPublicKey: HexKey): String? =
+        membershipOf(userPublicKey)?.mlsGroupState
+
+    /**
+     * This profile's MLS group, restored from its own state.
+     *
+     * Whose matters: a ratchet state is one member's position in the tree, so restoring
+     * the group from another profile's would put this one at somebody else's epoch.
+     */
+    fun toMlsGroup(userPublicKey: HexKey) = membershipOf(userPublicKey)?.toMlsGroup()
+
     @Composable
-    fun RenderChatRoomTitleText() {
+    fun RenderChatRoomTitleText(userPublicKey: HexKey) {
         if (chatRoom.subject != null) {
             Text(
                 text = chatRoom.subject,
@@ -55,7 +88,7 @@ data class LocalChatRoom(
                 )
             } else {
                 // Remove the active user publicKey from participants...
-                val participantNames = localParticipants.filter { it.participant.participantPublicKey != chatRoom.userPublicKey }.map { buildAnnotatedString {
+                val participantNames = localParticipants.filter { it.participant.participantPublicKey != userPublicKey }.map { buildAnnotatedString {
                     withStyle(style = SpanStyle(color = ProfileColor.fromPublicKey(it.participant.participantPublicKey))) {
                         append(it.profile?.humanReadableNameOrPubkey() ?: "unknown participant")
                     }
@@ -84,9 +117,9 @@ data class LocalChatRoom(
      * disagree about what a room's newest activity was.
      */
     @Composable
-    fun RenderChatRoomLastMessageText() {
+    fun RenderChatRoomLastMessageText(userPublicKey: HexKey) {
         Text(
-            text = lastChatMessagePreviewText() ?: "No messages yet",
+            text = lastChatMessagePreviewText(userPublicKey) ?: "No messages yet",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -110,7 +143,7 @@ data class LocalChatRoom(
      * - anything else is somebody's words, prefixed with who said them -- except in a
      *   two-person room, where the only other name is already the row's title.
      */
-    fun lastChatMessagePreviewText(): String? {
+    fun lastChatMessagePreviewText(userPublicKey: HexKey): String? {
         val lastChatMessage = lastChatMessage ?: return null
 
         if (lastChatMessage.messageType in ChatMessage.DKG_TYPES ||
@@ -123,7 +156,7 @@ data class LocalChatRoom(
                 lastChatMessage.messageType in ChatMessage.FROST_AUTHORED_TYPES
 
             return if (isAuthored) {
-                "${nameFor(lastChatMessage.senderPublicKey)} ${lastChatMessage.content}"
+                "${nameFor(lastChatMessage.senderPublicKey, userPublicKey)} ${lastChatMessage.content}"
             } else {
                 lastChatMessage.content
             }
@@ -132,22 +165,22 @@ data class LocalChatRoom(
         if (lastChatMessage.messageType == ChatMessage.TYPE_DIRECT_MESSAGE &&
             lastChatMessage.content.isBlank()
         ) {
-            return "${nameFor(lastChatMessage.senderPublicKey)} sent a private message to " +
-                nameFor(lastChatMessage.directMessageRecipientPublicKey)
+            return "${nameFor(lastChatMessage.senderPublicKey, userPublicKey)} sent a private message to " +
+                nameFor(lastChatMessage.directMessageRecipientPublicKey, userPublicKey)
         }
 
         val isGroup = localParticipants.count {
-            it.participant.participantPublicKey != chatRoom.userPublicKey
+            it.participant.participantPublicKey != userPublicKey
         } > 1
 
         return when {
             lastChatMessage.isUserMessage -> "You: ${lastChatMessage.content}"
-            isGroup -> "${nameFor(lastChatMessage.senderPublicKey)}: ${lastChatMessage.content}"
+            isGroup -> "${nameFor(lastChatMessage.senderPublicKey, userPublicKey)}: ${lastChatMessage.content}"
             else -> lastChatMessage.content
         }
     }
 
     /** "someone" for a message with no recipient -- which no direct message has. */
-    private fun nameFor(publicKey: HexKey?): String =
-        publicKey?.memberName(localParticipants, chatRoom.userPublicKey) ?: "someone"
+    private fun nameFor(publicKey: HexKey?, userPublicKey: HexKey): String =
+        publicKey?.memberName(localParticipants, userPublicKey) ?: "someone"
 }

@@ -11,6 +11,7 @@ import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
@@ -56,6 +57,24 @@ class DatabaseChatRepository(
     private val activeIdentity: StateFlow<Identity?> = MutableStateFlow(null),
 ): press.mantra.compose.repository.ChatRepository {
     val logger = Logger.withTag(TAG)
+
+    /**
+     * Who is acting. Every write below is made *as* somebody -- a message has a sender, a
+     * membership has an owner -- and that used to be read off `ChatRoom.userPublicKey`,
+     * which was the room pretending to know. The room is the group's now, so the question
+     * is answered where it always should have been: the profile that is open.
+     *
+     * Throws rather than returning null because no caller below has a sensible thing to
+     * do as nobody, and every one of them is reached from a screen that cannot be drawn
+     * without a profile. The repository's own try/catch turns it into a logged failure.
+     */
+    private val actingPublicKey: HexKey
+        get() = activeIdentity.value?.nostrPublicKey
+            ?: throw IllegalStateException("No profile is open, so there is nobody to act as")
+
+    /** This room as the acting profile holds it, or null if that profile is not a member. */
+    private fun LocalChatRoom.actingMembership(): ChatRoomMembership? =
+        membershipOf(actingPublicKey)
 
     override suspend fun createMarmotGroup(
         groupId: String,
@@ -367,6 +386,7 @@ class DatabaseChatRepository(
         try {
             database.marmotOutboundDao().inviteMemberToChatRoom(
                 localChatRoom = localChatRoom,
+                userPublicKey = actingPublicKey,
                 peerPublicKey = peerPublicKey,
                 peerKeyPackage = peerKeyPackage
             )
@@ -381,7 +401,7 @@ class DatabaseChatRepository(
             runCatching {
                 database.marmotOutboundDao().announceInviteFailed(
                     chatRoomId = localChatRoom.chatRoom.id,
-                    userPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    userPublicKey = actingPublicKey,
                     peerPublicKey = peerPublicKey,
                     reason = e.message,
                 )
@@ -394,6 +414,7 @@ class DatabaseChatRepository(
         peers: List<Pair<HexKey, MarmotKeyPackage>>
     ): List<HexKey> = database.marmotOutboundDao().addMembersToChatRoom(
         localChatRoom = localChatRoom,
+        userPublicKey = actingPublicKey,
         peers = peers
     )
 
@@ -404,7 +425,7 @@ class DatabaseChatRepository(
         directMessageRecipientPublicKey: HexKey?
     ) {
         logger.i("sendChatMessage($text): $localChatRoom")
-        val mlsGroup = localChatRoom.chatRoom.toMlsGroup()
+        val mlsGroup = localChatRoom.toMlsGroup(actingPublicKey)
 
         if (mlsGroup != null) {
             // Resolved before anything is written. A recipient outside the room cannot be
@@ -412,7 +433,7 @@ class DatabaseChatRepository(
             // while the group still saw that a private message had gone somewhere -- and
             // the room is also where the relay hint for the `p` tag comes from.
             val directMessageRecipient = directMessageRecipientPublicKey?.let { recipient ->
-                require(recipient != localChatRoom.chatRoom.userPublicKey) {
+                require(recipient != actingPublicKey) {
                     "Cannot send a direct message to yourself: the wrap's throwaway key means it could never be read back"
                 }
 
@@ -449,7 +470,7 @@ class DatabaseChatRepository(
             // way out, the one the notary uses to find this chat message again. The wrap
             // built around it has its own id, which is why that lookup keys on the row.
             val marmotInnerEventId = EventHasher.hashId(
-                pubKey = localChatRoom.chatRoom.userPublicKey,
+                pubKey = actingPublicKey,
                 createdAt = createdAt,
                 tags = marmotInnerEventTags,
                 content = text,
@@ -459,7 +480,7 @@ class DatabaseChatRepository(
             database.marmotInnerEventDao().upsert(
                 MarmotInnerEvent(
                     id = marmotInnerEventId,
-                    publicKey = localChatRoom.chatRoom.userPublicKey,
+                    publicKey = actingPublicKey,
                     createdAt = Instant.fromEpochSeconds(createdAt),
                     tags = marmotInnerEventTags,
                     content = text,
@@ -473,7 +494,7 @@ class DatabaseChatRepository(
                 ChatMessage(
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
-                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    senderPublicKey = actingPublicKey,
                     isUserMessage = true,
                     giftWrapPayloadId = null,
                     marmotGroupEventId = null,
@@ -492,7 +513,7 @@ class DatabaseChatRepository(
         } else {
             // Send GiftWrapMessage
             val receiverTags = localChatRoom.localParticipants.filter { participant ->
-                participant.participant.participantPublicKey != localChatRoom.chatRoom.userPublicKey // TODO: Allow this where it's notes to self...
+                participant.participant.participantPublicKey != actingPublicKey // TODO: Allow this where it's notes to self...
             }.map { localParticipant ->
                 PTag.assemble(
                     localParticipant.participant.participantPublicKey,
@@ -502,7 +523,7 @@ class DatabaseChatRepository(
 
             val createdAt = Clock.System.now().epochSeconds
             val giftWrapPayloadId = EventHasher.hashId(
-                pubKey = localChatRoom.chatRoom.userPublicKey,
+                pubKey = actingPublicKey,
                 createdAt = createdAt,
                 tags = receiverTags.toTypedArray(),
                 content = text,
@@ -517,7 +538,7 @@ class DatabaseChatRepository(
                     createdAt = Instant.fromEpochSeconds(createdAt),
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
-                    publicKey = localChatRoom.chatRoom.userPublicKey
+                    publicKey = actingPublicKey
                 )
             )
 
@@ -525,7 +546,7 @@ class DatabaseChatRepository(
                 ChatMessage(
                     content = text,
                     chatRoomId = localChatRoom.chatRoom.id,
-                    senderPublicKey = localChatRoom.chatRoom.userPublicKey,
+                    senderPublicKey = actingPublicKey,
                     isUserMessage = true,
                     giftWrapPayloadId = giftWrapPayloadId,
                     marmotGroupEventId = null,
@@ -570,7 +591,7 @@ class DatabaseChatRepository(
         // for it stays.
         if (giftWrapPayload.kind != WelcomeEvent.KIND) {
             val chatRoom = database.chatRoomDao().findChatRoomById(giftWrapPayload.chatRoomId)
-            if (chatRoom?.chatRoom?.mlsGroupState != null) {
+            if (chatRoom?.mlsGroupStateOf(actingPublicKey) != null) {
                 logger.e(
                     "Refusing to seal payload ${giftWrapPayload.id}: ${giftWrapPayload.chatRoomId} is an MLS room, " +
                         "and sealing would broadcast it to relays"
@@ -668,11 +689,11 @@ class DatabaseChatRepository(
         localChatRoom: LocalChatRoom,
         onCompletion: () -> Unit
     ) {
-        database.chatRoomDao().upsert(
-            chatRoom = localChatRoom.chatRoom.copy(
-                leftGroupAt = Clock.System.now()
-            )
-        )
+        // The acting profile's membership, not the room: the group goes on existing, and
+        // the other profile on this device has not left it.
+        localChatRoom.actingMembership()?.let { membership ->
+            database.chatRoomDao().upsert(membership.copy(leftGroupAt = Clock.System.now()))
+        }
 
         // TODO: Process this in the notary...
         sendChatMessage(
@@ -684,15 +705,21 @@ class DatabaseChatRepository(
         onCompletion.invoke()
     }
 
+    /**
+     * Archives the room for the acting profile.
+     *
+     * One person tidying their chat list is not the group being deleted, and it is not the
+     * other profile's list changing either -- so this marks the membership rather than the
+     * room. A room with no membership left archived is still the group's, and the
+     * nineteen tables hanging off it are untouched.
+     */
     override suspend fun softDeleteChatRoom(
         chatRoom: ChatRoom,
         onCompletion: () -> Unit
     ) {
-        database.chatRoomDao().upsert(
-            chatRoom.copy(
-                deletedAt = Clock.System.now()
-            )
-        )
+        database.chatRoomDao()
+            .findMembership(chatRoom.id, actingPublicKey)
+            ?.let { database.chatRoomDao().upsert(it.copy(deletedAt = Clock.System.now())) }
 
         onCompletion.invoke()
     }

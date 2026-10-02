@@ -110,10 +110,8 @@ class FindDirectMessageRoomJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = id,
-                userPublicKey = me,
                 subject = null,
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
         db.participantDao().upsert(

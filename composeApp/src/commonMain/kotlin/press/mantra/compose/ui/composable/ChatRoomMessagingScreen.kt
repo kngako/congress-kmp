@@ -128,6 +128,7 @@ fun ChatRoomMessagingScreen(
                 val chatMessageListViewModel: press.mantra.compose.ui.view.model.ChatMessageListViewModel = viewModel(
                     factory = press.mantra.compose.ui.view.model.ChatMessageListViewModel.factory(
                         localChatRoom = chatRoomDetailUIState.localChatRoom,
+                        activeUserPublicKey = activeUserPublicKey,
                         nostrRepository = nostrRepository,
                         chatRepository = chatRepository,
                         frostSigningRepository = frostSigningRepository,
@@ -140,7 +141,7 @@ fun ChatRoomMessagingScreen(
                     topBar = {
                         TopAppBar(
                             title = {
-                                chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
+                                chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText(activeUserPublicKey)
                             },
                             navigationIcon = {
                                 if (onNavigateBack != null) NavigateBackButton(onNavigateBack)
@@ -515,11 +516,8 @@ private fun ChatRoomMessagingScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "See something. Say somethin",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something. Say somethin"
                         ),
                     )
                 ),

@@ -286,11 +286,8 @@ private fun AddChapterScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "chatRoomId",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "See something. Say somethin",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something. Say somethin"
                         ),
                     ),
                     artifact = MantraArtifact(

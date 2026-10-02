@@ -160,10 +160,8 @@ class DkgRitualListViewModelJvmTest {
     private fun room() = LocalChatRoom(
         chatRoom = ChatRoom(
             id = chatRoomId,
-            userPublicKey = me,
             subject = "Ekklesia",
-            description = null,
-            mlsGroupState = null,
+            description = null
         ),
         localParticipants = listOf(me to null, ada to "Ada").map { (publicKey, name) ->
             LocalParticipant(

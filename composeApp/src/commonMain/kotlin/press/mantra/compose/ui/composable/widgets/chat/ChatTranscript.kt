@@ -377,7 +377,7 @@ fun ChatTranscript(
                                         // group -- a NIP-17 room has no audience for a
                                         // message to be private from.
                                         val canReplyPrivately =
-                                            viewModel.localChatRoom.chatRoom.mlsGroupState != null &&
+                                            viewModel.localChatRoom.mlsGroupStateOf(viewModel.activeUserPublicKey) != null &&
                                                 !localChatMessage.chatMessage.isUserMessage &&
                                                 viewModel.participantFor(localChatMessage.chatMessage.senderPublicKey) != null
 

@@ -422,11 +422,8 @@ private fun ProposalListScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "chatRoomId",
-                            userPublicKey = "u".repeat(64),
                             subject = "#Ekklesia",
-                            description = null,
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = null
                         )
                     ),
                     proposals = listOf(

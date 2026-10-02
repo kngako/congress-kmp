@@ -9,6 +9,7 @@ import press.mantra.compose.PlatformContext
 import press.mantra.compose.database.builder.PlatformDatabaseBuilder
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import java.nio.file.Files
@@ -104,11 +105,14 @@ class MantraDatabaseJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = chatRoomId,
-                userPublicKey = userPublicKey,
                 subject = "a subject",
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
+        )
+        // A listing is of this profile's memberships, not of rooms: the room belongs to
+        // the group and says nothing about whose list it is on.
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(chatRoomId = chatRoomId, userPublicKey = userPublicKey)
         )
 
         val found = db.chatRoomDao().findChatRoomById(chatRoomId)
@@ -124,16 +128,31 @@ class MantraDatabaseJvmTest {
         db.profileDao().upsert(seedProfile(userPublicKey))
         val room = ChatRoom(
             id = chatRoomId,
-            userPublicKey = userPublicKey,
             subject = null,
-            description = null,
-            mlsGroupState = null,
+            description = null
         )
         db.chatRoomDao().upsert(room)
+        // A listing is of this profile's memberships, not of rooms: the room belongs to
+        // the group and says nothing about whose list it is on.
+        db.chatRoomDao().upsert(
+            ChatRoomMembership(chatRoomId = chatRoomId, userPublicKey = userPublicKey)
+        )
         assertNotNull(db.chatRoomDao().findChatRoomById(chatRoomId))
 
-        db.chatRoomDao().upsert(room.copy(deletedAt = kotlin.time.Clock.System.now()))
-        assertNull(db.chatRoomDao().findChatRoomById(chatRoomId))
+        // Archiving is the membership's act since v23, and a lookup by room id is the
+        // group's -- so the room is still found, and what disappears is the chat-list row.
+        val membership = assertNotNull(db.chatRoomDao().findMembership(chatRoomId, userPublicKey))
+        db.chatRoomDao().upsert(membership.copy(deletedAt = kotlin.time.Clock.System.now()))
+
+        assertNotNull(
+            db.chatRoomDao().findChatRoomById(chatRoomId),
+            "the group goes on existing when one member tidies it away",
+        )
+        assertEquals(
+            emptyList(),
+            db.chatRoomDao().getChatRoomListByUserPublicKey(userPublicKey).map { it.chatRoom.id },
+            "but it leaves that member's list",
+        )
     }
 
     /**

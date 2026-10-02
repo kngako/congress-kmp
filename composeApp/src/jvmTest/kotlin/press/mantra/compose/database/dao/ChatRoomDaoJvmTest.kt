@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
@@ -58,11 +59,15 @@ class ChatRoomDaoJvmTest {
             db.chatRoomDao().upsert(
                 ChatRoom(
                     id = id,
-                    userPublicKey = user,
                     subject = null,
                     description = null,
-                    mlsGroupState = null,
-                    createdAt = Instant.fromEpochSeconds(createdAt),
+                    createdAt = Instant.fromEpochSeconds(createdAt)
+                )
+            )
+            db.chatRoomDao().upsert(
+                ChatRoomMembership(
+                    chatRoomId = id,
+                    userPublicKey = user,
                 )
             )
         }

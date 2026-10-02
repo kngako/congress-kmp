@@ -3,6 +3,7 @@ package press.mantra.compose.managers
 import com.vitorpamplona.quartz.marmot.mip03GroupMessages.GroupEvent
 import com.vitorpamplona.quartz.nip59Giftwrap.wraps.GiftWrapEvent
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.managers.LiveSubscriptionManager.Companion.GIFT_WRAP_SUB_ID
 import press.mantra.compose.managers.LiveSubscriptionManager.Companion.GROUP_SUB_ID_PREFIX
@@ -164,12 +165,19 @@ class LiveSubscriptionPlanTest {
     ) = LocalChatRoom(
         chatRoom = ChatRoom(
             id = id,
-            userPublicKey = me,
             subject = null,
-            description = null,
-            mlsGroupState = mlsGroupState,
-            leftGroupAt = leftGroupAt,
-            deletedAt = deletedAt,
-        )
+            description = null
+        ),
+        // Whether we are in a room, and still in it, is the membership's answer since
+        // v23 -- the room itself is the group's and says neither.
+        memberships = listOf(
+            ChatRoomMembership(
+                chatRoomId = id,
+                userPublicKey = me,
+                mlsGroupState = mlsGroupState,
+                leftGroupAt = leftGroupAt,
+                deletedAt = deletedAt,
+            )
+        ),
     )
 }

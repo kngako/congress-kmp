@@ -122,7 +122,7 @@ fun AddDialectScreen(
                     topBar = {
                         TopAppBar(
                             title = {
-                                addDialectUIState.localChatRoom.RenderChatRoomTitleText()
+                                addDialectUIState.localChatRoom.RenderChatRoomTitleText(activeUserPublicKey)
                             },
                             navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
@@ -322,11 +322,8 @@ private fun AddDialectScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "See something. Say somethin",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "See something. Say somethin"
                         ),
                     )
                 ),

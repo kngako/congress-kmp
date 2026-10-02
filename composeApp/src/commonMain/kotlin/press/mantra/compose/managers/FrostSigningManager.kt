@@ -515,7 +515,7 @@ object FrostSigningManager {
     ) {
         val kinds = FrostSigningEvents.ALL.toList()
 
-        val received = if (localChatRoom.chatRoom.mlsGroupState != null) {
+        val received = if (localChatRoom.mlsGroupStateOf(session.userPublicKey) != null) {
             database.marmotInnerEventDao()
                 .getByChatRoomAndKinds(chatRoomId = session.chatRoomId, kinds = kinds)
                 .map { stored ->
@@ -1496,7 +1496,7 @@ object FrostSigningManager {
         val isCeremonyRoom = key.chatRoomId == chatRoomId
         val isSubgroupCeremony = key.parentChatRoomId == chatRoomId
 
-        if (isCeremonyRoom && (localChatRoom.chatRoom.mlsGroupState == null || isSubgroupCeremony)) {
+        if (isCeremonyRoom && (localChatRoom.mlsGroupStateOf(key.userPublicKey) == null || isSubgroupCeremony)) {
             return SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
         }
 
@@ -1930,7 +1930,7 @@ object FrostSigningManager {
         // No MLS state is what marks a room NIP-17 -- the same reading
         // `NostrNip17Dao.getOrCreateChatRoom` writes and `sendChatMessage` makes
         // when it chooses between a group event and gift wraps.
-        val isMarmotRoom = localChatRoom.chatRoom.mlsGroupState != null
+        val isMarmotRoom = localChatRoom.mlsGroupStateOf(session.userPublicKey) != null
 
         val tags = if (isMarmotRoom) {
             sessionTags

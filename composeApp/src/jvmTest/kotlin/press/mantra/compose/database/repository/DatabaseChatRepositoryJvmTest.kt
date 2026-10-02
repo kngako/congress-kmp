@@ -1,5 +1,16 @@
 package press.mantra.compose.database.repository
 
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import fr.acinq.bitcoin.ByteVector32
+import fr.acinq.bitcoin.PrivateKey
+import fr.acinq.phoenix.utils.preferences.InternalPrefs
+import fr.acinq.phoenix.utils.preferences.UserPrefs
+import java.nio.file.Files
+import kotlinx.coroutines.flow.MutableStateFlow
+import okio.Path.Companion.toPath
+import press.mantra.compose.identity.Identity
+import press.mantra.compose.identity.IdentityKind
+import press.mantra.compose.identity.toWalletId
 import androidx.room3.Room
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
@@ -40,13 +51,38 @@ class DatabaseChatRepositoryJvmTest {
     @AfterTest
     fun closeDb() = db.close()
 
-    private val user = KeyPair().pubKey.toHexKey()
+    private val userKeys = KeyPair()
+    private val user = userKeys.pubKey.toHexKey()
+
+    /** The profile this repository acts as, built from the fixture's own key. */
+    private fun signingIdentity(): Identity {
+        fun prefsFile(name: String) = Files
+            .createTempFile(name, ".preferences_pb")
+            .also { it.toFile().delete() }
+            .toString()
+            .toPath()
+
+        val key = PrivateKey(ByteVector32(userKeys.privKey!!))
+        return Identity.signing(
+            id = key.publicKey().xOnly().toWalletId(),
+            kind = IdentityKind.NostrSecret,
+            nostrPrivateKey = key,
+            userPrefs = UserPrefs(PreferenceDataStoreFactory.createWithPath { prefsFile("user") }),
+            internalPrefs = InternalPrefs(PreferenceDataStoreFactory.createWithPath { prefsFile("internal") }),
+            business = null,
+        )
+    }
     private val peer = KeyPair().pubKey.toHexKey()
     private val roomId = "b".repeat(64)
 
+    /**
+     * With a profile open, because every write below is made *as* somebody: the room no
+     * longer carries an owner, so the repository takes one at construction.
+     */
     private val repository = DatabaseChatRepository(
         database = db,
         scope = CoroutineScope(Dispatchers.Unconfined),
+        activeIdentity = MutableStateFlow(signingIdentity()),
     )
 
     private suspend fun seedProfile(publicKey: String, name: String, nostrEventId: String) {
@@ -71,10 +107,8 @@ class DatabaseChatRepositoryJvmTest {
         seedProfile(peer, "peer", "e".repeat(64))
         val chatRoom = ChatRoom(
             id = roomId,
-            userPublicKey = user,
             subject = "a restored room",
-            description = null,
-            mlsGroupState = null,
+            description = null
         )
         db.chatRoomDao().upsert(chatRoom)
         return LocalChatRoom(chatRoom = chatRoom)

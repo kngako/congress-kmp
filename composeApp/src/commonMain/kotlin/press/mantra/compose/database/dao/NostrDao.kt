@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Transaction
 import press.mantra.compose.database.GENESIS_AT
 import press.mantra.compose.database.model.BroadcastNostrEventRequest
+import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatMessageBroadcastNostrEventRequestRelation
 import press.mantra.compose.database.model.ChatRoom
@@ -554,12 +555,17 @@ abstract class NostrDao(
                                     database.chatRoomDao().upsert(
                                         ChatRoom(
                                             id = decryptedGiftWrapPayload.chatRoomId,
-                                            userPublicKey = userPublicKey,
                                             subject = decryptedGiftWrapPayload.parseSubject(),
                                             description = null,
-                                            createdAt = decryptedGiftWrapPayload.createdAt,
+                                            createdAt = decryptedGiftWrapPayload.createdAt
+                                        )
+                                    )
+                                    database.chatRoomDao().upsert(
+                                        ChatRoomMembership(
+                                            chatRoomId = decryptedGiftWrapPayload.chatRoomId,
+                                            userPublicKey = userPublicKey,
                                             initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
-                                            mlsGroupState = null
+                                            createdAt = decryptedGiftWrapPayload.createdAt,
                                         )
                                     )
 
@@ -768,20 +774,32 @@ abstract class NostrDao(
                                     database.chatRoomDao().upsert(
                                         ChatRoom(
                                             id = nostrGroupId,
-                                            userPublicKey = userPublicKey,
                                             subject = group.currentMarmotData()?.name?.ifBlank { null },
                                             description = group.currentMarmotData()?.description?.ifBlank { null },
-                                            initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
                                             createdAt = decryptedGiftWrapPayload.createdAt,
-                                            // The Welcome's own `created_at`, which the
-                                            // inviter stamps as it mints the Welcome out of
-                                            // the Add commit that made us a member. That
-                                            // commit is what created the epoch we are joining
-                                            // at, so it is the group's clock on when this
-                                            // room's history stops being ours to read. See
-                                            // ChatRoom.predatesMembership.
-                                            joinedGroupAt = decryptedGiftWrapPayload.createdAt,
+                                        )
+                                    )
+
+                                    // And this profile's membership of it, which is where
+                                    // the three things a Welcome actually tells us now
+                                    // live: the state it hands over, the wrap it came in,
+                                    // and when our epoch began.
+                                    //
+                                    // `joinedGroupAt` is the Welcome's own `created_at`,
+                                    // which the inviter stamps as it mints the Welcome out
+                                    // of the Add commit that made us a member. That commit
+                                    // is what created the epoch we are joining at, so it is
+                                    // the group's clock on when this room's history stops
+                                    // being ours to read. See
+                                    // ChatRoomMembership.predatesMembership.
+                                    database.chatRoomDao().upsert(
+                                        ChatRoomMembership(
+                                            chatRoomId = nostrGroupId,
+                                            userPublicKey = userPublicKey,
                                             mlsGroupState = group.saveState().encodeTls().toHex(),
+                                            initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
+                                            joinedGroupAt = decryptedGiftWrapPayload.createdAt,
+                                            createdAt = decryptedGiftWrapPayload.createdAt,
                                         )
                                     )
 
@@ -917,7 +935,11 @@ abstract class NostrDao(
 //                                            content = "Coming soon.", // TODO: Figure out what to do here...
 //                                        )
 //                                    )
-                                } else if (localChatRoom.chatRoom.userPublicKey != activeKeyPair.pubKey.toHex()) {
+                                } else if (
+                                    localChatRoom.memberships.any {
+                                        it.userPublicKey != activeKeyPair.pubKey.toHex()
+                                    }
+                                ) {
                                     // Another profile on this device already holds this
                                     // group. ChatRoom is keyed by the group id alone, and
                                     // every table that hangs off it -- the MLS state, the
@@ -1335,7 +1357,8 @@ abstract class NostrDao(
         val localChatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)
             ?: throw MarmotMissingChatGroupException("Couldn't find chatRoom for ${groupEvent.id}")
 
-        if (localChatRoom.chatRoom.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt))) {
+        val membership = localChatRoom.membershipOf(activeKeyPair.pubKey.toHex())
+        if (membership?.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt)) == true) {
             logger.d("${groupEvent.id} predates this device joining $chatRoomId, nothing to index")
             return
         }
@@ -1347,12 +1370,12 @@ abstract class NostrDao(
         // them loses the earlier one for good -- see MlsGroupCache.
         val handled = MlsGroupCache.withGroup(
             chatRoomId = chatRoomId,
-            storedStateHex = localChatRoom.chatRoom.mlsGroupState,
-            build = { localChatRoom.chatRoom.toMlsGroup() },
+            storedStateHex = membership?.mlsGroupState,
+            build = { membership?.toMlsGroup() },
             save = { stateHex ->
-                database.chatRoomDao().upsert(
-                    localChatRoom.chatRoom.copy(mlsGroupState = stateHex)
-                )
+                membership?.let {
+                    database.chatRoomDao().upsert(it.copy(mlsGroupState = stateHex))
+                }
             }
         ) { mlsGroup ->
             val memberPubkeys = mlsGroup.members().mapNotNull { (leafIndex, leafNode) ->
@@ -1534,7 +1557,7 @@ abstract class NostrDao(
         activeKeyPair: KeyPair,
     ): MarmotReindexReport {
         val userPublicKey = activeKeyPair.pubKey.toHex()
-        val chatRoom = database.chatRoomDao().findChatRoomById(chatRoomId)?.chatRoom
+        val membership = database.chatRoomDao().findMembership(chatRoomId, userPublicKey)
 
         // The query's LIKE only narrows; the h tag is what decides the room. Sorted
         // by CommitOrdering's own comparator rather than left in createdAt order, so
@@ -1556,7 +1579,7 @@ abstract class NostrDao(
         // A room with no row to ask keeps every event, so a replay against one
         // does what it always did rather than quietly finding nothing to do.
         val (readable, predatingMembership) = groupEvents.partition { groupEvent ->
-            chatRoom?.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt)) != true
+            membership?.predatesMembership(Instant.fromEpochSeconds(groupEvent.createdAt)) != true
         }
 
         logger.i(
@@ -1692,7 +1715,10 @@ abstract class NostrDao(
         inviterPublicKey: HexKey,
         welcomePayloadId: HexKey,
     ) {
-        val holder = localChatRoom.chatRoom.userPublicKey
+        val holder = localChatRoom.memberships
+            .firstOrNull { it.userPublicKey != inviteePublicKey }
+            ?.userPublicKey
+            ?: inviteePublicKey
         logger.w(
             "Refusing Welcome $welcomePayloadId for ${localChatRoom.chatRoom.id}: this device already holds the group " +
                 "as $holder, and $inviteePublicKey is another profile on it"
@@ -1759,12 +1785,17 @@ abstract class NostrDao(
         database.chatRoomDao().upsert(
             ChatRoom(
                 id = decryptedGiftWrapPayload.chatRoomId,
-                userPublicKey = activeKeyPair.pubKey.toHex(),
                 subject = decryptedGiftWrapPayload.parseSubject(),
                 description = null,
-                createdAt = decryptedGiftWrapPayload.createdAt,
+                createdAt = decryptedGiftWrapPayload.createdAt
+            )
+        )
+        database.chatRoomDao().upsert(
+            ChatRoomMembership(
+                chatRoomId = decryptedGiftWrapPayload.chatRoomId,
+                userPublicKey = activeKeyPair.pubKey.toHex(),
                 initialGiftWrapPayloadId = decryptedGiftWrapPayload.id,
-                mlsGroupState = null
+                createdAt = decryptedGiftWrapPayload.createdAt,
             )
         )
 

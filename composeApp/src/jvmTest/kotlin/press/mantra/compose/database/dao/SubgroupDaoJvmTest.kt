@@ -335,10 +335,8 @@ class SubgroupDaoJvmTest {
 
     private fun room(id: String) = ChatRoom(
         id = id,
-        userPublicKey = user,
         subject = null,
-        description = null,
-        mlsGroupState = null,
+        description = null
     )
 
     private fun parentage(parentChatRoomId: String, child: String = childRoom) =

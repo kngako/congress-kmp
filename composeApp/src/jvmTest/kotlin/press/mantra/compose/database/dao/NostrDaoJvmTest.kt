@@ -286,10 +286,8 @@ class NostrDaoJvmTest {
         db.chatRoomDao().upsert(
             ChatRoom(
                 id = roomId,
-                userPublicKey = author,
                 subject = null,
-                description = null,
-                mlsGroupState = null,
+                description = null
             )
         )
         db.nostrEventDao().upsert(

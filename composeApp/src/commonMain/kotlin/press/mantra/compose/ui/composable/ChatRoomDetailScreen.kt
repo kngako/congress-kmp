@@ -202,7 +202,7 @@ fun ChatRoomDetailScreen(
                     topBar = {
                         TopAppBar(
                             title = {
-                                chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
+                                chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText(activeUserPublicKey)
                             },
                             navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
@@ -718,7 +718,7 @@ fun ChatRoomDetailScreen(
                             // -- and those are reached from the transcript line that
                             // names the ceremony they are about, never from here,
                             // which has no way to say which.
-                            if (chatRoomDetailUIState.localChatRoom.chatRoom.mlsGroupState == null) {
+                            if (chatRoomDetailUIState.localChatRoom.mlsGroupStateOf(activeUserPublicKey) == null) {
                                 item {
                                     TextButton(
                                         onClick = {
@@ -900,7 +900,7 @@ fun ChatRoomDetailScreen(
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = MaterialTheme.colorScheme.secondary
                                     ),
-                                    enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt == null, // Disable after we leave group...
+                                    enabled = chatRoomDetailUIState.localChatRoom.membershipOf(activeUserPublicKey)?.leftGroupAt == null, // Disable after we leave group...
                                     onClick = {
                                         chatRoomDetailViewModel.leaveGroup(
                                             localChatRoom = chatRoomDetailUIState.localChatRoom,
@@ -941,7 +941,7 @@ fun ChatRoomDetailScreen(
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = MaterialTheme.colorScheme.error
                                     ),
-                                    enabled = chatRoomDetailUIState.localChatRoom.chatRoom.leftGroupAt != null,
+                                    enabled = chatRoomDetailUIState.localChatRoom.membershipOf(activeUserPublicKey)?.leftGroupAt != null,
                                     onClick = {
                                         chatRoomDetailViewModel.softDeleteGroup(
                                             localChatRoom = chatRoomDetailUIState.localChatRoom,
@@ -981,7 +981,7 @@ fun ChatRoomDetailScreen(
                             // Only MLS rooms have group events to read again. A NIP-17
                             // room's messages are gift wraps, which carry no ordering
                             // for anything to go wrong with.
-                            if (chatRoomDetailUIState.localChatRoom.chatRoom.mlsGroupState != null) {
+                            if (chatRoomDetailUIState.localChatRoom.mlsGroupStateOf(activeUserPublicKey) != null) {
                                 item {
                                     HorizontalDivider()
                                 }
@@ -1393,11 +1393,8 @@ private fun ChatRoomMessagingScreenPreview() {
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
                             id = "",
-                            userPublicKey = "",
                             subject = "Message title",
-                            description = "Description of a chat room so that members now why they are here.",
-                            initialGiftWrapPayloadId = "sdfaer",
-                            mlsGroupState = null
+                            description = "Description of a chat room so that members now why they are here."
                         ),
                         localParticipants = listOf(
                             LocalParticipant(
