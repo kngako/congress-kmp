@@ -2,7 +2,11 @@ package press.mantra.compose.ui.composable
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -32,7 +36,7 @@ import kotlin.test.assertEquals
 /**
  * The chat list-detail split, measured in windows of the widths the phase names.
  *
- * Four claims, and none of them can be read off the source:
+ * Five claims, and none of them can be read off the source:
  *
  *  - below expanded the home screen is unchanged. That is the promise that let the split
  *    land as one commit -- the chat room is a navigation destination reached from eleven
@@ -42,9 +46,11 @@ import kotlin.test.assertEquals
  *    a `ListDetailPaneScaffold` would;
  *  - the detail pane says what it is for while nothing is selected, rather than being an
  *    unexplained empty half of the window;
- *  - and a second tap in the list changes what the detail pane shows. That one is not a
+ *  - a second tap in the list changes what the detail pane shows. That one is not a
  *    layout claim at all -- it is about view model scope -- but it is only reachable
- *    through this layout, and it is the way the split visibly failed on a tablet.
+ *    through this layout, and it is the way the split visibly failed on a tablet;
+ *  - and the list says which room the pane is answering with, in the one layout where
+ *    that question exists.
  *
  * The repositories are the no-op ones with the two reads this screen makes delegated to a
  * fixed answer. Kotlin's interface delegation makes that ten lines rather than a
@@ -121,6 +127,49 @@ class ChatPaneLayoutJvmTest {
             }
             assertEquals(2, nodesSaying(roomTwo), "room two is listed and shown")
             assertEquals(1, nodesSaying(roomOne), "room one is listed, not shown")
+        }
+
+    @Test
+    fun `the list marks the room the detail pane is showing`() =
+        runDesktopComposeUiTest(1000, 900) {
+            setContent { Home(chatRepository = TwoRooms) }
+
+            // Selectable, and nothing selected. A pane that has been asked nothing yet is
+            // a different state from a room that is not the one being shown, and the list
+            // is allowed to say so. `card` only matches a selectable node, so finding both
+            // rooms through it is half of the claim.
+            card(roomOne).assertIsNotSelected()
+            card(roomTwo).assertIsNotSelected()
+
+            card(roomOne).performClick()
+            waitUntil("room one opens", OpenTimeout) { nodesSaying(roomOne) == 2 }
+            card(roomOne).assertIsSelected()
+            card(roomTwo).assertIsNotSelected()
+
+            card(roomTwo).performClick()
+            waitUntil("room two opens", OpenTimeout) { nodesSaying(roomTwo) == 2 }
+            card(roomTwo).assertIsSelected()
+
+            // The mark moves rather than accumulating. Two highlighted rows beside one
+            // transcript would say the pane was showing both.
+            card(roomOne).assertIsNotSelected()
+        }
+
+    @Test
+    fun `a one-pane list says nothing about selection, having nothing to select into`() =
+        runDesktopComposeUiTest(700, 900) {
+            setContent { Home(chatRepository = TwoRooms) }
+
+            // Tapping navigates here, and the test's callback is a no-op, so the list is
+            // still on screen afterwards -- which is the only reason this can be asked at
+            // all. A row answering "not selected" would be describing a pane that is not
+            // there, and a highlight left behind would outlive the screen it belonged to.
+            onNodeWithText(roomOne).performClick()
+
+            // Both halves, because either alone passes for the wrong reason: a list that
+            // never rendered has no selectable rows either.
+            onNodeWithText(roomOne).assertExists()
+            card(roomOne).assertDoesNotExist()
         }
 
     @androidx.compose.runtime.Composable
@@ -202,4 +251,15 @@ class ChatPaneLayoutJvmTest {
 
     private fun ComposeUiTest.nodesSaying(text: String) =
         onAllNodesWithText(text).fetchSemanticsNodes().size
+
+    /**
+     * The list's card for the room with this subject.
+     *
+     * `Card(onClick = ...)` merges its descendants, so one node carries both the subject
+     * and the selected state -- which is also why a selected room is two nodes saying its
+     * subject and a merely listed one is a single node. The detail pane's app bar says the
+     * same subject and is not selectable, so this stays unambiguous once a room is open.
+     */
+    private fun ComposeUiTest.card(subject: String) =
+        onNode(isSelectable() and hasText(subject))
 }

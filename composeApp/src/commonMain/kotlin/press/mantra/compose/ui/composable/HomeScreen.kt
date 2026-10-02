@@ -243,7 +243,18 @@ fun HomeScreen(
 
                                         key(true) {
                                             chatRoomListViewModel.RenderFeed(
-                                                onNavigateToDirectMessageDetail = onOpenChatRoom
+                                                onNavigateToDirectMessageDetail = onOpenChatRoom,
+                                                // Only where there is a pane to be selected
+                                                // into. The selection outlives a window
+                                                // that narrows -- it is `rememberSaveable`,
+                                                // and a tablet turned to portrait keeps it
+                                                // -- so this is read from the layout rather
+                                                // than from whether a room is selected.
+                                                isSelected = if (listPaneWidth == null) {
+                                                    null
+                                                } else {
+                                                    { id -> id == selectedChatRoomId }
+                                                },
                                             )
                                         }
 
