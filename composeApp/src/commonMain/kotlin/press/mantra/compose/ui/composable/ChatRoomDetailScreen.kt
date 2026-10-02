@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ChevronRight
@@ -86,6 +87,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectsFromCatalogueRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.theme.spacing
@@ -111,6 +113,7 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.add_artifact_to_library
 import mantra.composeapp.generated.resources.add_dialect
+import mantra.composeapp.generated.resources.add_dialects_from_a_list
 import mantra.composeapp.generated.resources.create_project
 import mantra.composeapp.generated.resources.delete_group
 import mantra.composeapp.generated.resources.dialects
@@ -577,6 +580,37 @@ fun ChatRoomDetailScreen(
                                     )
 
                                     Text(stringResource(Res.string.add_dialect))
+                                }
+                            }
+
+                            item {
+                                // The catalogue, beside the form rather than
+                                // instead of it: the form makes one dialect the
+                                // group names itself, and this picks a wave of
+                                // them out of the languages most spoken in
+                                // Africa. See docs/african-dialect-catalogue.md.
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            AddDialectsFromCatalogueRoute(
+                                                chatRoomId = chatRoomId,
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                ) {
+
+                                    Icon(
+                                        Icons.Default.Language,
+                                        contentDescription = Decorative
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.add_dialects_from_a_list))
                                 }
                             }
 

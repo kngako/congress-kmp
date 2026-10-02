@@ -60,6 +60,7 @@ import mantra.composeapp.generated.resources.eg_sesotho
 import mantra.composeapp.generated.resources.eg_st
 import mantra.composeapp.generated.resources.language
 import mantra.composeapp.generated.resources.propose_dialect
+import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_cannot_sign_a_dialect
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
@@ -179,8 +180,10 @@ fun AddDialectScreen(
 
                             if (!addDialectUIState.canSign) {
                                 Text(
-                                    text = "This group has no shared key, so it cannot sign a " +
-                                        "dialect into existence. Run a shared key ceremony first.",
+                                    text = stringResource(
+                                        Res.string
+                                            .this_group_has_no_shared_key_so_it_cannot_sign_a_dialect
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error
                                 )
