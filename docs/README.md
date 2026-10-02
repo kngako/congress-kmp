@@ -21,6 +21,7 @@ silent, or a decision that looked arbitrary and was not.
 | [multiple-profiles.md](./multiple-profiles.md) | several profiles on one device — why a profile is a credential and a seed is a wallet attached to one, why a switch is a restart rather than a swap, the two entrances the app lacks, and the inbox a switch would silently lose |
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
 | [npub-profile-preview.md](./npub-profile-preview.md) | showing the person before a direct message is started from a pasted npub — why the preview is a screen keyed by public key, what "found" means when a row can be a placeholder, and the phase that makes the button honest about a key package that never comes |
+| [chapter-uploads.md](./chapter-uploads.md) | picking files off a device and having the group sign each one in as a chapter — why N files can never be one signing session, and the four things the single-chapter path gets away with |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
 | [curated-to-mantra-profiles.md](./curated-to-mantra-profiles.md) | the second pull: the fork's several-profiles line, ten commits and its first schema migration — which of it is a fix Mantra has today, who allocates a schema version number when two trees share one history, and the one conflict, which was Mantra's own |
@@ -72,3 +73,12 @@ smallest of the plans: it changes the entrance to the direct-message flow and
 nothing past it, so read it with `StartDirectMessageToNpubOrNip05Dialog` and
 `ChatRoomMessagingViewModel.initiateNewChat` open, its four decisions before its
 four phases, and its table of where the build chose differently first.
+The chapter uploads note is a phased plan that has not been built, and is the
+only one that starts from another codebase: it mirrors the mantra.press web app's
+multi-file upload under this app's rule that the group, not the uploader, is the
+author. Read the batch-signing note first — its three limits are the whole shape
+of this one — and read its four-defects section even if the feature is never
+built, because each of those is wrong in the single-chapter path today. Its two
+splitter phases are separable from the rest and worth reading on their own: what
+a chunk is, measured against the parser the web app translates with rather than
+assumed.
