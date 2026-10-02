@@ -11,6 +11,7 @@ import fr.acinq.bitcoin.PrivateKey
 import fr.acinq.bitcoin.XonlyPublicKey
 import fr.acinq.bitcoin.crypto.frost.Frost
 import fr.acinq.bitcoin.crypto.frost.KeyMaterial
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import fr.acinq.bitcoin.crypto.frost.Session
@@ -1554,9 +1555,11 @@ class SignedGroupKeyStateTest {
             localChatRoom = creator.room,
             userPublicKey = creator.publicKey,
             key = ceremonyOn(creator),
-            parent = SubgroupParentage(
-                parentChatRoomId = parentRoomId,
-                certificate = certificate
+            lineage = SubgroupLineage.of(
+                SubgroupParentage(
+                    parentChatRoomId = parentRoomId,
+                    certificate = certificate
+                )
             )
         )
         pump(creator, other)
@@ -1591,9 +1594,11 @@ class SignedGroupKeyStateTest {
                 localChatRoom = creator.room,
                 userPublicKey = creator.publicKey,
                 key = ceremonyOn(creator),
-                parent = SubgroupParentage(
-                    parentChatRoomId = parentRoomId,
-                    certificate = birthCertificate(subgroupChatRoomId = parentRoomId)
+                lineage = SubgroupLineage.of(
+                    SubgroupParentage(
+                        parentChatRoomId = parentRoomId,
+                        certificate = birthCertificate(subgroupChatRoomId = parentRoomId)
+                    )
                 )
             )
         }

@@ -13,6 +13,7 @@ import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 
 /**
@@ -112,7 +113,7 @@ object GroupKeyStateManager {
         userPublicKey: HexKey,
         key: DkgSession,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parent: SubgroupParentage? = null,
+        lineage: SubgroupLineage? = null,
         createdAt: Long = Clock.System.now().epochSeconds
     ): FrostSigningSession {
         val signingRoomId = localChatRoom.chatRoom.id
@@ -120,6 +121,18 @@ object GroupKeyStateManager {
             ?: throw IllegalStateException(
                 "Ceremony ${key.id} has produced no key for $signingRoomId to propose"
             )
+
+        // The event can carry a lineage of any size; the row cannot yet. Until
+        // `GroupKeyState` holds a set, a caller reaching here with two parents
+        // would have one of them silently dropped on the way to the columns, so
+        // it is refused outright rather than half-kept. The tags are already
+        // plural -- see `GroupKeyStateEvent.assembleTags` -- which is what lets
+        // the wire land before the storage does.
+        check(lineage == null || lineage.size == 1) {
+            "Room $signingRoomId cannot yet propose a key state naming " +
+                "${lineage?.size} parents"
+        }
+        val parent = lineage?.parents?.single()
 
         // The room this is about: the group's key walked to the admin path,
         // which is that room's id. It need not exist yet, and in the flow this
@@ -176,7 +189,7 @@ object GroupKeyStateManager {
                 chatRoomId = chatRoomId,
                 dkgSessionId = key.id,
                 path = path,
-                parent = parent
+                lineage = lineage
             ),
             content = thresholdPublicKey,
             key = key,
@@ -381,21 +394,38 @@ object GroupKeyStateManager {
     ): Parentage? {
         if (!GroupKeyStateEvent.claimsParentage(innerEvent.tags)) return Parentage(null)
 
-        // Both or neither. A parent named with no certificate is a claim with the
-        // checkable part removed; a certificate with no parent named beside it
-        // has nothing to be an index of. Either alone is refused rather than
-        // completed from the other, because completing it would be this device
-        // deciding what the group meant.
-        val parentChatRoomId = GroupKeyStateEvent.parseParentChatRoomId(innerEvent.tags)
-        val certificate = GroupKeyStateEvent.parseBirthCertificate(innerEvent.tags)
+        // Both or neither, per parent, and no parent twice -- all of which
+        // `parseLineage` decides. A parent named with no certificate is a claim
+        // with the checkable part removed; a certificate with no parent named
+        // beside it has nothing to be an index of. Either alone is refused rather
+        // than completed from the other, because completing it would be this
+        // device deciding what the group meant.
+        val lineage = GroupKeyStateEvent.parseLineage(innerEvent.tags)
 
-        if (parentChatRoomId == null || certificate == null) {
+        if (lineage == null) {
             logger.w(
-                "Key state for $announced claims a parent in a form that cannot be read " +
-                    "(parent=${parentChatRoomId != null}, certificate=${certificate != null}); dropping"
+                "Key state for $announced claims a parentage in a form that cannot be read; " +
+                    "dropping"
             )
             return null
         }
+
+        // One parent is all a row can hold until `GroupKeyState` carries a set.
+        // Refused rather than truncated: taking the first of two would file a
+        // lineage the group did not sign and leave the device believing a group
+        // has one parent when its own members see two. Nothing in this build
+        // emits a second, so this fires only on a state from a newer one.
+        if (lineage.size > 1) {
+            logger.w(
+                "Key state for $announced claims ${lineage.size} parents " +
+                    "(${lineage.parentChatRoomIds}), which this build cannot file; dropping"
+            )
+            return null
+        }
+
+        val parentage = lineage.parents.single()
+        val parentChatRoomId = parentage.parentChatRoomId
+        val certificate = parentage.certificate
 
         // The parent's own quorum, over this very room's id. Everything that
         // makes a lineage worth anything is in here -- see

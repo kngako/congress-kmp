@@ -11,6 +11,7 @@ import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 
 /**
@@ -320,9 +321,11 @@ object SubgroupManager {
             userPublicKey = userPublicKey,
             key = key,
             path = path,
-            parent = SubgroupParentage(
-                parentChatRoomId = parentChatRoomId,
-                certificate = certificate.toEvent()
+            lineage = SubgroupLineage.of(
+                SubgroupParentage(
+                    parentChatRoomId = parentChatRoomId,
+                    certificate = certificate.toEvent()
+                )
             )
         )
     }
