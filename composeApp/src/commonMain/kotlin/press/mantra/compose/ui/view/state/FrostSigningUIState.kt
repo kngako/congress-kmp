@@ -23,6 +23,22 @@ sealed interface FrostSigningUIState {
 
         /** Who has signed their part. */
         val signed: Set<HexKey> = emptySet(),
+
+        /**
+         * Names for the keys and ids the proposed events refer to.
+         *
+         * `ProposedEvent.summarize` is a pure function with no database -- two
+         * call sites show these words and two copies of the mapping would drift
+         * -- so whatever can be named is resolved here and handed in as a
+         * lookup.
+         *
+         * It matters most for a membership, which carries two 64-character ids
+         * and nothing else: unresolved, a member is asked to agree to "sign
+         * a4f1be55d0c3". Empty is the honest default, and what a batch founding
+         * a project sees for the project's own id, since nothing has applied it
+         * yet.
+         */
+        val names: Map<HexKey, String> = emptyMap(),
     ): FrostSigningUIState
 
     data class Error(

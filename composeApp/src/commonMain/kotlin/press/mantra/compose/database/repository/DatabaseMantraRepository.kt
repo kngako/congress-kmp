@@ -9,6 +9,7 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
@@ -40,6 +41,35 @@ class DatabaseMantraRepository(
 
     override suspend fun getChaptersForArtifactVersion(artifactVersionId: String): List<MantraChapter> =
         database.mantraChapterDao().getChaptersByArtifactVersionId(artifactVersionId)
+
+    override suspend fun getProjects(chatRoomId: String): List<MantraProject> =
+        database.mantraProjectDao().getProjectsByChatRoomId(chatRoomId)
+
+    override suspend fun getProject(id: String): MantraProject? =
+        database.mantraProjectDao().getProjectById(id)
+
+    override suspend fun getProjectArtifactVersions(
+        projectId: String
+    ): List<MantraArtifactVersion> =
+        database.mantraProjectArtifactVersionDao().getArtifactVersionsByProjectId(projectId)
+
+    override suspend fun getProjectTranslationArtifactVersions(
+        projectId: String
+    ): List<MantraTranslationArtifactVersion> =
+        database.mantraProjectTranslationArtifactVersionDao()
+            .getTranslationArtifactVersionsByProjectId(projectId)
+
+    override suspend fun getProjectsForArtifactVersion(
+        artifactVersionId: String
+    ): List<MantraProject> =
+        database.mantraProjectArtifactVersionDao()
+            .getProjectsByArtifactVersionId(artifactVersionId)
+
+    override suspend fun getProjectsForTranslationArtifactVersion(
+        translationArtifactVersionId: String
+    ): List<MantraProject> =
+        database.mantraProjectTranslationArtifactVersionDao()
+            .getProjectsByTranslationArtifactVersionId(translationArtifactVersionId)
 
     override suspend fun getChapter(id: String): MantraChapter? =
         database.mantraChapterDao().getChapterById(id)

@@ -48,6 +48,9 @@ import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.nostr.nip30303.ChunkEvent
+import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.MantraTheme
@@ -93,6 +96,8 @@ fun FrostSigningScreen(
     initialFrostSigningUIState: FrostSigningUIState = FrostSigningUIState.Loading,
     chatRepository: ChatRepository,
     frostSigningRepository: FrostSigningRepository,
+    mantraRepository: MantraRepository,
+    nostrRepository: NostrRepository,
     onNavigateBack: () -> Unit,
 ) {
     val frostSigningViewModel: FrostSigningViewModel = viewModel(
@@ -102,7 +107,9 @@ fun FrostSigningScreen(
             activeUserPublicKey = activeUserPublicKey,
             initialFrostSigningUIState = initialFrostSigningUIState,
             chatRepository = chatRepository,
-            frostSigningRepository = frostSigningRepository
+            frostSigningRepository = frostSigningRepository,
+            mantraRepository = mantraRepository,
+            nostrRepository = nostrRepository
         )
     )
 
@@ -165,7 +172,12 @@ fun FrostSigningScreen(
                         .padding(MaterialTheme.spacing.space250),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space200)
                 ) {
-                    WhatIsBeingSigned(proposed, state.items.size)
+                    WhatIsBeingSigned(
+                        events = proposed,
+                        expected = state.items.size,
+                        chatRoomId = state.localChatRoom.chatRoom.id,
+                        names = state.names,
+                    )
 
                     HorizontalDivider()
 
@@ -335,7 +347,12 @@ private fun Loading(padding: androidx.compose.foundation.layout.PaddingValues) {
  * sign something they cannot check.
  */
 @Composable
-private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
+private fun WhatIsBeingSigned(
+    events: List<Event>,
+    expected: Int,
+    chatRoomId: String,
+    names: Map<HexKey, String>,
+) {
     if (expected == 0 || events.size != expected) {
         Text(
             text = if (expected <= 1) {
@@ -358,10 +375,14 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
             )
         }
 
+        // The chunk count a chapter reports is a count of this batch, so it
+        // comes from here rather than from re-reading the chapter's text.
+        val chunkCount = events.count { it.kind == ChunkEvent.KIND }
+
         events.forEachIndexed { index, event ->
             if (index > 0) HorizontalDivider()
 
-            OneThingBeingSigned(event)
+            OneThingBeingSigned(event, chatRoomId, names, chunkCount)
         }
 
         Text(
@@ -376,8 +397,22 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
 
 /** One event of the batch, described as the thing it is. */
 @Composable
-private fun OneThingBeingSigned(event: Event) {
-    val summary = ProposedEvent.summarize(event)
+private fun OneThingBeingSigned(
+    event: Event,
+    chatRoomId: String,
+    names: Map<HexKey, String>,
+    chunkCount: Int,
+) {
+    // The room, so a project owned by this group does not say so on every line;
+    // the names, so what is being signed is a thing rather than a hash; and the
+    // chunk count, because a chapter's is a count of this batch rather than
+    // something to be re-derived from its text.
+    val summary = ProposedEvent.summarize(
+        event = event,
+        chatRoomId = chatRoomId,
+        resolve = names::get,
+        chunkCount = chunkCount,
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)) {
         Text(text = summary.label, style = MaterialTheme.typography.labelMedium)
@@ -425,6 +460,8 @@ private fun FrostSigningScreenPreview() {
                 ),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
+                nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 onNavigateBack = {}
             )
         }

@@ -20,7 +20,27 @@ class ContributorTag(
         const val ROLE_PROOF_READER = "proofreader"
         const val ROLE_EDITOR = "editor"
 
-        private val KNOWN_ROLES = setOf(ROLE_TRANSLATOR, ROLE_PROOF_READER, ROLE_EDITOR)
+        /**
+         * Whoever the work belongs to, which need not be whoever is doing it.
+         *
+         * A project carries one of these per owner -- the room's own key when the
+         * group owns what it makes, and somebody else's when it does not. There
+         * is no matching creator role: a project has exactly one creator and a
+         * single-valued field gets a tag of its own, which is `CreatorTag`.
+         */
+        const val ROLE_OWNER = "owner"
+
+        // Four, where NIP-F4 defines host/cohost/editor. A role missing from this
+        // set is the quietest bug in the family: `parse` returns the tag with a
+        // null role, the string stays inside the signed event id, the event still
+        // verifies, and whatever was reading for that role finds nothing. Add to
+        // both halves or to neither.
+        private val KNOWN_ROLES = setOf(
+            ROLE_TRANSLATOR,
+            ROLE_PROOF_READER,
+            ROLE_EDITOR,
+            ROLE_OWNER,
+        )
 
         fun isTagged(tag: Array<String>) = tag.has(1) && tag[0] == TAG_NAME && tag[1].length == 64
 

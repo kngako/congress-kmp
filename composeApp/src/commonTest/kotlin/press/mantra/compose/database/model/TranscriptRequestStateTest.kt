@@ -182,4 +182,42 @@ class TranscriptRequestStateTest {
 
         assertEquals(setOf(hostKey.id), ChatMessage.answeredRequests(transcript))
     }
+
+    @Test
+    fun `twelve open proposals each keep their own summons`() {
+        // An upload of twelve files opens twelve sessions at once, interleaved in
+        // one stretch of transcript. The clock fallback would have the first
+        // answer drop every later request, which is the failure two concurrent
+        // sessions already had once -- and twelve is where a path that still
+        // falls back to the clock would show.
+        val requests = (1..12).map { n ->
+            line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 100L + n, session = "session-" + n)
+        }
+
+        // Answered in the opposite order to the asking, so neither the clock nor
+        // the list order could produce the right answer by accident.
+        val answers = listOf(12, 7, 1).map { n ->
+            line(ChatMessage.TYPE_FROST_NONCE, at = 200L + n, session = "session-" + n)
+        }
+
+        val answered = ChatMessage.answeredRequests(requests + answers)
+
+        assertEquals(
+            setOf(requests[11].id, requests[6].id, requests[0].id),
+            answered,
+        )
+    }
+
+    @Test
+    fun `one proposal failing settles only itself`() {
+        val requests = (1..12).map { n ->
+            line(ChatMessage.TYPE_FROST_APPROVAL_NEEDED, at = 100L + n, session = "session-" + n)
+        }
+        val failure = line(ChatMessage.TYPE_FROST_FAILED, at = 300, session = "session-5")
+
+        // The other eleven chapters are still in front of the group. A batch is
+        // all-or-nothing within a session and nothing across them, which is the
+        // whole reason an upload is N sessions rather than one.
+        assertEquals(setOf(requests[4].id), ChatMessage.settledRequests(requests + listOf(failure)))
+    }
 }

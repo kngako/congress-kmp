@@ -6,6 +6,7 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationChapter
 import press.mantra.compose.database.model.MantraTranslationChunk
@@ -56,6 +57,31 @@ interface MantraRepository {
 
     suspend fun getDialect(id: String): MantraDialect?
 
+    suspend fun getProjects(chatRoomId: String): List<MantraProject>
+
+    suspend fun getProject(id: String): MantraProject?
+
+    /**
+     * The source versions a project is translating from.
+     *
+     * The versions, not the join rows: no screen wants a join row, and resolving
+     * it here is one indexed query instead of an N+1 in a view model.
+     */
+    suspend fun getProjectArtifactVersions(projectId: String): List<MantraArtifactVersion>
+
+    /** The translations a project is producing. */
+    suspend fun getProjectTranslationArtifactVersions(
+        projectId: String
+    ): List<MantraTranslationArtifactVersion>
+
+    /** The inverse: which projects a source version is part of. */
+    suspend fun getProjectsForArtifactVersion(artifactVersionId: String): List<MantraProject>
+
+    /** The inverse again, for a translation. */
+    suspend fun getProjectsForTranslationArtifactVersion(
+        translationArtifactVersionId: String
+    ): List<MantraProject>
+
     suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
         artifactId: HexKey,
@@ -101,6 +127,26 @@ interface MantraRepository {
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 
             override suspend fun getDialect(id: String): MantraDialect? = null
+
+            override suspend fun getProjects(chatRoomId: String): List<MantraProject> = emptyList()
+
+            override suspend fun getProject(id: String): MantraProject? = null
+
+            override suspend fun getProjectArtifactVersions(
+                projectId: String
+            ): List<MantraArtifactVersion> = emptyList()
+
+            override suspend fun getProjectTranslationArtifactVersions(
+                projectId: String
+            ): List<MantraTranslationArtifactVersion> = emptyList()
+
+            override suspend fun getProjectsForArtifactVersion(
+                artifactVersionId: String
+            ): List<MantraProject> = emptyList()
+
+            override suspend fun getProjectsForTranslationArtifactVersion(
+                translationArtifactVersionId: String
+            ): List<MantraProject> = emptyList()
 
             override suspend fun addArtifactVersion(
                 localChatRoom: LocalChatRoom,

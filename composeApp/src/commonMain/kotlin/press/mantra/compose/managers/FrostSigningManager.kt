@@ -147,6 +147,29 @@ object FrostSigningManager {
     const val MAX_BATCH_SIZE: Int = 64
 
     /**
+     * The most JSON a proposal may carry.
+     *
+     * [MAX_BATCH_SIZE] bounds how many events a batch holds; this bounds how
+     * large they are, and the two are not the same limit. Sixty-four dialects
+     * are a few kilobytes and sixty-four chunks of a chapter are eighty, so a
+     * count cap alone lets a perfectly legal batch exceed what the transport
+     * carries -- and the proposal is the largest message in this protocol by an
+     * order of magnitude: a signer's nonce payload is `k * 133` bytes of hex and
+     * their partial `k * 65`, where the proposal carries `k` whole events.
+     *
+     * Deliberately the same number as `ChronicleEvent.MAX_PAGE_BYTES`, because
+     * it is the same question asked twice -- what one kind:445 clears once the
+     * MLS framing and the NIP-44 expansion outside it are paid for. The two are
+     * not shared as one constant because neither module should depend on the
+     * other for it, but they do have to be re-sized together, and whichever is
+     * raised first should say so here.
+     *
+     * Before this existed the failure was silent: the proposal went out, the
+     * group event was over size, and the session stalled with nothing to blame.
+     */
+    const val MAX_PROPOSAL_BYTES: Int = 64 * 1024
+
+    /**
      * Opens a signing session, making this device the coordinator.
      *
      * The event is signed as it stands apart from its `pubkey`, which is
@@ -270,6 +293,16 @@ object FrostSigningManager {
             "A signing session will sign at most $MAX_BATCH_SIZE events, not ${unsignedEvents.size}"
         }
 
+        // Encoded once, here, so the size check is the real encoding rather than
+        // an estimate of it -- and so the broadcast below sends the bytes that
+        // were measured.
+        val proposal = FrostSigningEvents.encodeProposal(unsignedEvents)
+        val proposalBytes = proposal.encodeToByteArray().size
+
+        require(proposalBytes <= MAX_PROPOSAL_BYTES) {
+            "A signing proposal carries at most $MAX_PROPOSAL_BYTES bytes, not $proposalBytes"
+        }
+
         val sessionId = RandomInstance.bytes(32).toHex()
 
         val session = FrostSigningSession(
@@ -299,7 +332,7 @@ object FrostSigningManager {
             localChatRoom = localChatRoom,
             session = session,
             kind = FrostSigningEvents.PROPOSAL,
-            content = FrostSigningEvents.encodeProposal(unsignedEvents),
+            content = proposal,
             includeKey = true
         )
 
@@ -403,6 +436,18 @@ object FrostSigningManager {
         val signerId = signerIdOf(database, key, userPublicKey)
         if (signerId == null) {
             logger.w("Signing proposal $sessionId is for a ceremony this device did not take part in; dropping")
+            return null
+        }
+
+        // Before parsing, not after. This and the count check below are the two
+        // places a remote party decides how much work this device does, and the
+        // cheaper of the two refusals should come first.
+        val proposalBytes = innerEvent.content.encodeToByteArray().size
+        if (proposalBytes > MAX_PROPOSAL_BYTES) {
+            logger.w(
+                "Signing proposal $sessionId carries $proposalBytes bytes, more than the " +
+                    "$MAX_PROPOSAL_BYTES this device will accept; dropping"
+            )
             return null
         }
 
