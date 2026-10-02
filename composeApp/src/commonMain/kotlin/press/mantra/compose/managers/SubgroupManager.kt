@@ -843,6 +843,35 @@ object SubgroupManager {
             .orEmpty()
 
     /**
+     * A group this room is a child of, plus the room itself where this device
+     * has it.
+     *
+     * [room] is the only place a parent's *name* can come from: a certificate
+     * names the child, never the certifier, so a device that is not in the
+     * parent room knows the lineage and not what to call it. Null is therefore
+     * the ordinary case for a subgroup member who is not also a parent member,
+     * and the id is all such a screen can honestly show.
+     */
+    data class Parent(
+        val chatRoomId: HexKey,
+        val room: LocalChatRoom?,
+    )
+
+    /**
+     * [parentsOf], with each parent's room where this device holds one.
+     *
+     * The same verified set in the same order -- this only looks each id up, and
+     * a parent whose room is missing stays in the list rather than being dropped.
+     */
+    suspend fun parentGroupsOf(database: MantraDatabase, chatRoomId: String): List<Parent> =
+        parentsOf(database, chatRoomId).map { parentChatRoomId ->
+            Parent(
+                chatRoomId = parentChatRoomId,
+                room = database.chatRoomDao().findChatRoomById(parentChatRoomId)
+            )
+        }
+
+    /**
      * What a certificate arriving in a room is, or null if it is nothing this
      * room should believe.
      *

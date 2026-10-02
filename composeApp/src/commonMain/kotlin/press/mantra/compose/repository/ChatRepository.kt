@@ -78,8 +78,12 @@ interface ChatRepository {
      * may be adopted by another later. A member welcomed in after the founding
      * holds no state and gets an empty list even when the room really is a
      * subgroup.
+     *
+     * Each carries the parent's room where this device has one, which is the
+     * only place its name can come from -- a certificate names the child and
+     * never the certifier.
      */
-    suspend fun parentsOf(chatRoomId: String): List<HexKey>
+    suspend fun parentsOf(chatRoomId: String): List<SubgroupManager.Parent>
 
     /**
      * One event the group signed, as the group signed it, or null when this
@@ -329,7 +333,9 @@ interface ChatRepository {
             override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
                 emptyList()
 
-            override suspend fun parentsOf(chatRoomId: String): List<HexKey> = emptyList()
+            override suspend fun parentsOf(
+                chatRoomId: String
+            ): List<SubgroupManager.Parent> = emptyList()
 
             override suspend fun groupSignedEvent(
                 chatRoomId: String,

@@ -282,15 +282,40 @@ fun ChatRoomDetailScreen(
                             // later. They are a set rather than a path -- neither
                             // is "the" parent and the order says nothing about
                             // which came first -- so each gets an equal row.
-                            chatRoomDetailUIState.parentChatRoomIds.forEach { parentChatRoomId ->
-                                item(key = "parent-$parentChatRoomId") {
+                            chatRoomDetailUIState.parents.forEach { parent ->
+                                item(key = "parent-${parent.chatRoomId}") {
+                                    // The parent's own name, which only its room
+                                    // can give: a certificate names the child and
+                                    // never the certifier, so a member of the
+                                    // subgroup who is not also in the parent has
+                                    // the id and nothing else to call it by.
+                                    val name = parent.room
+                                        ?.chatRoom
+                                        ?.subject
+                                        ?.takeIf { it.isNotBlank() }
+
+                                    // Shown either way -- as the headline where
+                                    // there is no name, and under it where there
+                                    // is, since it is the part that can be
+                                    // compared against what the lineage says.
+                                    val identifier: @Composable () -> Unit = {
+                                        Text(
+                                            text = parent.chatRoomId
+                                                .take(16)
+                                                .inComparableGroups(),
+                                            fontFamily = FontFamily.Monospace,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.MiddleEllipsis
+                                        )
+                                    }
+
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
                                             onNavigateToRoute.invoke(
                                                 ChatRoomDetailRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = parentChatRoomId,
+                                                    chatRoomId = parent.chatRoomId,
                                                     relayHint = relayHint
                                                 )
                                             )
@@ -309,19 +334,25 @@ fun ChatRoomDetailScreen(
                                                     contentDescription = Decorative
                                                 )
                                             },
-                                            headlineContent = {
+                                            // The label keeps its place above the
+                                            // name rather than being replaced by
+                                            // it: a card carrying a group's name
+                                            // and nothing else says nothing about
+                                            // which way the lineage runs, and the
+                                            // signing key's card -- same icon
+                                            // column, same shape -- sits directly
+                                            // above this one.
+                                            overlineContent = {
                                                 Text(text = stringResource(Res.string.parent_group))
                                             },
-                                            supportingContent = {
-                                                Text(
-                                                    text = parentChatRoomId
-                                                        .take(16)
-                                                        .inComparableGroups(),
-                                                    fontFamily = FontFamily.Monospace,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.MiddleEllipsis
-                                                )
-                                            }
+                                            headlineContent = {
+                                                if (name != null) {
+                                                    Text(text = name)
+                                                } else {
+                                                    identifier()
+                                                }
+                                            },
+                                            supportingContent = identifier.takeIf { name != null }
                                         )
                                     }
                                 }
