@@ -20,6 +20,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 interface NostrRepository {
     suspend fun getLocalAccounts(): List<LocalAccount>
@@ -209,78 +210,97 @@ interface NostrRepository {
     suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>)
 
     companion object {
-        val NO_OP_NOSTR_REPOSITORY = object : NostrRepository {
-            override suspend fun getLocalAccounts(): List<LocalAccount> {
-                TODO("Not yet implemented")
-            }
+        /**
+         * A repository with nothing behind it: every question answers "nothing here",
+         * every write goes nowhere, and **no member throws**.
+         *
+         * Previews and test fixtures are the only callers, and both want inertness. It is
+         * written out here because these members were once `TODO()`, and a `TODO()` in a
+         * no-op is not a loud failure -- it is a silent misattribution. Callers reach most
+         * of them from a `viewModelScope.launch(Dispatchers.IO)` that nobody awaits, so the
+         * `NotImplementedError` escapes to the platform handler, is stashed by
+         * kotlinx-coroutines-test's `ExceptionCollector`, and is re-thrown as
+         * `UncaughtExceptionsBeforeTest` inside *the next* `runTest` -- under that test's
+         * name, with the real culprit buried as a suppressed cause. One `TODO()` here
+         * (`queueNegentropySynchronizeRequest`, reached from
+         * `ChatMessageListViewModel.scheduleSynchronization`) failed `NavigationRoutingTest`
+         * four times a run for a call that test never made.
+         *
+         * So the rules for a member added here, which the other three no-op repositories
+         * follow too:
+         *
+         *  - **Answer the call, never stub it out.** `NoOpRepositoryTotalityJvmTest` reads
+         *    these four objects and fails if an unimplemented stub reappears in one.
+         *  - **A flow emits its empty value once** -- `flowOf(null)`, `flowOf(emptyList())` --
+         *    rather than `flow { }`. A screen collecting an empty flow waits in Loading
+         *    forever; one collecting `flowOf(null)` renders its empty state, which is what
+         *    a preview is for.
+         *  - **A callback is not invoked.** Nothing happened, and calling `onCompletion` or
+         *    `onSuccess` would say it did -- letting a test pass on the fixture rather than
+         *    on the code under test.
+         *  - **Throwing is never the way to be loud.** A member that a test must not call is
+         *    the test's assertion to make, not the fixture's: override it with a recorder and
+         *    assert it stayed untouched. An exception thrown here lands on whichever test
+         *    runs next.
+         *
+         * A test that needs a real answer from one member overrides just that one:
+         * `object : NostrRepository by NO_OP_NOSTR_REPOSITORY { … }`.
+         */
+        val NO_OP_NOSTR_REPOSITORY: NostrRepository = object : NostrRepository {
+            override suspend fun getLocalAccounts(): List<LocalAccount> = emptyList()
 
-            override suspend fun observeLocalAccount(publicKey: HexKey): Flow<LocalAccount?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeLocalAccount(publicKey: HexKey): Flow<LocalAccount?> =
+                flowOf(null)
 
-            override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? {
-                TODO("Not yet implemented")
-            }
+            override suspend fun getProfileWithPublicKey(publicKey: HexKey): Profile? = null
 
-            override suspend fun observeProfileWithPublicKey(publicKey: HexKey): Flow<Profile?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeProfileWithPublicKey(publicKey: HexKey): Flow<Profile?> =
+                flowOf(null)
 
             override suspend fun observeRelation(
                 publicKey: HexKey,
                 activePublicKey: HexKey
-            ): Flow<List<Connection>> {
-                TODO("Not yet implemented")
-            }
+            ): Flow<List<Connection>> = flowOf(emptyList())
 
-            override suspend fun deleteConnection(connection: Connection) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun deleteConnection(connection: Connection) = Unit
 
-            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<List<UnsignedNostrEvent>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeUnsignedNostrEvents(publicKey: HexKey): Flow<List<UnsignedNostrEvent>> =
+                flowOf(emptyList())
 
-            override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?> =
+                flowOf(null)
 
             override suspend fun reopenInbox(activeKeyPair: KeyPair): Int = 0
 
-            override suspend fun observePendingSynchronizeNostrEventRequests(ownerPublicKey: HexKey): Flow<SynchronizeNostrEventRequest?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observePendingSynchronizeNostrEventRequests(ownerPublicKey: HexKey): Flow<SynchronizeNostrEventRequest?> =
+                flowOf(null)
 
-            override suspend fun observePendingNegentropySynchronizeRequests(ownerPublicKey: HexKey): Flow<NegentropySynchronizeRequest?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observePendingNegentropySynchronizeRequests(ownerPublicKey: HexKey): Flow<NegentropySynchronizeRequest?> =
+                flowOf(null)
 
+            // onCompletion is deliberately not called: no profile was created, and a
+            // fixture that reports completion is a fixture a test can pass against.
             override suspend fun createNewProfile(
                 publicKey: HexKey,
                 name: String?,
                 biography: String?,
                 onCompletion: suspend () -> Unit
-            ) {
-                TODO("")
-            }
+            ) = Unit
 
-            override suspend fun signInToProfile(publicKey: HexKey) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun signInToProfile(publicKey: HexKey) = Unit
 
             override suspend fun setUpProfileForExistingKey(
                 publicKey: HexKey,
                 placeholderUnsignedNostrEventId: Long,
                 name: String?,
                 biography: String?,
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun forgetLocalAccount(publicKey: HexKey) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun forgetLocalAccount(publicKey: HexKey) = Unit
 
+            // Neither onSuccess nor onError: the note was not written, and it did not fail
+            // to be written either -- there was nowhere to write it. A test that wants
+            // either branch overrides this member and calls the one it is testing.
             override suspend fun createNewTextNote(
                 publicKey: HexKey,
                 mentionedPublicKeys: List<HexKey>,
@@ -289,74 +309,50 @@ interface NostrRepository {
                 quotedNostrEvent: LocalNostrEvent?,
                 onError: () -> Unit,
                 onSuccess: () -> Unit
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? {
-                return null
-            }
+            override suspend fun saveUnsignedNostrEvent(unsignedNostrEvent: UnsignedNostrEvent): UnsignedNostrEvent? =
+                null
 
-            override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun saveUnsignedNostrEvents(unsignedNostrEvents: List<UnsignedNostrEvent>) = Unit
 
-            override suspend fun wipeDatabase() {
-            }
+            override suspend fun wipeDatabase() = Unit
 
             override suspend fun publishNostrEvent(
                 unsignedNostrEvent: UnsignedNostrEvent,
                 nostrEvent: NostrEvent,
                 relayURLs: List<String>,
                 activeKeyPair: KeyPair
-            ) {
-
-            }
+            ) = Unit
 
             override suspend fun broadcastProcessed(
                 broadcastNostrEventRequest: BroadcastNostrEventRequest,
                 status: String
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun requeueStaleBroadcastNostrEventRequests(): Int {
-                TODO("Not yet implemented")
-            }
+            override suspend fun requeueStaleBroadcastNostrEventRequests(): Int = 0
 
-            override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) = Unit
 
-            override suspend fun synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) = Unit
 
-            override suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest) = Unit
 
-            override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun saveBroadcastReceipt(broadcastNostrEventReceipt: BroadcastNostrEventReceipt) = Unit
 
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
                 synchronizeNostrEventRequest: SynchronizeNostrEventRequest,
                 synchronizationRelayURLs: List<String>,
                 activeKeyPair: KeyPair
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
                 negentropySynchronizeRequest: NegentropySynchronizeRequest,
                 synchronizationRelayURLs: List<String>,
                 activeKeyPair: KeyPair
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun saveNostrEvent(
                 nostrEvent: NostrEvent,
@@ -364,82 +360,54 @@ interface NostrRepository {
                 synchronizationRelayURLs: List<String>,
                 level: Int,
                 activeKeyPair: KeyPair
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun queueSynchronizeNostrEvent(synchronizeNostrEventRequests: List<SynchronizeNostrEventRequest>) = Unit
 
-            override suspend fun queueNegentropySynchronizeRequest(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun queueNegentropySynchronizeRequest(negentropySynchronizeRequests: List<NegentropySynchronizeRequest>) = Unit
 
-            override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeSynchronizeNostrEventRequestByPurposeAndStatusCount(purpose: String): Flow<Int> =
+                flowOf(0)
 
             override suspend fun getNostrEvent(
                 publicKey: HexKey,
                 kind: Kind
-            ): NostrEvent? {
-                TODO("Not yet implemented")
-            }
+            ): NostrEvent? = null
 
-            override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeNostrFeed(): Flow<List<LocalNostrEvent>> = flowOf(emptyList())
 
-            override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeNostrFeed(synchronizationFilter: SynchronizationFilter): Flow<List<LocalNostrEvent>> =
+                flowOf(emptyList())
 
             override suspend fun getNegentropicNostrFeedIds(
                 synchronizationFilters: Array<SynchronizationFilter>,
                 applyLimits: Boolean
-            ): List<NostrEvent> {
-                TODO("Not yet implemented")
-            }
+            ): List<NostrEvent> = emptyList()
 
-            override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeLocalNostrEventById(nostrEventId: String): Flow<LocalNostrEvent?> =
+                flowOf(null)
 
-            override suspend fun searchableProfiles(excludingPublicKeys: Array<HexKey>): List<Profile> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun searchableProfiles(excludingPublicKeys: Array<HexKey>): List<Profile> =
+                emptyList()
 
-            override suspend fun filterProfiles(searchTerm: String): List<LocalProfile> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun filterProfiles(searchTerm: String): List<LocalProfile> = emptyList()
 
-            override suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeProfileWithFollowers(publicKey: String): Flow<LocalProfileWithFollowers?> =
+                flowOf(null)
 
-            override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeProfileWithFollowing(publicKey: String): Flow<LocalProfileWithFollowing?> =
+                flowOf(null)
 
-            override suspend fun getRecentSearches(): List<RecentSearch> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun getRecentSearches(): List<RecentSearch> = emptyList()
 
-            override suspend fun removeRecentSearch(recentSearch: RecentSearch) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun removeRecentSearch(recentSearch: RecentSearch) = Unit
 
             override suspend fun saveSearchQuery(
                 query: String,
                 synchronizationFilterArray: press.mantra.compose.database.model.typealiases.SynchronizationFilterArray?
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun rescheduleBroadcastNostrEventRequests(broadcastNostrEventRequests: List<BroadcastNostrEventRequest>) = Unit
         }
     }
 }

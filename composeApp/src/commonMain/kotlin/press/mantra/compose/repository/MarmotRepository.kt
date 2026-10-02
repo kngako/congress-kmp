@@ -5,6 +5,7 @@ import press.mantra.compose.database.model.MarmotKeyPackageBundle
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 interface MarmotRepository {
 
@@ -33,40 +34,35 @@ interface MarmotRepository {
     suspend fun encryptAndSendMarmotInnerEvent(marmotInnerEvent: MarmotInnerEvent, nostrSignerSync: NostrSignerSync)
 
     companion object {
-        val NO_OP_MARMOT_KEY_PACKAGE_BUNDLE = object: MarmotRepository {
+        /**
+         * A repository with no key packages behind it: inert, and no member throws. See
+         * [NostrRepository.NO_OP_NOSTR_REPOSITORY] for why a `TODO()` here is a silent
+         * misattribution rather than a loud failure, and for the rules a new member follows.
+         */
+        val NO_OP_MARMOT_KEY_PACKAGE_BUNDLE: MarmotRepository = object : MarmotRepository {
             override suspend fun publishMarmotKeyPackageBundle(
                 publicKey: HexKey,
                 nsecPassword: String
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
-            override suspend fun rotateMarmotKeyPackageBundle(marmotKeyPackageBundle: MarmotKeyPackageBundle) {
-                TODO("Not yet implemented")
-            }
+            override suspend fun rotateMarmotKeyPackageBundle(marmotKeyPackageBundle: MarmotKeyPackageBundle) = Unit
 
-            override suspend fun observeMarmotKeyPackageBundles(publicKey: HexKey): Flow<List<MarmotKeyPackageBundle>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeMarmotKeyPackageBundles(publicKey: HexKey): Flow<List<MarmotKeyPackageBundle>> =
+                flowOf(emptyList())
 
-            override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> {
-                return emptyList()
-            }
+            override suspend fun getMarmotKeyPackageBundles(publicKey: HexKey): List<MarmotKeyPackageBundle> =
+                emptyList()
 
-            override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<List<MarmotInnerEvent>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeUnprocessedMarmotInnerEvents(publicKey: HexKey): Flow<List<MarmotInnerEvent>> =
+                flowOf(emptyList())
 
-            override suspend fun observeActiveMarmotKeyPackageBundle(publicKey: HexKey): Flow<MarmotKeyPackageBundle?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeActiveMarmotKeyPackageBundle(publicKey: HexKey): Flow<MarmotKeyPackageBundle?> =
+                flowOf(null)
 
             override suspend fun encryptAndSendMarmotInnerEvent(
                 marmotInnerEvent: MarmotInnerEvent,
                 nostrSignerSync: NostrSignerSync
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
         }
     }
 }
