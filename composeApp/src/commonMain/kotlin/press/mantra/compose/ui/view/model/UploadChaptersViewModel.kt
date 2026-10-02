@@ -198,10 +198,20 @@ class UploadChaptersViewModel(
         onDone: (proposed: Int, failed: Int) -> Unit,
     ) {
         val loaded = _uiState.value as? UploadChaptersUIState.Loaded ?: return
+
+        // A pass already running will call [onDone] itself when it finishes;
+        // firing it here as well would announce one pass twice.
         if (loaded.isProposing) return
 
         val queue = loaded.proposable.map { it.id }
-        if (queue.isEmpty()) return
+        if (queue.isEmpty()) {
+            // Nothing to do still has to be said. The FAB is disabled in this
+            // case so the screen never reaches it, but a callback that
+            // sometimes never fires is a trap for the next caller -- and it is
+            // what a test of a second tap found.
+            onDone(0, 0)
+            return
+        }
 
         updateLoaded { it.copy(isProposing = true) }
 

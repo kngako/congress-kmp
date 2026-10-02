@@ -5,10 +5,19 @@ Picking files off a device and having a group sign each one into an artifact as 
 [mantra.press](https://code.sigidli.com/mantra/mantra.press) does it over one
 HTTP POST, except that here nobody is authoring anything on their own.
 
-**Not built.** This is a plan. The constraint that shapes every phase is stated
-first, because the web app's shape — N files in, N chapters out, one
-transaction, one redirect — is the one shape this app cannot have, and every
-phase below is a consequence of that rather than a feature.
+**Built**, all nine phases, one commit each, and the phases below are kept as
+written — they are the reasoning, and the code is easier to read against the
+argument it came from than against a summary of itself. Where the
+implementation chose differently from the plan the section says so, and there
+are four such places worth knowing about: the picker is three actuals rather
+than FileKit, the byte cap is a function rather than a constant and lives on the
+manager rather than the chapter, the scaffolding fix turned out to repair a
+latent bug as well, and Phase 6 found all three of its worries already answered.
+
+The constraint that shapes every phase is stated first, because the web app's
+shape — N files in, N chapters out, one transaction, one redirect — is the one
+shape this app cannot have, and every phase below is a consequence of that
+rather than a feature.
 
 ---
 
@@ -960,6 +969,25 @@ file 4 leaves files 1–3 proposed and recoverable rather than rolled back.
 
 `jvmTest`, not `commonTest`, because it is Room-backed; `./gradlew
 :composeApp:jvmTest`, per the project's build notes.
+
+**What the end-to-end test found**, which is the reason it was worth writing
+rather than assuming the parts composed: `propose` with nothing proposable
+returned without ever calling its callback. The FAB is disabled in that case so
+the screen never reached it, but a callback that sometimes never fires is a trap
+for the next caller. It now fires `onDone(0, 0)`.
+
+**And one thing it could not test, for a good reason.** The plan asked for "a
+failure on file 4 leaves files 1–3 proposed and recoverable". That is
+unreachable by *input*: both caps are checked in the form against the same
+functions the manager enforces, and `ChapterProposalSizeTest` asserts the form's
+estimate is never under the manager's measurement — so no file can pass the
+review and then fail the proposal. It is reachable by *state*, which is what the
+test does instead: a room with no shared key fails all three, every row says so
+and stays retryable, and a second pass after the key arrives proposes all three
+numbered from zero. The failed pass spent no indices, because it created
+nothing.
+
+Total: 995 tests, and the counts per phase are in each commit.
 
 Rollout needs no flag. The chapter and chunk kinds, their tags and their apply
 branches are unchanged, so an older build receives an uploaded chapter as the
