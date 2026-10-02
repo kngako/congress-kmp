@@ -18,6 +18,7 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.files.PickedFile
 import press.mantra.compose.managers.ChapterIndexing
+import press.mantra.compose.managers.ChapterScaffolding
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
@@ -208,6 +209,7 @@ class UploadChaptersViewModel(
             var index = nextIndex(artifactVersion)
             var proposed = 0
             var failed = 0
+            val scaffolded = mutableListOf<ChapterScaffolding.ProposedChapter>()
 
             for (id in queue) {
                 val row = (_uiState.value as? UploadChaptersUIState.Loaded)
@@ -239,6 +241,10 @@ class UploadChaptersViewModel(
 
                 if (session != null) {
                     markProposed(id, session.id)
+                    scaffolded += ChapterScaffolding.ProposedChapter(
+                        sessionId = session.id,
+                        index = index,
+                    )
                     proposed++
                     index++
                 } else {
@@ -246,6 +252,23 @@ class UploadChaptersViewModel(
                     failed++
                 }
             }
+
+            // One batch for every chapter that went, not one per chapter. Twelve
+            // chapters in a three-dialect group is thirty-six join rows, which
+            // fit in a single session; the per-chapter shape would have opened
+            // twelve of them to carry three rows each.
+            //
+            // After the loop rather than inside it, so a chapter that failed to
+            // propose contributes no scaffolding and the ones that succeeded
+            // still get theirs.
+            ChapterScaffolding.propose(
+                mantraRepository = mantraRepository,
+                frostSigningRepository = frostSigningRepository,
+                localChatRoom = localChatRoom,
+                userPublicKey = activeUserPublicKey,
+                artifactVersionId = artifactVersion.id,
+                chapters = scaffolded,
+            )
 
             passes++
             updateLoaded {

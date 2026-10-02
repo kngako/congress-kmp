@@ -557,13 +557,31 @@ during an upload.
 `TranslationScaffold.chaptersOf(translationArtifactVersionIds, chapters,
 createdAt)` already takes a list and already builds the full cross product in
 translation-then-reading order. So lift the scaffolding out of the per-chapter
-loop: collect each chapter's `SourceChapter(id, index)` from its session's
-unsigned lead event, and after the last chapter is proposed, propose the whole
-cross product in `chunked(MAX_BATCH_SIZE)` batches — which is what `addChapter`
-already does across *translations* and what
-`TranslationArtifactVersionDetailViewModel` does across chapters.
+loop into `ChapterScaffolding.propose`, which both view models now call:
+collect each chapter's `SourceChapter(id, index)` from its session's unsigned
+lead event, and after the last chapter is proposed, propose the whole cross
+product in `chunked(MAX_BATCH_SIZE)` batches.
 
 Twelve chapters × three dialects: from 12 scaffolding sessions to 1.
+
+**And it fixes a latent bug that one chapter could never show.** The old code
+chunked the *translations* — right by coincidence at one chapter, where the
+cross product and the translation list are the same length, and wrong at any
+more: 25 chapters in a three-dialect group is 75 rows, which the translation
+axis would have put in a single batch of 75 and `proposeSigningBatch` would have
+thrown. Chunking the product is the generalisation, and the test for it is the
+only one here that would fail against the per-chapter shape.
+
+Two smaller decisions the build had to make:
+
+- **One timestamp for the batch, the latest of the chapters' own.**
+  `chaptersOf` stamps every row with one `createdAt` so a scaffolding proposed
+  as one act reads as one; with N chapters there are N candidates. The latest is
+  the moment the act finished. Reading the clock instead would be a third time
+  unrelated to either end of it.
+- **A session whose lead event cannot be read is left out, not guessed at.** A
+  join row naming the wrong chapter is worse than a missing one, because the
+  catch-up can find a missing one.
 
 Keep the existing failure policy verbatim, including its reasoning: scaffolding
 failure is logged and swallowed, because the chapters are the thing that was
@@ -575,7 +593,15 @@ only as available as its worst item, and some of those chapters may genuinely
 fail.
 
 `AddChapterViewModel` keeps its one-chapter call into the same helper, so there
-is one piece of code deciding what a chapter's scaffolding is.
+is one piece of code deciding what a chapter's scaffolding is. The upload calls
+it once, after its loop, with only the chapters that actually went — so a
+chapter that failed to propose contributes no scaffolding and the ones that
+succeeded still get theirs.
+
+**Tests:** `ChapterScaffoldingJvmTest`, six of them, over a real database and
+real proposals. The arithmetic (12 × 3 = one session of 36 rows), the ids coming
+from the chapters' own sessions, a chapter keeping its own index rather than the
+list's, the cross-product chunking at 25 × 3 = 75, and the two empty cases.
 
 ---
 
