@@ -142,11 +142,13 @@ import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
+import press.mantra.compose.ui.composable.ProjectDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.AddDialectScreen
 import press.mantra.compose.ui.composable.FrostSigningScreen
@@ -1209,6 +1211,27 @@ fun MantraNavHost(
                     chatRoomId = route.chatRoomId,
                     relayHint = route.relayHint,
                     mantraRepository = databaseMantraRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<ProjectDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ProjectDetailRoute>()
+
+                ProjectDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    projectId = route.projectId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    nostrRepository = databaseNostrRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute

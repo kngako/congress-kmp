@@ -78,6 +78,7 @@ class ChatRoomDetailViewModel(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
                     dialects = mantraRepository.getDialects(chatRoomId),
+                    projects = mantraRepository.getProjects(chatRoomId),
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                     subgroups = chatRepository.subgroupsOf(chatRoomId),

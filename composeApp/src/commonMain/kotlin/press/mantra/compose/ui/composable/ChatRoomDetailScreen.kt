@@ -85,6 +85,7 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.run_by_members
 import mantra.composeapp.generated.resources.parent_group
@@ -468,42 +469,56 @@ fun ChatRoomDetailScreen(
                                 HorizontalDivider()
                             }
 
-                            // TODO: Add projects...
-
                             item {
-                                // Artifacts
+                                // Projects -- what the library above is for
                                 Text(
                                     text = stringResource(Res.string.projects),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }
 
-                            item {
-                                Text(stringResource(Res.string.no_projects_exists_in_this_group))
-                            }
-
-                            item {
-                                TextButton(
-                                    onClick = {
-                                        // Navigate to the invite user screen...
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Add new project"
+                            if (chatRoomDetailUIState.projects.isEmpty()) {
+                                item {
+                                    Text(stringResource(Res.string.no_projects_exists_in_this_group))
+                                }
+                            } else {
+                                items(
+                                    items = chatRoomDetailUIState.projects,
+                                    key = { project -> project.id }
+                                ) { project ->
+                                    Card(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ProjectDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    projectId = project.id,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
                                             )
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.Schema,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(text = project.name)
+                                            },
+                                            supportingContent = {
+                                                Text(text = project.description)
+                                            }
                                         )
                                     }
-                                ) {
-
-                                    Icon(
-                                        Icons.Default.Schema,
-                                        contentDescription = "create new projec"
-                                    )
-
-                                    Spacer(
-                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
-                                    )
-
-                                    Text(stringResource(Res.string.create_project))
                                 }
                             }
 

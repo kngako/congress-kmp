@@ -6,6 +6,7 @@ import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
 sealed interface ChatRoomDetailUIState {
@@ -13,6 +14,9 @@ sealed interface ChatRoomDetailUIState {
         val localChatRoom: LocalChatRoom,
         val artifacts: List<MantraArtifact> = emptyList(),
         val dialects: List<MantraDialect> = emptyList(),
+
+        /** What the room's library is being used for. */
+        val projects: List<MantraProject> = emptyList(),
         /**
          * What the group has said this room signs with, or null while it has
          * said nothing.
