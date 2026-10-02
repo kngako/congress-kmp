@@ -48,6 +48,7 @@ import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
 
 /**
@@ -198,6 +199,13 @@ class SignedGroupKeyStateTest {
 
         /** Everything the group has signed here, as the group signed it. */
         suspend fun signedEvents() = db.groupSignedEventDao().getByChatRoomId(roomId)
+
+        /** How many transcript lines of [messageType] this room holds. */
+        suspend fun linesOfType(messageType: String) =
+            db.chatMessageDao().getChatMessagesByChatRoomId(roomId)
+                .count { it.chatMessage.messageType == messageType }
+
+        suspend fun dialectLines() = linesOfType("dialect")
     }
 
     private suspend fun device(
@@ -1069,6 +1077,124 @@ class SignedGroupKeyStateTest {
 
             assertEquals(listOf("Sepedi", "isiZulu", "Setswana"), names)
         }
+    }
+
+    // ---- What a batch says in the transcript ------------------------------
+
+    /**
+     * A dialect signed on its own still announces itself.
+     *
+     * The other half of the rule below, and the half that has to keep working:
+     * the hand-typed form proposes exactly this, and a group that adds one
+     * dialect should see a line saying so.
+     */
+    @Test
+    fun `a dialect signed on its own files its line`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = dialects().take(1)
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        assertEquals(1, creator.dialectLines(), "one dialect, one line")
+    }
+
+    /**
+     * A wave says it once.
+     *
+     * Fifty dialects filing fifty "Added X to dialects" lines would bury the
+     * group's conversation under a single act, so a batch holding more than one
+     * event of a kind leaves the talking to its completion line. The rows are
+     * written either way -- that is the part a member came for, and it is
+     * asserted here rather than taken on trust.
+     */
+    @Test
+    fun `a wave of dialects files one completion line and not one per dialect`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val wave = dialects()
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            events = wave
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        listOf(creator, other).forEach { device ->
+            assertEquals(
+                0,
+                device.dialectLines(),
+                "a wave of ${wave.size} should not file a line each"
+            )
+
+            assertEquals(
+                1,
+                device.linesOfType(ChatMessage.TYPE_FROST_COMPLETE),
+                "the session's own line is what speaks for the wave"
+            )
+
+            // The dialects themselves still arrive. Only the transcript is quiet.
+            assertEquals(
+                wave.size,
+                device.items(session.id).count {
+                    device.db.mantraDialectDao().getDialectById(it.eventId) != null
+                }
+            )
+        }
+    }
+
+    /**
+     * A batch of different kinds keeps every line.
+     *
+     * This is the shape every batch built before the dialect wave has -- one
+     * thing and its parts, where the parts file nothing of their own -- so it is
+     * the case the rule must not have broken. A dialect and the artifact that
+     * names it: two kinds, one of each, two lines.
+     *
+     * The artifact has to be built from what the proposal hands back, since its
+     * `dialectId` is a hash over the group's key at the room's path and the
+     * dialect is not a row until item 0 is applied.
+     */
+    @Test
+    fun `a batch of one dialect and one artifact files both lines`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+
+        val session = FrostSigningManager.proposeSigningBatch(
+            database = creator.db,
+            localChatRoom = creator.room,
+            userPublicKey = creator.publicKey,
+            lead = dialects().first(),
+            dependents = { dialect ->
+                listOf(
+                    ArtifactEvent.build(
+                        name = "Frank Talk",
+                        url = "https://example.invalid/frank-talk",
+                        visibility = "public",
+                        license = "CC0",
+                        dialectId = dialect.id,
+                        versionLabel = "1",
+                    )
+                )
+            }
+        )
+        pump(creator, other)
+        FrostSigningManager.approve(other.db, other.room, session.id)
+        pump(creator, other)
+
+        assertEquals(1, creator.dialectLines(), "the dialect is one of its kind here")
+        assertEquals(1, creator.linesOfType("artifact"), "and so is the artifact")
     }
 
     /**

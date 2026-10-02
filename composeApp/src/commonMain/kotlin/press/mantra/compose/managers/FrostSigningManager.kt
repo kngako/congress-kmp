@@ -975,7 +975,32 @@ object FrostSigningManager {
         // re-authors rumors as their sender and would strip the group's
         // signature off. Sending one to relays is a member's separate act,
         // from `BroadcastGroupSignedEventScreen`, off the recorded row.
-        signedEvents.forEach { applySignedEvent(database, session, it, recorded) }
+        //
+        // A line per event, *unless the batch holds more than one of its kind*,
+        // in which case the completion line below speaks for them. Peers in a
+        // batch are the case that needs it: a wave of fifty dialects would
+        // otherwise post fifty "Added X to dialects" lines into the group's
+        // conversation, one after the other, followed by a line saying the group
+        // signed fifty events.
+        //
+        // Every kind that could already appear many-per-batch returns null from
+        // `applyInnerEvent` for precisely this reason -- a chunk is part of a
+        // chapter and the chapter's line speaks for it, and likewise a
+        // translation chapter, a contributor list and both project memberships --
+        // so this changes nothing for any batch built before the dialect wave.
+        // What it is not is a rule about batch *size*: a chapter and its
+        // sixty-four chunks is one ChapterEvent, and its line stays.
+        val kinds = signedEvents.groupingBy { it.kind }.eachCount()
+
+        signedEvents.forEach { signedEvent ->
+            applySignedEvent(
+                database = database,
+                session = session,
+                signedEvent = signedEvent,
+                recorded = recorded,
+                fileChatLine = kinds[signedEvent.kind] == 1,
+            )
+        }
 
         announce(
             database = database,
@@ -1040,12 +1065,18 @@ object FrostSigningManager {
      * A failure here is not the session's: the signature is made and valid, and
      * saying otherwise would tell the group to abandon a ceremony that
      * succeeded. It is logged and the session still completes.
+     *
+     * [fileChatLine] is false for an event the batch holds several of a kind of;
+     * the row is written either way, and only the transcript line is skipped.
+     * See the rule where it is decided, at the call site -- which is the only
+     * place that can see the batch, and so the only place that can know.
      */
     private suspend fun applySignedEvent(
         database: MantraDatabase,
         session: FrostSigningSession,
         signedEvent: Event,
-        recorded: Boolean
+        recorded: Boolean,
+        fileChatLine: Boolean = true
     ) {
         try {
             ChatMessage.applyInnerEvent(
@@ -1058,7 +1089,7 @@ object FrostSigningManager {
                 isUserMessage = session.isCoordinator(),
                 createdAt = Clock.System.now(),
                 groupSignedEventId = signedEvent.id.takeIf { recorded }
-            )?.let { database.chatMessageDao().upsert(it) }
+            )?.takeIf { fileChatLine }?.let { database.chatMessageDao().upsert(it) }
         } catch (e: Throwable) {
             logger.e("Signed ${signedEvent.id} but could not apply it locally", e)
         }

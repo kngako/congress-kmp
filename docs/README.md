@@ -24,6 +24,7 @@ silent, or a decision that looked arbitrary and was not.
 | [ios-build.md](./ios-build.md) | building for an iPhone, following the route the Curated fork walked — the five defects between here and a device, why the fork's "linux cinterop" fix is the one that makes a mac work, and the one annotation that unblocks native by changing every other target |
 | [npub-profile-preview.md](./npub-profile-preview.md) | showing the person before a direct message is started from a pasted npub — why the preview is a screen keyed by public key, what "found" means when a row can be a placeholder, and the phase that makes the button honest about a key package that never comes |
 | [chapter-uploads.md](./chapter-uploads.md) | picking files off a device and having the group sign each one in as a chapter — why N files can never be one signing session, and the four things the single-chapter path gets away with |
+| [african-dialect-catalogue.md](./african-dialect-catalogue.md) | filling a group's dialects from a bundled catalogue of the languages most spoken in Africa — why a dialect is a language *in a country*, why nothing in the schema makes one unique so duplication has to be stopped at proposal time, and the race two admins hit if the picker cannot see what is already being signed |
 | [project-feature.md](./project-feature.md) | bringing the server schema's `project` and its two join models into a group that has no accounts and no server — a creator tag of its own and owners as a signed set of `p` tags, the role the parser has to be told about or every project lands ownerless, why a membership is its own signed event rather than a list, and the kind band that is already double-booked |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
@@ -89,6 +90,17 @@ built, because each of those is wrong in the single-chapter path today. Its two
 splitter phases are separable from the rest and worth reading on their own: what
 a chunk is, measured against the parser the web app translates with rather than
 assumed.
+The African dialect catalogue note is a phased plan that has been built. It is
+the smallest of the nip30303 plans and the only one whose hard part is an
+identity rule rather than a ceremony: a dialect's id is a content hash including
+`createdAt`, there is no unique index, and the rows are quorum-signed, so two
+proposals of the same dialect are two rows and neither is wrong by any rule the
+schema knows. Read its two framing sections before its phases -- they are what
+every phase is built to keep -- and read the batch-signing note first if the
+all-or-nothing rule is not already familiar. Its last phase is a fix the feature
+makes necessary rather than part of it, which is worth knowing before reading the
+diff.
+
 The projects note is a phased plan that has been built as far as its seventh
 phase, and is the only one
 whose starting point is outside this repository: the platform's server schema,

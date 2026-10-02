@@ -14,11 +14,31 @@ a pointer on desktop has to land on.
 Components that carry their own minimum -- IconButton, Button, Checkbox, ListItem and the
 rest of material3 -- are not `.clickable` call sites and never appear here.
 
+Comments are not code, in either direction. A KDoc line explaining that a row uses a
+clickable `Card` *rather than* a `Modifier.clickable` was counted as a call site, which
+breaks a zero budget and so breaks `./gradlew check`; and a comment above a real call site
+that merely mentions `minimumInteractiveComponentSize` would have excused it. The first is
+noise and the second is a miss, so both lines of the window are read as code only. This is
+the same thing m3-audit.sh's `NOT_A_COMMENT` exists for, spelled as m3-title-case.py
+spells it -- see the note there on a colour comment counting as a colour.
+
 Usage: m3-touch-targets.py [--list]
 """
 import os, re, sys
 
 UI = 'composeApp/src/commonMain/kotlin/press/mantra/compose/ui'
+
+
+def _is_comment(line):
+    """Whether `line` is a comment line: `//`, or a `/*` block's opener or body.
+
+    A prefix test rather than block tracking, because that is what the other two checkers
+    do and three identical rules spelled three ways is worse than one limitation. The
+    limitation: a `/* ... */` body line that does not start with `*` reads as code. There
+    are 539 block comments under `ui/` and not one such line, since every KDoc here stars
+    its body -- if that ever stops being true, this is the function to make stateful.
+    """
+    return line.lstrip().startswith(('//', '*', '/*'))
 
 
 def offenders():
@@ -32,11 +52,14 @@ def offenders():
             for i, line in enumerate(lines):
                 if '.clickable' not in line:
                     continue
-                if line.lstrip().startswith('//') or line.startswith('import '):
+                if _is_comment(line) or line.startswith('import '):
                     continue
                 # The modifier may sit on this line or on the one above, since a chain
-                # broken across lines is the common shape.
-                window = '\n'.join(lines[max(0, i - 1):i + 1])
+                # broken across lines is the common shape. Comment lines are dropped from
+                # the window rather than kept: an exemption has to be in the code.
+                window = '\n'.join(
+                    l for l in lines[max(0, i - 1):i + 1] if not _is_comment(l)
+                )
                 if 'minimumInteractiveComponentSize' in window:
                     continue
                 found.append((path, i + 1, line.strip()[:90]))
