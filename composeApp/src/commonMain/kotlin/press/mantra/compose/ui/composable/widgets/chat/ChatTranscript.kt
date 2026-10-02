@@ -812,7 +812,8 @@ private fun RitualNotice(
         // An invite made and an invite sent are two separate steps on the deferred
         // path, so they get separate icons -- the whole reason both lines exist is
         // to be able to see that the first happened and the second did not.
-        ChatMessage.TYPE_SUBGROUP_CERTIFIED -> Icons.Default.AccountTree
+        ChatMessage.TYPE_SUBGROUP_CERTIFIED,
+        ChatMessage.TYPE_SUBGROUP_ADOPTION_OFFERED -> Icons.Default.AccountTree
         ChatMessage.TYPE_MEMBER_INVITED -> Icons.Default.PersonAdd
         ChatMessage.TYPE_MEMBER_INVITE_SENT -> Icons.Default.Upload
         ChatMessage.TYPE_MEMBER_INVITE_FAILED -> Icons.Default.ErrorOutline

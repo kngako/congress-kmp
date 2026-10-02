@@ -18,6 +18,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.SharedKeyDerivation
+import press.mantra.compose.managers.SubgroupManager
 
 /**
  * What a birth certificate is allowed to convince a member of.
@@ -350,6 +351,91 @@ class SubgroupBirthCertificateEventTest {
      * way to test that both are checked. [signature] replaces the real one
      * outright, for the cases where what arrives is not a signature at all.
      */
+    // ---- What an arriving certificate is ------------------------------------
+    //
+    // `SubgroupManager.classify` lives in a manager and is tested here, because
+    // every case it decides is a question about a certificate and this is where
+    // the three real quorums are. It needs no database: `certifies` checks a
+    // signature against a room id, and a room id is a public key.
+
+    @Test
+    fun `in the parent's room, a certificate is about the room's own child`() {
+        assertEquals(
+            SubgroupManager.ArrivingCertificate.OurChild(subgroupChatRoomId),
+            SubgroupManager.classify(parentChatRoomId, certificate())
+        )
+    }
+
+    @Test
+    fun `in the child's room, the same certificate is an offer to adopt it`() {
+        // The half of an adoption the child's members would otherwise never hear
+        // about until a proposal asked for their signature. One event, two
+        // meanings, and the room it arrived in is the whole of the difference.
+        assertEquals(
+            SubgroupManager.ArrivingCertificate.OfferToUs(parentChatRoomId),
+            SubgroupManager.classify(subgroupChatRoomId, certificate())
+        )
+    }
+
+    @Test
+    fun `in a third party's room it is nothing at all`() {
+        val strangerRoom = SharedKeyDerivation.marmotGroupId(strangerKey, path)
+
+        // Neither this room's act nor about this room. Whoever signed it, it is
+        // nobody's business here, and a line in this transcript would be noise
+        // about two groups the reader may not be in.
+        assertNull(SubgroupManager.classify(strangerRoom, certificate()))
+    }
+
+    @Test
+    fun `an offer has to be signed by the group it names`() {
+        // The `parent_group` tag says the parent certified this room; the author
+        // says who actually signed. A stranger putting another group's name on
+        // its own signature is the forgery this check exists for.
+        val forged = certificate(author = strangerMaterial)
+
+        assertNull(SubgroupManager.classify(subgroupChatRoomId, forged))
+    }
+
+    @Test
+    fun `a group is not its own child, however truthfully it says so`() {
+        // The one self-referential certificate `certifies` waves through: author,
+        // subject and named parent all one room, the id deriving from the key,
+        // the signature verifying. Refused before either branch -- read as an
+        // ordinary child it would put the group in its own list of subgroups.
+        val itself = certificate(
+            content = parentChatRoomId,
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = parentChatRoomId,
+                parentChatRoomId = parentChatRoomId,
+                thresholdPublicKey = parentMaterial.thresholdPublicKey.value.toHex(),
+                adminPublicKeys = admins,
+                name = name,
+                path = path
+            )
+        )
+
+        assertNull(SubgroupManager.classify(parentChatRoomId, itself))
+    }
+
+    @Test
+    fun `an offer must be about this room and not merely arrive in it`() {
+        val strangerRoom = SharedKeyDerivation.marmotGroupId(strangerKey, path)
+        val aboutSomebodyElse = certificate(
+            content = strangerRoom,
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = strangerRoom,
+                parentChatRoomId = parentChatRoomId,
+                thresholdPublicKey = strangerKey,
+                adminPublicKeys = admins,
+                name = name,
+                path = path
+            )
+        )
+
+        assertNull(SubgroupManager.classify(subgroupChatRoomId, aboutSomebodyElse))
+    }
+
     private fun certificate(
         content: String = subgroupChatRoomId,
         tags: Array<Array<String>> = SubgroupBirthCertificateEvent.assembleTags(

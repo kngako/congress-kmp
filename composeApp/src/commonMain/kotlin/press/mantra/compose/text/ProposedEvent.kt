@@ -129,13 +129,45 @@ object ProposedEvent {
         // its work, and the only one a member sees before the room has done
         // anything. Shown as the path and the ceremony rather than as the key:
         // the key is the room's own id, which the member is already looking at.
-        GroupKeyStateEvent.KIND -> Summary(
-            label = "This group's shared key",
-            detail = listOfNotNull(
+        //
+        // ### A state naming parents is a different question, and must read like one
+        //
+        // A key state used to be proposed once, at founding, by the coordinator
+        // who chose its lineage -- so the path and a ceremony id were the whole of
+        // what a signer needed. A state can be **re-announced** now, and that is
+        // how a group is adopted: its own quorum accepts a parent by signing a
+        // state that names one. A member asked to approve that is being asked
+        // whether this group should answer to another, and showing them a
+        // derivation path answers a question nobody asked.
+        //
+        // So the parents lead when there are any. The proposal is their only
+        // chance to check -- after it a quorum has spoken -- and the certificates
+        // are right there in the tags the signature covers, so this costs a
+        // reader nothing it does not already hold.
+        //
+        // What this cannot say is which parents are being *dropped*, because a
+        // summary is pure and a disavowal is a difference against the row this
+        // device holds. That belongs to the screen, which has the room.
+        GroupKeyStateEvent.KIND -> {
+            val parents = GroupKeyStateEvent.parseLineage(event.tags)?.parentChatRoomIds
+            val shared = listOfNotNull(
                 GroupKeyStateEvent.parsePath(event.tags)?.let(SharedKeyDerivation::formatPath),
                 GroupKeyStateEvent.parseDkgSessionId(event.tags)?.take(12)
             ).joinToString(" · ")
-        )
+
+            if (parents.isNullOrEmpty()) {
+                Summary(label = "This group's shared key", detail = shared)
+            } else {
+                Summary(
+                    label = if (parents.size == 1) {
+                        "This group's shared key, and the group it answers to"
+                    } else {
+                        "This group's shared key, and the ${parents.size} groups it answers to"
+                    },
+                    detail = (parents.map { it.take(16) } + shared).joinToString(" · ")
+                )
+            }
+        }
 
         // The other thing a group signs that is about groups rather than about
         // work, and the only one where the *proposal* is the last chance to

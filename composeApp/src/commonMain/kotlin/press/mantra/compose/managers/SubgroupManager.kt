@@ -432,6 +432,79 @@ object SubgroupManager {
             .orEmpty()
 
     /**
+     * What a certificate arriving in a room is, or null if it is nothing this
+     * room should believe.
+     *
+     * Pure, and the decision the 30329 dispatch arm cannot make for itself. Two
+     * true things a certificate can be, and the room it arrived in is what tells
+     * them apart:
+     *
+     *  - [OurChild] -- **this** room signed it, about another room. The founding
+     *    case, and the one that was always here.
+     *  - [OfferToUs] -- it is about **this** room, signed by the group it names.
+     *    A parent offering to adopt an existing group, which is the half of an
+     *    adoption the child's members would otherwise never hear about until a
+     *    proposal asked for their signature.
+     *
+     * Both are fully verified before they are returned, and neither needs a
+     * lookup: `certifies` checks a signature against a room id, and a room id is
+     * a public key. So an offer can be believed on its own merits by a device that
+     * has never held the offering group's room.
+     *
+     * **Neither is stored as the offering group's event.** `GroupSignedEvent`
+     * declares a foreign key onto `ChatRoom`, so a child device with no row for
+     * the parent could not file one if it wanted to. It does not need to: the
+     * certificate reaches the child's devices for real inside the key state the
+     * child's own quorum signs, and what an offer buys here is notice, not
+     * evidence.
+     */
+    sealed interface ArrivingCertificate {
+        /** This room certified [subgroupChatRoomId] as its child. */
+        data class OurChild(val subgroupChatRoomId: String) : ArrivingCertificate
+
+        /** [parentChatRoomId] has certified this room as *its* child. */
+        data class OfferToUs(val parentChatRoomId: HexKey) : ArrivingCertificate
+    }
+
+    fun classify(chatRoomId: String, innerEvent: Event): ArrivingCertificate? {
+        val subgroupChatRoomId =
+            SubgroupBirthCertificateEvent.parseSubgroupChatRoomId(innerEvent.tags)
+                ?: return null
+
+        // A certificate names a parent or it is not one; `certifies` would refuse
+        // it either way, so reading the tag first costs nothing and lets the next
+        // check come before anything else.
+        val parentChatRoomId =
+            SubgroupBirthCertificateEvent.parseParentChatRoomId(innerEvent.tags) ?: return null
+
+        // **A group is not its own child**, and this is the one self-referential
+        // certificate `certifies` waves through: a group can sign, truthfully by
+        // every check that function makes, that it is its own parent -- the
+        // author, the subject and the named parent are one room, the id derives
+        // from the key, and the signature verifies. It means nothing, and it has
+        // to be refused before either branch below rather than inside one, or the
+        // first branch reads it as an ordinary child and the group appears in its
+        // own list of subgroups.
+        if (subgroupChatRoomId.equals(parentChatRoomId, ignoreCase = true)) return null
+
+        if (SubgroupBirthCertificateEvent.certifies(innerEvent, subgroupChatRoomId, chatRoomId)) {
+            return ArrivingCertificate.OurChild(subgroupChatRoomId)
+        }
+
+        // Only a certificate about *this* room can be an offer to it. Checked
+        // before the signature so that a certificate about some third room,
+        // signed by some fourth, cannot be read as anything at all -- it is
+        // nobody's business in this room whoever signed it.
+        if (!subgroupChatRoomId.equals(chatRoomId, ignoreCase = true)) return null
+
+        if (!SubgroupBirthCertificateEvent.certifies(innerEvent, chatRoomId, parentChatRoomId)) {
+            return null
+        }
+
+        return ArrivingCertificate.OfferToUs(parentChatRoomId)
+    }
+
+    /**
      * Files a certificate that arrived, or drops it and says why.
      *
      * Reached from two directions and it cannot tell them apart, which is why it
