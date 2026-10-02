@@ -102,7 +102,7 @@ class AddChapterViewModel(
     ) {
         val name = nameField.text.toString()
         val originalText = originalTextField.text.toString()
-        val paragraphs = Markdown.splitParagraphs(originalText)
+        val chunks = Markdown.splitChunks(originalText)
 
         // Both caps are the group's, not this screen's, and proposing past
         // either throws rather than failing softly. The form says so as it is
@@ -113,9 +113,9 @@ class AddChapterViewModel(
         // weighs. A chapter of sixty-three one-word paragraphs passes the second
         // and fails the first; one of three very long ones does the reverse.
         if (name.isBlank() ||
-            paragraphs.isEmpty() ||
-            paragraphs.size > MAX_CHUNKS_PER_CHAPTER ||
-            !ChapterProposal.fits(originalText, paragraphs)
+            chunks.isEmpty() ||
+            chunks.size > MAX_CHUNKS_PER_CHAPTER ||
+            !ChapterProposal.fits(originalText, chunks)
         ) {
             onFailure.invoke()
             return

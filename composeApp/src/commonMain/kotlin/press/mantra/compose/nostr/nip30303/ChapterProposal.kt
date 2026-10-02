@@ -66,7 +66,7 @@ object ChapterProposal {
             (chunks.size + 1) * EVENT_OVERHEAD_BYTES
 
     fun proposalBytes(originalText: String): Int =
-        proposalBytes(originalText, Markdown.splitParagraphs(originalText))
+        proposalBytes(originalText, Markdown.splitChunks(originalText))
 
     fun fits(originalText: String, chunks: List<String>): Boolean =
         proposalBytes(originalText, chunks) <= MAX_PROPOSAL_BYTES

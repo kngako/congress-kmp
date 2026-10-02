@@ -168,8 +168,8 @@ fun AddChapterScreen(
                 val originalText = originalTextFieldState.text.toString()
                 val wordCount = Markdown.wordCount(originalText)
                 val characterCount = Markdown.characterCount(originalText)
-                val chunks = Markdown.splitParagraphs(originalText)
-                val paragraphCount = chunks.size
+                val chunks = Markdown.splitChunks(originalText)
+                val chunkCount = chunks.size
 
                 // A chapter hangs off a version, and the group has to be able to
                 // sign; without both there is nothing this screen can propose.
@@ -179,7 +179,7 @@ fun AddChapterScreen(
                 // and a session signs a bounded number of events. Past that the
                 // chapter has to be split in two, which is worth saying while there
                 // is still a cursor in the text rather than after a failed propose.
-                val tooManyChunks = paragraphCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
+                val tooManyChunks = chunkCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
 
                 // The other cap, and the one that had been enforced nowhere: a
                 // proposal carries the chapter whole and every chunk cut from
@@ -191,7 +191,7 @@ fun AddChapterScreen(
 
                 val canProposeChapter = artifactVersion != null &&
                     addChapterUIState.canSign &&
-                    paragraphCount > 0 &&
+                    chunkCount > 0 &&
                     !tooManyChunks &&
                     !tooLargeToPropose
 
@@ -268,7 +268,7 @@ fun AddChapterScreen(
                             Text(
                                 text = stringResource(
                                     Res.string.d_chunks_is_more_than_the_group_can_sign,
-                                    paragraphCount,
+                                    chunkCount,
                                     AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
@@ -278,7 +278,7 @@ fun AddChapterScreen(
                             Text(
                                 text = stringResource(
                                     Res.string.this_chapter_is_too_long_to_propose,
-                                    paragraphCount,
+                                    chunkCount,
                                     stringResource(Res.string.s_kib, kibibytes(proposalBytes)),
                                     stringResource(
                                         Res.string.s_kib,
@@ -337,7 +337,7 @@ fun AddChapterScreen(
                                         kibibytes(ChapterProposal.MAX_PROPOSAL_BYTES),
                                     ),
                                 ),
-                                paragraphCount,
+                                chunkCount,
                                 AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
                             ),
                             style = MaterialTheme.typography.labelMedium,

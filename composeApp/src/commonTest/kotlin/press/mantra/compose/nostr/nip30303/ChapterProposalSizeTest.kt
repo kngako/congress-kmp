@@ -80,7 +80,7 @@ class ChapterProposalSizeTest {
         for (paragraphs in shapes) {
             for (kib in sizes) {
                 val text = markdownOf(kib * 1024, paragraphs)
-                val chunks = Markdown.splitParagraphs(text)
+                val chunks = Markdown.splitChunks(text)
                 val estimated = ChapterProposal.proposalBytes(text, chunks)
                 val actual = encodedBytes(text)
 
@@ -98,7 +98,7 @@ class ChapterProposalSizeTest {
         // Not merely conservative -- useful. An estimate twice the truth would
         // pass the test above and refuse half of every legal chapter.
         val text = markdownOf(16 * 1024, 40)
-        val chunks = Markdown.splitParagraphs(text)
+        val chunks = Markdown.splitChunks(text)
 
         val estimated = ChapterProposal.proposalBytes(text, chunks)
         val actual = encodedBytes(text)
@@ -117,7 +117,7 @@ class ChapterProposalSizeTest {
         val chunkCount = AddChapterMaxChunks
         val allowance = ChapterProposal.maxOriginalTextBytes(chunkCount)
         val text = markdownOf(allowance, chunkCount)
-        val chunks = Markdown.splitParagraphs(text)
+        val chunks = Markdown.splitChunks(text)
 
         assertEquals(chunkCount, chunks.size)
         assertTrue(ChapterProposal.fits(text, chunks))
@@ -134,7 +134,7 @@ class ChapterProposalSizeTest {
         // paragraphs is a long chapter of a real book, not a pathological one --
         // and measured, the fit runs out at about 24 KiB for that shape.
         val text = markdownOf(28 * 1024, 40)
-        val chunks = Markdown.splitParagraphs(text)
+        val chunks = Markdown.splitChunks(text)
 
         assertTrue(
             encodedBytes(text) > FrostSigningManager.MAX_PROPOSAL_BYTES,
@@ -162,7 +162,7 @@ class ChapterProposalSizeTest {
         // The other half of the claim: this is a limit on very long chapters,
         // not a tax on normal ones. Twelve paragraphs of a few hundred words.
         val text = markdownOf(8 * 1024, 12)
-        val chunks = Markdown.splitParagraphs(text)
+        val chunks = Markdown.splitChunks(text)
 
         assertTrue(ChapterProposal.fits(text, chunks))
         assertTrue(encodedBytes(text) < FrostSigningManager.MAX_PROPOSAL_BYTES / 2)

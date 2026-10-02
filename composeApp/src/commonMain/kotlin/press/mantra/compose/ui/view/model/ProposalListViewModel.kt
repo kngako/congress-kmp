@@ -18,6 +18,7 @@ import press.mantra.compose.extensions.shortened
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.view.state.ProposalListUIState
 
@@ -86,7 +87,15 @@ class ProposalListViewModel(
                 else -> local.proposer?.humanReadableNameOrPubkey()
                     ?: local.session.coordinatorPublicKey.shortened()
             },
-            signs = events.map { ProposedEvent.summarize(it) },
+            // Counted from the batch rather than derived from the chapter's
+            // text -- the number a member reads has to be the number of events
+            // they are approving. See ProposedEvent.summarize.
+            signs = events.map { event ->
+                ProposedEvent.summarize(
+                    event = event,
+                    chunkCount = events.count { it.kind == ChunkEvent.KIND },
+                )
+            },
             unreadable = items.size - events.size,
             awaitsYou = FrostSigningManager.isAwaitingApproval(local.session, items)
         )

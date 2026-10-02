@@ -36,7 +36,7 @@ object UploadReview {
     private fun row(file: PickedFile, ordinal: Int): PickedChapter {
         val decoded = ChapterText.decode(file.bytes)
         val markdown = (decoded as? ChapterText.Result.Text)?.markdown.orEmpty()
-        val chunks = Markdown.splitParagraphs(markdown)
+        val chunks = Markdown.splitChunks(markdown)
 
         return PickedChapter(
             // Neither the file's name nor its text is unique -- two directories

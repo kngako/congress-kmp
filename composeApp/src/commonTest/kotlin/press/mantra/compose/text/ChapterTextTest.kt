@@ -78,7 +78,7 @@ class ChapterTextTest {
     fun `splitting is unaffected by which newlines arrived`() {
         val crlf = decoded("One.\r\n\r\nTwo.\r\n\r\nThree.".encodeToByteArray())
 
-        assertEquals(listOf("One.", "Two.", "Three."), Markdown.splitParagraphs(crlf))
+        assertEquals(listOf("One.", "Two.", "Three."), Markdown.splitChunks(crlf))
     }
 
     @Test

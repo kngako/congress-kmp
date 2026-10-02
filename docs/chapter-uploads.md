@@ -890,6 +890,37 @@ Either take this phase ahead of Phase 2, or treat Phase 2's constant as
 provisional and re-run its encoded-proposal measurement here. The second is
 cheaper and the measurement is the same test either way.
 
+**Measured, and it did not move.** `ChapterProposalSizeTest`'s pinned boundary —
+24 KiB of markdown over forty paragraphs — is identical before and after, for a
+plain reason the warning above missed: prose separated by blank lines splits the
+same way under both rules, so the fixture that pins the number is exactly the
+shape the change does not touch. What *is* true is the narrower claim: a
+list-heavy or heading-heavy chapter now reaches both caps sooner than the same
+bytes of plain prose would, which is a real effect on real chapters and shows up
+in the form's own counter rather than in a constant.
+
+### What else came out of it
+
+Three things the plan had not separated out:
+
+- **`splitBlocks` returns blocks, not strings.** The marker has to be kept
+  *somewhere* for the producer, and the chapter's `original_text` is the wrong
+  place to look it up from — matching text back to its marker is the
+  string-equality bug this phase fixes elsewhere. So `MarkdownBlock(kind,
+  markup, text, indent)`, and `splitChunks` for the callers that only want the
+  words.
+- **The scanner segments the whole text, not just the chunks.**
+  `MarkdownSegment` covers every line, with `block = null` for a fence, a
+  thematic break, a reference definition or a blank line. That is what makes the
+  byte-for-byte round trip possible at all: an untranslated chunk is reassembled
+  from its own source lines rather than re-rendered from its parsed form, so the
+  round trip is exact by construction rather than by getting every markup rule
+  right.
+- **A blockquote containing a blank `>` line is two chunks, not one.**
+  markdown-it reads it as two inline runs, so the scanner re-segments it per
+  inner paragraph — and the fixture for it is the one that would have caught
+  this being missed.
+
 ### Tests
 
 `commonTest`, all of it pure:
@@ -900,10 +931,13 @@ cheaper and the measurement is the same test either way.
   block yield no chunk, a table yields one, a reference definition yields none.
 - inline markup survives: `*italic*` and `[text](url)` are in the chunk's text.
 - `MarkdownProducerTest`: round-trip with no translations reproduces the input
-  byte for byte (the assertion that catches every markup-reassembly bug at
-  once), and a chapter with two identical paragraphs translated differently
-  comes back with both translations in the right places — the case mantra.press
-  gets wrong.
+  byte for byte **over all thirty fixtures** (the assertion that catches every
+  markup-reassembly bug at once), and a chapter with two identical paragraphs
+  translated differently comes back with both translations in the right places —
+  the case mantra.press gets wrong. Plus the markers going back on: hashes, list
+  markers and indents, a blockquote re-quoted line by line so a translation that
+  grew a line is still quoted, and a setext underline re-cut to the length of
+  the translated title.
 - `ChapterChunkSplitTest` keeps its existing round-trip and id-stability
   assertions, now with the converter's output shape as a fixture.
 

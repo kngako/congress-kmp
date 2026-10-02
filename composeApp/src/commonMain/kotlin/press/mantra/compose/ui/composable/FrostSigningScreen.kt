@@ -48,6 +48,7 @@ import press.mantra.compose.database.model.types.FrostSigningStage
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.text.ProposedEvent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.MantraTheme
@@ -358,10 +359,14 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
             )
         }
 
+        // The chunk count a chapter reports is a count of this batch, so it
+        // comes from here rather than from re-reading the chapter's text.
+        val chunkCount = events.count { it.kind == ChunkEvent.KIND }
+
         events.forEachIndexed { index, event ->
             if (index > 0) HorizontalDivider()
 
-            OneThingBeingSigned(event)
+            OneThingBeingSigned(event, chunkCount)
         }
 
         Text(
@@ -376,8 +381,8 @@ private fun WhatIsBeingSigned(events: List<Event>, expected: Int) {
 
 /** One event of the batch, described as the thing it is. */
 @Composable
-private fun OneThingBeingSigned(event: Event) {
-    val summary = ProposedEvent.summarize(event)
+private fun OneThingBeingSigned(event: Event, chunkCount: Int) {
+    val summary = ProposedEvent.summarize(event, chunkCount)
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.space50)) {
         Text(text = summary.label, style = MaterialTheme.typography.labelMedium)

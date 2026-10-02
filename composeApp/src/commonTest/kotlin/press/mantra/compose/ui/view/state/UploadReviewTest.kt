@@ -35,7 +35,10 @@ class UploadReviewTest {
         assertEquals(1, rows.size)
         assertNull(rows.single().problem)
         assertEquals("The Wreck", rows.single().name)
-        assertEquals(listOf("# The wreck", "It began badly."), rows.single().chunks)
+        // The heading is its own chunk and carries no `#`: a chunk is a leaf
+        // block's words with the block marker taken off, so a translator cannot
+        // break the document by mistyping it. See Markdown.splitBlocks.
+        assertEquals(listOf("The wreck", "It began badly."), rows.single().chunks)
     }
 
     @Test

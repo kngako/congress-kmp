@@ -31,7 +31,25 @@ object ProposedEvent {
      */
     data class Summary(val label: String, val detail: String)
 
-    fun summarize(event: Event): Summary = when (event.kind) {
+    /**
+     * [chunkCount] is how many chunks travel with a chapter in the same batch,
+     * which only a caller holding the batch can know.
+     *
+     * It used to be derived here, by re-splitting the chapter's own text. That
+     * was wrong twice over. It is a *count of the batch* dressed as a fact about
+     * the text, so across a splitter change the number a member reads in the
+     * approval gate disagrees with the chunks they are actually approving -- the
+     * batch was built by the proposer's splitter and counted by the reader's.
+     * And it re-split the whole markdown of every chapter on every emission of
+     * the room's proposal list, which at twenty open proposals is a few hundred
+     * kilobytes of prose re-scanned to produce a number already sitting in the
+     * items beside it.
+     *
+     * Null where the caller has no batch -- a transcript line, a signed event on
+     * its own -- and the summary then says nothing about chunks rather than
+     * guessing.
+     */
+    fun summarize(event: Event, chunkCount: Int? = null): Summary = when (event.kind) {
         DialectEvent.KIND -> Summary(
             label = "New dialect",
             detail = DialectEvent(
@@ -74,8 +92,6 @@ object ProposedEvent {
                 // is a whole chapter, so its size stands in for it here. The chunk
                 // count says how many of the batch's other items came out of this
                 // text, which is the rest of what is being signed.
-                val chunkCount = chapter.originalText()?.let { Markdown.splitParagraphs(it).size }
-
                 listOfNotNull(
                     chapter.name(),
                     chapter.wordCount()?.let { "$it words" },
