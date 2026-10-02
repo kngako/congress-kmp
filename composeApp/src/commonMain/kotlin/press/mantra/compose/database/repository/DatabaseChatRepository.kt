@@ -55,7 +55,6 @@ class DatabaseChatRepository(
         userPublicKey: HexKey,
         keyPair: KeyPair,
         path: List<Long>,
-        parentChatRoomId: HexKey?,
     ): MarmotGroupCreation.Outcome = MarmotGroupCreation.create(
         database = database,
         chatRepository = this,
@@ -66,7 +65,6 @@ class DatabaseChatRepository(
         userPublicKey = userPublicKey,
         keyPair = keyPair,
         path = path,
-        parentChatRoomId = parentChatRoomId,
     )
     override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
         return database.chatRoomDao().observeChatRoomListByUserPublicKey(publicKey)
@@ -113,11 +111,92 @@ class DatabaseChatRepository(
         emptyList()
     }
 
-    override suspend fun parentOf(chatRoomId: String): HexKey? = try {
-        SubgroupManager.parentOf(database, chatRoomId)
+    override suspend fun adoptionOffersFor(chatRoomId: String): List<HexKey> = try {
+        SubgroupManager.offersTo(database, chatRoomId)
     } catch (e: Throwable) {
-        logger.e("Error reading the parent of $chatRoomId", e)
-        null
+        logger.e("Error reading the adoption offers for $chatRoomId", e)
+        emptyList()
+    }
+
+    override suspend fun adoptingCandidatesFor(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): List<LocalChatRoom> = try {
+        SubgroupManager.adoptingCandidatesFor(
+            database = database,
+            childChatRoomId = chatRoomId,
+            userPublicKey = userPublicKey
+        )
+    } catch (e: Throwable) {
+        logger.e("Error reading the groups that could adopt $chatRoomId", e)
+        emptyList()
+    }
+
+    override suspend fun refuseAdoption(
+        chatRoomId: String,
+        adoptingChatRoomId: String,
+        userPublicKey: HexKey
+    ): String? = try {
+        val adopting = database.chatRoomDao().findChatRoomById(adoptingChatRoomId)
+            ?: return "Couldn't load that group"
+
+        SubgroupManager.refuseAdoption(
+            database = database,
+            adoptingRoom = adopting,
+            childChatRoomId = chatRoomId,
+            userPublicKey = userPublicKey
+        )
+    } catch (e: Throwable) {
+        logger.e("Error checking whether $adoptingChatRoomId can adopt $chatRoomId", e)
+        // A refusal rather than a pass. A guard that could not run has not said
+        // yes, and the manager checks again anyway.
+        "Couldn't check whether that group can adopt this one"
+    }
+
+    override suspend fun proposeAdoption(
+        chatRoomId: String,
+        adoptingChatRoomId: String,
+        userPublicKey: HexKey
+    ): Boolean = try {
+        val adopting = checkNotNull(database.chatRoomDao().findChatRoomById(adoptingChatRoomId))
+        val child = checkNotNull(database.chatRoomDao().findChatRoomById(chatRoomId))
+
+        SubgroupManager.proposeAdoption(
+            database = database,
+            adoptingRoom = adopting,
+            childRoom = child,
+            userPublicKey = userPublicKey
+        )
+        true
+    } catch (e: Throwable) {
+        logger.e("Error asking $adoptingChatRoomId to adopt $chatRoomId", e)
+        false
+    }
+
+    override suspend fun acceptParent(
+        chatRoomId: String,
+        parentChatRoomId: HexKey,
+        userPublicKey: HexKey
+    ): Boolean = try {
+        val child = checkNotNull(database.chatRoomDao().findChatRoomById(chatRoomId))
+
+        SubgroupManager.proposeAcceptance(
+            database = database,
+            childRoom = child,
+            userPublicKey = userPublicKey,
+            parentChatRoomId = parentChatRoomId
+        )
+        true
+    } catch (e: Throwable) {
+        logger.e("Error asking $chatRoomId to accept $parentChatRoomId as a parent", e)
+        false
+    }
+
+    override suspend fun parentsOf(chatRoomId: String): List<HexKey> = try {
+        SubgroupManager.parentsOf(database, chatRoomId)
+    } catch (e: Throwable) {
+        logger.e("Error reading the parents of $chatRoomId", e)
+        emptyList()
     }
 
     override suspend fun groupSignedEvent(chatRoomId: String, id: HexKey): GroupSignedEvent? = try {

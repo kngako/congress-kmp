@@ -5,7 +5,7 @@ import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.FrostSigningSession
-import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.intermdiate.LocalGroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
@@ -110,29 +110,30 @@ class DatabaseDkgRepository(
     ): Flow<List<LocalFrostSigningSession>> =
         database.frostSigningSessionDao().observeSessionsForChatRoom(chatRoomId)
 
-    override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?> =
+    /**
+     * By session id, not by room. A ceremony room holds more than one ceremony
+     * the moment a subgroup's admins are the whole group, and a lookup by room
+     * answered about whichever the room's rule picked -- for a room holding only
+     * a subgroup's ceremony, asking for the room's *own* found nothing at all,
+     * and a finished subgroup with a signed key state could never be created.
+     */
+    override suspend fun roomDerivedBy(dkgSessionId: String): String? =
+        database.dkgSessionDao()
+            .getSessionById(dkgSessionId)
+            ?.thresholdPublicKey
+            ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
+
+    override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?> =
         database.groupSignedEventDao()
             .observeByKind(GroupKeyStateEvent.KIND)
             .map { signedEvents ->
-                // The room this ceremony's key derives, resolved per emission
-                // rather than once: the ceremony has no key until it finishes,
-                // and this flow is running before it does.
-                //
-                // By session id, not by room. A ceremony room holds more than one
-                // ceremony the moment a subgroup's admins are the whole group, and
-                // a lookup by room answered about whichever the room's rule picked
-                // -- for a room holding only a subgroup's ceremony, asking for the
-                // room's *own* found nothing at all, and a finished subgroup with
-                // a signed key state could never be created.
-                val subjectRoomId = database.dkgSessionDao()
-                    .getSessionById(dkgSessionId)
-                    ?.thresholdPublicKey
-                    ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
-
-                subjectRoomId?.let { GroupKeyStateManager.stateAmong(signedEvents, it) }
+                // Resolved per emission rather than once: the ceremony has no key
+                // until it finishes, and this flow is running before it does.
+                roomDerivedBy(dkgSessionId)
+                    ?.let { GroupKeyStateManager.stateAmong(signedEvents, it) }
             }
 
-    override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = try {
+    override suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState? = try {
         GroupKeyStateManager.adopt(database = database, chatRoomId = chatRoomId)
     } catch (e: Throwable) {
         // The room is made and usable either way; what it loses is the shortcut
@@ -176,14 +177,9 @@ class DatabaseDkgRepository(
         database.groupSignedEventDao()
             .observeByKind(SubgroupBirthCertificateEvent.KIND)
             .map { signedEvents ->
-                // The room the ceremony's key derives, resolved per emission
-                // rather than once: the ceremony has no key until it finishes,
-                // and this flow is running before it does.
-                val subgroupChatRoomId = database.dkgSessionDao()
-                    .getSessionById(dkgSessionId)
-                    ?.thresholdPublicKey
-                    ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
-                    ?: return@map null
+                // Resolved per emission rather than once: the ceremony has no key
+                // until it finishes, and this flow is running before it does.
+                val subgroupChatRoomId = roomDerivedBy(dkgSessionId) ?: return@map null
 
                 signedEvents
                     .filter {

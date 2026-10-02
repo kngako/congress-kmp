@@ -387,6 +387,26 @@ data class ChatMessage(
         const val TYPE_SUBGROUP_CERTIFIED = "subgroupCertified"
 
         /**
+         * Another group has certified **this** room as its child.
+         *
+         * The other side of the line above, and it appears in the *child's* room.
+         * A group is founded with a parent and may be adopted by another later --
+         * see docs/subgroups-multiple-parents.md -- and an adoption is two
+         * signings: the new parent certifies, then this room's own quorum
+         * re-announces its key state accepting it. The parent commits first, so
+         * this line is the offer, and it is the only notice the child's admins
+         * get before a proposal asks for their signature.
+         *
+         * **An offer rather than a fact about the lineage.** Nothing is adopted
+         * until this room's quorum says so, and nothing is filed: a child device
+         * cannot store an event signed by a group it is not in, and does not need
+         * to. The certificate itself travels inside the key state at the second
+         * signing. The wording has to carry that, or a member reads it as a
+         * relationship that already exists.
+         */
+        const val TYPE_SUBGROUP_ADOPTION_OFFERED = "subgroupAdoptionOffered"
+
+        /**
          * Every subgroup line, for the one check the transcript dispatches on.
          *
          * One member today, and a set anyway. A type missing from here renders as
@@ -395,6 +415,7 @@ data class ChatMessage(
          */
         val SUBGROUP_TYPES = setOf(
             TYPE_SUBGROUP_CERTIFIED,
+            TYPE_SUBGROUP_ADOPTION_OFFERED,
         )
 
         /**
@@ -1460,29 +1481,61 @@ data class ChatMessage(
                 // that was ever put to this room -- the child may since have been
                 // renamed, and this line is a record of what was agreed rather
                 // than a view of what is.
-                SubgroupBirthCertificateEvent.KIND -> {
-                    SubgroupManager.record(
-                        database = database,
-                        chatRoomId = groupId,
-                        innerEvent = event
-                    ) ?: return null
+                //
+                // Two true things a certificate can be, and the room it arrived
+                // in is what tells them apart -- see `SubgroupManager.classify`.
+                // This room signed it about another, or another signed it about
+                // this one, which is a parent offering to adopt a group that
+                // already exists. Anything else is nobody's business here.
+                SubgroupBirthCertificateEvent.KIND ->
+                    when (val arriving = SubgroupManager.classify(groupId, event)) {
+                        is SubgroupManager.ArrivingCertificate.OurChild -> {
+                            SubgroupManager.record(
+                                database = database,
+                                chatRoomId = groupId,
+                                innerEvent = event
+                            ) ?: return null
 
-                    val name = SubgroupBirthCertificateEvent.parseName(event.tags)
-                    val admins = SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags).size
+                            val name = SubgroupBirthCertificateEvent.parseName(event.tags)
+                            val admins =
+                                SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags).size
 
-                    ChatMessage(
-                        giftWrapPayloadId = null,
-                        messageType = TYPE_SUBGROUP_CERTIFIED,
-                        marmotGroupEventId = marmotGroupEventId,
-                        marmotInnerEventId = marmotInnerEventId,
-                        senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
-                        chatRoomId = groupId,
-                        createdAt = createdAt,
-                        content = "The group made ${name ?: "a subgroup"} a subgroup, " +
-                            "run by $admins of its members"
-                    )
-                }
+                            ChatMessage(
+                                giftWrapPayloadId = null,
+                                messageType = TYPE_SUBGROUP_CERTIFIED,
+                                marmotGroupEventId = marmotGroupEventId,
+                                marmotInnerEventId = marmotInnerEventId,
+                                senderPublicKey = senderPublicKey,
+                                isUserMessage = isUserMessage,
+                                chatRoomId = groupId,
+                                createdAt = createdAt,
+                                content = "The group made ${name ?: "a subgroup"} a subgroup, " +
+                                    "run by $admins of its members"
+                            )
+                        }
+
+                        // Deliberately writes a line and files nothing. The offer
+                        // is real and verified -- that group's quorum signed it --
+                        // but this room is not adopted until its own quorum says
+                        // so, and the certificate reaches these devices for real
+                        // inside the key state that says it.
+                        is SubgroupManager.ArrivingCertificate.OfferToUs -> ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = TYPE_SUBGROUP_ADOPTION_OFFERED,
+                            marmotGroupEventId = marmotGroupEventId,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = isUserMessage,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "${arriving.parentChatRoomId.take(16)} has offered to " +
+                                "adopt this group as a subgroup. It is a subgroup of theirs " +
+                                "only once this group agrees what it signs with again, " +
+                                "naming them."
+                        )
+
+                        null -> return null
+                    }
 
                 else -> {
                     ChatMessage(

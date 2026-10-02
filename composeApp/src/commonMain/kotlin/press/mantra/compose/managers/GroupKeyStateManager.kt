@@ -9,10 +9,13 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.intermdiate.LocalGroupKeyState
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 
 /**
@@ -112,7 +115,7 @@ object GroupKeyStateManager {
         userPublicKey: HexKey,
         key: DkgSession,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parent: SubgroupParentage? = null,
+        lineage: SubgroupLineage? = null,
         createdAt: Long = Clock.System.now().epochSeconds
     ): FrostSigningSession {
         val signingRoomId = localChatRoom.chatRoom.id
@@ -137,9 +140,7 @@ object GroupKeyStateManager {
             thresholdPublicKey = thresholdPublicKey,
             derivationPath = SharedKeyDerivation.formatPath(path),
             announcedBy = userPublicKey,
-            announcedAt = Instant.fromEpochSeconds(createdAt),
-            parentChatRoomId = parent?.parentChatRoomId,
-            birthCertificateJson = parent?.certificate?.toJson()
+            announcedAt = Instant.fromEpochSeconds(createdAt)
         )
 
         check(state.verifies()) {
@@ -147,10 +148,14 @@ object GroupKeyStateManager {
         }
 
         // Refused here rather than discovered by the group. Every device that
-        // receives this state runs the same check in `parentageOf` and drops the
-        // state when it fails, so proposing one this device would not believe
-        // spends a quorum's attention on a statement nobody will keep.
-        if (parent != null) {
+        // receives this state runs the same checks in `lineageOf` and drops the
+        // state when any of them fails, so proposing one this device would not
+        // believe spends a quorum's attention on a statement nobody will keep.
+        //
+        // Every parent, because the receiving check is all-or-nothing: one bad
+        // certificate in a set of two drops the whole state, so a proposal is
+        // only worth making if every link in it holds.
+        lineage?.parents?.forEach { parent ->
             check(
                 SubgroupBirthCertificateEvent.certifies(
                     event = parent.certificate,
@@ -176,7 +181,7 @@ object GroupKeyStateManager {
                 chatRoomId = chatRoomId,
                 dkgSessionId = key.id,
                 path = path,
-                parent = parent
+                lineage = lineage
             ),
             content = thresholdPublicKey,
             key = key,
@@ -201,18 +206,19 @@ object GroupKeyStateManager {
         database: MantraDatabase,
         chatRoomId: String,
         innerEvent: Event
-    ): GroupKeyState? {
-        val state = stateFrom(chatRoomId, innerEvent) ?: return null
+    ): LocalGroupKeyState? {
+        val local = stateFrom(chatRoomId, innerEvent) ?: return null
+        val announced = local.keyState.chatRoomId
 
-        if (database.chatRoomDao().findChatRoomById(state.chatRoomId) == null) {
+        if (database.chatRoomDao().findChatRoomById(announced) == null) {
             logger.i(
-                "The group signed a key state for ${state.chatRoomId}, which does not exist " +
+                "The group signed a key state for $announced, which does not exist " +
                     "yet; holding it until it does"
             )
             return null
         }
 
-        return database.groupKeyStateDao().replace(state)
+        return database.groupKeyStateDao().replace(local.keyState, local.parents)
     }
 
     /**
@@ -235,12 +241,15 @@ object GroupKeyStateManager {
      * Idempotent: `replace` keeps the newest state per room, so adopting twice
      * settles on the same row.
      */
-    suspend fun adopt(database: MantraDatabase, chatRoomId: String): GroupKeyState? {
-        val state = signedStateFor(database, chatRoomId) ?: return null
+    suspend fun adopt(database: MantraDatabase, chatRoomId: String): LocalGroupKeyState? {
+        val local = signedStateFor(database, chatRoomId) ?: return null
 
-        logger.i("Room $chatRoomId adopts the key state its group signed at ${state.announcedAt}")
+        logger.i(
+            "Room $chatRoomId adopts the key state its group signed at " +
+                "${local.keyState.announcedAt}, naming ${local.parents.size} parents"
+        )
 
-        return database.groupKeyStateDao().replace(state)
+        return database.groupKeyStateDao().replace(local.keyState, local.parents)
     }
 
     /**
@@ -253,7 +262,7 @@ object GroupKeyStateManager {
      * the ritual screen gates the "create the room" button on, and what [adopt]
      * files once there is a room to file it against.
      */
-    suspend fun signedStateFor(database: MantraDatabase, chatRoomId: String): GroupKeyState? =
+    suspend fun signedStateFor(database: MantraDatabase, chatRoomId: String): LocalGroupKeyState? =
         stateAmong(database.groupSignedEventDao().getByKind(GroupKeyStateEvent.KIND), chatRoomId)
 
     /**
@@ -282,7 +291,7 @@ object GroupKeyStateManager {
      * arrive can ask the same question of each emission -- which is how the
      * ceremony screen knows the group has finished agreeing.
      */
-    fun stateAmong(signedEvents: List<GroupSignedEvent>, chatRoomId: String): GroupKeyState? =
+    fun stateAmong(signedEvents: List<GroupSignedEvent>, chatRoomId: String): LocalGroupKeyState? =
         signedAmong(signedEvents, chatRoomId)?.second
 
     /**
@@ -297,7 +306,7 @@ object GroupKeyStateManager {
     private fun signedAmong(
         signedEvents: List<GroupSignedEvent>,
         chatRoomId: String
-    ): Pair<GroupSignedEvent, GroupKeyState>? =
+    ): Pair<GroupSignedEvent, LocalGroupKeyState>? =
         signedEvents
             .asSequence()
             .filter { it.kind == GroupKeyStateEvent.KIND }
@@ -306,7 +315,7 @@ object GroupKeyStateManager {
             // every room at once, so a state that names no room names nothing.
             .filter { GroupKeyStateEvent.parseChatRoomId(it.tags) == chatRoomId }
             .mapNotNull { signed -> stateFrom(chatRoomId, signed.toEvent())?.let { signed to it } }
-            .maxByOrNull { (_, state) -> state.announcedAt }
+            .maxByOrNull { (_, local) -> local.keyState.announcedAt }
 
     /**
      * The state an event amounts to, or null if it amounts to none.
@@ -345,20 +354,21 @@ object GroupKeyStateManager {
      * names no room at all, and appears in the logs.
      */
     /**
-     * A parentage that was checked, wrapping a value that is allowed to be
+     * A lineage that was checked, wrapping a value that is allowed to be
      * absent.
      *
      * Three outcomes have to be told apart and a bare nullable can only carry
      * two. A state may claim no parent, which is every group made before
-     * subgroups and every top-level group made after; it may claim one and prove
-     * it; or it may claim one it cannot prove, which is not a state with a field
-     * missing but a device asserting a relationship the parent never agreed to.
-     * The third has to stop [stateFrom] rather than be flattened into the first.
+     * subgroups and every top-level group made after; it may claim some and
+     * prove them all; or it may claim some it cannot prove, which is not a state
+     * with a field missing but a device asserting a relationship a parent never
+     * agreed to. The third has to stop [stateFrom] rather than be flattened into
+     * the first.
      *
      * So `null` here means refused, and a present [value] of `null` means none
      * claimed.
      */
-    private class Parentage(val value: SubgroupParentage?)
+    private class Lineage(val value: SubgroupLineage?)
 
     /**
      * The parentage an event actually establishes, or null if it claims one it
@@ -374,61 +384,80 @@ object GroupKeyStateManager {
      * not a state with one field wrong, and half-believing it would file a group
      * as top-level that its own members will see as a subgroup.
      */
-    private fun parentageOf(
+    private fun lineageOf(
         announced: String,
         thresholdPublicKey: HexKey,
         innerEvent: Event
-    ): Parentage? {
-        if (!GroupKeyStateEvent.claimsParentage(innerEvent.tags)) return Parentage(null)
+    ): Lineage? {
+        if (!GroupKeyStateEvent.claimsParentage(innerEvent.tags)) return Lineage(null)
 
-        // Both or neither. A parent named with no certificate is a claim with the
-        // checkable part removed; a certificate with no parent named beside it
-        // has nothing to be an index of. Either alone is refused rather than
-        // completed from the other, because completing it would be this device
-        // deciding what the group meant.
-        val parentChatRoomId = GroupKeyStateEvent.parseParentChatRoomId(innerEvent.tags)
-        val certificate = GroupKeyStateEvent.parseBirthCertificate(innerEvent.tags)
+        // Both or neither, per parent, and no parent twice -- all of which
+        // `parseLineage` decides. A parent named with no certificate is a claim
+        // with the checkable part removed; a certificate with no parent named
+        // beside it has nothing to be an index of. Either alone is refused rather
+        // than completed from the other, because completing it would be this
+        // device deciding what the group meant.
+        val lineage = GroupKeyStateEvent.parseLineage(innerEvent.tags)
 
-        if (parentChatRoomId == null || certificate == null) {
+        if (lineage == null) {
             logger.w(
-                "Key state for $announced claims a parent in a form that cannot be read " +
-                    "(parent=${parentChatRoomId != null}, certificate=${certificate != null}); dropping"
+                "Key state for $announced claims a parentage in a form that cannot be read; " +
+                    "dropping"
             )
             return null
         }
 
-        // The parent's own quorum, over this very room's id. Everything that
-        // makes a lineage worth anything is in here -- see
-        // `SubgroupBirthCertificateEvent.certifies`, which needs no lookup and no
-        // key it has to be told.
-        if (!SubgroupBirthCertificateEvent.certifies(certificate, announced, parentChatRoomId)) {
-            logger.w(
-                "Key state for $announced carries no certificate by $parentChatRoomId for " +
-                    "that room; dropping"
-            )
-            return null
+        // Every parent, or none of them. One bad certificate drops the whole
+        // state rather than the one pair, for the reason the all-or-nothing rule
+        // was written: a state that claims a lineage it cannot back is a device
+        // asserting a relationship somebody never agreed to, and keeping the
+        // provable half would file a group as having one parent when its own
+        // members see two. A set that is partly believed is not a weaker set.
+        lineage.parents.forEach { parentage ->
+            val parentChatRoomId = parentage.parentChatRoomId
+            val certificate = parentage.certificate
+
+            // The parent's own quorum, over this very room's id. Everything that
+            // makes a lineage worth anything is in here -- see
+            // `SubgroupBirthCertificateEvent.certifies`, which needs no lookup,
+            // no key it has to be told, and no knowledge of the other parents.
+            // Each link is checked on its own, which is why a lineage can be
+            // assembled a parent at a time.
+            if (!SubgroupBirthCertificateEvent.certifies(certificate, announced, parentChatRoomId)) {
+                logger.w(
+                    "Key state for $announced carries no certificate by $parentChatRoomId for " +
+                        "that room; dropping"
+                )
+                return null
+            }
+
+            // Belt and braces: the id already derives from this key, and the
+            // certificate's id already derives from the key it names, so two
+            // certificates for one room cannot name two keys. Stated anyway
+            // because the two facts live in different places and a future change
+            // to either should have to notice this.
+            val certifiedKey =
+                SubgroupBirthCertificateEvent.parseThresholdPublicKey(certificate.tags)
+            if (!thresholdPublicKey.equals(certifiedKey, ignoreCase = true)) {
+                logger.w(
+                    "Key state for $announced names $thresholdPublicKey and the certificate " +
+                        "by $parentChatRoomId names $certifiedKey; dropping"
+                )
+                return null
+            }
         }
 
-        // Belt and braces: the id already derives from this key, and the
-        // certificate's id already derives from the key it names, so two
-        // certificates for one room cannot name two keys. Stated anyway because
-        // the two facts live in different places and a future change to either
-        // should have to notice this.
-        val certifiedKey = SubgroupBirthCertificateEvent.parseThresholdPublicKey(certificate.tags)
-        if (!thresholdPublicKey.equals(certifiedKey, ignoreCase = true)) {
-            logger.w(
-                "Key state for $announced names $thresholdPublicKey and its certificate names " +
-                    "$certifiedKey; dropping"
-            )
-            return null
-        }
-
-        return Parentage(
-            SubgroupParentage(parentChatRoomId = parentChatRoomId, certificate = certificate)
-        )
+        // Deliberately not checked: whether the parents know about each other.
+        // An earlier certificate cannot name a later co-parent -- the first
+        // parent signed before the second was a possibility -- so requiring them
+        // to agree on the set would make every adoption cost a fresh quorum in
+        // every group that had already certified this room. The child's key state
+        // is the sole authority on the set; each parent has a veto on being added
+        // and none on who else is in it. See docs/subgroups-multiple-parents.md.
+        return Lineage(lineage)
     }
 
-    fun stateFrom(chatRoomId: String, innerEvent: Event): GroupKeyState? {
+    fun stateFrom(chatRoomId: String, innerEvent: Event): LocalGroupKeyState? {
         val announced = GroupKeyStateEvent.parseChatRoomId(innerEvent.tags) ?: chatRoomId
 
         val thresholdPublicKey = GroupKeyStateEvent.parseThresholdPublicKey(innerEvent.content)
@@ -461,7 +490,7 @@ object GroupKeyStateManager {
             return null
         }
 
-        val parent = parentageOf(announced, thresholdPublicKey, innerEvent) ?: return null
+        val lineage = lineageOf(announced, thresholdPublicKey, innerEvent) ?: return null
 
         val state = GroupKeyState(
             chatRoomId = announced,
@@ -469,9 +498,7 @@ object GroupKeyStateManager {
             thresholdPublicKey = thresholdPublicKey,
             derivationPath = SharedKeyDerivation.formatPath(path),
             announcedBy = innerEvent.pubKey,
-            announcedAt = Instant.fromEpochSeconds(innerEvent.createdAt),
-            parentChatRoomId = parent.value?.parentChatRoomId,
-            birthCertificateJson = parent.value?.certificate?.toJson()
+            announcedAt = Instant.fromEpochSeconds(innerEvent.createdAt)
         )
 
         // Half the trust model, in one line, and the half that does not care who
@@ -484,6 +511,15 @@ object GroupKeyStateManager {
             return null
         }
 
-        return state
+        return LocalGroupKeyState(
+            keyState = state,
+            parents = lineage.value?.parents?.map {
+                GroupKeyStateParent(
+                    chatRoomId = announced,
+                    parentChatRoomId = it.parentChatRoomId,
+                    birthCertificateJson = it.certificate.toJson()
+                )
+            }.orEmpty()
+        )
     }
 }

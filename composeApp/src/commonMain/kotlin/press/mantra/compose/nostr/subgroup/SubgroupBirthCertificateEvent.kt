@@ -170,15 +170,7 @@ object SubgroupBirthCertificateEvent {
         subgroupChatRoomId: String,
         parentChatRoomId: String
     ): Boolean = runCatching {
-        if (event.kind != KIND) return false
-
-        if (!event.content.trim().equals(subgroupChatRoomId, ignoreCase = true)) return false
-
-        val addressed = parseSubgroupChatRoomId(event.tags) ?: return false
-        if (!addressed.equals(subgroupChatRoomId, ignoreCase = true)) return false
-
-        val named = parseParentChatRoomId(event.tags) ?: return false
-        if (!named.equals(parentChatRoomId, ignoreCase = true)) return false
+        if (!addresses(event, subgroupChatRoomId, parentChatRoomId)) return false
 
         val thresholdPublicKey = parseThresholdPublicKey(event.tags) ?: return false
         val path = parsePath(event.tags) ?: return false
@@ -187,6 +179,38 @@ object SubgroupBirthCertificateEvent {
         if (!derived.equals(subgroupChatRoomId, ignoreCase = true)) return false
 
         GroupKeyStateEvent.isSignedByRoom(event, parentChatRoomId)
+    }.getOrDefault(false)
+
+    /**
+     * Whether this event is *addressed to* that child by that parent -- the
+     * half of [certifies] that can be asked of a proposal nobody has signed.
+     *
+     * **Not a weaker [certifies].** It says who the event is about, not that
+     * the parent's quorum agreed to it: no derivation and no signature, so an
+     * event that merely claims the right pair passes. Nothing may decide a
+     * lineage on this.
+     *
+     * What it is for is telling one *in-flight* certificate signing from
+     * another in the same room. A parent certifies every subgroup it ever makes
+     * from one room, so the ceremony screen has several to choose between and
+     * no signature to choose by -- the proposal is what the quorum has not yet
+     * signed. The three values it reads are assembled together by
+     * [assembleTags], so they agree by construction.
+     */
+    fun addresses(
+        event: Event,
+        subgroupChatRoomId: String,
+        parentChatRoomId: String
+    ): Boolean = runCatching {
+        if (event.kind != KIND) return false
+
+        if (!event.content.trim().equals(subgroupChatRoomId, ignoreCase = true)) return false
+
+        val addressed = parseSubgroupChatRoomId(event.tags) ?: return false
+        if (!addressed.equals(subgroupChatRoomId, ignoreCase = true)) return false
+
+        val named = parseParentChatRoomId(event.tags) ?: return false
+        named.equals(parentChatRoomId, ignoreCase = true)
     }.getOrDefault(false)
 
     /**

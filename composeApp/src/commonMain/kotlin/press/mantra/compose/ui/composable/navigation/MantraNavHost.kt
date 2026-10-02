@@ -38,6 +38,7 @@ import press.mantra.compose.ui.composable.ChatRoomDetailScreen
 import press.mantra.compose.ui.composable.ChatRoomMessagingScreen
 import press.mantra.compose.ui.composable.CreateProfileScreen
 import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
+import press.mantra.compose.ui.composable.DkgRitualListScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
@@ -99,7 +100,9 @@ import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToC
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomMembersRoute
+import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
+import press.mantra.compose.ui.composable.SelectAdoptingGroupScreen
 import press.mantra.compose.ui.composable.SelectSubgroupAdminsScreen
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomTypeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
@@ -140,6 +143,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddToProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
@@ -600,6 +604,18 @@ fun MantraNavHost(
                     onNavigateToRoute = { nextRoute ->
                         navController.navigate(route = nextRoute)
                     },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<SelectAdoptingGroupRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SelectAdoptingGroupRoute>()
+
+                SelectAdoptingGroupScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    chatRepository = databaseChatRepository,
                     onNavigateBack = {
                         navController.popBackStack()
                     }
@@ -1254,6 +1270,22 @@ fun MantraNavHost(
                     nostrRepository = databaseNostrRepository,
                     onNavigateBack = {
                         navController.popBackStack()
+                    }
+                )
+            }
+            composable<DkgRitualListRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgRitualListRoute>()
+
+                DkgRitualListScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { ceremonyRoute ->
+                        navController.navigate(route = ceremonyRoute)
                     }
                 )
             }

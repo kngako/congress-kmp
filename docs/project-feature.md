@@ -14,6 +14,7 @@ it belongs to:
 | the `summarize` resolver is Phase 4 | the seam is Phase 4, the resolution is Phase 7c | two of its four call sites are composables and cannot await a database, so the names are pre-resolved in `FrostSigningViewModel` |
 | three chronicle tests to add | three to add and four to fix | the existing suite compares a seeded room against `CHRONICLABLE_KINDS` itself, and one test asserts every chroniclable kind can also be *rebuilt* -- which projects deliberately cannot |
 | around twenty new strings | eighteen, three of them already there | `projects`, `no_projects_exists_in_this_group` and `create_project` came with the stub |
+| schema 21 | schema 22 | `mantra` took 21 for the subgroup parentage table while this branch was open; Phase 0 said to check for exactly this and checked the sibling fork rather than the base |
 | the apply arms catch the foreign key violation | they let it out | `ChronicleManager.sweep` retries a page only on a *counted* failure, so catching it loses a membership that crosses a page boundary — and `applySignedEvent`, the reason for catching, already has its own try/catch |
 
 The one thing found while building that the plan did not anticipate: a project
@@ -388,6 +389,13 @@ No code. Settle, in this document:
   takes 21; check the Curare clone before claiming it, because two trees that
   both call their next migration 21 is a merge nobody can fix afterwards.
 
+  **This is the one decision the build got wrong, and it checked the wrong
+  tree.** Projects took 21 on their own branch while `mantra` took 21 for the
+  subgroup parentage table (`eba97333`), which is a manual `MIGRATION_20_21`
+  rather than an auto-migration. The collision cost nothing because neither had
+  shipped — projects renumbered to **22** on the way in — but the lesson is that
+  the sibling fork was not the only tree to check. Check the base branch.
+
 ## Phase 1 — three events and their tags
 
 New, under `press.mantra.compose.nostr.nip30303`:
@@ -559,7 +567,7 @@ rather than four events that share a session.
   regression test against anyone folding them back together;
 - a `ProjectEvent` case asserting `build` rejects an empty owner set.
 
-## Phase 2 — three rows, and schema 20 → 21
+## Phase 2 — three rows, and schema 21 → 22
 
 New, under `press.mantra.compose.database.model`:
 
@@ -651,7 +659,7 @@ and `signedEventsOf` finds it. Adding three more rebuilds would be adding to a
 mechanism being retired, to serve rows that cannot exist.
 
 **Schema.** Three tables, nothing existing changes shape, so this is an
-`AutoMigration(from = 20, to = 21)` entry with a comment in the style of the other
+`AutoMigration(from = 21, to = 22)` entry with a comment in the style of the other
 nineteen, plus three entities in `@Database`, three `abstract fun`s on
 `MantraDatabase`, and three DAOs.
 

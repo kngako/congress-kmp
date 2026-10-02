@@ -11,6 +11,7 @@ import fr.acinq.bitcoin.PrivateKey
 import fr.acinq.bitcoin.XonlyPublicKey
 import fr.acinq.bitcoin.crypto.frost.Frost
 import fr.acinq.bitcoin.crypto.frost.KeyMaterial
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import fr.acinq.bitcoin.crypto.frost.Session
@@ -193,7 +194,7 @@ class SignedGroupKeyStateTest {
         /** The one event a session of one signs. */
         suspend fun item(sessionId: String) = items(sessionId).single()
 
-        suspend fun keyState() = db.groupKeyStateDao().getByChatRoomId(roomId)
+        suspend fun keyState() = db.groupKeyStateDao().getLocalByChatRoomId(roomId)
 
         /** Everything the group has signed here, as the group signed it. */
         suspend fun signedEvents() = db.groupSignedEventDao().getByChatRoomId(roomId)
@@ -514,13 +515,13 @@ class SignedGroupKeyStateTest {
         listOf(creator, other).forEach { device ->
             val state = device.keyState()
             assertNotNull(state, "every signer should hold the state the group signed")
-            assertEquals(thresholdPublicKey, state.thresholdPublicKey)
-            assertEquals(ceremonyId, state.dkgSessionId)
-            assertEquals(SharedKeyDerivation.formatPath(), state.derivationPath)
+            assertEquals(thresholdPublicKey, state.keyState.thresholdPublicKey)
+            assertEquals(ceremonyId, state.keyState.dkgSessionId)
+            assertEquals(SharedKeyDerivation.formatPath(), state.keyState.derivationPath)
             // Signed by the room, so attributed to the room -- nobody in
             // particular said this.
-            assertEquals(adminRoomId, state.announcedBy)
-            assertTrue(state.verifies())
+            assertEquals(adminRoomId, state.keyState.announcedBy)
+            assertTrue(state.keyState.verifies())
         }
     }
 
@@ -588,7 +589,7 @@ class SignedGroupKeyStateTest {
             absent.keyState(),
             "a member the quorum did not need still learns what the room signs with"
         )
-        assertEquals(adminRoomId, absent.keyState()?.announcedBy)
+        assertEquals(adminRoomId, absent.keyState()?.keyState?.announcedBy)
     }
 
     // ---- The key state, signed before the room exists ----------------------
@@ -721,22 +722,22 @@ class SignedGroupKeyStateTest {
             val adopted = GroupKeyStateManager.adopt(device.db, adminRoomId)
             assertNotNull(adopted, "a room should adopt the state its group signed for it")
 
-            assertEquals(adminRoomId, adopted.chatRoomId)
-            assertEquals(thresholdPublicKey, adopted.thresholdPublicKey)
-            assertEquals(ceremonyId, adopted.dkgSessionId)
-            assertEquals(SharedKeyDerivation.formatPath(), adopted.derivationPath)
-            assertEquals(adminRoomId, adopted.announcedBy)
-            assertTrue(adopted.verifies())
+            assertEquals(adminRoomId, adopted.keyState.chatRoomId)
+            assertEquals(thresholdPublicKey, adopted.keyState.thresholdPublicKey)
+            assertEquals(ceremonyId, adopted.keyState.dkgSessionId)
+            assertEquals(SharedKeyDerivation.formatPath(), adopted.keyState.derivationPath)
+            assertEquals(adminRoomId, adopted.keyState.announcedBy)
+            assertTrue(adopted.keyState.verifies())
 
             // On file, not merely returned. Compared field by field because the
             // store keeps whole seconds and the row in hand does not.
             val stored = device.db.groupKeyStateDao().getByChatRoomId(adminRoomId)
             assertNotNull(stored)
-            assertEquals(adopted.chatRoomId, stored.chatRoomId)
-            assertEquals(adopted.thresholdPublicKey, stored.thresholdPublicKey)
-            assertEquals(adopted.dkgSessionId, stored.dkgSessionId)
-            assertEquals(adopted.derivationPath, stored.derivationPath)
-            assertEquals(adopted.announcedAt, stored.announcedAt)
+            assertEquals(adopted.keyState.chatRoomId, stored.chatRoomId)
+            assertEquals(adopted.keyState.thresholdPublicKey, stored.thresholdPublicKey)
+            assertEquals(adopted.keyState.dkgSessionId, stored.dkgSessionId)
+            assertEquals(adopted.keyState.derivationPath, stored.derivationPath)
+            assertEquals(adopted.keyState.announcedAt, stored.announcedAt)
         }
     }
 
@@ -762,14 +763,14 @@ class SignedGroupKeyStateTest {
 
         assertNotNull(first)
         assertNotNull(second)
-        assertEquals(first.thresholdPublicKey, second.thresholdPublicKey)
-        assertEquals(first.dkgSessionId, second.dkgSessionId)
-        assertEquals(first.derivationPath, second.derivationPath)
-        assertEquals(first.announcedAt, second.announcedAt)
+        assertEquals(first.keyState.thresholdPublicKey, second.keyState.thresholdPublicKey)
+        assertEquals(first.keyState.dkgSessionId, second.keyState.dkgSessionId)
+        assertEquals(first.keyState.derivationPath, second.keyState.derivationPath)
+        assertEquals(first.keyState.announcedAt, second.keyState.announcedAt)
         // The second adopt is a no-op rather than a rewrite: `replace` keeps the
         // state already on file when nothing newer has been signed. To whole
         // seconds, which is all the store keeps.
-        assertEquals(first.createdAt.epochSeconds, second.createdAt.epochSeconds)
+        assertEquals(first.keyState.createdAt.epochSeconds, second.keyState.createdAt.epochSeconds)
     }
 
     @Test
@@ -1379,9 +1380,9 @@ class SignedGroupKeyStateTest {
 
         val state = creator.keyState()
         assertNotNull(state, "a room off the default path must still reach a signed state")
-        assertEquals(SharedKeyDerivation.formatPath(sibling), state.derivationPath)
-        assertEquals(siblingRoomId, state.announcedBy)
-        assertTrue(state.verifies())
+        assertEquals(SharedKeyDerivation.formatPath(sibling), state.keyState.derivationPath)
+        assertEquals(siblingRoomId, state.keyState.announcedBy)
+        assertTrue(state.keyState.verifies())
     }
 
     @Test
@@ -1554,9 +1555,11 @@ class SignedGroupKeyStateTest {
             localChatRoom = creator.room,
             userPublicKey = creator.publicKey,
             key = ceremonyOn(creator),
-            parent = SubgroupParentage(
-                parentChatRoomId = parentRoomId,
-                certificate = certificate
+            lineage = SubgroupLineage.of(
+                SubgroupParentage(
+                    parentChatRoomId = parentRoomId,
+                    certificate = certificate
+                )
             )
         )
         pump(creator, other)
@@ -1569,10 +1572,11 @@ class SignedGroupKeyStateTest {
 
             // The whole join. Neither device was sent a row; both derived the
             // event from their own items, both re-ran `certifies` against the
-            // parent's id, and both wrote the same two columns.
-            assertEquals(parentRoomId, state.parentChatRoomId)
-            assertEquals(certificate.toJson(), state.birthCertificateJson)
-            assertTrue(state.verifies())
+            // parent's id, and both wrote the same parentage row.
+            assertEquals(listOf(parentRoomId), state.parentChatRoomIds())
+            assertEquals(certificate.toJson(), state.parents.single().birthCertificateJson)
+            assertEquals(adminRoomId, state.parents.single().chatRoomId)
+            assertTrue(state.keyState.verifies())
         }
     }
 
@@ -1591,9 +1595,11 @@ class SignedGroupKeyStateTest {
                 localChatRoom = creator.room,
                 userPublicKey = creator.publicKey,
                 key = ceremonyOn(creator),
-                parent = SubgroupParentage(
-                    parentChatRoomId = parentRoomId,
-                    certificate = birthCertificate(subgroupChatRoomId = parentRoomId)
+                lineage = SubgroupLineage.of(
+                    SubgroupParentage(
+                        parentChatRoomId = parentRoomId,
+                        certificate = birthCertificate(subgroupChatRoomId = parentRoomId)
+                    )
                 )
             )
         }
@@ -1621,8 +1627,8 @@ class SignedGroupKeyStateTest {
         // does every top-level group made after.
         listOf(creator, other).forEach { device ->
             val state = assertNotNull(device.keyState())
-            assertNull(state.parentChatRoomId)
-            assertNull(state.birthCertificateJson)
+            assertEquals(emptyList(), state.parents)
+            assertNull(state.lineage())
         }
     }
 

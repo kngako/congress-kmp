@@ -70,14 +70,16 @@ interface ChatRepository {
     suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup>
 
     /**
-     * The group this room is a subgroup of, verified, or null if it is nobody's
-     * child.
+     * Every group that has certified this room as its child, verified, in
+     * canonical order -- empty if it is nobody's child.
      *
-     * Off the room's `GroupKeyState`, which only carries a parent whose
-     * certificate was checked. A member welcomed in after the founding holds no
-     * state and gets null here even when the room really is a subgroup.
+     * Off `GroupKeyStateParent`, whose rows exist only where the certificate was
+     * checked. More than one is ordinary: a group is founded with one parent and
+     * may be adopted by another later. A member welcomed in after the founding
+     * holds no state and gets an empty list even when the room really is a
+     * subgroup.
      */
-    suspend fun parentOf(chatRoomId: String): HexKey?
+    suspend fun parentsOf(chatRoomId: String): List<HexKey>
 
     /**
      * One event the group signed, as the group signed it, or null when this
@@ -113,6 +115,49 @@ interface ChatRepository {
         adminPublicKeys: Set<HexKey>,
         coordinatorPublicKey: HexKey,
     ): String?
+
+    /**
+     * Groups that have offered to adopt this room and are not its parents yet.
+     *
+     * An offer is a certificate signed in the *other* group's room, so only a
+     * member of that group holds one -- which is the overlap an adoption needs.
+     */
+    suspend fun adoptionOffersFor(chatRoomId: String): List<HexKey>
+
+    /** The groups this profile could offer [chatRoomId] to, for the picker. */
+    suspend fun adoptingCandidatesFor(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): List<LocalChatRoom>
+
+    /** Why [adoptingChatRoomId] cannot adopt [chatRoomId], or null when it can. */
+    suspend fun refuseAdoption(
+        chatRoomId: String,
+        adoptingChatRoomId: String,
+        userPublicKey: HexKey
+    ): String?
+
+    /**
+     * Asks [adoptingChatRoomId]'s quorum to certify this room as its child.
+     *
+     * The offer, and only that: the child's own quorum answers it with
+     * [acceptParent], and nothing is adopted until it does.
+     */
+    suspend fun proposeAdoption(
+        chatRoomId: String,
+        adoptingChatRoomId: String,
+        userPublicKey: HexKey
+    ): Boolean
+
+    /**
+     * Asks this room's quorum to accept [parentChatRoomId], by re-announcing its
+     * key state with that parentage added to whatever it already claims.
+     */
+    suspend fun acceptParent(
+        chatRoomId: String,
+        parentChatRoomId: HexKey,
+        userPublicKey: HexKey
+    ): Boolean
 
     suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
 
@@ -203,7 +248,6 @@ interface ChatRepository {
         userPublicKey: HexKey,
         keyPair: KeyPair,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parentChatRoomId: HexKey? = null,
     ): MarmotGroupCreation.Outcome
 
     /**
@@ -279,7 +323,7 @@ interface ChatRepository {
             override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
                 emptyList()
 
-            override suspend fun parentOf(chatRoomId: String): HexKey? = null
+            override suspend fun parentsOf(chatRoomId: String): List<HexKey> = emptyList()
 
             override suspend fun groupSignedEvent(
                 chatRoomId: String,
@@ -305,6 +349,31 @@ interface ChatRepository {
             override suspend fun getChatRoomByIdentifier(id: HexKey): LocalChatRoom? {
                 return null
             }
+
+            override suspend fun adoptionOffersFor(chatRoomId: String): List<HexKey> = emptyList()
+
+            override suspend fun adoptingCandidatesFor(
+                chatRoomId: String,
+                userPublicKey: HexKey
+            ): List<LocalChatRoom> = emptyList()
+
+            override suspend fun refuseAdoption(
+                chatRoomId: String,
+                adoptingChatRoomId: String,
+                userPublicKey: HexKey
+            ): String? = "No database"
+
+            override suspend fun proposeAdoption(
+                chatRoomId: String,
+                adoptingChatRoomId: String,
+                userPublicKey: HexKey
+            ): Boolean = false
+
+            override suspend fun acceptParent(
+                chatRoomId: String,
+                parentChatRoomId: HexKey,
+                userPublicKey: HexKey
+            ): Boolean = false
 
             override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
                 TODO("Not yet implemented")
@@ -386,7 +455,6 @@ interface ChatRepository {
                 userPublicKey: HexKey,
                 keyPair: KeyPair,
                 path: List<Long>,
-                parentChatRoomId: HexKey?,
             ): MarmotGroupCreation.Outcome =
                 MarmotGroupCreation.Outcome.Failed("No database")
 

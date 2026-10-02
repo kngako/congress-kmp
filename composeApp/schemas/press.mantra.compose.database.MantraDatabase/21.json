@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 21,
-    "identityHash": "ccbc98e82860c74663f3faed72cd1395",
+    "identityHash": "ff296ccd92cdb4bd61b3e150565f59c4",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -671,7 +671,7 @@
       },
       {
         "tableName": "ChatRoom",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `description` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` TEXT, `leftGroupAt` INTEGER, `joinedGroupAt` INTEGER, `chronicleRequestedAt` INTEGER, `parentChatRoomId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `description` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` TEXT, `leftGroupAt` INTEGER, `joinedGroupAt` INTEGER, `chronicleRequestedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -719,11 +719,6 @@
             "fieldPath": "chronicleRequestedAt",
             "columnName": "chronicleRequestedAt",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "parentChatRoomId",
-            "columnName": "parentChatRoomId",
-            "affinity": "TEXT"
           },
           {
             "fieldPath": "createdAt",
@@ -1619,7 +1614,7 @@
       },
       {
         "tableName": "GroupKeyState",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatRoomId` TEXT NOT NULL, `dkgSessionId` TEXT NOT NULL, `thresholdPublicKey` TEXT NOT NULL, `derivationPath` TEXT NOT NULL, `announcedBy` TEXT NOT NULL, `announcedAt` INTEGER NOT NULL, `parentChatRoomId` TEXT, `birthCertificateJson` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`chatRoomId`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatRoomId` TEXT NOT NULL, `dkgSessionId` TEXT NOT NULL, `thresholdPublicKey` TEXT NOT NULL, `derivationPath` TEXT NOT NULL, `announcedBy` TEXT NOT NULL, `announcedAt` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`chatRoomId`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "chatRoomId",
@@ -1656,16 +1651,6 @@
             "columnName": "announcedAt",
             "affinity": "INTEGER",
             "notNull": true
-          },
-          {
-            "fieldPath": "parentChatRoomId",
-            "columnName": "parentChatRoomId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "birthCertificateJson",
-            "columnName": "birthCertificateJson",
-            "affinity": "TEXT"
           },
           {
             "fieldPath": "createdAt",
@@ -1713,6 +1698,61 @@
             ],
             "referencedColumns": [
               "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "GroupKeyStateParent",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatRoomId` TEXT NOT NULL, `parentChatRoomId` TEXT NOT NULL, `birthCertificateJson` TEXT NOT NULL, PRIMARY KEY(`chatRoomId`, `parentChatRoomId`), FOREIGN KEY(`chatRoomId`) REFERENCES `GroupKeyState`(`chatRoomId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "chatRoomId",
+            "columnName": "chatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentChatRoomId",
+            "columnName": "parentChatRoomId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthCertificateJson",
+            "columnName": "birthCertificateJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "chatRoomId",
+            "parentChatRoomId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_GroupKeyStateParent_parentChatRoomId",
+            "unique": false,
+            "columnNames": [
+              "parentChatRoomId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_GroupKeyStateParent_parentChatRoomId` ON `${TABLE_NAME}` (`parentChatRoomId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "GroupKeyState",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "chatRoomId"
+            ],
+            "referencedColumns": [
+              "chatRoomId"
             ]
           }
         ]
@@ -2528,410 +2568,6 @@
           ]
         },
         "foreignKeys": [
-          {
-            "table": "ChatRoom",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "chatRoomId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "MantraProject",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `creatorPublicKey` TEXT NOT NULL, `ownerPublicKeys` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `groupSignedEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "publicKey",
-            "columnName": "publicKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "name",
-            "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "description",
-            "columnName": "description",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "creatorPublicKey",
-            "columnName": "creatorPublicKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ownerPublicKeys",
-            "columnName": "ownerPublicKeys",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "chatRoomId",
-            "columnName": "chatRoomId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "signature",
-            "columnName": "signature",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "relayHint",
-            "columnName": "relayHint",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "marmotGroupEventId",
-            "columnName": "marmotGroupEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "groupSignedEventId",
-            "columnName": "groupSignedEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "nostrEventId",
-            "columnName": "nostrEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_MantraProject_chatRoomId",
-            "unique": false,
-            "columnNames": [
-              "chatRoomId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProject_chatRoomId` ON `${TABLE_NAME}` (`chatRoomId`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "ChatRoom",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "chatRoomId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "MantraProjectArtifactVersion",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `projectId` TEXT NOT NULL, `artifactVersionId` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `groupSignedEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`projectId`) REFERENCES `MantraProject`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`artifactVersionId`) REFERENCES `MantraArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "publicKey",
-            "columnName": "publicKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "projectId",
-            "columnName": "projectId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "artifactVersionId",
-            "columnName": "artifactVersionId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "chatRoomId",
-            "columnName": "chatRoomId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "signature",
-            "columnName": "signature",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "relayHint",
-            "columnName": "relayHint",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "marmotGroupEventId",
-            "columnName": "marmotGroupEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "groupSignedEventId",
-            "columnName": "groupSignedEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "nostrEventId",
-            "columnName": "nostrEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_MantraProjectArtifactVersion_projectId",
-            "unique": false,
-            "columnNames": [
-              "projectId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectArtifactVersion_projectId` ON `${TABLE_NAME}` (`projectId`)"
-          },
-          {
-            "name": "index_MantraProjectArtifactVersion_artifactVersionId",
-            "unique": false,
-            "columnNames": [
-              "artifactVersionId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectArtifactVersion_artifactVersionId` ON `${TABLE_NAME}` (`artifactVersionId`)"
-          },
-          {
-            "name": "index_MantraProjectArtifactVersion_chatRoomId",
-            "unique": false,
-            "columnNames": [
-              "chatRoomId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectArtifactVersion_chatRoomId` ON `${TABLE_NAME}` (`chatRoomId`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "MantraProject",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "projectId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "MantraArtifactVersion",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "artifactVersionId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "ChatRoom",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "chatRoomId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "MantraProjectTranslationArtifactVersion",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `publicKey` TEXT NOT NULL, `projectId` TEXT NOT NULL, `translationArtifactVersionId` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `signature` TEXT NOT NULL, `relayHint` TEXT, `marmotGroupEventId` TEXT, `groupSignedEventId` TEXT, `nostrEventId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`projectId`) REFERENCES `MantraProject`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`translationArtifactVersionId`) REFERENCES `MantraTranslationArtifactVersion`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "publicKey",
-            "columnName": "publicKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "projectId",
-            "columnName": "projectId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "translationArtifactVersionId",
-            "columnName": "translationArtifactVersionId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "chatRoomId",
-            "columnName": "chatRoomId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "signature",
-            "columnName": "signature",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "relayHint",
-            "columnName": "relayHint",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "marmotGroupEventId",
-            "columnName": "marmotGroupEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "groupSignedEventId",
-            "columnName": "groupSignedEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "nostrEventId",
-            "columnName": "nostrEventId",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_MantraProjectTranslationArtifactVersion_projectId",
-            "unique": false,
-            "columnNames": [
-              "projectId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectTranslationArtifactVersion_projectId` ON `${TABLE_NAME}` (`projectId`)"
-          },
-          {
-            "name": "index_MantraProjectTranslationArtifactVersion_translationArtifactVersionId",
-            "unique": false,
-            "columnNames": [
-              "translationArtifactVersionId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectTranslationArtifactVersion_translationArtifactVersionId` ON `${TABLE_NAME}` (`translationArtifactVersionId`)"
-          },
-          {
-            "name": "index_MantraProjectTranslationArtifactVersion_chatRoomId",
-            "unique": false,
-            "columnNames": [
-              "chatRoomId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_MantraProjectTranslationArtifactVersion_chatRoomId` ON `${TABLE_NAME}` (`chatRoomId`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "MantraProject",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "projectId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "MantraTranslationArtifactVersion",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "translationArtifactVersionId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
           {
             "table": "ChatRoom",
             "onDelete": "CASCADE",
@@ -6096,7 +5732,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ccbc98e82860c74663f3faed72cd1395')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ff296ccd92cdb4bd61b3e150565f59c4')"
     ]
   }
 }
