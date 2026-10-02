@@ -19,6 +19,29 @@ What stands in the way is five concrete defects, which Curated hit in the order 
 build hits them — configure, compile, link, connect, sign — and fixed in eight
 commits.
 
+## Where this stands
+
+Phases 0 to 4 are **done and on this branch**, verified on a linux host; Phase 5
+needs two decisions and an asset, and Phases 6 and 7 need a mac. Nothing below was
+rewritten after the fact — each phase's text is as it was planned, with a
+**Landed** note where what happened is worth knowing.
+
+| phase | state | commit |
+|---|---|---|
+| 0 bootstrap and baseline | done — 1174 + 159 tests green | (no commit) |
+| 1 advance the library chain | done — linux unchanged, as predicted | `a8f0e26f`, `1b8df6b4`, `dda2f95c` |
+| 2 Room constructor and cancellation | done | `73b2c8ae`, `fc195832` |
+| 3 unbreak the ios link tasks | done — linux half only | `d024838b` |
+| 4 ktor on Darwin | done — android and jvm halves only | `e6c3c8a2` |
+| 5 signing, icon, version | **not started** — needs decisions | — |
+| 6 what only a mac can find | **not started** — needs a mac | — |
+| 7 write down what it cost | in progress — this section | — |
+
+`:composeApp:check` passes at the tip: lint, the m3 audit's ten counts, and all
+three test suites — `jvmTest` 1174, `testDebugUnitTest` 563, the library's own 159.
+Every count is the Phase 0 baseline, unmoved.
+
+
 ## The eight commits, and what each one is here
 
 | Curated | what it did | how it lands here |
@@ -179,6 +202,24 @@ That is the phase's actual purpose.
 > `build: carry secp256k1-kmp's fix for configuring off a linux host`
 > — and say in the body that the upstream subject reads the other way round.
 
+**Landed** as `a8f0e26f`, `1b8df6b4`, `dda2f95c`. All five levels now sit exactly
+where Curated's do: `e0d2b82` → `e5b22f5d` → `9e3c4f8` → `8adf691` → `7a35fde1`.
+
+Two things worth knowing. First, the walk across all three bumps touches **no
+Kotlin source anywhere in the chain** — the entire payload is eleven
+`build.gradle.kts` and `settings.gradle.kts` files in secp256k1-kmp — so gradle
+correctly reports `jvmTest UP-TO-DATE` afterwards. That reads like a stale cache
+and is not one; a forced `--rerun` returns the same 1174 and 159.
+
+Second, the bump carries four fixes beyond the stub archives, because
+`a8cc3ec..8adf691` is seven commits rather than three: the `generateHeaders`
+output paths (which were `generated./jni`, with a stray dot, and whose temp
+directory was being cleared with a `delete()` that silently does nothing on a
+non-empty directory), Gradle 10's removal of the delegated-property DSL, `Project`
+objects passed as dependency notation, and `compileSdk 35` → `36` in
+secp256k1-kmp's `jni/android`. The last of those is the only one that can touch an
+android build here, and it is below Mantra's own 37.
+
 ---
 
 ## Phase 2 — declare the Room constructor and cancellation to Swift
@@ -224,6 +265,19 @@ later.
 **On a mac:** `:composeApp:compileKotlinIosArm64`.
 
 > `feat(ios): declare the Room constructor and publish cancellation to swift`
+
+**Landed** as two commits rather than one — `73b2c8ae` for `@ConstructedBy` alone,
+`fc195832` for the seven annotations and the import — because the first was the
+only change in the plan with real linux-side risk and deserved to be readable on
+its own.
+
+The risk was real and benign. Room's KSP now emits an `actual object
+MantraDatabaseConstructor` for **android and jvm as well**, each returning
+`MantraDatabase_Impl()`, where before it emitted none at all and the `expect` sat
+`@Suppress`ed and unreferenced. `jvmTest` is unmoved at 1174. A side effect worth
+noting: `MantraDatabaseJvmTest`'s comment about the no-`Context` builder overload
+being available "because `MantraDatabaseConstructor` gives Room a way to
+instantiate without reflection" was aspirational when written and is now true.
 
 ---
 
@@ -303,6 +357,23 @@ renamed tests must still run, and the count must not move.
 
 > `build(ios): unbreak the ios link tasks`
 
+**Landed** as `d024838b`, the linux-verifiable half. The sweep ran exactly as
+predicted: 84 names in 35 files, 84 changed lines, every one of them a `fun` line
+and no other line in the tree touched. Both renamed tests show up in the results
+under their new names, under `jvmTest` and `testDebugUnitTest` alike, and the 138
+commas left in the results are `jvmTest`'s own — the set the plan leaves alone.
+
+Two of the 84 needed rewording by hand, where the comma had been carrying real
+work rather than pausing: `EOSE does not end a live subscription, CLOSED does`
+became `a live subscription ends on CLOSED and not on EOSE`, and `a page says
+which chronicle it is, where in it, and who for` became `... and where in it and
+who for`. The other 82 lost only a pause.
+
+The `-Xdisable-phases` block is in but **unproven** — no `KotlinNativeLink` task
+exists on this host for it to match, so all that is verified is that the build
+script still compiles. Whether this module's call graph crashes the same phase
+Curated's did is Phase 6's question.
+
 ---
 
 ## Phase 4 — put every ktor client on Darwin
@@ -361,6 +432,13 @@ simulator that reaches a relay over `wss://` and renders an avatar over `https:/
 
 > `fix(ios): build ktor clients on Darwin so wss/https work on a device`
 
+**Landed** as `e6c3c8a2`. The android and jvm `actual`s and both call sites
+compile; the Darwin `actual` and the thing the phase is actually for do not, here.
+`ktor-client-darwin` 3.5.2 has never been resolved on this host — the gradle cache
+holds 3.3.3 and 3.4.1 from older work and nothing newer — because the dependency
+sits inside the `isMacOsX` gate. It resolves on the mac at the same `ktor` version
+ref Curated built against.
+
 ---
 
 ## Phase 5 — signing, icon, version
@@ -371,9 +449,11 @@ decided. Each needs an answer from you before it can be written.
 **`TEAM_ID`.** [iosApp/Configuration/Config.xcconfig](../iosApp/Configuration/Config.xcconfig)
 has `TEAM_ID=` empty, and the bundle identifier is built from it
 (`press.mantra.ios$(TEAM_ID)`). Curated committed its development team id in the
-clear, which is normal for an xcconfig — a team id is not a secret — but it is
-*their* team id and signs builds to *their* account. Mantra needs its own, or an
-`xcconfig` that stays out of git.
+clear, which is normal for an xcconfig — a team id is not a secret — but it signs
+builds to a particular account. The expectation is that Mantra uses **the same one
+Curare does, `ZK3TQ662GB`**; that still wants confirming before it is written,
+since it decides whose account the build belongs to and the bundle identifier is
+derived from it.
 
 **The app icon.** Curated replaced its single `app-icon-1024.png` with a 1024
 light variant and a 1024 dark one, adding the `luminosity: dark` appearance to
