@@ -243,7 +243,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a certificate carrying no parent, no key or no path is refused`() {
+    fun `a certificate carrying no parent no key or no path is refused`() {
         listOf("parent_group", "subgroup_key", "frost_path").forEach { dropped ->
             val incomplete = certificate(
                 tags = SubgroupBirthCertificateEvent.assembleTags(
@@ -359,7 +359,7 @@ class SubgroupBirthCertificateEventTest {
     // signature against a room id, and a room id is a public key.
 
     @Test
-    fun `in the parent's room, a certificate is about the room's own child`() {
+    fun `in the parent's room a certificate is about the room's own child`() {
         assertEquals(
             SubgroupManager.ArrivingCertificate.OurChild(subgroupChatRoomId),
             SubgroupManager.classify(parentChatRoomId, certificate())
@@ -367,7 +367,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `in the child's room, the same certificate is an offer to adopt it`() {
+    fun `in the child's room the same certificate is an offer to adopt it`() {
         // The half of an adoption the child's members would otherwise never hear
         // about until a proposal asked for their signature. One event, two
         // meanings, and the room it arrived in is the whole of the difference.
@@ -398,7 +398,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a group is not its own child, however truthfully it says so`() {
+    fun `a group is not its own child however truthfully it says so`() {
         // The one self-referential certificate `certifies` waves through: author,
         // subject and named parent all one room, the id deriving from the key,
         // the signature verifying. Refused before either branch -- read as an
@@ -446,7 +446,7 @@ class SubgroupBirthCertificateEventTest {
     // asserting about it is where it stops.
 
     @Test
-    fun `an unsigned proposal addresses its child, and certifies nothing`() {
+    fun `an unsigned proposal addresses its child and certifies nothing`() {
         // What the ceremony screen is actually holding: the event as it was
         // assembled, before anybody signed it. Any string in `sig` serves --
         // the point is that no quorum has put one there.
@@ -472,7 +472,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a forgery by another group addresses the pair it names, and certifies nothing`() {
+    fun `a forgery by another group addresses the pair it names and certifies nothing`() {
         // The reason `addresses` must never decide a lineage: anybody can author
         // an event naming any pair, and this says yes to it. The guard is that
         // nothing downstream of a lineage asks `addresses` -- only the screen
@@ -560,7 +560,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `everything certifies addresses, so the weaker one cannot be the stricter`() {
+    fun `everything certifies addresses so the weaker one cannot be the stricter`() {
         // `certifies` calls `addresses` and adds to it, and this is what keeps
         // that true: a change that let one pass where the other refuses would
         // mean two different answers to "which child is this about".

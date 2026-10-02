@@ -30,7 +30,7 @@ class NostrPublisherRepository(
         }
     }
 
-    @Throws(press.mantra.compose.exceptions.NostrPublishException::class)
+    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, kotlin.coroutines.cancellation.CancellationException::class)
     private suspend fun publishAndImportEvent(signedNostrEvent: press.mantra.compose.database.model.NostrEvent, outboxRelays: List<String> = emptyList()) {
         relaysSocketManager.publishEvent(signedNostrEvent)
         importEvent(signedNostrEvent)
@@ -52,7 +52,7 @@ class NostrPublisherRepository(
         }
     }
 
-    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, press.mantra.compose.exceptions.SignatureException::class)
+    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, press.mantra.compose.exceptions.SignatureException::class, kotlin.coroutines.cancellation.CancellationException::class)
     suspend fun signPublishImportNostrEvent(
         unsignedNostrEvent: press.mantra.compose.database.model.UnsignedNostrEvent,
         outboxRelays: List<String>,
@@ -63,7 +63,7 @@ class NostrPublisherRepository(
     }
 
 
-    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, press.mantra.compose.exceptions.SignatureException::class)
+    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, press.mantra.compose.exceptions.SignatureException::class, kotlin.coroutines.cancellation.CancellationException::class)
     suspend fun publishRelayList(userId: String, relays: List<press.mantra.compose.network.dto.RelayDTO>): press.mantra.compose.database.model.NostrEvent {
         val signedNostrEvent = nostrNotary.signRelayListMetadata(userId = userId, relays = relays).unwrapOrThrow()
         relaysSocketManager.publishEvent(nostrEvent = signedNostrEvent, relays = relays.toSet())

@@ -42,7 +42,7 @@ class ProposedEventTest {
      * contains and so the rest of what is being agreed to.
      */
     @Test
-    fun `a chapter is named, measured, and counted`() {
+    fun `a chapter is named measured and counted`() {
         val summary = ProposedEvent.summarize(chapter(name = "The wreck"), chunkCount = 4)
 
         assertEquals("New chapter", summary.label)
@@ -67,7 +67,7 @@ class ProposedEventTest {
      * handed -- the text here splits into two, and the batch says five.
      */
     @Test
-    fun `the chunk count is the batch's, not a re-reading of the text`() {
+    fun `the chunk count is the batch's not a re-reading of the text`() {
         val summary = ProposedEvent.summarize(
             chapter(originalText = "One.\n\nTwo."),
             chunkCount = 5,
@@ -77,7 +77,7 @@ class ProposedEventTest {
     }
 
     @Test
-    fun `with no batch to count, a chapter says nothing about chunks`() {
+    fun `with no batch to count a chapter says nothing about chunks`() {
         // A transcript line, or a signed event on its own: there is no batch to
         // ask, and guessing is what this parameter exists to stop.
         val summary = ProposedEvent.summarize(chapter(name = "The wreck"))
@@ -86,7 +86,7 @@ class ProposedEventTest {
     }
 
     @Test
-    fun `a chunk is said as its own words, in its own place`() {
+    fun `a chunk is said as its own words in its own place`() {
         // The chunks travel in the same batch as their chapter and are read
         // under it, so each has to be checkable on its own.
         val summary = ProposedEvent.summarize(
@@ -179,7 +179,7 @@ class ProposedEventTest {
     }
 
     @Test
-    fun `a project owned by somebody else says who, and not the room`() {
+    fun `a project owned by somebody else says who and not the room`() {
         val summary = ProposedEvent.summarize(
             project(setOf(roomId, outsider)),
             chatRoomId = roomId
@@ -191,7 +191,7 @@ class ProposedEventTest {
     }
 
     @Test
-    fun `with no room to compare against, every owner is named`() {
+    fun `with no room to compare against every owner is named`() {
         val summary = ProposedEvent.summarize(project(setOf(roomId, outsider)))
 
         assertTrue(summary.detail.contains(roomId.take(12)), summary.detail)

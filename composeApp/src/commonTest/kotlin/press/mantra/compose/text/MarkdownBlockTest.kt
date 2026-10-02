@@ -30,7 +30,7 @@ class MarkdownBlockTest {
     }
 
     @Test
-    fun `the corpus is not empty, so a generator that wrote nothing fails`() {
+    fun `the corpus is not empty so a generator that wrote nothing fails`() {
         assertEquals(true, MARKDOWN_BLOCK_FIXTURES.size >= 25)
     }
 }

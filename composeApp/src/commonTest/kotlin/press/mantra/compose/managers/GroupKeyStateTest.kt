@@ -697,7 +697,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `an event edited after signing fails on the id, not on the signature`() {
+    fun `an event edited after signing fails on the id not on the signature`() {
         val signed = signedByRoom()
 
         val tampered = Event(
@@ -951,7 +951,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `two parents land as adjacent pairs, each id before its own certificate`() {
+    fun `two parents land as adjacent pairs each id before its own certificate`() {
         // The one thing in this design that exists for *other people's* builds. A
         // reader that predates several parents takes the first `parent_group` and
         // the first `birth_certificate` and checks them against each other, so
@@ -989,7 +989,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `a state claiming two parents keeps both, each with its own certificate`() {
+    fun `a state claiming two parents keeps both each with its own certificate`() {
         // Two groups, two quorums, two signatures over the same child's id. The
         // second one signed later and could not have named the first as a
         // co-parent, which is why nothing requires the certificates to agree on
@@ -1071,7 +1071,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `an uneven number of halves is refused, not completed from the other`() {
+    fun `an uneven number of halves is refused not completed from the other`() {
         val certificate = birthCertificate()
 
         val extraParent = GroupKeyStateEvent.assembleTags(
@@ -1094,7 +1094,7 @@ class GroupKeyStateTest {
     }
 
     @Test
-    fun `a half that is present and broken shifts nothing, because it is counted`() {
+    fun `a half that is present and broken shifts nothing because it is counted`() {
         // Counted by tag name as well as by successful parse, so a broken half is
         // told from one that was never written. Only the first would slide the
         // pairing along by one and pair an id with somebody else's certificate.

@@ -76,7 +76,7 @@ class MarkdownProducerTest {
     }
 
     @Test
-    fun `a blockquote is quoted again, line by line`() {
+    fun `a blockquote is quoted again line by line`() {
         val source = "> line one\n> line two\n"
 
         // Two lines in, three out: the marker goes in front of every line, so a
