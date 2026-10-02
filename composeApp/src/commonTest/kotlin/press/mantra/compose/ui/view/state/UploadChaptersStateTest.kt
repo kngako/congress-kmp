@@ -141,7 +141,7 @@ class UploadChaptersStateTest {
     }
 
     @Test
-    fun `a failed proposal is still proposable, because a retry is a new proposal`() {
+    fun `a failed proposal is still proposable because a retry is a new proposal`() {
         val chapters = listOf(row("tried", problem = UploadProblem.ProposalFailed))
 
         assertEquals(listOf("tried"), state(chapters).proposable.map { it.id })

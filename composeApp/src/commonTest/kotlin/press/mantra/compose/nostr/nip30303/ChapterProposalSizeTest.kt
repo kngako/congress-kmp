@@ -144,7 +144,7 @@ class ChapterProposalSizeTest {
     }
 
     @Test
-    fun `where the fit runs out, for a chapter-shaped chapter`() {
+    fun `where the fit runs out for a chapter-shaped chapter`() {
         // Pinned so the number is on the record rather than in a comment, and so
         // that a change to either event's tags shows up as a moved boundary
         // instead of as a quorum that never arrives. Forty paragraphs is the
@@ -169,7 +169,7 @@ class ChapterProposalSizeTest {
     }
 
     @Test
-    fun `the text is measured in bytes, not in characters`() {
+    fun `the text is measured in bytes not in characters`() {
         // The languages this app exists for are full of characters that are one
         // UTF-16 unit and three bytes. Measuring by length would under-count a
         // Setswana or Amharic chapter and the cap would stop binding exactly
@@ -191,7 +191,7 @@ class ChapterProposalSizeTest {
     private val AddChapterMaxChunks: Int get() = FrostSigningManager.MAX_BATCH_SIZE - 1
 
     @Test
-    fun `the chunk cap is one less than the batch, because the chapter takes a place`() {
+    fun `the chunk cap is one less than the batch because the chapter takes a place`() {
         assertEquals(FrostSigningManager.MAX_BATCH_SIZE - 1, AddChapterMaxChunks)
     }
 }
