@@ -4,11 +4,13 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
+import press.mantra.compose.database.model.traits.SubgroupOriginEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.tags.ArtifactVersionMetadataTag
@@ -40,16 +42,16 @@ import kotlin.time.Instant
 )
 data class MantraArtifact(
     @PrimaryKey
-    val id: HexKey,
+    override val id: HexKey,
     val publicKey: String,
-    val name: String,
+    override val name: String,
     val url: String, // Hash this to get the dTag...
     val visibility: String, // public, private, permissioned (public, but only members can contribute)
     val dialectId: String,
     val license: String,
 //    val artifactApprovalId: String,
 
-    val chatRoomId: String,
+    override val chatRoomId: String,
 
     /**
      * Signature will be an empty string if this is a rumor
@@ -68,7 +70,16 @@ data class MantraArtifact(
     override val nostrEventId: HexKey? = null,
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
-): OptionalNostrEventEntity, TimestampedEntity {
+): OptionalNostrEventEntity, SubgroupOriginEntity, TimestampedEntity {
+
+    /**
+     * Which kind a reader holding only this row's id is looking at.
+     *
+     * A computed property, so it is not a column and Room never sees it --
+     * the kind is a fact about the type rather than about the row, and a
+     * stored copy could disagree with the event this row came from.
+     */
+    override val subgroupOriginKind: Kind get() = ArtifactEvent.KIND
     /**
      * The event the group signed, rebuilt from this row.
      *

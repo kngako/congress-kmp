@@ -5,9 +5,11 @@ import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
+import press.mantra.compose.database.model.traits.SubgroupOriginEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.ProjectEvent
 import kotlin.time.Clock
@@ -39,12 +41,12 @@ import kotlin.time.Instant
 )
 data class MantraProject(
     @PrimaryKey
-    val id: HexKey,
+    override val id: HexKey,
 
     /** The room's own key on a group-signed row, which is every project. */
     val publicKey: HexKey,
 
-    val name: String,
+    override val name: String,
     val description: String,
 
     /**
@@ -73,7 +75,7 @@ data class MantraProject(
      */
     val ownerPublicKeys: String,
 
-    val chatRoomId: String,
+    override val chatRoomId: String,
 
     /** Signature will be an empty string if this is a rumor */
     val signature: String,
@@ -89,7 +91,16 @@ data class MantraProject(
 
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
-): OptionalNostrEventEntity, TimestampedEntity {
+): OptionalNostrEventEntity, SubgroupOriginEntity, TimestampedEntity {
+
+    /**
+     * Which kind a reader holding only this row's id is looking at.
+     *
+     * A computed property, so it is not a column and Room never sees it --
+     * the kind is a fact about the type rather than about the row, and a
+     * stored copy could disagree with the event this row came from.
+     */
+    override val subgroupOriginKind: Kind get() = ProjectEvent.KIND
 
     /** The owners as the set they are. Empty only on a row written around this. */
     fun ownerPublicKeySet(): Set<HexKey> = ownerPublicKeys

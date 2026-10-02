@@ -4,11 +4,13 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.core.TagArrayBuilder
 import com.vitorpamplona.quartz.nip01Core.crypto.EventHasher
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import com.vitorpamplona.quartz.nip31Alts.AltTag
 import press.mantra.compose.database.model.traits.OptionalNostrEventEntity
+import press.mantra.compose.database.model.traits.SubgroupOriginEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.tags.CountryTag
@@ -32,15 +34,15 @@ import kotlin.time.Instant
 )
 data class MantraDialect(
     @PrimaryKey
-    val id: HexKey,
+    override val id: HexKey,
     val publicKey: HexKey,
-    val name: String,
+    override val name: String,
     val country: String,
     val language: String,
 
     val signature: String,
 
-    val chatRoomId: String,
+    override val chatRoomId: String,
 
     val relayHint: String? = null,
     val marmotGroupEventId: HexKey? = null,
@@ -54,7 +56,16 @@ data class MantraDialect(
     override val nostrEventId: HexKey? = null,
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt
-): OptionalNostrEventEntity, TimestampedEntity {
+): OptionalNostrEventEntity, SubgroupOriginEntity, TimestampedEntity {
+
+    /**
+     * Which kind a reader holding only this row's id is looking at.
+     *
+     * A computed property, so it is not a column and Room never sees it --
+     * the kind is a fact about the type rather than about the row, and a
+     * stored copy could disagree with the event this row came from.
+     */
+    override val subgroupOriginKind: Kind get() = DialectEvent.KIND
 
     @Deprecated(
         "Chronicle fallback for work signed before the GroupSignedEvent table. Read the " +
