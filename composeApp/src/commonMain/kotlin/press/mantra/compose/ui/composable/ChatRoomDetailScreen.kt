@@ -105,6 +105,7 @@ import mantra.composeapp.generated.resources.subgroups
 import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.DialectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.managers.SubgroupManager
 import mantra.composeapp.generated.resources.Res
@@ -566,12 +567,29 @@ fun ChatRoomDetailScreen(
                                     items = chatRoomDetailUIState.dialects,
                                     key = { dialect -> dialect.id }
                                 ) { dialect ->
-                                    Card {
+                                    Card(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                DialectDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    dialectId = dialect.id,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
                                         ListItem(
                                             leadingContent = {
                                                 Icon(
                                                     Icons.Default.Translate,
-                                                    contentDescription = "Dialect"
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
                                                 )
                                             },
                                             headlineContent = {

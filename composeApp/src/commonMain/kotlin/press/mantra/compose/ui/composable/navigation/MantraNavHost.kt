@@ -151,6 +151,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.DialectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
@@ -165,6 +166,7 @@ import press.mantra.compose.ui.composable.FrostSigningScreen
 import press.mantra.compose.ui.composable.ProposalListScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
+import press.mantra.compose.ui.composable.DialectDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
 import press.mantra.compose.ui.composable.TranslationChapterScreen
 import press.mantra.compose.ui.composable.TranslationArtifactVersionDetailScreen
@@ -1316,6 +1318,26 @@ fun MantraNavHost(
                     chatRoomId = route.chatRoomId,
                     relayHint = route.relayHint,
                     mantraRepository = databaseMantraRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<DialectDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DialectDetailRoute>()
+
+                DialectDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    dialectId = route.dialectId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute

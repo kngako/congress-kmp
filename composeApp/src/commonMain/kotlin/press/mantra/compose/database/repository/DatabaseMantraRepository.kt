@@ -104,6 +104,14 @@ class DatabaseMantraRepository(
     override suspend fun getDialect(id: String): MantraDialect? =
         database.mantraDialectDao().getDialectById(id)
 
+    override suspend fun getArtifactsForDialect(dialectId: String): List<MantraArtifact> =
+        database.mantraArtifactDao().getArtifactsByDialectId(dialectId)
+
+    override suspend fun getTranslationsForDialect(
+        dialectId: String
+    ): List<MantraTranslationArtifactVersion> =
+        database.mantraTranslationArtifactVersionDao().getTranslationsByDialectId(dialectId)
+
     override suspend fun addArtifactVersion(
         localChatRoom: LocalChatRoom,
         artifactId: HexKey,

@@ -89,6 +89,7 @@
     <string name="currently_no_messages_have_been_shared">Currently no messages have been shared.\nBreak the ice.</string>
     <string name="delete_group">Delete group</string>
     <string name="details">Details</string>
+    <string name="dialect_detail">Dialect detail</string>
     <string name="dialect_name">Dialect name</string>
     <string name="dialects">Dialects</string>
     <string name="direct_message_detail">Direct message detail</string>
@@ -183,6 +184,8 @@
     <string name="no_one_selected_yet">No one selected yet</string>
     <string name="no_one_to_add_yet">No one to add yet.</string>
     <string name="no_projects_exists_in_this_group">No projects exists in this group.</string>
+    <string name="no_artifacts_are_written_in_this_dialect">No artifacts are written in this dialect yet.</string>
+    <string name="no_translations_are_into_this_dialect">Nothing has been translated into this dialect yet.</string>
     <string name="no_translations_yet">No translations yet.</string>
     <string name="no_versions">No versions.</string>
     <string name="not_now">Not now</string>

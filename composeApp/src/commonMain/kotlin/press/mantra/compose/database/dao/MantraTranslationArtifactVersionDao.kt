@@ -41,4 +41,20 @@ interface MantraTranslationArtifactVersionDao {
 
     @Query("SELECT * FROM MantraTranslationArtifactVersion WHERE id = :id")
     suspend fun getTranslationById(id: String): MantraTranslationArtifactVersion?
+
+    /**
+     * The translations into [dialectId], newest first.
+     *
+     * Scoped by the dialect alone, for the reason
+     * `MantraArtifactDao.getArtifactsByDialectId` gives: the foreign key already
+     * confines it to one room.
+     */
+    @Query(
+        """
+        SELECT * FROM MantraTranslationArtifactVersion
+        WHERE dialectId = :dialectId
+        ORDER BY createdAt DESC
+        """
+    )
+    suspend fun getTranslationsByDialectId(dialectId: String): List<MantraTranslationArtifactVersion>
 }
