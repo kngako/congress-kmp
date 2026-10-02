@@ -88,12 +88,18 @@ import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.run_by_members
 import mantra.composeapp.generated.resources.parent_group
+import mantra.composeapp.generated.resources.accept_as_a_parent
+import mantra.composeapp.generated.resources.add_a_parent_group
+import mantra.composeapp.generated.resources.a_group_is_a_subgroup_once_its_own_quorum_says_so
+import mantra.composeapp.generated.resources.asked_this_group_to_accept_that_parent
+import mantra.composeapp.generated.resources.s_has_offered_to_adopt_this_group
 import mantra.composeapp.generated.resources.a_subgroup
 import mantra.composeapp.generated.resources.created_you_are_not_a_member
 import mantra.composeapp.generated.resources.certified_not_yet_created
 import mantra.composeapp.generated.resources.no_subgroups_have_been_made_by_this_group
 import mantra.composeapp.generated.resources.add_subgroup
 import mantra.composeapp.generated.resources.subgroups
+import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
@@ -165,6 +171,13 @@ fun ChatRoomDetailScreen(
             activeUserPublicKey = activeUserPublicKey
         )
     )
+
+    // Both read here because both are composable and an onClick lambda is not.
+    // The notifier takes the caller's scope on purpose: an acceptance is shown
+    // while the screen reloads around it, and a message launched in a departing
+    // composable's scope would be cancelled with it.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val acceptedParent = stringResource(Res.string.asked_this_group_to_accept_that_parent)
 
     ScreenStateTransition(chatRoomDetailViewModel.chatRoomDetailUIState) { uiState ->
     when (val chatRoomDetailUIState = uiState) {
@@ -306,6 +319,99 @@ fun ChatRoomDetailScreen(
                                                 )
                                             }
                                         )
+                                    }
+                                }
+                            }
+
+                            // An offer, and it has to read like one. The other
+                            // group's quorum has signed; this group has not, and
+                            // until it does the lineage is unchanged. Rendered as
+                            // a fact about the lineage it would be the consent gap
+                            // reopened from the other end.
+                            chatRoomDetailUIState.adoptionOffers.forEach { offeringChatRoomId ->
+                                item(key = "offer-$offeringChatRoomId") {
+                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.AccountTree,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(
+                                                    text = stringResource(
+                                                        Res.string.s_has_offered_to_adopt_this_group,
+                                                        offeringChatRoomId.take(16)
+                                                    )
+                                                )
+                                            },
+                                            supportingContent = {
+                                                Text(
+                                                    text = stringResource(
+                                                        Res.string
+                                                            .a_group_is_a_subgroup_once_its_own_quorum_says_so
+                                                    ),
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            },
+                                            trailingContent = {
+                                                // Offered to whoever opens the
+                                                // screen and can act, not only to
+                                                // the member who asked -- every
+                                                // step after the ceremony is open
+                                                // to any admin holding a share.
+                                                if (chatRoomDetailUIState.canAddParent) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            chatRoomDetailViewModel.acceptParent(
+                                                                offeringChatRoomId
+                                                            ) { message ->
+                                                                notify(message ?: acceptedParent)
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            stringResource(
+                                                                Res.string.accept_as_a_parent
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Hidden rather than disabled, the way the subgroup
+                            // entry is: a room with no key state has neither half
+                            // of an adoption to work with, and a device with no
+                            // share cannot sign either of them.
+                            if (chatRoomDetailUIState.canAddParent) {
+                                item {
+                                    TextButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                SelectAdoptingGroupRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AccountTree,
+                                            contentDescription = Decorative
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier
+                                                .width(MaterialTheme.spacing.relatedGap)
+                                        )
+
+                                        Text(stringResource(Res.string.add_a_parent_group))
                                     }
                                 }
                             }

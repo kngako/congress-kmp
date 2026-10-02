@@ -99,7 +99,9 @@ import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToC
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomMembersRoute
+import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
+import press.mantra.compose.ui.composable.SelectAdoptingGroupScreen
 import press.mantra.compose.ui.composable.SelectSubgroupAdminsScreen
 import press.mantra.compose.ui.composable.navigation.routes.SelectChatRoomTypeRoute
 import press.mantra.compose.ui.composable.navigation.routes.ShareProfileRoute
@@ -594,6 +596,18 @@ fun MantraNavHost(
                     onNavigateToRoute = { nextRoute ->
                         navController.navigate(route = nextRoute)
                     },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<SelectAdoptingGroupRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SelectAdoptingGroupRoute>()
+
+                SelectAdoptingGroupScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    chatRepository = databaseChatRepository,
                     onNavigateBack = {
                         navController.popBackStack()
                     }

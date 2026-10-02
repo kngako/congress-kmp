@@ -64,6 +64,29 @@ sealed interface ChatRoomDetailUIState {
          * missing and what to do about it.
          */
         val canAddSubgroup: Boolean = false,
+        /**
+         * Groups that have offered to adopt this one and are not parents yet.
+         *
+         * An offer is a certificate signed in the *other* group's room, so only a
+         * member of that group holds one -- which is the overlap an adoption
+         * needs, showing up here as a list that is empty for everybody else.
+         *
+         * Each is verified: the signature was checked against the group it names,
+         * which needs no lookup. What is unverified is nothing; what is
+         * *unsettled* is everything, because an offer is not a lineage until this
+         * group's own quorum says so.
+         */
+        val adoptionOffers: List<HexKey> = emptyList(),
+        /**
+         * Whether this device could put a parent to this group at all.
+         *
+         * The room has to be a Marmot one with a key state -- the certificate
+         * carries the child's threshold key and the acceptance re-announces that
+         * state -- and this device has to hold a share, because both halves are
+         * signatures by this group. The rest of the refusals are the picker's,
+         * where they can name which group and why.
+         */
+        val canAddParent: Boolean = false,
     ): ChatRoomDetailUIState
 
     data class Error(

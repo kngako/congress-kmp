@@ -481,6 +481,33 @@ object SubgroupManager {
     }
 
     /**
+     * Groups that have offered to adopt [chatRoomId] and are not its parents yet,
+     * newest offer first.
+     *
+     * Read off every certificate this device holds, in any room, rather than off
+     * the room this one is -- a certificate about this group is signed in the
+     * *other* group's room, so it is filed against that room and would never be
+     * found by asking this one. Each is checked by [classify], which verifies the
+     * signature against the group it names and needs no lookup to do it.
+     *
+     * Already-parents are dropped, because an offer that has been accepted is
+     * not an offer any more; the lineage is where that shows.
+     */
+    suspend fun offersTo(database: MantraDatabase, chatRoomId: String): List<HexKey> {
+        val accepted = parentsOf(database, chatRoomId).map { it.lowercase() }.toSet()
+
+        return database.groupSignedEventDao()
+            .getByKind(SubgroupBirthCertificateEvent.KIND)
+            .sortedByDescending { it.createdAt }
+            .mapNotNull { signed ->
+                (classify(chatRoomId, signed.toEvent())
+                    as? ArrivingCertificate.OfferToUs)?.parentChatRoomId
+            }
+            .filterNot { it.lowercase() in accepted }
+            .distinctBy { it.lowercase() }
+    }
+
+    /**
      * The groups this profile could offer [childChatRoomId] to, in room order.
      *
      * **The active profile's own rooms, and it cannot be anything else.** A
