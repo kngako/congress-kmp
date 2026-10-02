@@ -491,4 +491,8 @@
     <string name="you_already_have_a_chat_with_s">You already have a chat with %1$s.</string>
     <string name="checking_whether_s_can_receive_messages_here">Checking whether %1$s can receive messages here.</string>
     <string name="s_hasn_t_set_up_messaging_on_mantra_yet">%1$s hasn't set up messaging on Mantra yet. Try again later, or ask them to open Mantra.</string>
+    <string name="load_from_file">Load from file</string>
+    <string name="choose_chapter_files">Choose chapter files</string>
+    <string name="that_file_isn_t_text">That file isn't text. A chapter is markdown or plain text.</string>
+    <string name="that_file_is_too_large">That file is too large to be a chapter.</string>
 </resources>

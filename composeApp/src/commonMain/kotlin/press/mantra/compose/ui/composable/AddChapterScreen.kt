@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,10 +22,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +41,9 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.files.rememberFilePicker
+import press.mantra.compose.text.ChapterNaming
+import press.mantra.compose.text.ChapterText
 import press.mantra.compose.text.Markdown
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
@@ -55,8 +63,13 @@ import mantra.composeapp.generated.resources.paste_the_chapter_s_markdown_blank_
 import mantra.composeapp.generated.resources.propose_chapter
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
 import mantra.composeapp.generated.resources.add_chapter_to
+import mantra.composeapp.generated.resources.choose_chapter_files
+import mantra.composeapp.generated.resources.load_from_file
+import mantra.composeapp.generated.resources.that_file_is_too_large
+import mantra.composeapp.generated.resources.that_file_isn_t_text
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
@@ -106,6 +119,42 @@ fun AddChapterScreen(
             is AddChapterUIState.Loaded -> {
                 val nameFieldState = rememberTextFieldState()
                 val originalTextFieldState = rememberTextFieldState()
+
+                // Read above the handler, not inside it: `rememberNotifier` and
+                // `stringResource` are composable and a click lambda is not.
+                val notify = rememberNotifier(rememberCoroutineScope())
+                val notText = stringResource(Res.string.that_file_isn_t_text)
+                val tooLarge = stringResource(Res.string.that_file_is_too_large)
+
+                // One file, into the form that already works. Picking several
+                // chapters at once is the upload screen's job; here the point is
+                // to stop a chapter having to be pasted through a keyboard.
+                val picker = rememberFilePicker(
+                    title = stringResource(Res.string.choose_chapter_files)
+                ) { files ->
+                    val file = files.firstOrNull() ?: return@rememberFilePicker
+
+                    when (val decoded = ChapterText.decode(file.bytes)) {
+                        is ChapterText.Result.Text -> {
+                            originalTextFieldState.setTextAndPlaceCursorAtEnd(decoded.markdown)
+                            // The filename only fills a name nobody has typed.
+                            // Overwriting one that was typed would make loading a
+                            // file a destructive act on a field beside it.
+                            if (nameFieldState.text.isBlank()) {
+                                nameFieldState.setTextAndPlaceCursorAtEnd(
+                                    ChapterNaming.forFile(file.name, decoded.markdown)
+                                )
+                            }
+                            // No snackbar on success. The text arriving in the
+                            // field below is the feedback, and a message over
+                            // the top of it would say less than the thing
+                            // itself.
+                        }
+
+                        ChapterText.Result.NotText -> notify(notText)
+                        ChapterText.Result.TooLarge -> notify(tooLarge)
+                    }
+                }
 
                 // Live counts / paragraph (chunk) preview from the markdown text.
                 val originalText = originalTextFieldState.text.toString()
@@ -220,6 +269,15 @@ fun AddChapterScreen(
                             label = { Text(stringResource(Res.string.chapter_name)) },
                             placeholder = { Text(stringResource(Res.string.eg_chapter_1_the_beginning)) },
                         )
+
+                        TextButton(onClick = { picker.launch(multiple = false) }) {
+                            Icon(
+                                Icons.Default.UploadFile,
+                                contentDescription = "Load the chapter from a file"
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
+                            Text(stringResource(Res.string.load_from_file))
+                        }
 
                         OutlinedTextField(
                             modifier = Modifier.fillMaxWidth().weight(1f),
