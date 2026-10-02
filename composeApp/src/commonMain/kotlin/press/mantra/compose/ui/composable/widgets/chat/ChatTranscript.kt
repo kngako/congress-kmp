@@ -578,7 +578,8 @@ fun ChatTranscript(
 @Composable
 private fun CeremoniesAwaitingYouNotice(
     ceremonies: List<ChatMessageListViewModel.AwaitingCeremony>,
-    onClick: (dkgSessionId: String) -> Unit,
+    /** Null where the notice stands for more than one, which no single screen can show. */
+    onClick: (dkgSessionId: String?) -> Unit,
 ) {
     val single = ceremonies.singleOrNull()
 
@@ -602,7 +603,11 @@ private fun CeremoniesAwaitingYouNotice(
     }
 
     Card(
-        onClick = { onClick(ceremonies.first().sessionId) },
+        // The one it names when it names one, and the list otherwise. A notice
+        // reading "3 key ceremonies need you" that opened the first of them --
+        // which is what this did -- answered a different question from the one
+        // it asked, and left the other two exactly as hard to find as before.
+        onClick = { onClick(single?.sessionId) },
         modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space50),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,

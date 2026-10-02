@@ -66,6 +66,19 @@ interface DkgRepository {
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
 
     /**
+     * The id of the room a ceremony's key derives, or null while it has no key.
+     *
+     * The one name a ceremony and the room it makes have in common, and the only
+     * way to tell two of a parent's subgroups apart in anything written about
+     * the room rather than about the ceremony -- a birth certificate names the
+     * child, not the ceremony that produced it.
+     *
+     * Null is the ordinary answer rather than a failure: a ceremony has no key
+     * until it finishes, and every caller here is watching from before that.
+     */
+    suspend fun roomDerivedBy(dkgSessionId: String): String?
+
+    /**
      * Opens a ritual in [localChatRoom], making this device the coordinator.
      *
      * [parentChatRoomId] says what the ceremony is for when it is for a subgroup.
@@ -212,6 +225,8 @@ interface DkgRepository {
             override suspend fun roomAwaitingCreation(session: DkgSession): String? = null
 
             override suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession? = null
+
+            override suspend fun roomDerivedBy(dkgSessionId: String): String? = null
 
             override suspend fun proposeRitual(
                 localChatRoom: LocalChatRoom,

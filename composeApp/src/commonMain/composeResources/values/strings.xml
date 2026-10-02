@@ -501,4 +501,17 @@
     <string name="accept_as_a_parent">Accept as a parent</string>
     <string name="a_group_is_a_subgroup_once_its_own_quorum_says_so">A group is a subgroup of another only once its own quorum says so. Accepting asks this group to agree what it signs with again, naming them.</string>
     <string name="asked_this_group_to_accept_that_parent">Asked this group to accept that parent</string>
+    <!-- Every key ceremony a room holds, pending first: the list, and where each one has got to. -->
+    <string name="key_ceremonies">Key ceremonies</string>
+    <string name="this_group_has_held_no_key_ceremony">This group has not held a key ceremony.</string>
+    <string name="the_groups_shared_key">The group's shared key</string>
+    <string name="a_subgroups_key">A subgroup's key</string>
+    <string name="a_subgroup_named_s">A subgroup: %1$s</string>
+    <string name="waiting_for_members_to_join">Waiting for members to join.</string>
+    <string name="waiting_for_everyone_to_commit_their_part">Waiting for everyone to commit their part.</string>
+    <string name="waiting_for_everyone_to_confirm_the_result">Waiting for everyone to confirm the result.</string>
+    <string name="the_group_has_a_key_from_this_ceremony">The group has a key from this ceremony.</string>
+    <string name="abandoned_no_key_was_created">Abandoned. No key was created.</string>
+    <string name="s_of_s_members_will_sign_with_it">%1$s of %2$s members will sign with it</string>
+    <string name="set_up_a_shared_key">Set up a shared key</string>
 </resources>

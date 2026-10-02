@@ -38,6 +38,7 @@ import press.mantra.compose.ui.composable.ChatRoomDetailScreen
 import press.mantra.compose.ui.composable.ChatRoomMessagingScreen
 import press.mantra.compose.ui.composable.CreateProfileScreen
 import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
+import press.mantra.compose.ui.composable.DkgRitualListScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
@@ -140,6 +141,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
@@ -1195,6 +1197,22 @@ fun MantraNavHost(
                     frostSigningRepository = databaseFrostSigningRepository,
                     onNavigateBack = {
                         navController.popBackStack()
+                    }
+                )
+            }
+            composable<DkgRitualListRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DkgRitualListRoute>()
+
+                DkgRitualListScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    chatRepository = databaseChatRepository,
+                    dkgRepository = databaseDkgRepository,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRoute = { ceremonyRoute ->
+                        navController.navigate(route = ceremonyRoute)
                     }
                 )
             }

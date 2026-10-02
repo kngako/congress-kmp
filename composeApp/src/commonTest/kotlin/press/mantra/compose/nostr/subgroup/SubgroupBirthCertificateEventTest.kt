@@ -436,6 +436,152 @@ class SubgroupBirthCertificateEventTest {
         assertNull(SubgroupManager.classify(subgroupChatRoomId, aboutSomebodyElse))
     }
 
+    // ---- `addresses`: the half that can be asked of a proposal ------------
+    //
+    // The ceremony screen has to tell one *in-flight* certificate signing from
+    // another in the parent's room, and a parent certifies every subgroup it
+    // ever makes from that one room. `certifies` cannot answer it: it ends on a
+    // signature by the parent's quorum, which is exactly what the screen is
+    // waiting for. `addresses` is the structural half, and the only thing worth
+    // asserting about it is where it stops.
+
+    @Test
+    fun `an unsigned proposal addresses its child, and certifies nothing`() {
+        // What the ceremony screen is actually holding: the event as it was
+        // assembled, before anybody signed it. Any string in `sig` serves --
+        // the point is that no quorum has put one there.
+        val proposal = certificate(signature = "0".repeat(128))
+
+        assertTrue(
+            SubgroupBirthCertificateEvent.addresses(
+                event = proposal,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            ),
+            "the screen could not tell which subgroup its own proposal is about"
+        )
+
+        assertFalse(
+            SubgroupBirthCertificateEvent.certifies(
+                event = proposal,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            ),
+            "an unsigned proposal is being read as a parent's certificate"
+        )
+    }
+
+    @Test
+    fun `a forgery by another group addresses the pair it names, and certifies nothing`() {
+        // The reason `addresses` must never decide a lineage: anybody can author
+        // an event naming any pair, and this says yes to it. The guard is that
+        // nothing downstream of a lineage asks `addresses` -- only the screen
+        // deciding which of its own room's signings to draw does.
+        val forged = certificate(author = childMaterial)
+
+        assertTrue(
+            SubgroupBirthCertificateEvent.addresses(
+                event = forged,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+
+        assertFalse(
+            SubgroupBirthCertificateEvent.certifies(
+                event = forged,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+    }
+
+    @Test
+    fun `a sibling's proposal is not addressed to this child`() {
+        // Two subgroups of one parent, which is the case the screen exists to
+        // tell apart. The sibling's proposal is a real, well-formed certificate
+        // request; it is simply about somebody else.
+        val siblingRoomId = SharedKeyDerivation
+            .marmotGroupId(strangerMaterial.thresholdPublicKey.value.toHex(), path)
+
+        val sibling = certificate(
+            content = siblingRoomId,
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = siblingRoomId,
+                parentChatRoomId = parentChatRoomId,
+                thresholdPublicKey = strangerMaterial.thresholdPublicKey.value.toHex(),
+                adminPublicKeys = admins,
+                name = "Another team",
+                path = path
+            )
+        )
+
+        assertFalse(
+            SubgroupBirthCertificateEvent.addresses(
+                event = sibling,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            ),
+            "one subgroup's rung is following a sibling's proposal"
+        )
+
+        // And it is addressed to the sibling, so the sibling's own screen finds
+        // it -- the two are told apart rather than both being refused.
+        assertTrue(
+            SubgroupBirthCertificateEvent.addresses(
+                event = sibling,
+                subgroupChatRoomId = siblingRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+    }
+
+    @Test
+    fun `a proposal naming another parent is not addressed by this one`() {
+        val fromElsewhere = certificate(
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = SharedKeyDerivation
+                    .marmotGroupId(strangerMaterial.thresholdPublicKey.value.toHex(), path),
+                thresholdPublicKey = childKey,
+                adminPublicKeys = admins,
+                name = name,
+                path = path
+            )
+        )
+
+        assertFalse(
+            SubgroupBirthCertificateEvent.addresses(
+                event = fromElsewhere,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+    }
+
+    @Test
+    fun `everything certifies addresses, so the weaker one cannot be the stricter`() {
+        // `certifies` calls `addresses` and adds to it, and this is what keeps
+        // that true: a change that let one pass where the other refuses would
+        // mean two different answers to "which child is this about".
+        val valid = certificate()
+
+        assertTrue(
+            SubgroupBirthCertificateEvent.certifies(
+                event = valid,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+        assertTrue(
+            SubgroupBirthCertificateEvent.addresses(
+                event = valid,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+    }
+
     private fun certificate(
         content: String = subgroupChatRoomId,
         tags: Array<Array<String>> = SubgroupBirthCertificateEvent.assembleTags(

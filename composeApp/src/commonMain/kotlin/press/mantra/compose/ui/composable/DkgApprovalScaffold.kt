@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,7 +101,7 @@ internal fun DkgApprovalScaffold(
             )
         }
     ) { padding ->
-        when (val state = dkgRitualViewModel.dkgRitualUIState) {
+        when (val state = dkgRitualViewModel.dkgRitualUIState.collectAsState().value) {
             is DkgRitualUIState.Loading -> Column(
                 modifier = Modifier.fillMaxWidth().padding(padding).readableContent().padding(MaterialTheme.spacing.space250),
                 horizontalAlignment = Alignment.CenterHorizontally
