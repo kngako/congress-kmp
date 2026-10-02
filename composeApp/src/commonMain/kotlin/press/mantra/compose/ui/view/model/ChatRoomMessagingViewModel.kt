@@ -9,20 +9,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import press.mantra.compose.database.GENESIS_AT
-import press.mantra.compose.database.model.NegentropySynchronizeRequest
-import press.mantra.compose.database.model.types.SynchronizationFilter
-import press.mantra.compose.nostr.Relays
+import press.mantra.compose.nostr.DirectMessagePeerSync
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.marmot.mip00KeyPackages.KeyPackageEvent
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
-import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
@@ -73,44 +67,23 @@ class ChatRoomMessagingViewModel(
         // Get ChatRoomById
         viewModelScope.launch(Dispatchers.IO) {
 
-            // Check if we have a chat with activeUserPublicKey and chatRoomId (pubkey) as participants
-            val participants = chatRepository.getAllParticipantsWithPubKey(chatRoomId)
-
-            participants.forEach { participant ->
-                chatRepository.getChatRoomByIdentifier(participant.chatRoomId)?.let { localChatRoom ->
-                    // TODO: Check that chatRoom is not a group chat...
-                    if (localChatRoom.localParticipants.size == 1) {
-                        // This is a chat with self...
-                        // TODO: navigateToTheChat...
-                        viewModelScope.launch(Dispatchers.Main) {
-                             onNavigateToChat.invoke(
-                                ChatRoomMessagingRoute(
-                                    activeUserPublicKey = activeUserPublicKey,
-                                    chatRoomId = localChatRoom.chatRoom.id,
-                                    relayHint = relayHint
-                                )
-                            )
-                        }
-                        return@launch
-
-                    } else if (localChatRoom.localParticipants.size == 2) {
-                        val activeUserParticipant = localChatRoom.localParticipants.find { localParticipant -> localParticipant.participant.participantPublicKey == activeUserPublicKey }
-
-                        if (activeUserParticipant != null) {
-                            // We have found the chat we are looking for...
-                            viewModelScope.launch(Dispatchers.Main) {
-                                onNavigateToChat.invoke(
-                                    ChatRoomMessagingRoute(
-                                        activeUserPublicKey = activeUserPublicKey,
-                                        chatRoomId = localChatRoom.chatRoom.id,
-                                        relayHint = relayHint
-                                    )
-                                )
-                            }
-                            return@launch
-                        }
-                    }
+            // A conversation with this person that already exists is the one to open. The
+            // rule -- the two of us and nobody else, or yourself alone -- is the
+            // repository's now, and the profile preview reads the same one.
+            chatRepository.findDirectMessageRoom(
+                userPublicKey = activeUserPublicKey,
+                peerPublicKey = chatRoomId
+            )?.let { localChatRoom ->
+                viewModelScope.launch(Dispatchers.Main) {
+                    onNavigateToChat.invoke(
+                        ChatRoomMessagingRoute(
+                            activeUserPublicKey = activeUserPublicKey,
+                            chatRoomId = localChatRoom.chatRoom.id,
+                            relayHint = relayHint
+                        )
+                    )
                 }
+                return@launch
             }
 
             // Observe BOTH halves of what we need. Watching only the profile meant a key
@@ -123,7 +96,7 @@ class ChatRoomMessagingViewModel(
             val lookupTimeout = viewModelScope.launch {
                 delay(RELAY_LOOKUP_TIMEOUT)
                 chatRoomMessagingUIState = ChatRoomMessagingUIState.Error(
-                    "Couldn't find this profile's chat details on the relays yet. They may not have finished setting up Torch."
+                    "Couldn't find this profile's chat details on the relays yet. They may not have finished setting up Mantra."
                 )
             }
 
@@ -133,7 +106,7 @@ class ChatRoomMessagingViewModel(
             ) { profile, keyPackage -> profile to keyPackage }
                 .distinctUntilChanged()
                 .collect { (profile, keyPackageEvent) ->
-                    val profileIsResolved = profile != null && profile.createdAt > GENESIS_AT
+                    val profileIsResolved = profile?.isResolved() == true
 
                     if (!profileIsResolved || keyPackageEvent == null) {
                         // Whatever is missing, ask the relays for it. This used to be queued
@@ -177,35 +150,13 @@ class ChatRoomMessagingViewModel(
 
     /**
      * Ask the DM relays for everything needed to start a chat with [chatRoomId] (a pubkey here):
-     * the peer's metadata, their MLS key package and their DM relay list.
+     * the peer's metadata, their MLS key package and their DM relay list. The filter and
+     * the reasons behind it live in `DirectMessagePeerSync`, which the profile preview
+     * queues too.
      */
     private suspend fun scheduleProfileAndKeyPackageSync() {
-        val synchronizationFilter = SynchronizationFilter(
-            kinds = arrayOf(
-                MetadataEvent.KIND,
-                KeyPackageEvent.KIND,
-                ChatMessageRelayListEvent.KIND
-            ),
-            authors = arrayOf(
-                chatRoomId
-            )
-            // No `limit`: it is ignored on the negentropy path but honoured on the REQ
-            // fallback, where `limit = 1` returned a single newest event across all three
-            // kinds — almost always the kind-0 — so the key package never arrived.
-        )
         nostrRepository.queueNegentropySynchronizeRequest(
-            Relays.DefaultDMRelayList.map { relay ->
-                NegentropySynchronizeRequest(
-                    id = NegentropySynchronizeRequest.computeId(
-                        relay.url,
-                        synchronizationFilter = synchronizationFilter
-                    ),
-                    purpose = "initiate-chat",
-                    synchronizationFilter = synchronizationFilter,
-                    relayURL = relay.url,
-                    level = 0
-                )
-            }
+            DirectMessagePeerSync.requests(chatRoomId)
         )
     }
 

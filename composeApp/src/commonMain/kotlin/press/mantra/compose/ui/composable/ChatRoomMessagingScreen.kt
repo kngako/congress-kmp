@@ -52,7 +52,7 @@ import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomMessagingViewModel
 import press.mantra.compose.ui.view.state.ChatRoomMessagingUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -69,6 +69,7 @@ import mantra.composeapp.generated.resources.private_message_to
 import mantra.composeapp.generated.resources.private_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -86,6 +87,13 @@ fun ChatRoomMessagingScreen(
     dkgRepository: DkgRepository,
     onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
+    /**
+     * `null` when this is the home screen's detail pane rather than a pushed route. In
+     * the pane the room list is beside the transcript and there is nothing to pop, so
+     * the bar draws no back button -- M3's list-detail has the list do that job. On a
+     * phone the same screen is a destination, and the button is what leaves it.
+     */
+    onNavigateBack: (() -> Unit)?,
 ) {
     val chatRoomMessagingViewModel: ChatRoomMessagingViewModel = viewModel(
         factory = ChatRoomMessagingViewModel.factory(
@@ -132,6 +140,9 @@ fun ChatRoomMessagingScreen(
                         TopAppBar(
                             title = {
                                 chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
+                            },
+                            navigationIcon = {
+                                if (onNavigateBack != null) NavigateBackButton(onNavigateBack)
                             },
                             actions = {
                                 IconButton(
@@ -466,7 +477,7 @@ fun ChatRoomMessagingScreen(
 @ConformancePreviews
 @Composable
 private fun ChatRoomMessagingScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -491,7 +502,8 @@ private fun ChatRoomMessagingScreenPreview() {
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
                 dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
                 onNavigateToRouteAndPopUpInclusive = {},
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

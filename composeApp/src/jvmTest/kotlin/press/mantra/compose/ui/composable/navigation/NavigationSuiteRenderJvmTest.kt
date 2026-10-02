@@ -19,7 +19,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRou
 import press.mantra.compose.ui.composable.navigation.routes.HomeRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
 import press.mantra.compose.ui.theme.Breakpoint
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import kotlin.test.Test
 
 /**
@@ -131,7 +131,7 @@ class NavigationSuiteRenderJvmTest {
         profileNostrEventId: String?,
         navController: NavHostController = rememberNavController(),
     ) {
-        TorchTheme {
+        MantraTheme {
             MantraNavigationSuite(
                 navController = navController,
                 breakpoint = Breakpoint.Large,

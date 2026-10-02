@@ -12,12 +12,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -32,7 +32,7 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.AddMemberToChatRoomConfirmationViewModel
 import press.mantra.compose.ui.view.state.AddMemberToChatRoomConfirmationUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -43,12 +43,15 @@ import mantra.composeapp.generated.resources.direct_message_detail
 import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
 import mantra.composeapp.generated.resources.invite
 import mantra.composeapp.generated.resources.invite_2
+import mantra.composeapp.generated.resources.invite_new_member
 import mantra.composeapp.generated.resources.once_invited_will_be_able_to_receive_and
 import mantra.composeapp.generated.resources.to_join_the_chat_room
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -62,6 +65,7 @@ fun AddMemberToChatRoomConfirmationScreen(
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     onInviteSent: () -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val addMemberToChatRoomConfirmationViewModel: AddMemberToChatRoomConfirmationViewModel = viewModel(
         factory = AddMemberToChatRoomConfirmationViewModel.factory(
@@ -94,26 +98,23 @@ fun AddMemberToChatRoomConfirmationScreen(
             is AddMemberToChatRoomConfirmationUIState.Loaded -> {
                 Scaffold(
                     snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-    //                topBar = {
-    //                    TopAppBar(
-    //                        title = {
-    //                            val title = if (addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject != null) {
-    //                                "Invite new member to ${addMemberToChatRoomConfirmationUIState.localChatRoom.chatRoom.subject}"
-    //                            } else {
-    //                                "Invite new member to chat"
-    //                            }
-    //                            Text(
-    //                                text = title,
-    //                            )
-    //                        },
-    //                        actions = {
-    //                        }
-    //                    )
-    //                }
+                    topBar = {
+                        // The body already names who is being invited to which room,
+                        // so the bar says only what the screen is for.
+                        TopAppBar(
+                            title = { Text(stringResource(Res.string.invite_new_member)) },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
+                        )
+                    },
                     bottomBar = {
                         BottomAppBar(
                             floatingActionButton = {
-                                ExtendedFloatingActionButton(
+                                ExtendedFab(
+                                    label = stringResource(
+                                        Res.string.invite_2,
+                                        addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()
+                                    ),
+                                    icon = { Icon(Icons.Default.Add, contentDescription = "Invite new member") },
                                     onClick = {
                                         addMemberToChatRoomConfirmationViewModel.inviteToChatRoom(
                                             localChatRoom = addMemberToChatRoomConfirmationUIState.localChatRoom,
@@ -122,14 +123,7 @@ fun AddMemberToChatRoomConfirmationScreen(
                                             onInviteSent = onInviteSent
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "Invite new member"
-                                    )
-
-                                    Text(stringResource(Res.string.invite_2, addMemberToChatRoomConfirmationUIState.profile.humanReadableNameOrPubkey()))
-                                }
+                                )
                             },
                             actions = {
 
@@ -217,7 +211,7 @@ fun AddMemberToChatRoomConfirmationScreen(
 @ConformancePreviews
 @Composable
 private fun ChatRoomDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -227,7 +221,7 @@ private fun ChatRoomDetailScreenPreview() {
                 chatRoomId = "publicKey",
                 relayHint = null,
                 initialChatRoomDetailUIState =
-//                    AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event.\n\nTry again later or tell Person to use Torch."),
+//                    AddMemberToChatRoomConfirmationUIState.Error("Profile missing key package event.\n\nTry again later or tell Person to use Mantra."),
                     AddMemberToChatRoomConfirmationUIState.Loaded(
                     localChatRoom = LocalChatRoom(
                         chatRoom = ChatRoom(
@@ -252,7 +246,8 @@ private fun ChatRoomDetailScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onInviteSent = {}
+                onInviteSent = {},
+                onNavigateBack = {},
             )
         }
     }

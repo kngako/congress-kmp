@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -35,7 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import mantra.composeapp.generated.resources.Res
@@ -59,10 +58,12 @@ import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.ConformancePreviews
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
 import press.mantra.compose.ui.view.model.SelectSubgroupAdminsViewModel
@@ -81,17 +82,18 @@ fun SelectSubgroupAdminsScreen(
     activeUserPublicKey: HexKey,
     parentChatRoomId: String,
     initialUIState: SelectSubgroupAdminsUIState = SelectSubgroupAdminsUIState.Loading,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
-    onNavigateToRoute: (Route) -> Unit
+    onNavigateToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val viewModel: SelectSubgroupAdminsViewModel = viewModel(
         factory = SelectSubgroupAdminsViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
             parentChatRoomId = parentChatRoomId,
             initialUIState = initialUIState,
-            activeWalletStateFlow = activeWalletStateFlow,
+            activeIdentityStateFlow = activeIdentityStateFlow,
             chatRepository = chatRepository,
             dkgRepository = dkgRepository
         )
@@ -115,10 +117,15 @@ fun SelectSubgroupAdminsScreen(
             is SelectSubgroupAdminsUIState.Loaded -> Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
-                    TopAppBar(title = { Text(stringResource(Res.string.new_subgroup)) })
+                    TopAppBar(
+                        title = { Text(stringResource(Res.string.new_subgroup)) },
+                        navigationIcon = { NavigateBackButton(onNavigateBack) },
+                    )
                 },
                 floatingActionButton = {
-                    ExtendedFloatingActionButton(
+                    ExtendedFab(
+                        label = stringResource(Res.string.start_the_key_ceremony),
+                        icon = { Icon(Icons.Default.AccountTree, contentDescription = Decorative) },
                         onClick = {
                             scope.launch {
                                 // The refusal is recomputed rather than cached on
@@ -132,9 +139,7 @@ fun SelectSubgroupAdminsScreen(
                                     viewModel.confirm(onNavigateToRoute)
                                 }
                             }
-                        },
-                        icon = { Icon(Icons.Default.AccountTree, contentDescription = Decorative) },
-                        text = { Text(stringResource(Res.string.start_the_key_ceremony)) }
+                        }
                     )
                 }
             ) { innerPadding ->
@@ -326,15 +331,16 @@ private fun QuorumStepper(
 @ConformancePreviews
 @Composable
 private fun SelectSubgroupAdminsScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             SelectSubgroupAdminsScreen(
                 activeUserPublicKey = "a".repeat(64),
                 parentChatRoomId = "b".repeat(64),
-                activeWalletStateFlow = kotlinx.coroutines.flow.MutableStateFlow(null),
+                activeIdentityStateFlow = kotlinx.coroutines.flow.MutableStateFlow(null),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

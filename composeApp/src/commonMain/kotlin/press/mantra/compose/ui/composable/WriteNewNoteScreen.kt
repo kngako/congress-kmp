@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -46,6 +48,7 @@ import kotlin.time.Clock
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.new_note
 import mantra.composeapp.generated.resources.next
 import mantra.composeapp.generated.resources.something_went_wrong_and_we_were_unable_to_3
 import mantra.composeapp.generated.resources.the_above_will_be_your_new_note
@@ -57,10 +60,11 @@ import mantra.composeapp.generated.resources.what_vibrations_do_you_want_to_send
 import mantra.composeapp.generated.resources.replying_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.ConformancePreviews
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WriteNewNoteScreen(
     activeUserPublicKey: HexKey,
@@ -69,6 +73,7 @@ fun WriteNewNoteScreen(
     quotedNostrEventId: HexKey?,
     onNostrEventPublished: () -> Unit,
     onNavigateToNostrEvent: (HexKey) -> Unit,
+    onNavigateBack: () -> Unit,
     nostrRepository: press.mantra.compose.repository.NostrRepository
 ) {
     val writeNewNoteViewModel: press.mantra.compose.ui.view.model.WriteNewNoteViewModel =  viewModel (
@@ -84,7 +89,17 @@ fun WriteNewNoteScreen(
     // keyboard covers whatever is being typed into.
     Scaffold(
         snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-        modifier = Modifier.imePadding()) { innerPadding ->
+        modifier = Modifier.imePadding(),
+        topBar = {
+            // "New note" whether it is a reply, a quote or neither: the body says which
+            // above the field. Back pops the route and drops the draft, which is what
+            // the platform's own back does on this screen already.
+            TopAppBar(
+                title = { Text(stringResource(Res.string.new_note)) },
+                navigationIcon = { NavigateBackButton(onNavigateBack) },
+            )
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
             .readableContent()
@@ -468,7 +483,7 @@ fun WriteNewNoteScreen(
 @ConformancePreviews
 @Composable
 private fun WriteNewNoteScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -522,6 +537,7 @@ It has survived not only five centuries, but also the leap into electronic types
                     ),
                 onNostrEventPublished = {},
                 onNavigateToNostrEvent = {},
+                onNavigateBack = {},
                 nostrRepository = press.mantra.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY
             )
         }

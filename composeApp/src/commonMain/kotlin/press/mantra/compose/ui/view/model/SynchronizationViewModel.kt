@@ -22,6 +22,7 @@ import press.mantra.compose.repository.RelayRepository
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.negentropy.Negentropy
 import com.vitorpamplona.negentropy.storage.StorageVector
+import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
@@ -29,8 +30,8 @@ import com.vitorpamplona.quartz.nip01Core.relay.filters.Filter
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
-import fr.acinq.phoenix.data.ActiveWallet
-import fr.acinq.phoenix.managers.nostrPrivateKey
+import press.mantra.compose.identity.Identity
+import press.mantra.compose.identity.toKeyPair
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,15 +52,17 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.NonCancellable
+import com.vitorpamplona.quartz.nip65RelayList.AdvertisedRelayListEvent
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import press.mantra.compose.nostr.SignInSync
 import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class SynchronizationViewModel(
-    val activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    val activeIdentityStateFlow: StateFlow<Identity?>,
     val nostrRepository: NostrRepository,
     val chatRepository: ChatRepository,
     val relayRepository: RelayRepository,
@@ -67,7 +70,7 @@ class SynchronizationViewModel(
 ): ViewModel() {
 
     val relaysSocketManager = RelaysSocketManager(
-        activeWalletStateFlow = activeWalletStateFlow,
+        activeIdentityStateFlow = activeIdentityStateFlow,
         nostrSocketClientFactory = DefaultNostrSocketClientFactory,
         cachingImportRepository = CachingImportRepository.NO_OP_CACHING_IMPORT_REPOSITORY,
         relayRepository = relayRepository,
@@ -130,7 +133,7 @@ class SynchronizationViewModel(
         private val mutex = Mutex()
 
         fun factory(
-            activeWalletStateFlow: StateFlow<ActiveWallet?>,
+            activeIdentityStateFlow: StateFlow<Identity?>,
             nostrRepository: NostrRepository,
             chatRepository: ChatRepository,
             relayRepository: RelayRepository,
@@ -138,7 +141,7 @@ class SynchronizationViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SynchronizationViewModel(
-                    activeWalletStateFlow = activeWalletStateFlow,
+                    activeIdentityStateFlow = activeIdentityStateFlow,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
                     relayRepository = relayRepository,
@@ -188,12 +191,12 @@ class SynchronizationViewModel(
 
     init {
         scope.launch {
-            activeWalletStateFlow.collectLatest { activeWallet ->
-                logger.d("Synchronization ActiveWallet: $activeWallet")
-                activeWallet?.business?.walletManager?.keyManager?.value?.nostrPrivateKey()?.let { nostrPrivateKey ->
-                    val keyPair = KeyPair(
-                        privKey = nostrPrivateKey.value.toByteArray()
-                    )
+            activeIdentityStateFlow.collectLatest { identity ->
+                logger.d("Synchronization identity: $identity")
+                identity?.let {
+                    // Through the helper, never by hand: a read-only identity has no private
+                    // key, and quartz's KeyPair given neither key generates a fresh one.
+                    val keyPair = identity.toKeyPair()
 
                     // Anything a previous run left mid-flight is ours to retry: it was flipped to
                     // "processing" before the publish and nothing observes that status, so
@@ -214,13 +217,31 @@ class SynchronizationViewModel(
                     // throw in one must not take the other two down with it for the rest of the
                     // session. Each pump also guards its own per-request body (see guardPump).
                     supervisorScope {
-                        launch(Dispatchers.IO) { observePendingBroadcastNostrEventRequests(keyPair) }
                         launch(Dispatchers.IO) { observePendingSyncNostrEventRequests(keyPair) }
                         launch(Dispatchers.IO) { observePendingNegentropySynchronizeRequests(keyPair) }
-                        // Runs until cancelled rather than draining a queue, but it belongs
-                        // here for the same reason the pumps do: it needs the active wallet's
-                        // key pair, and a wallet switch must tear it down.
-                        launch(Dispatchers.IO) { liveSubscriptionManager.observe(keyPair) }
+                        // A read-only identity runs the two pumps that read and neither of
+                        // the two that write. The rule Phase 5 of docs/npub-sign-in.md
+                        // leans on: such an identity never sends anything to a relay, not a
+                        // signature and not a copy. The broadcast pump would find nothing --
+                        // nothing is ever signed -- and the live subscriptions are the
+                        // gift-wrap inbox and the group-membership follow, both fetching
+                        // things this identity cannot open. Not asking is not an
+                        // optimisation; it is the identity not asking for what it cannot use.
+                        if (identity.canSign) {
+                            // The wraps that arrived while another profile was open, or
+                            // while this one held no key: opened now, before the live inbox
+                            // starts, so the two are not opening the same wrap at once. Both
+                            // are idempotent by event id; the order is about not doing the
+                            // work twice. See docs/multiple-profiles.md, Phase 6.
+                            runCatching { nostrRepository.reopenInbox(keyPair) }
+                                .onSuccess { if (it > 0) logger.i { "Reopened $it gift wrap(s) that arrived while this profile was not open" } }
+                                .onFailure { logger.e("Could not reopen the inbox", it) }
+                            launch(Dispatchers.IO) { observePendingBroadcastNostrEventRequests(keyPair) }
+                            // Runs until cancelled rather than draining a queue, but it
+                            // belongs here for the same reason the pumps do: it needs the
+                            // active wallet's key pair, and a wallet switch must tear it down.
+                            launch(Dispatchers.IO) { liveSubscriptionManager.observe(keyPair) }
+                        }
                     }
                 }
             }
@@ -233,7 +254,8 @@ class SynchronizationViewModel(
     ): Unit = coroutineScope {
         logger.i { "observePendingSyncNostrEventRequests" }
 
-        nostrRepository.observePendingSynchronizeNostrEventRequests().distinctUntilChanged().collect { synchronizeNostrEventRequestOrNull ->
+        // This identity's requests and the ones nobody owns; another identity's wait for it.
+        nostrRepository.observePendingSynchronizeNostrEventRequests(keyPair.pubKey.toHexKey()).distinctUntilChanged().collect { synchronizeNostrEventRequestOrNull ->
             synchronizeNostrEventRequestOrNull?.let { synchronizeNostrEventRequest ->
                 guardPump("sync request ${synchronizeNostrEventRequest.id}") {
                     logger.i("synchronizeNostrEventRequest: $synchronizeNostrEventRequest")
@@ -279,6 +301,7 @@ class SynchronizationViewModel(
                                                     activeKeyPair = keyPair
                                                     // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                                 )
+                                                followSignInHop(it, synchronizeNostrEventRequest)
                                             }
                                         }
                                     }
@@ -293,6 +316,7 @@ class SynchronizationViewModel(
                                                 activeKeyPair = keyPair
                                                 // TODO: + Relays.eventPublishRelaySet.map { normalizedRelayUrl -> normalizedRelayUrl.url }
                                             )
+                                            followSignInHop(nostrEvent, synchronizeNostrEventRequest)
                                         }
                                     }
                                     is NostrIncomingMessage.EoseMessage -> {
@@ -330,6 +354,16 @@ class SynchronizationViewModel(
                                         synchronizeNostrEventRequest.relayURL
                                     )
                                 }
+                                // And write down that the relay has finished, on every exit
+                                // too. Before this a request that got EOSE with nothing stayed
+                                // at `sent` for good, and "still searching" and "searched,
+                                // found nothing" were the same row -- which is why the screen
+                                // waiting on a sign-in sync could never say the second thing.
+                                // Conditional on `sent` in the DAO: an event handler that has
+                                // already moved the row to `processed` wins.
+                                runCatching {
+                                    nostrRepository.synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest)
+                                }.onFailure { logger.e("Failed to record sync completion", it) }
                             }
                         }
                       }
@@ -339,12 +373,50 @@ class SynchronizationViewModel(
         }
     }
 
+    /**
+     * Sign-in syncs this session has already followed a hop for, by account. Every
+     * bootstrap relay that holds the user's kind 10002 answers with it, and one hop per
+     * account is enough.
+     */
+    private val signInHopsFollowed = mutableSetOf<Long>()
+    private val signInHopsMutex = Mutex()
+
+    /**
+     * The one hop the sign-in sync follows. A level-0 request that brings back the user's
+     * own kind 10002 is asked again, at level 1, at the relays that list says they write
+     * to, less the bootstrap set already asked. That is the outbox model doing what it is
+     * for: the indexers know *where* the user publishes, and the user's own relays are
+     * where the rest of their lists are authoritative. One hop only -- a level-1 request
+     * never re-enters here -- because past the user's own relays lies the feed, not the
+     * profile.
+     */
+    private suspend fun followSignInHop(
+        nostrEvent: press.mantra.compose.database.model.NostrEvent,
+        request: press.mantra.compose.database.model.SynchronizeNostrEventRequest,
+    ) {
+        if (request.purpose != SignInSync.PURPOSE || request.level != 0) return
+        if (nostrEvent.kind != AdvertisedRelayListEvent.KIND) return
+        val unsignedNostrEventId = request.unsignedNostrEventId ?: return
+        val author = request.synchronizationFilters.firstOrNull()?.authors?.firstOrNull() ?: return
+        if (!nostrEvent.pubKey.equals(author, ignoreCase = true)) return
+
+        val relays = SignInSync.writeRelaysOf(nostrEvent.tags, alreadyAsked = SignInSync.bootstrapRelays)
+        if (relays.isEmpty()) return
+        val isFirst = signInHopsMutex.withLock { signInHopsFollowed.add(unsignedNostrEventId) }
+        if (!isFirst) return
+
+        logger.i { "Following the sign-in relay list of $author to ${relays.size} relay(s)" }
+        nostrRepository.queueSynchronizeNostrEvent(
+            SignInSync.requests(unsignedNostrEventId, author, relays, level = 1)
+        )
+    }
+
     private suspend fun observePendingNegentropySynchronizeRequests(
         keyPair: KeyPair
     ): Unit = coroutineScope {
         logger.i { "observePendingNegentropySynchronizeRequests" }
 
-        nostrRepository.observePendingNegentropySynchronizeRequests().distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
+        nostrRepository.observePendingNegentropySynchronizeRequests(keyPair.pubKey.toHexKey()).distinctUntilChanged().collect { negentropySynchronizeRequestOrNull ->
                 negentropySynchronizeRequestOrNull?.let { negentropySynchronizeRequest ->
                   guardPump("negentropy request ${negentropySynchronizeRequest.id}") {
                     mutex.withLock {

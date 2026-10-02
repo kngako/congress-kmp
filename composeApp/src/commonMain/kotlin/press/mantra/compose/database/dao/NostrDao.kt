@@ -29,8 +29,10 @@ import press.mantra.compose.exceptions.MarmotMissingKeyPackageBundleException
 import press.mantra.compose.exceptions.MarmotMissingNostrGroupDataExtension
 import press.mantra.compose.exceptions.MarmotNotMemberOfChatGroupException
 import press.mantra.compose.exceptions.MarmotWelcomeEventMissingKeyPackageEventIdException
+import press.mantra.compose.extensions.shortened
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.ChillDkgRitualManager
+import press.mantra.compose.nostr.Relays
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.managers.FrostSigningManager
@@ -52,6 +54,7 @@ import com.vitorpamplona.quartz.marmot.mls.messages.KeyPackageBundle
 import com.vitorpamplona.quartz.marmot.mls.messages.MlsKeyPackage
 import com.vitorpamplona.quartz.marmot.mls.tree.Credential
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
@@ -144,6 +147,58 @@ abstract class NostrDao(
                 )
             )
         }
+    }
+
+    /**
+     * Opens every gift wrap addressed to [activeKeyPair] that the device stored and could
+     * not open at the time -- because another identity fetched it, or because this one
+     * held no key yet. Phase 6 of docs/multiple-profiles.md.
+     *
+     * [storeNostrEvent] never indexes an event it already holds, so a wrap that arrived
+     * under the wrong key would otherwise stay closed for good: the live subscription
+     * re-receives it, the DAO sees a known id, and returns. This runs the wrap through
+     * [indexNostrEvent] again, under the right key, one transaction per wrap so that a
+     * wrap that cannot be opened rolls back its own changes and the next is still tried.
+     * One pass: wraps do not depend on one another, so a wrap that cannot be opened now
+     * will not be helped by opening its neighbours.
+     *
+     * @return how many were opened.
+     */
+    open suspend fun reopenInbox(activeKeyPair: KeyPair): Int {
+        if (activeKeyPair.privKey == null) return 0
+        val me = activeKeyPair.pubKey.toHex()
+        val unopened = database.giftWrapMessageDao().getUnopenedAddressedTo(me)
+        if (unopened.isEmpty()) return 0
+        logger.i("Reopening ${unopened.size} gift wrap(s) addressed to $me")
+
+        var opened = 0
+        for (wrap in unopened) {
+            val nostrEvent = database.nostrEventDao().getNostrEventById(wrap.nostrEventId) ?: continue
+            val relayURL = database.nostrEventRelayDao().getRelayUrls(nostrEvent.id).firstOrNull()
+                ?: Relays.DefaultDMRelayList.first().url
+            try {
+                reopenGiftWrap(nostrEvent, relayURL, activeKeyPair)
+                if (database.giftWrapSealDao().countForMessage(wrap.id) > 0) opened++
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                logger.w("Gift wrap ${wrap.id} could not be opened on the second try", e)
+            }
+        }
+        logger.i("Reopened $opened of ${unopened.size} gift wrap(s) for $me")
+        return opened
+    }
+
+    /** One wrap, indexed again, in a transaction of its own; see [reopenInbox]. */
+    @Transaction
+    open suspend fun reopenGiftWrap(nostrEvent: NostrEvent, relayURL: String, activeKeyPair: KeyPair) {
+        indexNostrEvent(
+            nostrEvent = nostrEvent,
+            relayURL = relayURL,
+            synchronizationRelayURLs = listOf(relayURL),
+            level = 0,
+            activeKeyPair = activeKeyPair,
+        )
     }
 
     @Transaction
@@ -441,6 +496,17 @@ abstract class NostrDao(
                 // the wrap we just stored and stop here. Throwing would roll the whole
                 // transaction back and lose both.
                 logger.d("GiftWrap ${nostrEvent.id} is addressed to ${giftWrapMessage.receiverPublicKey}, nothing to index")
+
+                return@let
+            }
+
+            if (activeKeyPair.privKey == null) {
+                // Addressed to us, and we cannot open it: a read-only identity. Keep the
+                // event and the wrap, as the branch above does for wraps addressed to
+                // someone else; the key that opens this one may be signed in later. Without
+                // this, the unseal below would run with a key nobody has and throw, and
+                // the throw would take the event with it.
+                logger.d("GiftWrap ${nostrEvent.id} is addressed to us, but this identity holds no key")
 
                 return@let
             }
@@ -851,6 +917,23 @@ abstract class NostrDao(
 //                                            content = "Coming soon.", // TODO: Figure out what to do here...
 //                                        )
 //                                    )
+                                } else if (localChatRoom.chatRoom.userPublicKey != activeKeyPair.pubKey.toHex()) {
+                                    // Another profile on this device already holds this
+                                    // group. ChatRoom is keyed by the group id alone, and
+                                    // every table that hangs off it -- the MLS state, the
+                                    // DKG sessions, the FROST shares -- is keyed by the
+                                    // room, so letting a second local member in would
+                                    // overwrite the first's state with the joiner's and
+                                    // break both. Refuse, and say so where the group is:
+                                    // in the room, under the profile that holds it. See
+                                    // docs/curated-to-mantra-profiles.md, the fourth
+                                    // decision.
+                                    refuseWelcomeForOtherProfile(
+                                        localChatRoom = localChatRoom,
+                                        inviteePublicKey = activeKeyPair.pubKey.toHex(),
+                                        inviterPublicKey = decryptedGiftWrapPayload.publicKey,
+                                        welcomePayloadId = decryptedGiftWrapPayload.id,
+                                    )
                                 } else {
                                     logger.w("Chat Room already exists for $nostrGroupId")
                                 }
@@ -1588,6 +1671,53 @@ abstract class NostrDao(
      * room needs. Creating a group locally sends nothing to anyone, which is why the
      * first arrival for a group is just as likely to be a key ceremony as a message.
      */
+    /**
+     * A Welcome for a group this device already holds under another of its profiles,
+     * refused, and the refusal written into the room as a membership line.
+     *
+     * The line goes into the room that exists -- the other profile's -- because that is
+     * the only place on this device the group has, and the profile that holds it is the
+     * one who can do something about it: leave, or tell the inviter which profile to
+     * invite instead. The invitee's key package bundle is left unconsumed, as the
+     * "already exists" branch has always left it; nothing here changes what a second
+     * Welcome for the same package would do, which is arrive here again and write a
+     * second line.
+     *
+     * Content is a whole sentence with both names written in, the way the other
+     * membership lines are, so nothing prefixes an author to it: this is nobody's words.
+     */
+    private suspend fun refuseWelcomeForOtherProfile(
+        localChatRoom: LocalChatRoom,
+        inviteePublicKey: HexKey,
+        inviterPublicKey: HexKey,
+        welcomePayloadId: HexKey,
+    ) {
+        val holder = localChatRoom.chatRoom.userPublicKey
+        logger.w(
+            "Refusing Welcome $welcomePayloadId for ${localChatRoom.chatRoom.id}: this device already holds the group " +
+                "as $holder, and $inviteePublicKey is another profile on it"
+        )
+
+        suspend fun nameOf(publicKey: HexKey): String =
+            database.profileDao().getProfileByPublicKey(publicKey)?.humanReadableNameOrPubkey()
+                ?: publicKey.shortened()
+
+        database.chatMessageDao().upsert(
+            ChatMessage(
+                content = "${nameOf(inviterPublicKey)} invited ${nameOf(inviteePublicKey)}, another profile on this device, " +
+                    "to this group. The invitation was not accepted: this device already holds the group as " +
+                    "${nameOf(holder)}, and one device cannot hold a group twice.",
+                messageType = ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE,
+                chatRoomId = localChatRoom.chatRoom.id,
+                senderPublicKey = holder,
+                isUserMessage = true,
+                giftWrapPayloadId = welcomePayloadId,
+                marmotGroupEventId = null,
+                marmotInnerEventId = null,
+            )
+        )
+    }
+
     private suspend fun getOrCreateNip17ChatRoom(
         decryptedGiftWrapPayload: GiftWrapPayload,
         activeKeyPair: KeyPair,

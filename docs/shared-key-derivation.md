@@ -65,6 +65,16 @@ Each scalar commits to the key being tweaked as well as the index, so steps cann
 be reordered or replayed at a different depth to reach the same key.
 `listOf(0L)` and `listOf(0L, 0L, 0L)` do not collide — there is a test for it.
 
+The `mantra/` prefix is deliberate and is not a brand string: the string is an input to
+the hash, so renaming it derives different keys from the same threshold key — orphaning
+every room already created, and splitting devices on the new string off from devices on
+the old one, since their partial signatures would no longer aggregate to one that
+verifies. The Curated fork of this app keeps it byte for byte for that reason, and so
+must this one. A rename is a protocol fork and would need a `v2` tag, not an edit to
+this one. The ChillDKG host-key tag in `ChillDkgRitualManager` is protected by the same
+argument, and `Relays.ephemeral` stays on its `mantra.press` host for the duller reason
+that it is a relay that is running.
+
 ### What avoiding BIP32 also avoids
 
 With x-only keys there is no single obvious `serP(K_par)`: BIP32 serialises

@@ -8,7 +8,7 @@ import press.mantra.compose.database.model.intermdiate.LocalAccount
 import press.mantra.compose.ui.composable.navigation.routes.SovereignWalletStartupRoute
 import press.mantra.compose.ui.view.state.NavigationUIState
 import co.touchlab.kermit.Logger
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -18,14 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
-import press.mantra.compose.extensions.nostrPublicKey
 import kotlin.time.Duration.Companion.milliseconds
 
 class NavigationViewModel(
-    val activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    val activeIdentityStateFlow: StateFlow<Identity?>,
     initialNavigationUIState: NavigationUIState,
     val nostrRepository: press.mantra.compose.repository.NostrRepository,
     val scope: CoroutineScope,
@@ -38,14 +36,14 @@ class NavigationViewModel(
         private val PENDING_BROADCAST_STATUSES = setOf("pending", "processing")
 
         fun factory(
-            activeWallet: StateFlow<ActiveWallet?>,
+            activeIdentity: StateFlow<Identity?>,
             initialNavigationUIState: NavigationUIState,
             nostrRepository: press.mantra.compose.repository.NostrRepository,
             scope: CoroutineScope,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NavigationViewModel(
-                    activeWallet,
+                    activeIdentity,
                     initialNavigationUIState = initialNavigationUIState,
                     nostrRepository = nostrRepository,
                     scope = scope
@@ -66,7 +64,22 @@ class NavigationViewModel(
     }
 
     suspend fun loadNostrProfile(startupRoute: SovereignWalletStartupRoute? = null) {
-        val activeUserPublicKey = nostrRepository.getLocalAccounts().firstOrNull()?.profile?.publicKey
+        // Which account is "ours" is the active identity's to say, when there is one: with
+        // two identities on the device, the first kind-0 row is the wrong one half the time.
+        // Matched on the unsigned event's pubKey, not `profile.publicKey` -- the Profile row is
+        // what the notary upserts when it *signs* the kind 0, so an account planted by
+        // `signInToProfile` (or one created moments ago and not yet signed) has none, and
+        // reading through it answered `Landing` for a key that had just been imported while
+        // `observeProfile`, reading the same rows, answered the sync screen. Two writers to
+        // one state, in whichever order the coroutines ran, and Landing pops the back stack.
+        val accounts = nostrRepository.getLocalAccounts()
+        val identity = activeIdentityStateFlow.value
+        val account = if (identity != null) {
+            accounts.firstOrNull { it.unsignedNostrEvent?.pubKey == identity.nostrPublicKey }
+        } else {
+            accounts.firstOrNull()
+        }
+        val activeUserPublicKey = account?.unsignedNostrEvent?.pubKey
 
         if (activeUserPublicKey == null) {
             // TODO: We can just go directly to startup witout fear...
@@ -82,12 +95,9 @@ class NavigationViewModel(
             // `observeLocalAccount`, which turned the whole call into a no-op for anyone who
             // already had an account: the caller had navigated to a loading screen first and then
             // nothing ever moved the user off it. Every path out of here must leave the navigation
-            // state pointing somewhere.
-            processLocalAccount(
-                nostrRepository.observeLocalAccount(
-                    publicKey = activeUserPublicKey
-                ).firstOrNull()
-            )
+            // state pointing somewhere. `getLocalAccounts` already joined the relations this
+            // reads, so the account goes straight in rather than being fetched a second time.
+            processLocalAccount(account)
         } else {
             _navigationUIState.getAndUpdate {
                 NavigationUIState.StartupPhoenix
@@ -176,34 +186,22 @@ class NavigationViewModel(
         scope.launch(Dispatchers.IO) {
             delay(2_100.milliseconds) // Looking busy...
 
-            activeWalletStateFlow.collectLatest { activeWallet ->
-                logger.d("Active Wallet: $activeWallet")
-                if (activeWallet ==  null) {
-
+            activeIdentityStateFlow.collectLatest { identity ->
+                logger.d("Active identity: $identity")
+                if (identity == null) {
+                    // Nothing has been started: go and start something.
                     _navigationUIState.getAndUpdate {
                         NavigationUIState.StartupPhoenix
                     }
                 } else {
-                    activeWallet.business.let { business ->
-                        if (business == null) {
-                            _navigationUIState.getAndUpdate {
-                                NavigationUIState.StartupPhoenix
-                            }
-                        } else {
-                            val activeUserPublicKey = business.walletManager.keyManager.value?.nostrPublicKey()
+                    // The identity carries its own key, so there is no node to wait on and no
+                    // "couldn't get the nostrKey" dead end. The branch that used to send a
+                    // nodeless identity back to startup went with it: an identity without a
+                    // node is now a kind of identity, not a wallet that has not finished
+                    // starting.
+                    logger.i("Observing: ${identity.nostrPublicKey}")
 
-                            if (activeUserPublicKey == null) {
-                                _navigationUIState.getAndUpdate {
-                                    NavigationUIState.Loading(text = "Couldn't get the nostrKey")
-                                }
-                            } else {
-                                logger.i("Observing: $activeUserPublicKey")
-
-                                loadNostrProfile(activeUserPublicKey)
-                            }
-                        }
-                        logger.i("Navigation UI State is Landing")
-                    }
+                    loadNostrProfile(identity.nostrPublicKey)
                 }
             }
         }

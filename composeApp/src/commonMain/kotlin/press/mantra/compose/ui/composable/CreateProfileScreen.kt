@@ -14,8 +14,8 @@ import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.repository.MarmotRepository
+import press.mantra.compose.identity.NewProfileWriter
+import fr.acinq.phoenix.data.WalletId
 import press.mantra.compose.ui.theme.LocalExtendedColors
 import press.mantra.compose.ui.view.model.CreateProfileViewModel
 import press.mantra.compose.ui.view.state.CreateProfileUIState
@@ -41,7 +44,6 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.after_this_there_is_no_turning_back
 import mantra.composeapp.generated.resources.bio
 import mantra.composeapp.generated.resources.create_profile
-import mantra.composeapp.generated.resources.end_this
 import mantra.composeapp.generated.resources.enter_the_name_you_want_to_use_for_your_2
 import mantra.composeapp.generated.resources.introduce_yourself
 import mantra.composeapp.generated.resources.it_is_cryptographical_secure_and
@@ -60,17 +62,21 @@ import mantra.composeapp.generated.resources.you_are_about_to_create_a_nostr_pro
 import mantra.composeapp.generated.resources.you_will_be_in_full_control_of_this_profile
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.ConformancePreviews
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CreateProfileScreen(
     initialCreateProfileUIState: CreateProfileUIState = CreateProfileUIState.Declaration,
-    onNavigateToEndThis: () -> Unit,
+    onNavigateBack: () -> Unit,
     nostrRepository: press.mantra.compose.repository.NostrRepository,
     marmotRepository: MarmotRepository,
-    writeSeed: (mnemonics: List<String>, onSeedWritten: () -> Unit, onSeedWriteError: () -> Unit) -> Unit
+    /** Which secret the profile is made of -- a seed from Landing, a bare key from the switcher. The screen does not know which. */
+    newProfile: NewProfileWriter,
+    /** The nav host's tail: re-list, select, go to startup. */
+    onProfileCreated: (WalletId) -> Unit,
 ) {
     val createProfileViewModel: CreateProfileViewModel =  viewModel (
         factory = CreateProfileViewModel.factory(
@@ -83,7 +89,18 @@ fun CreateProfileScreen(
     // keyboard covers whatever is being typed into.
     Scaffold(
         snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
-        modifier = Modifier.imePadding()) { innerPadding ->
+        modifier = Modifier.imePadding(),
+        topBar = {
+            // The name is in the bar, as it is on the sign-in screen beside this one on
+            // the landing page, and the steps below no longer repeat it as a headline.
+            // Back pops to the landing page; nothing is written until the last step
+            // confirms, so there is nothing to lose by leaving.
+            TopAppBar(
+                title = { Text(stringResource(Res.string.create_profile)) },
+                navigationIcon = { NavigateBackButton(onNavigateBack) },
+            )
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
             .readableContent()
@@ -99,12 +116,6 @@ fun CreateProfileScreen(
 
                 when (val createAccountUIState = createProfileViewModel.createProfileUIState.value) {
                     is CreateProfileUIState.Declaration -> {
-
-                        Text(
-                            stringResource(Res.string.create_profile),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-
                         Text(
                             stringResource(Res.string.you_are_about_to_create_a_nostr_profile),
                             style = MaterialTheme.typography.bodyMedium,
@@ -133,11 +144,6 @@ fun CreateProfileScreen(
                         }
                     }
                     is CreateProfileUIState.InputPrompt -> {
-                        Text(
-                            stringResource(Res.string.create_profile),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-
                         TextField(
                             modifier = Modifier.fillMaxWidth(),
                             state = createProfileViewModel.createProfileFormState.nameField.textFieldState,
@@ -305,7 +311,7 @@ fun CreateProfileScreen(
                         } else {
                             Button(
                                 onClick = {
-                                    createProfileViewModel.createAccount(writeSeed)
+                                    createProfileViewModel.createAccount(newProfile, onProfileCreated)
                                 }
                             ) {
                                 Text(
@@ -329,11 +335,16 @@ fun CreateProfileScreen(
                         )
                     }
                     is CreateProfileUIState.ProfileReady -> {
-                        // Both pills come from the extended families rather than from a
-                        // literal paired with Color.White/Color.DarkGray by eye. The old
-                        // pairings read 4.57:1 and 2.90:1 against their containers, and
-                        // RedPill carried alpha 0.749, so composited over the surface the
-                        // first was really 3.50:1. Both are below the 4.5:1 floor.
+                        // The pill comes from the extended family rather than from a
+                        // literal paired with Color.White by eye: the old pairing read
+                        // 4.57:1 against its container, and with alpha 0.749 composited
+                        // over the surface was really 3.50:1, below the 4.5:1 floor.
+                        //
+                        // The blue pill that stood beside it -- "end this" -- is gone. It
+                        // wiped the database: every profile's rooms, MLS state, key
+                        // packages and queues, from a screen whose purpose is to add a
+                        // profile. It was only ever a development exit, and with several
+                        // profiles on a device it was a way to lose the others.
                         val extendedColors = LocalExtendedColors.current
 
                         Spacer(
@@ -355,32 +366,11 @@ fun CreateProfileScreen(
                                 contentColor = extendedColors.redPill.onColor
                             ),
                             onClick = {
-                                createProfileViewModel.createAccount(writeSeed)
+                                createProfileViewModel.createAccount(newProfile, onProfileCreated)
                             }
                         ) {
                             Text(
                                 text = stringResource(Res.string.see_how_deep_the_rabbit_hole_goes)
-                            )
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(MaterialTheme.spacing.space250)
-                        )
-
-                        Button(
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = extendedColors.bluePill.color,
-                                contentColor = extendedColors.bluePill.onColor
-                            ),
-                            onClick = {
-                                // TODO: Delete everything and close the app
-                                createProfileViewModel.wipeDatabase {
-                                    onNavigateToEndThis.invoke()
-                                }
-                            }
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.end_this)
                             )
                         }
                         Spacer(
@@ -396,7 +386,7 @@ fun CreateProfileScreen(
 @ConformancePreviews
 @Composable
 fun CreateAccountScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -437,8 +427,9 @@ fun CreateAccountScreenPreview() {
 //                            about = "Polyglot: Math... is my middle name, computer scientist. cryptographer, and gold hider."
 //                        )
 //                    ),
-                onNavigateToEndThis = {},
-                writeSeed = { _, _, _ -> },
+                onNavigateBack = {},
+                newProfile = NewProfileWriter { Result.failure(IllegalStateException("a preview")) },
+                onProfileCreated = {},
                 nostrRepository = press.mantra.compose.repository.NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 marmotRepository = MarmotRepository.NO_OP_MARMOT_KEY_PACKAGE_BUNDLE
             )

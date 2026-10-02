@@ -50,14 +50,25 @@ import com.vitorpamplona.quartz.nip57Zaps.LnZapEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import press.mantra.compose.identity.Identity
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+/**
+ * @param activeIdentity whose requests the two fetch queues are stamped with. Every
+ *   request queued through here is queued *as* the active identity -- a screen cannot
+ *   queue anything as anyone else -- so the stamp is the repository's, not the call
+ *   site's, and no call site can forget it. Defaults to nobody, which stamps nothing
+ *   and is what a test that has no identity gets.
+ */
 class DatabaseNostrRepository(
     private val database: press.mantra.compose.database.MantraDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val activeIdentity: StateFlow<Identity?> = MutableStateFlow(null),
 ): press.mantra.compose.repository.NostrRepository, press.mantra.compose.repository.RelayRepository {
     companion object {
         const val TAG = "DatabaseNostrRepository"
@@ -108,12 +119,19 @@ class DatabaseNostrRepository(
         return database.broadcastNostrEventRequestDao().observeBroadcastNostrEventRequestsByStatus("pending")
     }
 
-    override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<press.mantra.compose.database.model.SynchronizeNostrEventRequest?> {
-        return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestsByStatus("pending")
+    override suspend fun observePendingSynchronizeNostrEventRequests(ownerPublicKey: HexKey): Flow<press.mantra.compose.database.model.SynchronizeNostrEventRequest?> {
+        return database.synchronizeNostrEventRequestDao().observeSynchronizeNostrEventRequestsByStatusFor("pending", ownerPublicKey)
     }
 
-    override suspend fun observePendingNegentropySynchronizeRequests(): Flow<press.mantra.compose.database.model.NegentropySynchronizeRequest?> {
-        return database.negentropySynchronizeRequestDao().observeNegentropySynchronizeRequestsByStatus("pending")
+    override suspend fun observePendingNegentropySynchronizeRequests(ownerPublicKey: HexKey): Flow<press.mantra.compose.database.model.NegentropySynchronizeRequest?> {
+        return database.negentropySynchronizeRequestDao().observeNegentropySynchronizeRequestsByStatusFor("pending", ownerPublicKey)
+    }
+
+    override suspend fun reopenInbox(activeKeyPair: KeyPair): Int {
+        // Under the same lock as every other write through indexNostrEvent.
+        return storeNostrEventMutex.withLock {
+            database.nostrDao().reopenInbox(activeKeyPair)
+        }
     }
 
     override suspend fun createNewProfile(
@@ -124,6 +142,51 @@ class DatabaseNostrRepository(
     ) {
         logger.d("createNewProfile: $publicKey")
 
+        saveUnsignedNostrEvents(bootstrapUnsignedEvents(publicKey, name, biography))
+
+        onCompletion.invoke()
+    }
+
+    override suspend fun setUpProfileForExistingKey(
+        publicKey: HexKey,
+        placeholderUnsignedNostrEventId: Long,
+        name: String?,
+        biography: String?,
+    ) {
+        logger.d("setUpProfileForExistingKey: $publicKey")
+
+        val events = bootstrapUnsignedEvents(publicKey, name, biography)
+        val profile = events.first { it.kind == MetadataEvent.KIND }
+
+        // The placeholder row is *replaced*, under its own id, rather than joined by a
+        // second kind 0: `getLocalAccounts` is every kind-0 row, and two for one pubkey
+        // would be two accounts disagreeing about which is this one. Its `signedAt` goes
+        // back to null so the notary signs it, and the sync requests that hang off the id
+        // stay where they are as the record of the search that found nothing.
+        database.unsignedNostrEventDao().upsert(
+            profile.copy(
+                id = placeholderUnsignedNostrEventId,
+                signedAt = null,
+            )
+        )
+        saveUnsignedNostrEvents(events.filterNot { it.kind == MetadataEvent.KIND })
+    }
+
+    override suspend fun forgetLocalAccount(publicKey: HexKey) {
+        logger.d("forgetLocalAccount: $publicKey")
+        database.unsignedNostrEventDao().deleteAllForPublicKey(publicKey)
+    }
+
+    /**
+     * What a key gets when it first becomes a profile here: the kind 0, a contact list
+     * that follows itself, and the relay lists the app reads, all pointed at the defaults.
+     * The kind 0 is first.
+     */
+    private fun bootstrapUnsignedEvents(
+        publicKey: HexKey,
+        name: String?,
+        biography: String?,
+    ): List<UnsignedNostrEvent> {
         val profileEventTemplate = MetadataEvent.createNew(
             name = name,
             about = biography,
@@ -207,14 +270,23 @@ class DatabaseNostrRepository(
             )
         )
 
-        saveUnsignedNostrEvents(unsignedNostrEvents)
-
-        onCompletion.invoke()
+        return unsignedNostrEvents
     }
 
     override suspend fun signInToProfile(
         publicKey: HexKey
     ) {
+        // Idempotent by pubkey. Until the read-only kind, nothing called this twice for
+        // one key -- the writers refused a second sign-in before it got here. Pasting the
+        // nsec of a key held read-only is the first path that signs in a pubkey whose
+        // account already exists, and a second placeholder would be two kind-0 rows for
+        // one pubkey: two accounts disagreeing about which is this one, the failure
+        // `setUpProfileForExistingKey`'s own comment describes.
+        if (database.unsignedNostrEventDao().getLocalAccounts().any { it.unsignedNostrEvent?.pubKey == publicKey }) {
+            logger.d("signInToProfile: $publicKey already has an account here, nothing to plant")
+            return
+        }
+
         val profileEventTemplate = MetadataEvent.createNew()
 
         saveUnsignedNostrEvent(
@@ -495,6 +567,14 @@ class DatabaseNostrRepository(
         )
     }
 
+    override suspend fun synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest: press.mantra.compose.database.model.SynchronizeNostrEventRequest) {
+        database.synchronizeNostrEventRequestDao().markCompleteIfSent(
+            id = synchronizeNostrEventRequest.id,
+            status = press.mantra.compose.nostr.SignInSync.STATUS_COMPLETE,
+            updatedAt = Clock.System.now(),
+        )
+    }
+
     override suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: press.mantra.compose.database.model.NegentropySynchronizeRequest) {
         database.negentropySynchronizeRequestDao().upsert(
             negentropySynchronizeRequest.copy(
@@ -599,17 +679,23 @@ class DatabaseNostrRepository(
         }
     }
 
+    /**
+     * Stamped with the active identity where the caller stamped nothing. A request
+     * queued while nothing is active stays nobody's, which any identity may drain.
+     */
     override suspend fun queueSynchronizeNostrEvent(
         synchronizeNostrEventRequests: List<press.mantra.compose.database.model.SynchronizeNostrEventRequest>,
     ) {
+        val owner = activeIdentity.value?.nostrPublicKey
         database.synchronizeNostrEventRequestDao().insert(
-            synchronizeNostrEventRequests
+            synchronizeNostrEventRequests.map { it.copy(ownerPublicKey = it.ownerPublicKey ?: owner) }
         )
     }
 
     override suspend fun queueNegentropySynchronizeRequest(negentropySynchronizeRequests: List<press.mantra.compose.database.model.NegentropySynchronizeRequest>) {
+        val owner = activeIdentity.value?.nostrPublicKey
         database.negentropySynchronizeRequestDao().insert(
-            negentropySynchronizeRequests
+            negentropySynchronizeRequests.map { it.copy(ownerPublicKey = it.ownerPublicKey ?: owner) }
         )
     }
 

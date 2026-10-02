@@ -1,20 +1,33 @@
 package press.mantra.compose.ui.view.state
 
-import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import fr.acinq.phoenix.data.WalletId
+import press.mantra.compose.identity.CredentialProblem
+import press.mantra.compose.identity.SignInCredential
 
-abstract class SignInToProfileUIState {
-    data object Error: SignInToProfileUIState()
+/**
+ * The sign-in screen's four states. Problems with the *input* are not one of them: those
+ * stay on the field as supporting text while the prompt is still showing. [Error] is for
+ * what happens after the user has confirmed -- the write failed, or the key was already
+ * here -- where there is no field to put the message under.
+ */
+sealed interface SignInToProfileUIState {
+    /** The field, waiting for a recovery phrase or an nsec. */
+    data object InputPrompt : SignInToProfileUIState
 
-    data object InputPrompt: SignInToProfileUIState()
+    /**
+     * What was recognised, and the npub it signs as, before anything is written. This is
+     * the step that catches a paste of the wrong key; for a recovery phrase it is where
+     * the user learns which profile the words open. The secret itself is never shown.
+     */
+    data class Confirm(val credential: SignInCredential) : SignInToProfileUIState
 
-    data class ConfirmNpubSignIn(
-        val npub: String,
-        val hexKey: HexKey
-    ) : SignInToProfileUIState()
+    /** Writing the secret and planting the account. */
+    data object Committing : SignInToProfileUIState
 
-    data class ConfirmNsecSignIn(
-        val nsec: String,
-        val hexKey: HexKey
-    ) : SignInToProfileUIState()
-
+    /**
+     * @param alreadyHere for [CredentialProblem.AlreadyOnThisDevice], the id the key is
+     *   listed under: "already on this device" is a sentence with an obvious next step,
+     *   and from inside the app the screen offers it.
+     */
+    data class Error(val problem: CredentialProblem, val alreadyHere: WalletId? = null) : SignInToProfileUIState
 }

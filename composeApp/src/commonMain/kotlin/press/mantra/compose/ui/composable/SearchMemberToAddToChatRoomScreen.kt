@@ -35,7 +35,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddMemberToChatRoomC
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SearchMemberToAddToChatRoomViewModel
 import press.mantra.compose.ui.view.state.SearchMemberToAddToChatRoomUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -47,6 +47,7 @@ import mantra.composeapp.generated.resources.search_member_functionality
 import mantra.composeapp.generated.resources.search_message_functionality_will_be_here
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -61,6 +62,7 @@ fun SearchMemberToAddToChatRoomScreen(
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val searchMemberToAddToChatRoomViewModel: SearchMemberToAddToChatRoomViewModel = viewModel(
         factory = SearchMemberToAddToChatRoomViewModel.factory(
@@ -102,7 +104,8 @@ fun SearchMemberToAddToChatRoomScreen(
                                 Text(
                                     text = title,
                                 )
-                            }
+                            },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     }
                 ) { innerPadding ->
@@ -226,7 +229,7 @@ fun SearchMemberToAddToChatRoomScreen(
 @ConformancePreviews
 @Composable
 private fun ChatRoomDetailScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -256,7 +259,8 @@ private fun ChatRoomDetailScreenPreview() {
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

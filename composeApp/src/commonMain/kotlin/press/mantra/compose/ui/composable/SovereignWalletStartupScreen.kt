@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import fr.acinq.phoenix.data.ListWalletState
-import fr.acinq.phoenix.data.UserWallet
 import fr.acinq.phoenix.data.WalletId
 import fr.acinq.phoenix.managers.DataStoreManager
 import fr.acinq.phoenix.managers.NodeParamsManager
@@ -26,18 +25,37 @@ import fr.acinq.phoenix.utils.preferences.UserPrefs
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
 import kotlinx.coroutines.flow.first
+import press.mantra.compose.identity.Identity
+import press.mantra.compose.identity.IdentityKind
+import press.mantra.compose.identity.StoredIdentity
+import press.mantra.compose.repository.NostrRepository
+import press.mantra.compose.ui.composable.widgets.wallet.AddProfileRows
+import press.mantra.compose.ui.composable.widgets.wallet.rememberProfilesOf
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
+import mantra.composeapp.generated.resources.choose_a_profile
+import mantra.composeapp.generated.resources.could_not_load_the_profiles_on_this_device
+import mantra.composeapp.generated.resources.decrypting
+import mantra.composeapp.generated.resources.loading_preferences
 import mantra.composeapp.generated.resources.lock_prompt_coming_soon
-import mantra.composeapp.generated.resources.select_a_wallet
+import mantra.composeapp.generated.resources.opening_profile
+import mantra.composeapp.generated.resources.preparing_profiles
+import mantra.composeapp.generated.resources.starting_wallet
 import mantra.composeapp.generated.resources.startup_error
+import mantra.composeapp.generated.resources.unlock_to_continue
+import press.mantra.compose.ui.view.state.StartupChoice
 
 @Composable
 fun SovereignWalletStartupScreen(
     sovereignWalletViewModel: press.mantra.compose.ui.view.model.SovereignWalletViewModel,
+    /** For the selector's rows: the nostr profile of each listed key, where the device has one. */
+    nostrRepository: NostrRepository,
     onNavigateToWalletLandingPage: () -> Unit,
     onSuccessfulStartup: () -> Unit,
+    /** The two ways to add a profile from the selector; a device with one profile can be given a second without opening the first. */
+    onNavigateToSignIn: () -> Unit,
+    onNavigateToCreateProfile: () -> Unit,
     forceWalletId: WalletId?,
 ) {
     val sovereignWalletStartupViewModel = viewModel<press.mantra.compose.ui.view.model.SovereignWalletStartupViewModel>(
@@ -49,8 +67,8 @@ fun SovereignWalletStartupScreen(
     // Deliberately no intro gate. `getShowIntro` defaults to true and nothing in this app ever
     // writes it back to false, so gating on it navigated away from this screen on every cold boot
     // — and a screen that has been left behind never gets to start the wallet. Startup has to run
-    // to completion here: everything downstream reads the node's key manager. An intro screen has
-    // to be a step inside this flow, not a detour around it.
+    // to completion here: everything downstream reads the active identity, and nothing sets one
+    // but this screen. An intro screen has to be a step inside this flow, not a detour around it.
 
     val listWalletState by sovereignWalletViewModel.listWalletState.collectAsState()
 
@@ -63,18 +81,20 @@ fun SovereignWalletStartupScreen(
         when (listWalletState) {
             is ListWalletState.Init -> {
                 LoadingDataIndicator(
-                    text = "Decrypting..."
+                    text = stringResource(Res.string.decrypting)
                 )
             }
             is ListWalletState.Error -> {
                 ImplementationPendingScreen(
-                    "Failed to load wallet data",
+                    text = stringResource(Res.string.could_not_load_the_profiles_on_this_device),
+                    // Drawn inside the startup gate, which is the root of the stack.
+                    onNavigateBack = null,
                 )
             }
             is ListWalletState.Success -> {
                 val globalPrefs = sovereignWalletViewModel.getGlobalPrefs()
 
-                val availableWallets by sovereignWalletViewModel.availableWallets.collectAsState()
+                val availableIdentities by sovereignWalletViewModel.availableIdentities.collectAsState()
                 val defaultWallet = globalPrefs.getDefaultWallet.collectAsState(null)
                 val startWalletImmediately by sovereignWalletViewModel.startWalletImmediately.collectAsState()
 
@@ -84,70 +104,81 @@ fun SovereignWalletStartupScreen(
                 val desiredWalletIdFlow = sovereignWalletViewModel.desiredWalletId.collectAsState()
                 val desiredWalletId = desiredWalletIdFlow.value
 
-                val activeWalletFlow = sovereignWalletViewModel.activeWalletInUI.collectAsState()
-                val activeWallet = activeWalletFlow.value
+                val activeIdentityFlow = sovereignWalletViewModel.activeIdentity.collectAsState()
+                val activeIdentity = activeIdentityFlow.value
 
                 when {
-                    availableWallets.isEmpty() -> {
+                    availableIdentities.isEmpty() -> {
                         LaunchedEffect(Unit) { onNavigateToWalletLandingPage.invoke() }
                         LoadingDataIndicator(
-                            text = "Initializing..."
+                            text = stringResource(Res.string.preparing_profiles)
                         )
                     }
                     availableWalletMetadata == null || defaultWallet.value == null -> {
                         LoadingDataIndicator(
-                            text = "Preparing wallet..."
+                            text = stringResource(Res.string.preparing_profiles)
                         )
                     }
-                    activeWallet != null -> {
+                    activeIdentity != null -> {
                         LoadingDataIndicator(
-                            text = "Opening wallet"
+                            text = stringResource(Res.string.opening_profile)
                         )
                         LaunchedEffect(Unit) {
-                            sovereignWalletViewModel.loadSovereignData(activeWallet.id)
+                            sovereignWalletViewModel.loadSovereignData(activeIdentity.id)
                             onSuccessfulStartup.invoke()
                         }
                     }
                     else -> {
                         when (val startupState = sovereignWalletStartupViewModel.state.value) {
                             is press.mantra.compose.ui.view.model.StartupViewState.Init -> {
-                                var loadingWallet by remember {
+                                // The table is StartupChoice's, where it can be read and
+                                // tested; the one thing decided here is that the saved default
+                                // is only a default when it names a wallet.
+                                var loadingIdentity by remember {
                                     mutableStateOf(
-                                        when {
-                                            forceWalletId != null -> availableWallets[forceWalletId]
-                                            !startWalletImmediately -> null
-                                            availableWallets.size == 1 -> availableWallets.entries.firstOrNull()?.value
-                                            desiredWalletId != null -> availableWallets[desiredWalletId]
-                                            startWalletImmediately -> availableWallets[defaultWallet.value]
-                                            else -> null
-                                        }
+                                        StartupChoice.resolve(
+                                            force = forceWalletId,
+                                            desired = desiredWalletId,
+                                            startImmediately = startWalletImmediately,
+                                            identities = availableIdentities,
+                                            default = defaultWallet.value as? WalletId,
+                                        )
                                     )
                                 }
-                                when (val wallet = loadingWallet) {
+                                when (val stored = loadingIdentity) {
                                     null -> {
+                                        val profiles by rememberProfilesOf(
+                                            publicKeys = availableIdentities.values.map { it.nostrPublicKey },
+                                            nostrRepository = nostrRepository,
+                                        )
                                         press.mantra.compose.ui.composable.widgets.wallet.WalletsSelector(
-                                            wallets = availableWallets,
-                                            globalPrefs = globalPrefs,
+                                            wallets = availableIdentities,
                                             walletsMetadata = availableWalletMetadata,
                                             activeWalletId = null,
+                                            profiles = profiles,
                                             onWalletClick = {
-                                                sovereignWalletViewModel.switchToWallet(
-                                                    it.walletId
-                                                ); loadingWallet = it
+                                                sovereignWalletViewModel.switchToIdentity(
+                                                    it.id
+                                                ); loadingIdentity = it
                                             },
                                             canEdit = false,
                                             modifier = Modifier.padding(horizontal = MaterialTheme.spacing.space300),
                                             topContent = {
                                                 Spacer(Modifier.height(MaterialTheme.spacing.space800))
                                                 Text(
-                                                    text = stringResource(Res.string.select_a_wallet),
+                                                    text = stringResource(Res.string.choose_a_profile),
                                                     style = MaterialTheme.typography.headlineSmall
                                                 )
                                                 Spacer(Modifier.height(MaterialTheme.spacing.space200))
                                             },
                                             bottomContent = {
+                                                AddProfileRows(
+                                                    onSignIn = onNavigateToSignIn,
+                                                    onCreateProfile = onNavigateToCreateProfile,
+                                                    caption = false,
+                                                )
                                                 // m3-spacing-exempt: room to scroll the
-                                                // last wallet clear of the bottom of the
+                                                // last row clear of the bottom of the
                                                 // window, not a step in the spacing
                                                 // rhythm. The scale tops out at 72dp and
                                                 // rounding to it would put the last row
@@ -157,39 +188,84 @@ fun SovereignWalletStartupScreen(
                                         )
                                     }
                                     else -> {
-                                        val metadata = remember { availableWalletMetadata.getByWalletIdOrDefault(wallet.walletId) }
+                                        val metadata = remember { availableWalletMetadata.getByWalletIdOrDefault(stored.id) }
                                         val dataStoreManager = DataStoreManager(
                                             ctx = sovereignWalletViewModel.phoenixGlobal.ctx,
                                             chain = NodeParamsManager.chain
                                         )
+                                        // The screen-lock gate wraps both kinds. It only ever needed the
+                                        // id, to read the lock preferences, so it sits outside the branch
+                                        // and a future lock is not something to remember to add twice.
                                         LoadWallet(
-                                            userWallet = wallet,
+                                            identity = stored,
                                             metadata = metadata,
-                                            userPrefs = dataStoreManager.loadUserPrefsForWallet(wallet.walletId),
+                                            userPrefs = dataStoreManager.loadUserPrefsForWallet(stored.id),
                                             promptScreenLockImmediately = startWalletImmediately,
-                                            doLoadWallet = { userWallet ->
-                                                sovereignWalletStartupViewModel.startupNode(walletId = userWallet.walletId, words = userWallet.words, onStartupSuccess = {
-                                                    sovereignWalletViewModel.setActiveWallet(walletId = userWallet.walletId, business = it)
-                                                    onSuccessfulStartup.invoke()
-                                                })
-                                                loadingWallet = null
+                                            doLoadWallet = { identity ->
+                                                when (identity) {
+                                                    is StoredIdentity.Mnemonic -> {
+                                                        // The node starts for the wallet attached to this profile --
+                                                        // its preferences, its metadata, the channel watcher -- and no
+                                                        // longer for the key, which the identity reads from the
+                                                        // credential the node is handed to cross-check.
+                                                        sovereignWalletStartupViewModel.startupNode(walletId = identity.id, words = identity.userWallet.words, onStartupSuccess = {
+                                                            sovereignWalletViewModel.setActiveWallet(stored = identity, business = it)
+                                                            onSuccessfulStartup.invoke()
+                                                        })
+                                                    }
+                                                    is StoredIdentity.NostrSecret -> {
+                                                        // No node to start, so no platformStartupLogic, no
+                                                        // schedulePlatformLogic and no StartupViewState: the
+                                                        // identity is active the moment it is read. Setting it
+                                                        // recomposes into the `activeIdentity != null` branch
+                                                        // above, which is what reports the startup.
+                                                        sovereignWalletViewModel.setActiveIdentity(
+                                                            Identity.signing(
+                                                                id = identity.id,
+                                                                kind = IdentityKind.NostrSecret,
+                                                                nostrPrivateKey = identity.privateKey,
+                                                                userPrefs = dataStoreManager.loadUserPrefsForWallet(identity.id),
+                                                                internalPrefs = dataStoreManager.loadInternalPrefsForWallet(identity.id),
+                                                                business = null,
+                                                            )
+                                                        )
+                                                    }
+                                                    is StoredIdentity.NostrPublic -> {
+                                                        // Nothing to start and nothing to decrypt: the
+                                                        // public key is the whole of what the device
+                                                        // holds, and the identity is active the moment
+                                                        // it is read, as the nsec branch above is.
+                                                        sovereignWalletViewModel.setActiveIdentity(
+                                                            Identity.readOnly(
+                                                                id = identity.id,
+                                                                nostrPublicKey = identity.nostrPublicKey,
+                                                                userPrefs = dataStoreManager.loadUserPrefsForWallet(identity.id),
+                                                                internalPrefs = dataStoreManager.loadInternalPrefsForWallet(identity.id),
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                                loadingIdentity = null
                                             },
-                                            // only show back-to-selector button if there's more than one wallet
-                                            goToWalletSelector = availableWallets.takeIf { it.size > 1 }?.let {
-                                                { loadingWallet = null; sovereignWalletViewModel.startWalletImmediately.value = false }
+                                            // only show back-to-selector button if there's more than one identity
+                                            goToWalletSelector = availableIdentities.takeIf { it.size > 1 }?.let {
+                                                { loadingIdentity = null; sovereignWalletViewModel.startWalletImmediately.value = false }
                                             }
                                         )
                                     }
                                 }
                             }
                             is press.mantra.compose.ui.view.model.StartupViewState.StartingBusiness -> {
+                                // The one place the word "wallet" stays: only the branch with
+                                // a wallet attached reaches this state, and what is starting is
+                                // a Lightning node. A bare-key profile never sees it.
                                 LoadingDataIndicator(
-                                    text = "Starting wallet"
+                                    text = stringResource(Res.string.starting_wallet)
                                 )
                             }
                             is press.mantra.compose.ui.view.model.StartupViewState.BusinessActive -> {
                                 LoadingDataIndicator(
-                                    text = "Opening wallet"
+                                    text = stringResource(Res.string.opening_profile)
                                 )
                             }
                             is press.mantra.compose.ui.view.model.StartupViewState.Error -> {
@@ -233,15 +309,15 @@ fun SovereignWalletStartupScreen(
 
 @Composable
 private fun BoxScope.LoadWallet(
-    userWallet: UserWallet,
+    identity: StoredIdentity,
     metadata: UserWalletMetadata,
     userPrefs: UserPrefs,
     promptScreenLockImmediately: Boolean,
-    doLoadWallet: (UserWallet) -> Unit,
+    doLoadWallet: (StoredIdentity) -> Unit,
     goToWalletSelector: (() -> Unit)?
 ) {
 
-    val isScreenLockRequired = produceState<Boolean?>(initialValue = null, key1 = userWallet) {
+    val isScreenLockRequired = produceState<Boolean?>(initialValue = null, key1 = identity) {
         val biometricLockEnabled = userPrefs.getLockBiometricsEnabled.first()
         val customPinLockEnabled = userPrefs.getLockPinEnabled.first()
 
@@ -250,24 +326,24 @@ private fun BoxScope.LoadWallet(
 
     when (isScreenLockRequired.value) {
         null -> {
-            LoadingDataIndicator(text = "Loading preferences...")
+            LoadingDataIndicator(text = stringResource(Res.string.loading_preferences))
         }
         true -> {
-            LoadingDataIndicator(text = "Unlock to continue")
+            LoadingDataIndicator(text = stringResource(Res.string.unlock_to_continue))
             ScreenLockPrompt(
-                walletId = userWallet.walletId,
+                walletId = identity.id,
                 walletName = metadata.nameOrDefault(),
                 promptScreenLockImmediately = promptScreenLockImmediately,
-                onUnlock = { doLoadWallet(userWallet) },
+                onUnlock = { doLoadWallet(identity) },
                 onLock = { },
                 userPrefs = userPrefs,
                 goToWalletSelector = goToWalletSelector,
             )
         }
         false -> {
-            LoadingDataIndicator(text = "Starting wallet...")
+            LoadingDataIndicator(text = stringResource(Res.string.opening_profile))
             LaunchedEffect(Unit) {
-                doLoadWallet(userWallet)
+                doLoadWallet(identity)
             }
         }
     }

@@ -13,10 +13,10 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -45,10 +46,11 @@ import press.mantra.compose.database.model.intermdiate.LocalProfileWithFollowing
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.SignInRoute
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.dialogs.NewChatBottomSheetDialog
 import press.mantra.compose.ui.composable.widgets.dialogs.StartDirectMessageToNpubOrNip05Dialog
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomListViewModel
 import press.mantra.compose.ui.view.model.HomeScreenType
 import press.mantra.compose.ui.view.model.HomeViewModel
@@ -74,7 +76,11 @@ import press.mantra.compose.ui.theme.breakpoint
 import press.mantra.compose.ui.theme.listPaneWidthFor
 import press.mantra.compose.ui.theme.readableContent
 import mantra.composeapp.generated.resources.pick_a_conversation_to_read_it_here
+import mantra.composeapp.generated.resources.messages_need_the_secret_key_this_profile
+import mantra.composeapp.generated.resources.sign_in_with_the_nsec
+import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -120,6 +126,9 @@ fun HomeScreen(
         }
     }
 
+    // Whether this identity can sign: the one thing the read-only branch below turns on.
+    val canSign = LocalCanSign.current
+
     val homeScreenViewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
             activeUserPublicKey = activeUserPublicKey,
@@ -155,10 +164,12 @@ fun HomeScreen(
                             title = {
                                 // "Mantra". The launcher label, the desktop window title, the
                                 // landing screen and the package name all say so; this bar was
-                                // the last place still saying "Torch". `UserAgent.APP_NAME` is
-                                // the other, and is left alone -- it goes on the wire to relay
-                                // operators, so it is a network identity question rather than
-                                // a content one.
+                                // the last place still saying "Torch", the brand before this
+                                // one, and `UserAgent.CLIENT_NAME` was the other. That one went
+                                // last, because it goes on the wire: it is the `client` tag on
+                                // every relay list this app publishes. It could move because it
+                                // is attribution and nothing derives from it -- unlike the two
+                                // `mantra/` hash tags, which must never move at all.
                                 Text(stringResource(Res.string.mantra))
                             },
                             // No navigation icon and no actions. The avatar in the leading
@@ -176,7 +187,11 @@ fun HomeScreen(
                         // the bottom-right of the *window*, which is on top of the
                         // transcript's send button; M3 puts a list-detail layout's primary
                         // action in the list pane, and so does the branch below.
-                        if (listPaneWidth == null) NewChatButton { showBottomSheet = true }
+                        // And only for an identity that can sign: a new chat is a key
+                        // package, a welcome and a gift wrap, none of which a read-only
+                        // identity can produce. Hidden, not disabled -- the empty state
+                        // beside it says why.
+                        if (listPaneWidth == null && canSign) NewChatButton { showBottomSheet = true }
                     }
                 ) { innerPadding ->
                     @Composable
@@ -240,7 +255,21 @@ fun HomeScreen(
                         }
                     }
 
-                    if (listPaneWidth == null) {
+                    if (!canSign) {
+                        // One column at every width. The two-pane layout is a list beside
+                        // a detail, and there is no list: every room is MLS or a gift wrap,
+                        // encrypted to the key this identity does not hold. The empty state
+                        // is the only thing on the screen, which is the one case
+                        // readableContent()'s centring is for -- and its action is where
+                        // the upgrade lives. ChatRoomListViewModel is not composed, so the
+                        // inbox sync and the MLS negentropy it would queue are not queued.
+                        Column(
+                            modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            ReadOnlyInbox(onSignInWithTheNsec = { onNavigateToRoute(SignInRoute) })
+                        }
+                    } else if (listPaneWidth == null) {
                         // Compact and medium: the list is the screen, and a room is a route.
                         // Byte for byte the layout this screen has always had.
                         ChatRoomListPane(
@@ -300,6 +329,8 @@ fun HomeScreen(
                                         // created and has an id at last.
                                         onNavigateToRouteAndPopUpInclusive = onOpenChatRoom,
                                         onNavigateToRoute = onNavigateToRoute,
+                                        // The list is beside it; there is nothing to pop.
+                                        onNavigateBack = null,
                                     )
                                     }
                                 }
@@ -307,7 +338,10 @@ fun HomeScreen(
                         }
                     }
 
-                    if (showBottomSheet) {
+                    // Neither can open without the button above, and the button is hidden for
+                    // an identity that cannot sign; the guard here is so that the two cannot
+                    // drift apart.
+                    if (showBottomSheet && canSign) {
                         NewChatBottomSheetDialog(
                             scope = scope,
                             sheetState = sheetState,
@@ -323,7 +357,7 @@ fun HomeScreen(
                     }
 
                     when {
-                        openNpubDialog.value -> {
+                        openNpubDialog.value && canSign -> {
                             StartDirectMessageToNpubOrNip05Dialog(
                                 activeUserPublicKey = activeUserPublicKey,
                                 scope = scope,
@@ -350,7 +384,7 @@ fun HomeScreen(
 @ConformancePreviews
 @Composable
 private fun HomeScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
@@ -391,6 +425,28 @@ It has survived not only five centuries, but also the leap into electronic types
 }
 
 /**
+ * What a read-only identity sees where its rooms would be, and the one thing that fills
+ * it.
+ *
+ * `EmptyState`'s message is required for exactly this reason -- an absence has to say
+ * which absence it is -- and its action slot is where the upgrade lives: the nsec pasted
+ * on the sign-in screen hits the credentials file's upgrade rule, and startup takes the
+ * user back here with rooms in it.
+ */
+@Composable
+private fun ReadOnlyInbox(onSignInWithTheNsec: () -> Unit) {
+    EmptyState(
+        message = stringResource(Res.string.messages_need_the_secret_key_this_profile),
+        icon = Icons.Default.Lock,
+        action = {
+            TextButton(onClick = onSignInWithTheNsec) {
+                Text(stringResource(Res.string.sign_in_with_the_nsec))
+            }
+        },
+    )
+}
+
+/**
  * The one action the chat list offers, in whichever slot the layout has for it.
  *
  * Extracted only so that the two branches above cannot drift: on one pane it is the
@@ -400,8 +456,8 @@ It has survived not only five centuries, but also the leap into electronic types
  */
 @Composable
 private fun NewChatButton(onClick: () -> Unit) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
+    ExtendedFab(
+        label = stringResource(Res.string.new_chat),
         icon = {
             Icon(
                 Icons.Default.Add,
@@ -409,7 +465,7 @@ private fun NewChatButton(onClick: () -> Unit) {
                 contentDescription = Decorative,
             )
         },
-        text = { Text(stringResource(Res.string.new_chat)) },
+        onClick = onClick,
     )
 }
 

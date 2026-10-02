@@ -67,6 +67,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProfilePreviewRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
@@ -77,7 +78,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.dialogs.ModalBottomSheet
 import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -133,6 +134,7 @@ import mantra.composeapp.generated.resources.recovered_of_event_s
 import mantra.composeapp.generated.resources.recovered_of_still_unreadable
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.ConformancePreviews
@@ -149,7 +151,8 @@ fun ChatRoomDetailScreen(
     chatRepository: ChatRepository,
     mantraRepository: MantraRepository,
     onNavigateToRoute: (Route) -> Unit,
-    onPopBackToRoute: (Route) -> Unit
+    onPopBackToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val chatRoomDetailViewModel: ChatRoomDetailViewModel = viewModel(
         factory = ChatRoomDetailViewModel.factory(
@@ -186,6 +189,7 @@ fun ChatRoomDetailScreen(
                             title = {
                                 chatRoomDetailUIState.localChatRoom.RenderChatRoomTitleText()
                             },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     }
                 ) { innerPadding ->
@@ -690,11 +694,19 @@ fun ChatRoomDetailScreen(
                                 key = { localParticipant -> localParticipant.participant.participantPublicKey}
                             ) { localParticipant ->
 
+                                // The preview, not the profile detail: the detail is
+                                // keyed by a kind 0's event id, and a member whose
+                                // profile has not arrived yet -- the "LOADING..." row
+                                // the sync exists for -- has none. The preview is
+                                // keyed by the public key, which is the one thing
+                                // every row here has, and it shows the cached
+                                // profile at once while the relays refresh it.
                                 Card(
                                     onClick = {
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Profile detail"
+                                            ProfilePreviewRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                profilePublicKey = localParticipant.participant.participantPublicKey
                                             )
                                         )
                                     }
@@ -1222,7 +1234,7 @@ private fun ReindexMarmotGroupEventsButton(
 @ConformancePreviews
 @Composable
 private fun ChatRoomMessagingScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -1272,7 +1284,8 @@ private fun ChatRoomMessagingScreenPreview() {
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 onNavigateToRoute = {},
-                onPopBackToRoute = {}
+                onPopBackToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

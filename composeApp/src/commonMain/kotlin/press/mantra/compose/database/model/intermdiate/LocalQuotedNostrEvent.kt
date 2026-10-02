@@ -21,7 +21,7 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.QuotedRelation
 import press.mantra.compose.ui.composable.widgets.content.RichContent
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 data class LocalQuotedNostrEvent(
@@ -113,7 +113,7 @@ data class LocalQuotedNostrEvent(
 @ConformancePreviews
 @Composable
 private fun LocalQuotedNostrEventPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(20.dp)
         ) {

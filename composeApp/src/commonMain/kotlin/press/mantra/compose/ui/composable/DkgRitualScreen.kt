@@ -28,7 +28,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,7 +62,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileColor
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.ui.composable.navigation.routes.DkgJoinApprovalRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRound1ApprovalRoute
@@ -73,7 +72,7 @@ import press.mantra.compose.ui.view.model.DkgRitualViewModel
 import press.mantra.compose.ui.view.state.DkgRitualUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.FrostSigningSession
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
@@ -114,8 +113,10 @@ import mantra.composeapp.generated.resources.of_members_will_be_needed_to_sign_w
 import mantra.composeapp.generated.resources.shared_key_for
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
@@ -135,10 +136,11 @@ fun DkgRitualScreen(
     /** Which of the room's ceremonies to show; null takes the newest. */
     dkgSessionId: String? = null,
     initialDkgRitualUIState: DkgRitualUIState = DkgRitualUIState.Loading,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
     onNavigateToRoute: (Route) -> Unit = {},
+    onNavigateBack: () -> Unit,
 ) {
     val dkgRitualViewModel: DkgRitualViewModel = viewModel(
         factory = DkgRitualViewModel.factory(
@@ -146,7 +148,7 @@ fun DkgRitualScreen(
             activeUserPublicKey = activeUserPublicKey,
             dkgSessionId = dkgSessionId,
             initialDkgRitualUIState = initialDkgRitualUIState,
-            activeWalletStateFlow = activeWalletStateFlow,
+            activeIdentityStateFlow = activeIdentityStateFlow,
             chatRepository = chatRepository,
             dkgRepository = dkgRepository
         )
@@ -179,7 +181,8 @@ fun DkgRitualScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                            }
+                            },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     },
                     bottomBar = {
@@ -191,7 +194,13 @@ fun DkgRitualScreen(
                         if (pending != null) {
                             BottomAppBar(
                                 floatingActionButton = {
-                                    ExtendedFloatingActionButton(
+                                    ExtendedFab(
+                                        label = when (pending) {
+                                            DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
+                                            DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
+                                            DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
+                                        },
+                                        icon = { Icon(Icons.Default.Key, contentDescription = Decorative) },
                                         onClick = {
                                             onNavigateToRoute(
                                                 when (pending) {
@@ -213,16 +222,7 @@ fun DkgRitualScreen(
                                                 }
                                             )
                                         }
-                                    ) {
-                                        Icon(Icons.Default.Key, contentDescription = Decorative)
-                                        Text(
-                                            text = when (pending) {
-                                                DkgApprovalStep.HOST_KEY -> stringResource(Res.string.review_and_join)
-                                                DkgApprovalStep.ROUND_1 -> stringResource(Res.string.review_and_contribute)
-                                                DkgApprovalStep.ROUND_2 -> stringResource(Res.string.review_and_confirm)
-                                            }
-                                        )
-                                    }
+                                    )
                                 },
                                 actions = {}
                             )
@@ -235,19 +235,21 @@ fun DkgRitualScreen(
                         if (canStartRitual) {
                             BottomAppBar(
                                 floatingActionButton = {
-                                    ExtendedFloatingActionButton(
-                                        onClick = { dkgRitualViewModel.startRitual() }
-                                    ) {
-                                        if (isActionPending) {
-                                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                    ExtendedFab(
+                                        label = if (session == null) {
+                                            stringResource(Res.string.start_key_ceremony)
                                         } else {
-                                            Icon(Icons.Default.Key, contentDescription = "Start")
-                                        }
-
-                                        Text(
-                                            text = if (session == null) stringResource(Res.string.start_key_ceremony) else stringResource(Res.string.try_again)
-                                        )
-                                    }
+                                            stringResource(Res.string.try_again)
+                                        },
+                                        icon = {
+                                            if (isActionPending) {
+                                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                            } else {
+                                                Icon(Icons.Default.Key, contentDescription = "Start")
+                                            }
+                                        },
+                                        onClick = { dkgRitualViewModel.startRitual() }
+                                    )
                                 },
                                 actions = {
                                     Text(
@@ -865,7 +867,7 @@ private fun QuorumStepper(
 @ConformancePreviews
 @Composable
 private fun DkgRitualScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             DkgRitualScreen(
                 activeUserPublicKey = "",
@@ -882,9 +884,10 @@ private fun DkgRitualScreenPreview() {
                         ),
                     )
                 ),
-                activeWalletStateFlow = MutableStateFlow(null),
+                activeIdentityStateFlow = MutableStateFlow(null),
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
-                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY
+                dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
+                onNavigateBack = {},
             )
         }
     }

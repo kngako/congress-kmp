@@ -7,7 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import press.mantra.compose.ui.composable.navigation.MantraNavHost
 import press.mantra.compose.ui.composable.widgets.ProvideSnackbarHost
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import fr.acinq.phoenix.PhoenixGlobal
 
 @Composable
@@ -16,7 +16,7 @@ fun MantraApp(
     mantraGlobal: MantraGlobal,
     phoenixGlobal: PhoenixGlobal
 ) {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

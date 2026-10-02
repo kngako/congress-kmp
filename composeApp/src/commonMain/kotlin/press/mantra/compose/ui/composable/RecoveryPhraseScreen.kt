@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
@@ -23,7 +22,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -42,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.acinq.phoenix.PhoenixGlobal
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.StateFlow
 import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.backup_confirmation
@@ -66,6 +64,7 @@ import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
@@ -82,13 +81,13 @@ import press.mantra.compose.ui.view.state.RecoveryPhraseUIState
 @Composable
 fun RecoveryPhraseScreen(
     phoenixGlobal: PhoenixGlobal,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     onNavigateBack: () -> Unit,
 ) {
     val recoveryPhraseViewModel: RecoveryPhraseViewModel = viewModel(
         factory = RecoveryPhraseViewModel.factory(
             phoenixGlobal = phoenixGlobal,
-            activeWalletStateFlow = activeWalletStateFlow
+            activeIdentityStateFlow = activeIdentityStateFlow
         )
     )
 
@@ -136,18 +135,7 @@ private fun RecoveryPhraseContent(
                         text = stringResource(Res.string.recovery_phrase)
                     )
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            onNavigateBack.invoke()
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
+                navigationIcon = { NavigateBackButton(onNavigateBack) }
             )
         }
     ) { innerPadding ->
@@ -460,7 +448,7 @@ private fun RecoveryPhraseCheckbox(
 @ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -487,7 +475,7 @@ private fun RecoveryPhraseScreenPreview() {
 @ConformancePreviews
 @Composable
 private fun RecoveryPhraseScreenHiddenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

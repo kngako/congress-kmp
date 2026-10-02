@@ -91,7 +91,7 @@ fun UnqueuedProfileSynchronizationScreen(
 @ConformancePreviews
 @Composable
 private fun UnqueuedProfileSynchronizationScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

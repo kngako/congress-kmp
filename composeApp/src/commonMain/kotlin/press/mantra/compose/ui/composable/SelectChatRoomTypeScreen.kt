@@ -23,7 +23,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,11 +46,11 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomTypeViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomTypeUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.ui.theme.spacing
@@ -71,8 +70,10 @@ import mantra.composeapp.generated.resources.was_created_but_its_shared_key_cere
 import mantra.composeapp.generated.resources.you_and_others
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
@@ -87,11 +88,12 @@ fun SelectChatRoomTypeScreen(
     description: String?,
     memberPublicKeys: List<HexKey>,
     initialSelectChatRoomTypeUIState: SelectChatRoomTypeUIState = SelectChatRoomTypeUIState.Loading,
-    activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    activeIdentityStateFlow: StateFlow<Identity?>,
     nostrRepository: NostrRepository,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
     onNavigateToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val selectChatRoomTypeViewModel: SelectChatRoomTypeViewModel = viewModel(
         factory = SelectChatRoomTypeViewModel.factory(
@@ -100,7 +102,7 @@ fun SelectChatRoomTypeScreen(
             description = description,
             memberPublicKeys = memberPublicKeys,
             initialSelectChatRoomTypeUIState = initialSelectChatRoomTypeUIState,
-            activeWalletStateFlow = activeWalletStateFlow,
+            activeIdentityStateFlow = activeIdentityStateFlow,
             nostrRepository = nostrRepository,
             chatRepository = chatRepository,
             dkgRepository = dkgRepository
@@ -142,38 +144,32 @@ fun SelectChatRoomTypeScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                            }
+                            },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     },
                     bottomBar = {
                         BottomAppBar(
                             floatingActionButton = {
-                                ExtendedFloatingActionButton(
+                                ExtendedFab(
+                                    label = if (selectChatRoomTypeViewModel.createdChatRoomId.value != null) {
+                                        stringResource(Res.string.open_chat)
+                                    } else {
+                                        stringResource(Res.string.create_chat)
+                                    },
+                                    icon = {
+                                        if (isActionPending) {
+                                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                        } else {
+                                            Icon(Icons.Default.Check, contentDescription = "Create chat")
+                                        }
+                                    },
                                     onClick = {
                                         selectChatRoomTypeViewModel.createChatRoom(
                                             onNavigateToRoute = onNavigateToRoute
                                         )
                                     }
-                                ) {
-                                    if (isActionPending) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = "Create chat"
-                                        )
-                                    }
-
-                                    Text(
-                                        text = if (selectChatRoomTypeViewModel.createdChatRoomId.value != null) {
-                                            stringResource(Res.string.open_chat)
-                                        } else {
-                                            stringResource(Res.string.create_chat)
-                                        }
-                                    )
-                                }
+                                )
                             },
                             actions = {
                                 Text(
@@ -465,7 +461,7 @@ private fun QuorumPicker(
 @ConformancePreviews
 @Composable
 private fun SelectChatRoomTypeScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -490,11 +486,12 @@ private fun SelectChatRoomTypeScreenPreview() {
                         )
                     )
                 ),
-                activeWalletStateFlow = MutableStateFlow(null),
+                activeIdentityStateFlow = MutableStateFlow(null),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 dkgRepository = DkgRepository.NO_OP_DKG_REPOSITORY,
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

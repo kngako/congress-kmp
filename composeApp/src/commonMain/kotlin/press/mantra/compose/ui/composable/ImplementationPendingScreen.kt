@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,15 +20,35 @@ import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.functionality_coming_soon_2
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.ConformancePreviews
 
+/**
+ * @param onNavigateBack `null` when this screen is the root of the stack, which it is
+ *   when the navigation machine lands on an error and clears everything under it. Pushed
+ *   from a "learn more" or an "edit profile", there is a screen to return to and this is
+ *   how. Only the host knows which, so it decides.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImplementationPendingScreen(
-    text: String
+    text: String,
+    onNavigateBack: (() -> Unit)?,
 ) {
 
-    Scaffold(snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) }) { innerPadding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(LocalSnackbarHostState.current) },
+        topBar = {
+            TopAppBar(
+                // The name of the thing that is not built yet, which is what was tapped.
+                title = { Text(text) },
+                navigationIcon = {
+                    if (onNavigateBack != null) NavigateBackButton(onNavigateBack)
+                },
+            )
+        },
+    ) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding).readableContent().fillMaxSize()
         ) {
@@ -47,12 +69,13 @@ fun ImplementationPendingScreen(
 @ConformancePreviews
 @Composable
 private fun ImplementationPendingScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {
             ImplementationPendingScreen(
-                "Sign in"
+                text = "Sign in",
+                onNavigateBack = {},
             )
         }
     }

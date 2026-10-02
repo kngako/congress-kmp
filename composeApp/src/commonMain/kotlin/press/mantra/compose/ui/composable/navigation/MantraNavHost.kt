@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import press.mantra.compose.ui.composable.DkgJoinApprovalScreen
 import press.mantra.compose.ui.composable.DkgRitualScreen
 import press.mantra.compose.ui.composable.DkgRound1ApprovalScreen
 import press.mantra.compose.ui.composable.DkgRound2ApprovalScreen
+import press.mantra.compose.ui.composable.BroadcastGroupSignedEventScreen
 import press.mantra.compose.ui.composable.HomeScreen
 import press.mantra.compose.ui.composable.ImplementationPendingScreen
 import press.mantra.compose.ui.composable.KeyPackageManagementScreen
@@ -47,6 +49,7 @@ import press.mantra.compose.ui.composable.KeyRecoveryScreen
 import press.mantra.compose.ui.composable.LandingScreen
 import press.mantra.compose.ui.composable.LoadingScreen
 import press.mantra.compose.ui.composable.NostrEventDetailScreen
+import press.mantra.compose.ui.composable.NostrSecretScreen
 import press.mantra.compose.ui.composable.RecoveryPhraseScreen
 import press.mantra.compose.ui.composable.SearchMemberToAddToChatRoomScreen
 import press.mantra.compose.ui.composable.SearchResultScreen
@@ -82,7 +85,16 @@ import press.mantra.compose.ui.composable.navigation.routes.KeyRecoveryRoute
 import press.mantra.compose.ui.composable.navigation.routes.LandingRoute
 import press.mantra.compose.ui.composable.navigation.routes.LoadingRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.NostrSecretRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProfilePreviewRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProfilesRoute
 import press.mantra.compose.ui.composable.navigation.routes.RecoveryPhraseRoute
+import press.mantra.compose.ui.composable.ProfilePreviewScreen
+import press.mantra.compose.ui.composable.ProfilesScreen
+import press.mantra.compose.ui.view.model.ProfilesViewModel
+import press.mantra.compose.ui.view.model.getAvailableWalletsMeta
+import press.mantra.compose.ui.view.model.bareKeyProfileWriter
+import press.mantra.compose.ui.view.model.seedProfileWriter
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchResultRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchRoute
@@ -109,6 +121,8 @@ import press.mantra.compose.ui.view.state.NavigationUIState
 import press.mantra.compose.ui.view.state.NostrEventDetailUIState
 import press.mantra.compose.ui.view.state.SearchUIState
 import press.mantra.compose.ui.theme.NavigationMotion
+import press.mantra.compose.ui.composable.SignOutDependencies
+import press.mantra.compose.ui.composable.widgets.ProvideSigningCapability
 import press.mantra.compose.ui.theme.breakpoint
 import co.touchlab.kermit.Logger
 import fr.acinq.phoenix.PhoenixGlobal
@@ -122,6 +136,7 @@ import press.mantra.compose.database.repository.DatabaseMantraRepository
 import press.mantra.compose.ui.composable.AddArtifactScreen
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
@@ -165,10 +180,19 @@ fun MantraNavHost(
         AuxDatabaseManager(mantraGlobal)
     }
 
+    // Before the repositories: the nostr repository stamps every fetch request it queues
+    // with the active identity, and takes the flow at construction.
+    val sovereignWalletViewModel: SovereignWalletViewModel = viewModel(
+        factory = SovereignWalletViewModel.factory(
+            phoenixGlobal = phoenixGlobal
+        )
+    )
+
     val databaseNostrRepository = remember {
         DatabaseNostrRepository(
             database = auxDatabaseManager.auxDatabase,
-            applicationIOScope
+            applicationIOScope,
+            activeIdentity = sovereignWalletViewModel.activeIdentity,
         )
     }
 
@@ -212,15 +236,9 @@ fun MantraNavHost(
         )
     }
 
-    val sovereignWalletViewModel: SovereignWalletViewModel = viewModel(
-        factory = SovereignWalletViewModel.factory(
-            phoenixGlobal = phoenixGlobal
-        )
-    )
-
     val navigationViewModel: NavigationViewModel =  viewModel (
         factory = NavigationViewModel.factory(
-            activeWallet = sovereignWalletViewModel.activeWalletInUI,
+            activeIdentity = sovereignWalletViewModel.activeIdentity,
             initialNavigationUIState = NavigationUIState.Loading(),
             nostrRepository = databaseNostrRepository,
             scope = applicationIOScope
@@ -229,7 +247,7 @@ fun MantraNavHost(
 
     val notaryViewModel: NotaryViewModel = viewModel(
         factory = NotaryViewModel.factory(
-            activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+            activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
             marmotRepository = databaseMarmotRepository,
@@ -240,7 +258,7 @@ fun MantraNavHost(
     // TODO: Produce a notary UI Element...
     val synchronizationViewModel: SynchronizationViewModel = viewModel(
         factory = SynchronizationViewModel.factory(
-            activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+            activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
             nostrRepository = databaseNostrRepository,
             chatRepository = databaseChatRepository,
             relayRepository = databaseNostrRepository,
@@ -402,6 +420,28 @@ fun MantraNavHost(
         }
     }
 
+    // What signing out of a read-only identity takes, for the two screens that offer it.
+    // The tail is the nsec forget's: the device no longer holds anything for the
+    // identity, so re-list -- the selector drops it -- then clear the active identity,
+    // and the navigation observer sends a null identity to startup, which shows the
+    // selector or, if this was the last one, Landing.
+    val signOutOfReadOnlyIdentity = remember(sovereignWalletViewModel) {
+        SignOutDependencies(
+            activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
+            forgetNostrCredential = { identity -> sovereignWalletViewModel.forgetNostrCredential(identity) },
+            hideIdentityMetadata = { identity -> sovereignWalletViewModel.hideIdentityMetadata(identity) },
+            onSignedOut = {
+                sovereignWalletViewModel.forgetDefaultIdentity()
+                sovereignWalletViewModel.listIdentities {
+                    sovereignWalletViewModel.resetToSelector()
+                }
+            },
+        )
+    }
+
+    // Once, above every screen: what a read-only identity may not be offered is decided
+    // where the control is drawn, and this is how the control finds out.
+    ProvideSigningCapability(sovereignWalletViewModel.activeIdentity) {
     MantraNavigationSuite(
         navController = navController,
         breakpoint = MaterialTheme.breakpoint,
@@ -427,6 +467,7 @@ fun MantraNavHost(
 
                 SovereignWalletStartupScreen(
                     sovereignWalletViewModel = sovereignWalletViewModel,
+                    nostrRepository = databaseNostrRepository,
                     // No seed on this device, so there is no wallet to start: the user has to make or
                     // restore one, and that lives behind the landing screen. This used to park them on
                     // a loading screen with nothing left to load.
@@ -441,6 +482,12 @@ fun MantraNavHost(
                         applicationIOScope.launch {
                             navigationViewModel.loadNostrProfile(route)
                         }
+                    },
+                    onNavigateToSignIn = {
+                        navController.navigate(route = SignInRoute)
+                    },
+                    onNavigateToCreateProfile = {
+                        navController.navigate(route = CreateProfileRoute(withWallet = false))
                     },
                     forceWalletId = null,
                 )
@@ -466,44 +513,41 @@ fun MantraNavHost(
                             route = SignInRoute
                         )
                     },
+                    // The first profile on a device is the one the wallet will belong to.
                     onNavigateToCreateProfile = {
                         navController.navigate(
-                            route = CreateProfileRoute()
+                            route = CreateProfileRoute(withWallet = true)
                         )
                     }
                 )
             }
-            composable<CreateProfileRoute> {
+            composable<CreateProfileRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<CreateProfileRoute>()
                 CreateProfileScreen(
-                    onNavigateToEndThis = {
-                        navController.navigate(
-                            route = BlankRoute
-                        ) {
-                            popUpTo(0)
-                        }
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                     nostrRepository = databaseNostrRepository,
                     marmotRepository = databaseMarmotRepository,
-                    writeSeed = { words, onSeedWritten, onSeedWriteError ->
-                        sovereignWalletViewModel.writeSeed(
-                            words,
-                            isRestoringWallet = false,
-                            onSeedWritten = { walletId ->
-                                onSeedWritten()
-
-                                sovereignWalletViewModel.loadSovereignData(walletId)
-                                sovereignWalletViewModel.listAvailableWallets {
-                                    sovereignWalletViewModel.switchToWallet(walletId)
-                                    navController.navigate(
-                                        route = SovereignWalletStartupRoute
-                                    )
-                                }
-                            },
-                            onSeedWriteError = { onSeedWriteError() }
-                        )
-                    }
+                    // A seed from Landing, a bare key from inside: the screen does not know
+                    // which. See docs/multiple-profiles.md, Phase 5.
+                    newProfile = if (route.withWallet) sovereignWalletViewModel.seedProfileWriter() else sovereignWalletViewModel.bareKeyProfileWriter(),
+                    // The sign-in tail, with the popUpTo(0) it always had there: back from the
+                    // new profile's startup must not return to a form whose secret is already
+                    // on disk. The account rows are in the database before this runs, so the
+                    // machine finds them the moment the identity is activated.
+                    onProfileCreated = { walletId ->
+                        sovereignWalletViewModel.loadSovereignData(walletId)
+                        sovereignWalletViewModel.listIdentities {
+                            sovereignWalletViewModel.switchToIdentity(walletId)
+                            navController.navigate(
+                                route = SovereignWalletStartupRoute
+                            ) {
+                                popUpTo(0)
+                            }
+                        }
+                    },
                 )
-
             }
             composable<ChatRoomCreationRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<ChatRoomCreationRoute>()
@@ -514,6 +558,9 @@ fun MantraNavHost(
                         navController.navigate(
                             selectMembersRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -529,6 +576,9 @@ fun MantraNavHost(
                         navController.navigate(
                             selectChatRoomTypeRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -538,11 +588,14 @@ fun MantraNavHost(
                 SelectSubgroupAdminsScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
                     parentChatRoomId = route.parentChatRoomId,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
                     onNavigateToRoute = { nextRoute ->
                         navController.navigate(route = nextRoute)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -553,11 +606,14 @@ fun MantraNavHost(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
                     dkgSessionId = route.dkgSessionId,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
                     onNavigateToRoute = { approvalRoute ->
                         navController.navigate(route = approvalRoute)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -568,7 +624,7 @@ fun MantraNavHost(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
                     dkgSessionId = route.dkgSessionId,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
                     onDone = { navController.popBackStack() }
@@ -581,7 +637,7 @@ fun MantraNavHost(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
                     dkgSessionId = route.dkgSessionId,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
                     onDone = { navController.popBackStack() }
@@ -594,7 +650,7 @@ fun MantraNavHost(
                     activeUserPublicKey = route.activeUserPublicKey,
                     chatRoomId = route.chatRoomId,
                     dkgSessionId = route.dkgSessionId,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
                     onDone = { navController.popBackStack() }
@@ -608,7 +664,7 @@ fun MantraNavHost(
                     name = route.name,
                     description = route.description,
                     memberPublicKeys = route.memberPublicKeys,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     nostrRepository = databaseNostrRepository,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
@@ -626,6 +682,9 @@ fun MantraNavHost(
                                 inclusive = true
                             }
                         }
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -648,11 +707,51 @@ fun MantraNavHost(
                             )
                         )
                     },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
                     nostrRepository = databaseNostrRepository
                 )
             }
             composable<SignInRoute> {
-                SignInToProfileScreen()
+                SignInToProfileScreen(
+                    nostrRepository = databaseNostrRepository,
+                    writeNostrKey = { privateKey -> sovereignWalletViewModel.writeNostrKey(privateKey) },
+                    writeNostrPublicKey = { publicKey -> sovereignWalletViewModel.writeNostrPublicKey(publicKey) },
+                    writeRecoveryPhrase = { words, onWritten, onError ->
+                        sovereignWalletViewModel.writeSeed(
+                            words,
+                            isRestoringWallet = true,
+                            onSeedWritten = onWritten,
+                            onSeedWriteError = onError,
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    // The tail the create flow uses after writeSeed: re-list, select, go to
+                    // startup. Startup finds the new identity, activates it, and the navigation
+                    // machine takes it from the placeholder account the sign-in planted. The
+                    // form is popped so that back does not return to a field holding a secret.
+                    //
+                    // The navigate here looks redundant with the observer's -- switching clears
+                    // the identity, and a null identity is StartupPhoenix, which the observer
+                    // above navigates to with the same popUpTo(0). It is not: the navigation
+                    // state is a StateFlow, and an update to a state equal to the current one
+                    // emits nothing. This is what guarantees the stack moves even on the day
+                    // the state does not. Leave both.
+                    onSignedIn = { walletId ->
+                        sovereignWalletViewModel.loadSovereignData(walletId)
+                        sovereignWalletViewModel.listIdentities {
+                            sovereignWalletViewModel.switchToIdentity(walletId)
+                            navController.navigate(
+                                route = SovereignWalletStartupRoute
+                            ) {
+                                popUpTo(0)
+                            }
+                        }
+                    },
+                )
             }
             composable<UnsignedProfileRoute> { backStackEntry ->
                 backStackEntry.toRoute<UnsignedProfileRoute>()
@@ -661,8 +760,16 @@ fun MantraNavHost(
             }
             composable<UnsyncedProfileRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<UnsyncedProfileRoute>()
+                val identities by sovereignWalletViewModel.availableIdentities.collectAsState()
                 UnsyncedProfileScreen(
-                    unsyncedProfilePublicKey = route.publicKey
+                    unsyncedProfilePublicKey = route.publicKey,
+                    nostrRepository = databaseNostrRepository,
+                    signOut = signOutOfReadOnlyIdentity,
+                    // Another profile to go to, when there is one; the switcher has a back
+                    // button, so this screen is still there if the user changes their mind.
+                    onSwitchProfile = if (identities.size > 1) {
+                        { navController.navigate(route = ProfilesRoute) }
+                    } else null,
                 )
             }
             composable<UnqueuedProfileSynchronizationRoute> { backStackEntry ->
@@ -763,7 +870,8 @@ fun MantraNavHost(
                         navController.navigate(
                             route = route
                         )
-                    }
+                    },
+                    signOut = signOutOfReadOnlyIdentity,
                 )
             }
             composable<ShareProfileRoute> { backStackEntry ->
@@ -800,12 +908,43 @@ fun MantraNavHost(
                     }
                 )
             }
+            composable<ProfilesRoute> {
+                val profilesViewModel: ProfilesViewModel = viewModel(
+                    factory = ProfilesViewModel.factory(
+                        listWalletState = sovereignWalletViewModel.listWalletState,
+                        availableIdentities = sovereignWalletViewModel.availableIdentities,
+                        activeIdentity = sovereignWalletViewModel.activeIdentity,
+                        walletsMetadata = getAvailableWalletsMeta(phoenixGlobal),
+                        nostrRepository = databaseNostrRepository,
+                    ),
+                )
+                ProfilesScreen(
+                    viewModel = profilesViewModel,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    // The switch is the whole of it: the observer above sends the null
+                    // identity to startup, and startup opens the one named.
+                    onSwitch = { walletId ->
+                        sovereignWalletViewModel.switchToIdentity(walletId)
+                    },
+                    onRetry = {
+                        sovereignWalletViewModel.listIdentities {}
+                    },
+                    onSignIn = {
+                        navController.navigate(route = SignInRoute)
+                    },
+                    onCreateProfile = {
+                        navController.navigate(route = CreateProfileRoute(withWallet = false))
+                    },
+                )
+            }
             composable<KeyRecoveryRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<KeyRecoveryRoute>()
 
                 KeyRecoveryScreen(
                     activeUserPublicKey = route.activeUserPublicKey,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     onNavigateBack = {
                         navController.popBackStack()
                     },
@@ -819,10 +958,32 @@ fun MantraNavHost(
             composable<RecoveryPhraseRoute> {
                 RecoveryPhraseScreen(
                     phoenixGlobal = phoenixGlobal,
-                    activeWalletStateFlow = sovereignWalletViewModel.activeWalletInUI,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     onNavigateBack = {
                         navController.popBackStack()
                     }
+                )
+            }
+            composable<NostrSecretRoute> {
+                NostrSecretScreen(
+                    phoenixGlobal = phoenixGlobal,
+                    activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
+                    nostrRepository = databaseNostrRepository,
+                    forgetNostrCredential = { identity -> sovereignWalletViewModel.forgetNostrCredential(identity) },
+                    hideIdentityMetadata = { identity -> sovereignWalletViewModel.hideIdentityMetadata(identity) },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    // The device no longer holds the key. Re-list so the selector drops it,
+                    // then clear the active identity: the navigation observer sends a null
+                    // identity to startup, which shows the selector -- or Landing, if this
+                    // was the last one.
+                    onForgotten = {
+                        sovereignWalletViewModel.forgetDefaultIdentity()
+                        sovereignWalletViewModel.listIdentities {
+                            sovereignWalletViewModel.resetToSelector()
+                        }
+                    },
                 )
             }
             composable<ChatRoomMessagingRoute> { backStackEntry ->
@@ -849,6 +1010,11 @@ fun MantraNavHost(
                         navController.navigate(
                             route = actionRoute
                         )
+                    },
+                    // A pushed route, unlike the same screen inside the home screen's
+                    // detail pane, so there is something to pop.
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -872,6 +1038,9 @@ fun MantraNavHost(
                             route = popRoute,
                             inclusive = false
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -888,6 +1057,9 @@ fun MantraNavHost(
                         navController.navigate(
                             route = chatRoomDetailRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                 )
             }
@@ -910,6 +1082,11 @@ fun MantraNavHost(
                             ),
                             inclusive = true
                         )
+                    },
+                    // Back is to the search, not past it: a member who picked the wrong
+                    // person wants the list again, not the room.
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                 )
             }
@@ -939,6 +1116,9 @@ fun MantraNavHost(
                         navController.navigate(
                             route = actionRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -965,6 +1145,28 @@ fun MantraNavHost(
                         navController.navigate(
                             route = actionRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<BroadcastGroupSignedEventRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<BroadcastGroupSignedEventRoute>()
+
+                BroadcastGroupSignedEventScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    signedEventId = route.signedEventId,
+                    chatRepository = databaseChatRepository,
+                    // The one screen handed the pool itself rather than a queue
+                    // to write to: a group-signed event must not become a
+                    // `NostrEvent` row, and the queue hangs off one. See
+                    // `BroadcastGroupSignedEventViewModel`.
+                    publishTransport = synchronizationViewModel.relaysSocketManager,
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
@@ -1250,13 +1452,54 @@ fun MantraNavHost(
                     },
                 )
             }
+            composable<ProfilePreviewRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ProfilePreviewRoute>()
+
+                ProfilePreviewScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    profilePublicKey = route.profilePublicKey,
+                    nostrRepository = databaseNostrRepository,
+                    chatRepository = databaseChatRepository,
+                    // The room replaces the preview, as it replaces the profile detail
+                    // above: back from a chat is the list, not the person it was started
+                    // from.
+                    onStartChat = { chatRoom ->
+                        navController.navigate(
+                            route = chatRoom
+                        ) {
+                            popUpTo(route) {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                )
+            }
             composable<ImplementationPendingRoute> { backStackEntry ->
                 val route: ImplementationPendingRoute = backStackEntry.toRoute()
+
+                // Pushed from a "learn more" or an "edit profile", and also where the
+                // navigation observer above lands with `popUpTo(0)` on an error. Whether
+                // there is anything under this entry is what decides the back button, and
+                // it is remembered because the answer is read again while the screen is
+                // leaving, when the stack has already moved on.
+                val hasSomethingToReturnTo = remember {
+                    navController.previousBackStackEntry != null
+                }
+
                 ImplementationPendingScreen(
-                    route.name
+                    text = route.name,
+                    onNavigateBack = if (hasSomethingToReturnTo) {
+                        { navController.popBackStack() }
+                    } else {
+                        null
+                    }
                 )
             }
         }
+    }
     }
 
 }

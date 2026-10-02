@@ -44,22 +44,37 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import press.mantra.compose.ui.composable.widgets.buttons.Clickable
-import fr.acinq.phoenix.data.UserWallet
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import fr.acinq.phoenix.data.WalletId
-import fr.acinq.phoenix.utils.preferences.GlobalPrefs
 import fr.acinq.phoenix.utils.preferences.UserWalletMetadata
 import fr.acinq.phoenix.utils.preferences.getByWalletIdOrDefault
+import press.mantra.compose.extensions.hexToNpubHrp
+import mantra.composeapp.generated.resources.Res
+import mantra.composeapp.generated.resources.read_only
+import mantra.composeapp.generated.resources.wallet
+import org.jetbrains.compose.resources.stringResource
+import press.mantra.compose.database.model.Profile
+import press.mantra.compose.identity.StoredIdentity
+import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
 import press.mantra.compose.ui.theme.spacing
 
+/**
+ * The device's profiles as a list: the open one above a divider, the others below,
+ * each with its nostr name and picture where the device holds a kind 0 for it and its
+ * npub where it does not.
+ *
+ * @param profiles the nostr profile of each listed key, by public key; a key with no
+ *   entry, or a null one, is shown by its npub over the metadata's emoji.
+ */
 @Composable
 fun WalletsSelector(
     modifier: Modifier = Modifier,
-    globalPrefs: GlobalPrefs,
-    wallets: Map<WalletId, UserWallet>,
+    wallets: Map<WalletId, StoredIdentity>,
     walletsMetadata: Map<WalletId, UserWalletMetadata>,
     activeWalletId: WalletId?,
     canEdit: Boolean,
-    onWalletClick: (UserWallet) -> Unit,
+    onWalletClick: (StoredIdentity) -> Unit,
+    profiles: Map<HexKey, Profile?> = emptyMap(),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     topContent: @Composable (() -> Unit)? = null,
@@ -76,9 +91,9 @@ fun WalletsSelector(
         if (currentWallet != null) {
             item {
                 AvailableWalletView(
-                    userWallet = currentWallet,
-                    globalPrefs = globalPrefs,
-                    metadata = walletsMetadata.getByWalletIdOrDefault(currentWallet.walletId),
+                    identity = currentWallet,
+                    profile = profiles[currentWallet.nostrPublicKey],
+                    metadata = walletsMetadata.getByWalletIdOrDefault(currentWallet.id),
                     isCurrent = true,
                     canEdit = canEdit,
                     onClick = { onWalletClick(currentWallet) }
@@ -88,14 +103,14 @@ fun WalletsSelector(
                 Spacer(Modifier.height(MaterialTheme.spacing.space100))
             }
         }
-        items(items = otherWalletsList) { (walletId, userWallet) ->
+        items(items = otherWalletsList) { (walletId, identity) ->
             AvailableWalletView(
-                userWallet = userWallet,
-                globalPrefs = globalPrefs,
+                identity = identity,
+                profile = profiles[identity.nostrPublicKey],
                 metadata = walletsMetadata.getByWalletIdOrDefault(walletId),
                 isCurrent = false,
                 canEdit = canEdit,
-                onClick = { onWalletClick(userWallet) }
+                onClick = { onWalletClick(identity) }
             )
             Spacer(Modifier.height(MaterialTheme.spacing.space100))
         }
@@ -105,11 +120,24 @@ fun WalletsSelector(
     }
 }
 
+/**
+ * One profile. The name and picture are the nostr profile's -- the widgets the profile
+ * tab draws itself with -- and the npub is the second line, the identifier the rest of
+ * the app shows and the one a user might actually recognise. A key the device has no
+ * kind 0 for yet, one just created or a read-only one never found, is the npub over the
+ * metadata's emoji. It used to be "Default name" over a random emoji for every row,
+ * because nothing in this app writes the wallet metadata's name.
+ *
+ * What the device holds for the profile is said before the tap -- *wallet* for a seed
+ * attached, *read only* for a bare public key, nothing for the plain case of a bare
+ * key -- because it is the difference between a profile that can be signed out of and
+ * one whose sign-out is a wallet question, and between two profiles with the same name.
+ */
 @Composable
 private fun AvailableWalletView(
     modifier: Modifier = Modifier,
-    globalPrefs: GlobalPrefs,
-    userWallet: UserWallet,
+    identity: StoredIdentity,
+    profile: Profile?,
     metadata: UserWalletMetadata,
     isCurrent: Boolean,
     canEdit: Boolean,
@@ -122,7 +150,7 @@ private fun AvailableWalletView(
         )
 //        EditWalletDialog(
 //            onDismiss = { showWalletEditDialog = false },
-//            walletId = userWallet.walletId,
+//            walletId = identity.id,
 //            globalPrefs = globalPrefs,
 //            metadata = metadata,
 //        )
@@ -134,7 +162,7 @@ private fun AvailableWalletView(
             if (isCurrent) {
                 if (canEdit) showWalletEditDialog = true else return@Clickable
             } else {
-                onClick(userWallet.walletId)
+                onClick(identity.id)
             }
         },
         shape = RoundedCornerShape(16.dp),
@@ -147,12 +175,37 @@ private fun AvailableWalletView(
                     .weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                WalletAvatar(avatar = metadata.avatar, backgroundColor = Color.Transparent, internalPadding = PaddingValues(MaterialTheme.spacing.space50))
+                if (profile != null) {
+                    ProfileAvatar(size = AvatarSize, publicKey = identity.nostrPublicKey, profile = profile)
+                } else {
+                    WalletAvatar(avatar = metadata.avatar, backgroundColor = Color.Transparent, internalPadding = PaddingValues(MaterialTheme.spacing.space50))
+                }
                 Spacer(Modifier.width(MaterialTheme.spacing.space150))
                 Column {
-                    Text(text = metadata.nameOrDefault(), modifier = Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(MaterialTheme.spacing.space25))
-                    Text(text = userWallet.nodeId, modifier = Modifier, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp))
+                    val npub = identity.nostrPublicKey.hexToNpubHrp()
+                    Text(
+                        text = profile?.humanReadableNameOrPubkey() ?: npub,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (profile != null) {
+                        Spacer(Modifier.height(MaterialTheme.spacing.space25))
+                        Text(text = npub, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.displayMedium.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp))
+                    }
+                    val held = when (identity) {
+                        is StoredIdentity.Mnemonic -> Res.string.wallet
+                        is StoredIdentity.NostrPublic -> Res.string.read_only
+                        is StoredIdentity.NostrSecret -> null
+                    }
+                    if (held != null) {
+                        Spacer(Modifier.height(MaterialTheme.spacing.space25))
+                        Text(
+                            text = stringResource(held),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             if (isCurrent && canEdit) {
@@ -163,3 +216,6 @@ private fun AvailableWalletView(
         }
     }
 }
+
+/** A dimension, not a spacing: the picture is the same size the emoji avatar renders at. */
+private val AvatarSize = 44.dp

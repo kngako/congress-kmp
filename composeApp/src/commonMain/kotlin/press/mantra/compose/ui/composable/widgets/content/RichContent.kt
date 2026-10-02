@@ -401,7 +401,7 @@ fun RichContent(
 @ConformancePreviews
 @Composable
 private fun RichContentPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

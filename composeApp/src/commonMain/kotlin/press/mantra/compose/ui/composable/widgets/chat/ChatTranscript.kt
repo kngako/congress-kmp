@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.Info
@@ -815,6 +816,9 @@ private fun RitualNotice(
         ChatMessage.TYPE_MEMBER_INVITED -> Icons.Default.PersonAdd
         ChatMessage.TYPE_MEMBER_INVITE_SENT -> Icons.Default.Upload
         ChatMessage.TYPE_MEMBER_INVITE_FAILED -> Icons.Default.ErrorOutline
+        // Somebody on this device was kept out of a group it already holds; the
+        // person, not the invite, is what the line is about.
+        ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE -> Icons.Default.PersonOff
 
         else -> Icons.Default.PanTool
     }
@@ -835,7 +839,8 @@ private fun RitualNotice(
     val tint = when {
         chatMessage.messageType == ChatMessage.TYPE_DKG_FAILED ||
             chatMessage.messageType == ChatMessage.TYPE_FROST_FAILED ||
-            chatMessage.messageType == ChatMessage.TYPE_MEMBER_INVITE_FAILED ->
+            chatMessage.messageType == ChatMessage.TYPE_MEMBER_INVITE_FAILED ||
+            chatMessage.messageType == ChatMessage.TYPE_WELCOME_REFUSED_OTHER_PROFILE ->
             MaterialTheme.colorScheme.error
         isRequest -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurfaceVariant

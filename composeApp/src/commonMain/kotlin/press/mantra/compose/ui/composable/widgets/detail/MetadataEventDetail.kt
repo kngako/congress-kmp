@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Error
@@ -22,7 +21,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -50,12 +48,13 @@ import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRou
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.MetadataEventDetailType
 import press.mantra.compose.ui.view.model.MetadataEventDetailViewModel
 import press.mantra.compose.ui.view.state.MetadataEventDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -68,6 +67,7 @@ import mantra.composeapp.generated.resources.send_message
 import mantra.composeapp.generated.resources.unfollow
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.ConformancePreviews
 
@@ -83,6 +83,9 @@ fun MetadataEventDetail(
     nostrRepository: NostrRepository
 ) {
     val scope = rememberCoroutineScope()
+
+    // Whether this identity can sign, which decides which of the controls below exist.
+    val canSign = LocalCanSign.current
 
     val profile = localNostrEvent.profile
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -101,16 +104,7 @@ fun MetadataEventDetail(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowBackIosNew,
-                            contentDescription = "Navigate back"
-                        )
-                    }
-                },
+                navigationIcon = { NavigateBackButton(onNavigateBack) },
                 title = {
                     Column(
                         modifier = Modifier,
@@ -188,6 +182,12 @@ fun MetadataEventDetail(
 
                                     if (metadataEventDetailViewModel.isActionPending.value) {
                                         LoadingIndicator()
+                                    } else if (!canSign) {
+                                        // Edit profile is a kind 0, follow and unfollow a
+                                        // kind 3: none of them can be signed by a read-only
+                                        // identity, so none is offered. The "follows you"
+                                        // state below still shows; it is a fact, not an
+                                        // action.
                                     } else {
                                         if (metadataEventDetailUIState.isActiveUser) {
                                             Button(
@@ -290,7 +290,9 @@ fun MetadataEventDetail(
                     }
                 }
 
-                item {
+                // A message is a gift wrap, sealed with the sender's key. Not for a
+                // read-only identity.
+                if (canSign) item {
                     Button(
                         onClick = {
                             onNavigateToChatRoom.invoke(
@@ -326,7 +328,7 @@ fun MetadataEventDetail(
 @Composable
 private fun MetadataEventEventDetailPreview() {
 
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

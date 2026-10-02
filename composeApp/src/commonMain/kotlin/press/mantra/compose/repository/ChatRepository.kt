@@ -80,6 +80,17 @@ interface ChatRepository {
     suspend fun parentOf(chatRoomId: String): HexKey?
 
     /**
+     * One event the group signed, as the group signed it, or null when this
+     * device does not hold it or it was signed in some other room.
+     *
+     * Scoped to the room rather than looked up by id alone, because the id
+     * arrives as a navigation argument and the screen it opens names a room in
+     * its title: an event from one room shown under another room's name would
+     * be a lie the signature check cannot catch, since both rooms' events verify.
+     */
+    suspend fun groupSignedEvent(chatRoomId: String, id: HexKey): GroupSignedEvent?
+
+    /**
      * Whether this device holds a share of the group's key, and so could take
      * part in signing for it.
      *
@@ -104,6 +115,16 @@ interface ChatRepository {
     ): String?
 
     suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant>
+
+    /**
+     * The room that is a conversation between [userPublicKey] and [peerPublicKey]
+     * alone, if there is one: its members are exactly the two of them, or the one of
+     * them when the two keys are the same. A group of two is not told apart from a
+     * direct message here -- the schema does not record which a room is -- so this is
+     * the rule `ChatRoomMessagingViewModel.initiateNewChat` has applied since it was
+     * written, in one place with its name on it. See docs/npub-profile-preview.md.
+     */
+    suspend fun findDirectMessageRoom(userPublicKey: HexKey, peerPublicKey: HexKey): LocalChatRoom?
 
     suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage>
 
@@ -260,6 +281,11 @@ interface ChatRepository {
 
             override suspend fun parentOf(chatRoomId: String): HexKey? = null
 
+            override suspend fun groupSignedEvent(
+                chatRoomId: String,
+                id: HexKey
+            ): GroupSignedEvent? = null
+
             override suspend fun canSign(chatRoomId: String): Boolean = false
 
             override suspend fun refuseSubgroup(
@@ -281,6 +307,10 @@ interface ChatRepository {
             }
 
             override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun findDirectMessageRoom(userPublicKey: HexKey, peerPublicKey: HexKey): LocalChatRoom? {
                 TODO("Not yet implemented")
             }
 

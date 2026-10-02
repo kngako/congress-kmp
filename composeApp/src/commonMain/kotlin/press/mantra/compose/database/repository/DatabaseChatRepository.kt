@@ -120,6 +120,13 @@ class DatabaseChatRepository(
         null
     }
 
+    override suspend fun groupSignedEvent(chatRoomId: String, id: HexKey): GroupSignedEvent? = try {
+        database.groupSignedEventDao().getById(id)?.takeIf { it.chatRoomId == chatRoomId }
+    } catch (e: Throwable) {
+        logger.e("Error reading the signed event $id of $chatRoomId", e)
+        null
+    }
+
     override suspend fun canSign(chatRoomId: String): Boolean = try {
         FrostSigningManager.canSign(database, chatRoomId)
     } catch (e: Throwable) {
@@ -149,6 +156,18 @@ class DatabaseChatRepository(
     }
     override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
         return database.participantDao().findParticipantByPublicKey(publicKey)
+    }
+
+    override suspend fun findDirectMessageRoom(userPublicKey: HexKey, peerPublicKey: HexKey): LocalChatRoom? {
+        val theTwoOfUs = setOf(userPublicKey, peerPublicKey)
+
+        for (participant in database.participantDao().findParticipantByPublicKey(peerPublicKey)) {
+            val localChatRoom = database.chatRoomDao().findChatRoomById(participant.chatRoomId) ?: continue
+            val members = localChatRoom.localParticipants.map { it.participant.participantPublicKey }.toSet()
+            if (members == theTwoOfUs) return localChatRoom
+        }
+
+        return null
     }
     override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage> {
         return database.chatMessageDao().getChatMessagesByChatRoomId(chatRoomId)

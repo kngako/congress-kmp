@@ -2,25 +2,22 @@ package press.mantra.compose.network.relays
 
 import press.mantra.compose.network.dto.mapToRelayDTO
 import co.touchlab.kermit.Logger
-import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.CloseCmd
 import com.vitorpamplona.quartz.nip01Core.relay.commands.toRelay.ReqCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegCloseCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegMsgCmd
 import com.vitorpamplona.quartz.nip77Negentropy.NegOpenCmd
-import fr.acinq.phoenix.data.ActiveWallet
+import press.mantra.compose.identity.Identity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import press.mantra.compose.extensions.nostrPublicKey
 
 
 /**
@@ -29,13 +26,14 @@ import press.mantra.compose.extensions.nostrPublicKey
  * https://github.com/PrimalHQ/primal-android-app/blob/6db2e6862239335dede4162338d7c4f10ad35031/app/src/main/kotlin/net/primal/android/networking/relays/RelaysSocketManager.kt
  */
 class RelaysSocketManager(
-    private val activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    private val activeIdentityStateFlow: StateFlow<Identity?>,
     private val nostrSocketClientFactory: press.mantra.compose.network.sockets.NostrSocketClientFactory,
     private val cachingImportRepository: press.mantra.compose.repository.CachingImportRepository,
     private val relayRepository: press.mantra.compose.repository.RelayRepository,
-) : LiveSubscriptionTransport {
+    /** Injectable so that a test can drive the identity observer on a dispatcher it controls. */
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+) : LiveSubscriptionTransport, EventPublishTransport {
     val logger = Logger.withTag("RelaysSocketManager")
-    private val scope = CoroutineScope(Dispatchers.IO)
     private val relayPoolsMutex = Mutex()
 
     /**
@@ -57,36 +55,36 @@ class RelaysSocketManager(
         observeActiveUserId()
     }
 
-    private val observeRelayJobs =  mutableMapOf<HexKey, Job>()
-
+    /**
+     * Follows the active identity's relay list into the pool, as a child of `collectLatest`
+     * so that the next identity cancels it -- the shape the pumps and the notary already
+     * have.
+     *
+     * It used to be a job per pubkey on [scope], replaced only when the *same* pubkey came
+     * round again, which meant a switch left the previous identity's observer running:
+     * two observers feeding [updateRelayPools], and the one pool following whichever relay
+     * list emitted last. A null identity closes nothing -- the pool is shared by pumps a
+     * null identity has already cancelled -- and the next identity's list replaces it
+     * through `changeRelays`, as it always did.
+     */
     private fun observeActiveUserId() =
         scope.launch {
-            activeWalletStateFlow.collectLatest { activeWallet ->
-                if (activeWallet == null) {
-                    // TODO: Cancel all pending jobs?
-                }
-                activeWallet?.business?.walletManager?.keyManager?.collectLatest { keyManager ->
-                    keyManager?.nostrPublicKey()?.let { pubkey ->
-                        observeRelayJobs[pubkey]?.cancel()
-                        observeRelayJobs[pubkey] = observeRelays(pubkey)
+            activeIdentityStateFlow.collectLatest { identity ->
+                val publicKey = identity?.nostrPublicKey ?: return@collectLatest
+                try {
+                    relayRepository.observePublicKeyRelays(publicKey = publicKey).collect { relays ->
+                        val userRelays = relays.filter { it.type == "user" }.map { it.mapToRelayDTO() }
+                        updateRelayPools(regularRelays = userRelays)
                     }
+                } catch (error: CancellationException) {
+                    logger.d { "Relay observation for $publicKey cancelled" }
+                    throw error
                 }
             }
-
-
         }
 
-    private fun observeRelays(publicKey: String): Job =
-        scope.launch {
-            try {
-                relayRepository.observePublicKeyRelays(publicKey = publicKey).collect { relays ->
-                    val userRelays = relays.filter { it.type == "user" }.map { it.mapToRelayDTO() }
-                    updateRelayPools(regularRelays = userRelays)
-                }
-            } catch (error: CancellationException) {
-                logger.w(throwable = error) { "Relay observation cancelled" }
-            }
-        }
+    /** The urls the pool currently holds. For the switch test; nothing in the app reads it. */
+    val relayUrls: Set<String> get() = relayPool.relays.map { it.url }.toSet()
 
     private suspend fun updateRelayPools(regularRelays: List<press.mantra.compose.network.dto.RelayDTO>?) {
         relayPoolsMutex.withLock {
@@ -118,7 +116,7 @@ class RelaysSocketManager(
     }
 
     @Throws(press.mantra.compose.exceptions.NostrPublishException::class)
-    suspend fun publishEvent(nostrEvent: press.mantra.compose.database.model.NostrEvent, relays: Set<press.mantra.compose.network.dto.RelayDTO>): Flow<NostrPublishResult> {
+    override suspend fun publishEvent(nostrEvent: press.mantra.compose.database.model.NostrEvent, relays: Set<press.mantra.compose.network.dto.RelayDTO>): Flow<NostrPublishResult> {
         logger.d("publishEvent: $nostrEvent")
         return relayPool.publishEvent(
             nostrEvent = nostrEvent,

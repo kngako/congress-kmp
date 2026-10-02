@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +36,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.profile.ProfileAvatar
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.model.SelectChatRoomMembersViewModel
 import press.mantra.compose.ui.view.state.SelectChatRoomMembersUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
@@ -54,8 +53,10 @@ import mantra.composeapp.generated.resources.next_with
 import mantra.composeapp.generated.resources.selected
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 /**
@@ -74,6 +75,7 @@ fun SelectChatRoomMembersScreen(
     initialSelectChatRoomMembersUIState: SelectChatRoomMembersUIState = SelectChatRoomMembersUIState.Loading,
     nostrRepository: NostrRepository,
     onNavigateToRoute: (Route) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val selectChatRoomMembersViewModel: SelectChatRoomMembersViewModel = viewModel(
         factory = SelectChatRoomMembersViewModel.factory(
@@ -114,32 +116,28 @@ fun SelectChatRoomMembersScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                            }
+                            },
+                            navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
                     },
                     bottomBar = {
                         BottomAppBar(
                             floatingActionButton = {
-                                ExtendedFloatingActionButton(
+                                ExtendedFab(
+                                    label = if (selectedCount > 0) {
+                                        stringResource(Res.string.next_with, selectedCount)
+                                    } else {
+                                        stringResource(Res.string.next)
+                                    },
+                                    icon = {
+                                        Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = "Next")
+                                    },
                                     onClick = {
                                         selectChatRoomMembersViewModel.selectChatRoomType(
                                             onNavigateToRoute = onNavigateToRoute
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.NavigateNext,
-                                        contentDescription = "Next"
-                                    )
-
-                                    Text(
-                                        text = if (selectedCount > 0) {
-                                            stringResource(Res.string.next_with, selectedCount)
-                                        } else {
-                                            stringResource(Res.string.next)
-                                        }
-                                    )
-                                }
+                                )
                             },
                             actions = {
                                 Text(
@@ -283,7 +281,7 @@ fun SelectChatRoomMembersScreen(
 @ConformancePreviews
 @Composable
 private fun SelectChatRoomMembersScreenPreview() {
-    TorchTheme {
+    MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -302,7 +300,8 @@ private fun SelectChatRoomMembersScreenPreview() {
                     )
                 ),
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
-                onNavigateToRoute = {}
+                onNavigateToRoute = {},
+                onNavigateBack = {},
             )
         }
     }

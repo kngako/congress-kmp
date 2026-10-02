@@ -10,13 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,6 +41,7 @@ import press.mantra.compose.ui.view.model.ShareProfileViewModel
 import press.mantra.compose.ui.view.state.ShareProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -55,6 +54,7 @@ import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -92,18 +92,7 @@ fun ShareProfileScreen(
                                     text = stringResource(Res.string.profile)
                                 )
                             },
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = {
-                                        onNavigateBack.invoke()
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                            }
+                            navigationIcon = { NavigateBackButton(onNavigateBack) }
                         )
                     }
                 ) { innerPadding ->
@@ -188,7 +177,11 @@ fun ShareProfileScreen(
                             }
                         }
 
-                        Row(
+                        // Nothing is signed by a re-broadcast, but a copy of the kind 0 is
+                        // queued for the finder relays, and a read-only identity puts nothing
+                        // on a relay -- not even a copy. The broadcast pump is not running for
+                        // it to carry the request anyway.
+                        if (LocalCanSign.current) Row(
                             modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.space250),
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -230,7 +223,7 @@ fun ShareProfileScreen(
 @ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

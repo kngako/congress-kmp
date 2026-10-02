@@ -18,7 +18,7 @@ import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.widgets.ProvideSnackbarHost
-import press.mantra.compose.ui.theme.TorchTheme
+import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.view.state.HomeScreenUIState
 import com.vitorpamplona.quartz.nip10Notes.TextNoteEvent
 import kotlin.test.Test
@@ -83,7 +83,7 @@ class ChatPaneLayoutJvmTest {
 
     @androidx.compose.runtime.Composable
     private fun Home() {
-        TorchTheme {
+        MantraTheme {
             // Required, and deliberately so: `LocalSnackbarHostState` throws rather than
             // defaulting, because a default would make every `notify` on a screen that
             // forgot the host a silent no-op.

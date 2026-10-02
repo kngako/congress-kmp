@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bento
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Hub
@@ -23,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -52,10 +50,10 @@ import press.mantra.compose.ui.view.model.ActiveProfileViewModel
 import press.mantra.compose.ui.view.state.ActiveProfileUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.metadata.MetadataEvent
+import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
-import mantra.composeapp.generated.resources.change_account
 import mantra.composeapp.generated.resources.edit_profile
 import mantra.composeapp.generated.resources.key_package_management
 import mantra.composeapp.generated.resources.network_relays
@@ -63,6 +61,18 @@ import mantra.composeapp.generated.resources.profile
 import mantra.composeapp.generated.resources.key_recovery
 import mantra.composeapp.generated.resources.share_profile
 import mantra.composeapp.generated.resources.sign_out
+import mantra.composeapp.generated.resources.switch_profile
+import press.mantra.compose.ui.composable.navigation.routes.ProfilesRoute
+import mantra.composeapp.generated.resources.sign_out_of_this_profile_question
+import mantra.composeapp.generated.resources.could_not_sign_out_please_try_again
+import press.mantra.compose.identity.Identity
+import press.mantra.compose.identity.IdentityWriter
+import press.mantra.compose.ui.composable.widgets.dialogs.SignOutOfReadOnlyDialog
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
+import press.mantra.compose.ui.view.model.SignOutViewModel
+import kotlinx.coroutines.flow.StateFlow
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import mantra.composeapp.generated.resources.something_went_wrong
 import mantra.composeapp.generated.resources.we_couldn_t_find_the_local_profile_please
 import press.mantra.compose.ui.composable.widgets.ErrorState
@@ -72,6 +82,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.theme.ConformancePreviews
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -83,7 +94,41 @@ fun ActiveProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToRoute: (Route) -> Unit,
     nostrRepository: NostrRepository,
+    // Sign out is real for a read-only identity only -- there is nothing on the device
+    // to lose -- and these are what it takes. Null where the screen is composed without
+    // an identity to sign out of (previews, tests), in which case the button keeps its
+    // pending route for every kind.
+    signOut: SignOutDependencies? = null,
 ) {
+
+    // Whether this identity can sign, which decides which rows below exist.
+    val canSign = LocalCanSign.current
+
+    val signOutViewModel: SignOutViewModel? = signOut?.let {
+        viewModel(
+            factory = SignOutViewModel.factory(
+                activeIdentityStateFlow = it.activeIdentityStateFlow,
+                nostrRepository = nostrRepository,
+                forgetNostrCredential = it.forgetNostrCredential,
+                hideIdentityMetadata = it.hideIdentityMetadata,
+            ),
+        )
+    }
+    val signOutState = signOutViewModel?.state?.collectAsState()?.value
+    if (signOutViewModel != null && signOut != null && signOutState is SignOutViewModel.State.Confirming) {
+        SignOutOfReadOnlyDialog(
+            title = Res.string.sign_out_of_this_profile_question,
+            nostrPublicKey = signOutViewModel.nostrPublicKey,
+            onConfirm = { signOutViewModel.signOut(onSignedOut = signOut.onSignedOut) },
+            onDismiss = { signOutViewModel.cancel() },
+        )
+    }
+    // The failure is short and needs no action: the button is still there to try again.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val couldNotSignOut = stringResource(Res.string.could_not_sign_out_please_try_again)
+    LaunchedEffect(signOutState) {
+        if (signOutState is SignOutViewModel.State.Failed) notify(couldNotSignOut)
+    }
 
     val activeProfileViewModel: ActiveProfileViewModel = viewModel(
         factory = ActiveProfileViewModel.factory(
@@ -109,18 +154,7 @@ fun ActiveProfileScreen(
                                     text = stringResource(Res.string.profile)
                                 )
                             },
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = {
-                                        onNavigateBack.invoke()
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                            }
+                            navigationIcon = { NavigateBackButton(onNavigateBack) }
                         )
                     }
                 ) { innerPadding ->
@@ -238,7 +272,10 @@ fun ActiveProfileScreen(
                                 }
                             }
 
-                            item {
+                            // Key packages are signed, and there is nothing to recover for
+                            // an identity the device holds no secret for: neither row for a
+                            // read-only identity.
+                            if (canSign) item {
                                 TextButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
@@ -266,18 +303,18 @@ fun ActiveProfileScreen(
                             }
 
 
+                            // For every kind: a read-only identity can leave for another
+                            // profile the same way a signing one can.
                             item {
                                 TextButton(
                                     onClick = {
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Change account")
-                                        )
+                                        onNavigateToRoute.invoke(ProfilesRoute)
                                     }
                                 ) {
 
                                     Icon(
                                         Icons.Default.ImportExport,
-                                        contentDescription = "Change profile"
+                                        contentDescription = Decorative
                                     )
 
                                     Spacer(
@@ -285,13 +322,13 @@ fun ActiveProfileScreen(
                                     )
 
                                     Text(
-                                        stringResource(Res.string.change_account)
+                                        stringResource(Res.string.switch_profile)
                                     )
                                 }
                             }
 
 
-                            item {
+                            if (canSign) item {
                                 TextButton(
                                     onClick = {
                                         onNavigateToRoute.invoke(
@@ -344,14 +381,26 @@ fun ActiveProfileScreen(
                                 // destructive action. It now matches how leaving and
                                 // deleting a group are already treated in
                                 // ChatRoomDetailScreen: a TextButton in the error colour.
+                                //
+                                // For a read-only identity it does what its colour has been
+                                // promising: a confirmation naming the npub, then the
+                                // identity leaves the device. For the other two kinds it
+                                // keeps routing to the pending screen -- removing a seed is
+                                // a wallet question, and an nsec has its own forget under
+                                // key recovery.
                                 TextButton(
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = MaterialTheme.colorScheme.error
                                     ),
+                                    enabled = signOutState !is SignOutViewModel.State.InProgress,
                                     onClick = {
-                                        onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute("Sign out")
-                                        )
+                                        if (!canSign && signOutViewModel != null) {
+                                            signOutViewModel.askToSignOut()
+                                        } else {
+                                            onNavigateToRoute.invoke(
+                                                ImplementationPendingRoute("Sign out")
+                                            )
+                                        }
                                     }
                                 ) {
                                     Icon(
@@ -392,10 +441,23 @@ fun ActiveProfileScreen(
     }
 }
 
+/**
+ * What signing out of a read-only identity needs, bundled so that the screen's parameter
+ * list gains one line rather than four, and so a caller that has none of them passes
+ * nothing rather than three lambdas that throw.
+ */
+class SignOutDependencies(
+    val activeIdentityStateFlow: StateFlow<Identity?>,
+    val forgetNostrCredential: suspend (Identity) -> IdentityWriter.ForgetNostrCredentialResult,
+    val hideIdentityMetadata: suspend (Identity) -> Unit,
+    /** The nav host's tail: re-list, and clear the active identity so startup shows the selector or Landing. */
+    val onSignedOut: () -> Unit,
+)
+
 @ConformancePreviews
 @Composable
 private fun UnannouncedProfileScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {

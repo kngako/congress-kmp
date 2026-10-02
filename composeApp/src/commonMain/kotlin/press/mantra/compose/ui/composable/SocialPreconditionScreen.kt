@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -21,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
@@ -32,6 +32,7 @@ import mantra.composeapp.generated.resources.view_invites
 import mantra.composeapp.generated.resources.who_will_you_be_passing_the_aux_to
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.ConformancePreviews
 
@@ -50,17 +51,9 @@ fun SocialPreconditionScreen(
 
                 },
                 floatingActionButton = {
-                    ExtendedFloatingActionButton(
-                        modifier = Modifier,
-                        icon = {
-                            Icon(
-                                Icons.Default.SkipNext,
-                                contentDescription = "Skip for now"
-                            )
-                        },
-                        text = {
-                            Text(stringResource(Res.string.skip_for_now))
-                        },
+                    ExtendedFab(
+                        label = stringResource(Res.string.skip_for_now),
+                        icon = { Icon(Icons.Default.SkipNext, contentDescription = "Skip for now") },
                         onClick = {
                             onNavigateToSkipForNow.invoke()
                         }
@@ -88,36 +81,40 @@ fun SocialPreconditionScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                Text(
-                    stringResource(Res.string.tell_friends_to_join_you_so_your_feed_stays),
-                    textAlign = TextAlign.Center
-                )
-
-                Button(
-                    onClick = {
-                        onNavigateToInviteFriend.invoke()
-                    }
-                ) {
+                // Both pending today, and both writes when they exist: an invite is sent,
+                // an acceptance signed. A read-only identity is offered only the way past.
+                if (LocalCanSign.current) {
                     Text(
-                        stringResource(Res.string.invite_a_friend)
+                        stringResource(Res.string.tell_friends_to_join_you_so_your_feed_stays),
+                        textAlign = TextAlign.Center
                     )
-                }
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-
-                Text(
-                    stringResource(Res.string.view_and_accept_invites_you_may_have),
-                    textAlign = TextAlign.Center
-                )
-
-                Button(
-                    onClick = {
-                        onNavigateToViewInvites.invoke()
+                    Button(
+                        onClick = {
+                            onNavigateToInviteFriend.invoke()
+                        }
+                    ) {
+                        Text(
+                            stringResource(Res.string.invite_a_friend)
+                        )
                     }
-                ) {
-                    Text(stringResource(Res.string.view_invites))
+
+                    Spacer(
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Text(
+                        stringResource(Res.string.view_and_accept_invites_you_may_have),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Button(
+                        onClick = {
+                            onNavigateToViewInvites.invoke()
+                        }
+                    ) {
+                        Text(stringResource(Res.string.view_invites))
+                    }
                 }
             }
         }
@@ -127,7 +124,7 @@ fun SocialPreconditionScreen(
 @ConformancePreviews
 @Composable
 private fun SocialPreconditionScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.padding(MaterialTheme.spacing.space250)
         ) {

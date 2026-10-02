@@ -11,19 +11,15 @@ import com.vitorpamplona.quartz.nip01Core.core.toHexKey
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip51Lists.encryption.PrivateTagsInContent
-import fr.acinq.phoenix.data.ActiveWallet
-import fr.acinq.phoenix.managers.nostrPrivateKey
+import press.mantra.compose.identity.Identity
 import fr.acinq.phoenix.managers.nsecPassword
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.NostrEvent
@@ -31,7 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class NotaryViewModel(
-    val activeWalletStateFlow: StateFlow<ActiveWallet?>,
+    val activeIdentityStateFlow: StateFlow<Identity?>,
     val nostrRepository: press.mantra.compose.repository.NostrRepository,
     val chatRepository: press.mantra.compose.repository.ChatRepository,
     val marmotRepository: MarmotRepository,
@@ -43,7 +39,7 @@ class NotaryViewModel(
 
 
         fun factory(
-            activeWalletStateFlow: StateFlow<ActiveWallet?>,
+            activeIdentityStateFlow: StateFlow<Identity?>,
             nostrRepository: press.mantra.compose.repository.NostrRepository,
             chatRepository: press.mantra.compose.repository.ChatRepository,
             marmotRepository: MarmotRepository,
@@ -51,7 +47,7 @@ class NotaryViewModel(
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NotaryViewModel(
-                    activeWalletStateFlow = activeWalletStateFlow,
+                    activeIdentityStateFlow = activeIdentityStateFlow,
                     nostrRepository = nostrRepository,
                     chatRepository = chatRepository,
                     marmotRepository = marmotRepository,
@@ -63,14 +59,14 @@ class NotaryViewModel(
 
     private val logger = Logger.withTag(TAG)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeActiveNostrKey() {
         scope.launch {
-            activeWalletStateFlow
-                .flatMapLatest { activeWallet ->
-                    activeWallet?.business?.walletManager?.keyManager ?: flowOf(null)
-                }
-                .map { keyManager -> keyManager?.nostrPrivateKey() }
+            // One flow, not a `flatMapLatest` into the node's key manager: the identity
+            // carries its key from the moment it exists, so there is nothing to wait for.
+            // `distinctUntilChanged` on the key stays -- an identity re-emitted with the same
+            // key must not tear down and restart the observers below.
+            activeIdentityStateFlow
+                .map { identity -> identity?.nostrPrivateKey }
                 .distinctUntilChanged()
                 .collectLatest { nostrPrivateKey ->
                     if (nostrPrivateKey == null) return@collectLatest

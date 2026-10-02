@@ -45,9 +45,17 @@ interface NostrRepository {
 
     suspend fun observePendingBroadcastNostrEventRequests(): Flow<LocalBroadcastNostrEventRequest?>
 
-    suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?>
+    /** The head of the fetch queue for one identity: its own requests and the ones nobody owns. */
+    suspend fun observePendingSynchronizeNostrEventRequests(ownerPublicKey: HexKey): Flow<SynchronizeNostrEventRequest?>
 
-    suspend fun observePendingNegentropySynchronizeRequests(): Flow<NegentropySynchronizeRequest?>
+    suspend fun observePendingNegentropySynchronizeRequests(ownerPublicKey: HexKey): Flow<NegentropySynchronizeRequest?>
+
+    /**
+     * Opens every gift wrap addressed to [activeKeyPair] that the device stored and could
+     * not open at the time. Run once per activation, before the live inbox is opened.
+     * Returns how many were opened.
+     */
+    suspend fun reopenInbox(activeKeyPair: KeyPair): Int
 
     suspend fun createNewProfile(
         publicKey: HexKey,
@@ -59,6 +67,26 @@ interface NostrRepository {
     suspend fun signInToProfile(
         publicKey: HexKey
     )
+
+    /**
+     * The exit from a sign-in whose search found nothing: the key already exists, only
+     * the events do not. Gives [publicKey] the same bootstrap [createNewProfile] gives a
+     * fresh key, with the kind 0 written *over* the placeholder [signInToProfile] planted
+     * -- see the implementation for why over rather than beside.
+     */
+    suspend fun setUpProfileForExistingKey(
+        publicKey: HexKey,
+        placeholderUnsignedNostrEventId: Long,
+        name: String?,
+        biography: String?,
+    )
+
+    /**
+     * Stops treating [publicKey] as one of this device's own: its unsigned rows go, and
+     * with them the requests that hang off them. What it published, and its profile, stay
+     * cached as anyone else's would.
+     */
+    suspend fun forgetLocalAccount(publicKey: HexKey)
 
     suspend fun createNewTextNote(
         publicKey: HexKey,
@@ -92,6 +120,13 @@ interface NostrRepository {
     suspend fun requeueStaleBroadcastNostrEventRequests(): Int
 
     suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
+
+    /**
+     * The relay has finished answering [synchronizeNostrEventRequest] -- EOSE, CLOSED or
+     * the bounded timeout -- and the request is still `sent`, meaning nothing arrived. Until
+     * this existed "still searching" and "searched, found nothing" were the same row.
+     */
+    suspend fun synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest: SynchronizeNostrEventRequest)
 
     suspend fun negentropySynchronizeRequestProcessed(negentropySynchronizeRequest: NegentropySynchronizeRequest)
 
@@ -210,11 +245,13 @@ interface NostrRepository {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observePendingSynchronizeNostrEventRequests(): Flow<SynchronizeNostrEventRequest?> {
+            override suspend fun reopenInbox(activeKeyPair: KeyPair): Int = 0
+
+            override suspend fun observePendingSynchronizeNostrEventRequests(ownerPublicKey: HexKey): Flow<SynchronizeNostrEventRequest?> {
                 TODO("Not yet implemented")
             }
 
-            override suspend fun observePendingNegentropySynchronizeRequests(): Flow<NegentropySynchronizeRequest?> {
+            override suspend fun observePendingNegentropySynchronizeRequests(ownerPublicKey: HexKey): Flow<NegentropySynchronizeRequest?> {
                 TODO("Not yet implemented")
             }
 
@@ -228,6 +265,19 @@ interface NostrRepository {
             }
 
             override suspend fun signInToProfile(publicKey: HexKey) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun setUpProfileForExistingKey(
+                publicKey: HexKey,
+                placeholderUnsignedNostrEventId: Long,
+                name: String?,
+                biography: String?,
+            ) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun forgetLocalAccount(publicKey: HexKey) {
                 TODO("Not yet implemented")
             }
 
@@ -275,6 +325,10 @@ interface NostrRepository {
             }
 
             override suspend fun synchronizeNostrEventRequestProcessed(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
+                TODO("Not yet implemented")
+            }
+
+            override suspend fun synchronizeNostrEventRequestCompleted(synchronizeNostrEventRequest: SynchronizeNostrEventRequest) {
                 TODO("Not yet implemented")
             }
 

@@ -73,7 +73,7 @@ fun UnsignedProfileScreen() {
 @ConformancePreviews
 @Composable
 private fun UnsignedProfileScreenPreview() {
-    press.mantra.compose.ui.theme.TorchTheme {
+    press.mantra.compose.ui.theme.MantraTheme {
         Surface(
             modifier = Modifier.fillMaxSize()
         ) {
