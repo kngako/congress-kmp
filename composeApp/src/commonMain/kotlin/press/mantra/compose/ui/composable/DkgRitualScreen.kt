@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -154,7 +155,7 @@ fun DkgRitualScreen(
         )
     )
 
-    ScreenStateTransition(dkgRitualViewModel.dkgRitualUIState) { uiState ->
+    ScreenStateTransition(dkgRitualViewModel.dkgRitualUIState.collectAsState().value) { uiState ->
     when (val dkgRitualUIState = uiState) {
             is DkgRitualUIState.Error -> {
                 Column(
@@ -168,7 +169,7 @@ fun DkgRitualScreen(
             is DkgRitualUIState.Loaded -> {
                 val session = dkgRitualUIState.session
                 val participantCount = dkgRitualUIState.participantCount
-                val canStartRitual = dkgRitualViewModel.canStartRitual()
+                val canStartRitual = dkgRitualViewModel.canStartRitual(dkgRitualUIState)
                 val isActionPending = dkgRitualViewModel.isActionPending.value
 
                 Scaffold(
@@ -286,7 +287,7 @@ fun DkgRitualScreen(
                                 QuorumStepper(
                                     threshold = dkgRitualViewModel.threshold.value,
                                     participantCount = participantCount,
-                                    quorumRange = dkgRitualViewModel.quorumRange(),
+                                    quorumRange = dkgRitualViewModel.quorumRange(dkgRitualUIState),
                                     onThresholdChange = dkgRitualViewModel::setThreshold
                                 )
                             } else {
