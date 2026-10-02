@@ -21,6 +21,7 @@ silent, or a decision that looked arbitrary and was not.
 | [multiple-profiles.md](./multiple-profiles.md) | several profiles on one device — why a profile is a credential and a seed is a wallet attached to one, why a switch is a restart rather than a swap, the two entrances the app lacks, and the inbox a switch would silently lose |
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
 | [npub-profile-preview.md](./npub-profile-preview.md) | showing the person before a direct message is started from a pasted npub — why the preview is a screen keyed by public key, what "found" means when a row can be a placeholder, and the phase that makes the button honest about a key package that never comes |
+| [project-feature.md](./project-feature.md) | bringing the server schema's `project` and its two join models into a group that has no accounts and no server — a creator tag of its own and owners as a signed set of `p` tags, the role the parser has to be told about or every project lands ownerless, why a membership is its own signed event rather than a list, and the kind band that is already double-booked |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
 | [curated-to-mantra-profiles.md](./curated-to-mantra-profiles.md) | the second pull: the fork's several-profiles line, ten commits and its first schema migration — which of it is a fix Mantra has today, who allocates a schema version number when two trees share one history, and the one conflict, which was Mantra's own |
@@ -72,3 +73,10 @@ smallest of the plans: it changes the entrance to the direct-message flow and
 nothing past it, so read it with `StartDirectMessageToNpubOrNip05Dialog` and
 `ChatRoomMessagingViewModel.initiateNewChat` open, its four decisions before its
 four phases, and its table of where the build chose differently first.
+The projects note is a phased plan that has not been built, and is the only one
+whose starting point is outside this repository: the platform's server schema,
+`mantra-db-models`, has had the three models for years. It reads as the
+translation domain's unanswered question — the app can say what a chapter is and
+who translated it, and cannot say what any of it is for — so read it after the
+nip30303 conventions are familiar, its decisions before its phases, and its scope
+fork before either, because that one changes the shape of the rest.
