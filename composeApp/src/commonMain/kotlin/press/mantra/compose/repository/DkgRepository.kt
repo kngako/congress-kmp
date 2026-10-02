@@ -8,6 +8,7 @@ import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
 import press.mantra.compose.database.model.types.DkgApprovalStep
+import press.mantra.compose.managers.SubgroupOrigin
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -98,7 +99,9 @@ interface DkgRepository {
         threshold: Int,
         parentChatRoomId: HexKey? = null,
         participantPublicKeys: Set<HexKey>? = null,
-        subject: String? = null
+        subject: String? = null,
+        /** What the subgroup is for, where it is for anything in particular. */
+        origin: SubgroupOrigin.Ref? = null
     ): DkgSession?
 
     /** What the ritual is waiting on this device's owner for, if anything. */
@@ -235,7 +238,8 @@ interface DkgRepository {
                 threshold: Int,
                 parentChatRoomId: HexKey?,
                 participantPublicKeys: Set<HexKey>?,
-                subject: String?
+                subject: String?,
+                origin: SubgroupOrigin.Ref?
             ): DkgSession? = null
 
             override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? = null

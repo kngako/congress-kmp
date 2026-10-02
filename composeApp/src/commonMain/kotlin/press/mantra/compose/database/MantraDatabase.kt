@@ -188,7 +188,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 22,
+    version = 23,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -364,6 +364,31 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // than a fourth table, which is what DkgSession.participantPublicKeys
         // already does with a set of keys and for the same reason.
         AutoMigration(from = 21, to = 22),
+        // v23 adds two nullable DkgSession columns saying what the subgroup a
+        // ceremony is running for is *for* -- the kind and id of a dialect, an
+        // artifact, a translation or a project. See
+        // docs/subgroups-for-entities.md.
+        //
+        // They are here rather than only on the certificate because the
+        // certificate is proposed *after* the ceremony, and by whoever is able
+        // to: any parent admin holding a share, who may never have seen the
+        // screen that started it. Every step of a subgroup reads stored rows for
+        // that reason, and this is one more row to read. They come off the ritual
+        // proposal, so every participant's session has them and not just the
+        // coordinator's -- the same route `subject` and `participantPublicKeys`
+        // took in v19.
+        //
+        // **Neither is a foreign key**, following parentChatRoomId's precedent in
+        // v17 and for a sharper version of its reason: these entities live in the
+        // *parent's* tables, and a subgroup's admins need never have been in the
+        // parent, so a value naming a row this device does not hold is the normal
+        // state rather than an error. A cascade would also mean deleting a
+        // project deletes a room.
+        //
+        // Rows written before this read back null, which is the true answer for
+        // all of them: a ceremony that ran before this column existed was opened
+        // for no entity. Nullable additions are a shape Room migrates itself.
+        AutoMigration(from = 22, to = 23),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

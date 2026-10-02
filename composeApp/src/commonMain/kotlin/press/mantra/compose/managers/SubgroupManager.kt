@@ -254,7 +254,14 @@ object SubgroupManager {
                 thresholdPublicKey = thresholdPublicKey,
                 adminPublicKeys = adminPublicKeys,
                 name = subgroupName,
-                path = path
+                path = path,
+                // Off the ceremony, not off a parameter. [key] is already the
+                // stored session, and every step after the ceremony is open to
+                // somebody who was never on the screen that started it -- so
+                // what the room is for has to come from the same row the key
+                // does. A parameter here would be a second source for one fact,
+                // and the proposer's copy of it at that.
+                origin = key.origin()
             ),
             content = subgroupChatRoomId
         )

@@ -20,6 +20,7 @@ import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.managers.SubgroupOrigin
 
 /**
  * What schema 21 has to survive, and the two things it must refuse to do.
@@ -315,6 +316,61 @@ class SubgroupDaoJvmTest {
         assertNull(db.dkgSessionDao().getSessionById("s2")?.parentChatRoomId)
     }
 
+    // --- schema 23: what the subgroup is for ---
+
+    /**
+     * The two columns are read together or not at all. A row holding one of them
+     * was written by a version that disagreed with this one, and half a reference
+     * cannot be resolved by anything -- so `origin()` says no rather than handing
+     * back something a screen would try to look up.
+     */
+    @Test
+    fun `an origin round trips, and half of one reads as none`() = runBlocking {
+        seedRooms()
+
+        val entityId = "a1".padEnd(64, '0')
+        val ref = SubgroupOrigin.Ref(kind = 30330, id = entityId)
+
+        db.dkgSessionDao().upsert(session(id = "for-a-project", origin = ref))
+        db.dkgSessionDao().upsert(session(id = "for-nothing"))
+        db.dkgSessionDao().upsert(
+            session(id = "half").copy(originKind = 30330, originId = null)
+        )
+        db.dkgSessionDao().upsert(
+            session(id = "other-half").copy(originKind = null, originId = entityId)
+        )
+
+        assertEquals(ref, db.dkgSessionDao().getSessionById("for-a-project")?.origin())
+        assertNull(db.dkgSessionDao().getSessionById("for-nothing")?.origin())
+        assertNull(db.dkgSessionDao().getSessionById("half")?.origin())
+        assertNull(db.dkgSessionDao().getSessionById("other-half")?.origin())
+    }
+
+    /**
+     * Neither column is a foreign key, and that is deliberate rather than an
+     * omission. These entities live in the *parent's* tables and a subgroup's
+     * admins need never have been in the parent, so a session naming a project
+     * this device does not hold is the normal state. A key would make that row
+     * unwritable; a cascade would make deleting a project delete a room.
+     */
+    @Test
+    fun `an origin may name a row this device does not hold`() = runBlocking {
+        seedRooms()
+
+        val stranger = "f".repeat(64)
+        db.dkgSessionDao().upsert(
+            session(
+                id = "for-a-stranger",
+                origin = SubgroupOrigin.Ref(kind = 30304, id = stranger)
+            )
+        )
+
+        assertEquals(
+            SubgroupOrigin.Ref(kind = 30304, id = stranger),
+            db.dkgSessionDao().getSessionById("for-a-stranger")?.origin()
+        )
+    }
+
     private suspend fun seedRooms() {
         val nostrEventId = "c".repeat(64)
         db.nostrEventDao().upsert(
@@ -363,7 +419,8 @@ class SubgroupDaoJvmTest {
     private fun session(
         id: String,
         chatRoomId: String = parentRoom,
-        parentChatRoomId: String? = null
+        parentChatRoomId: String? = null,
+        origin: SubgroupOrigin.Ref? = null
     ) = DkgSession(
         id = id,
         chatRoomId = chatRoomId,
@@ -376,5 +433,7 @@ class SubgroupDaoJvmTest {
         round1Random = "aa".repeat(32),
         round2AuxRandom = "bb".repeat(32),
         parentChatRoomId = parentChatRoomId,
+        originKind = origin?.kind,
+        originId = origin?.id,
     )
 }

@@ -268,16 +268,14 @@ class SelectSubgroupAdminsViewModel(
                 // coordinator is added by `proposeRitual`: opening a ceremony is
                 // being in it, and is not theirs to tick.
                 participantPublicKeys = selectedPublicKeys.toSet(),
-                subject = name.value.trim()
-                // [origin] is not on the ceremony yet. It will be, and for the
-                // same reason the name is: the certificate is proposed after the
-                // ceremony, possibly by an admin who was never on this screen, so
-                // anything it needs has to be on the stored session rather than
-                // in this lambda. That needs a `DkgSession` column and a tag on
-                // the proposal, which is Phase 5 of
-                // docs/subgroups-for-entities.md. Until then a subgroup made from
-                // an entity is named after it and nothing more, which is exactly
-                // the cheap version of this feature.
+                subject = name.value.trim(),
+                // What the room is for, carried the same way and for the same
+                // reason as the name: the certificate is proposed after the
+                // ceremony, possibly by an admin who was never on this screen,
+                // so it reads what it needs off the stored session. Null here is
+                // a subgroup for nothing in particular, which is the room's own
+                // "Add subgroup" and a perfectly ordinary subgroup.
+                origin = origin
             )
 
             isActionPending.value = false

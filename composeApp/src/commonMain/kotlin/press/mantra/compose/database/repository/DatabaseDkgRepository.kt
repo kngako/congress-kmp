@@ -13,6 +13,7 @@ import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.managers.ChillDkgRitualManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
@@ -64,7 +65,8 @@ class DatabaseDkgRepository(
         threshold: Int,
         parentChatRoomId: HexKey?,
         participantPublicKeys: Set<HexKey>?,
-        subject: String?
+        subject: String?,
+        origin: SubgroupOrigin.Ref?
     ): DkgSession? = try {
         ChillDkgRitualManager.proposeRitual(
             database = database,
@@ -74,7 +76,8 @@ class DatabaseDkgRepository(
             threshold = threshold,
             parentChatRoomId = parentChatRoomId,
             participantPublicKeys = participantPublicKeys,
-            subject = subject
+            subject = subject,
+            origin = origin
         )
     } catch (e: Throwable) {
         logger.e("Error proposing DKG ritual for ${localChatRoom.chatRoom.id}", e)
