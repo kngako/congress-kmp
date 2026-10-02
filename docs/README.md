@@ -10,6 +10,7 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [subgroups.md](./subgroups.md) | a group making another group — the four ceremonies, what the parent's signature actually covers, and why the child's key is fresh rather than derived |
 | [subgroups-multiple-parents.md](./subgroups-multiple-parents.md) | adding a parent to a group that already exists — two signings and no ceremony, why the child's consent is the whole gate, and the certificate a group can truthfully sign about itself |
+| [subgroups-for-entities.md](./subgroups-for-entities.md) | giving a dialect, an artifact, a translation or a project a room of its own — why the link belongs on the birth certificate rather than in a column, and the screen a dialect needed before it could be asked |
 | [frost-batch-signing.md](./frost-batch-signing.md) | signing several events in one ceremony — why one nonce can never cover two messages, and the phased schema, wire and UI work that follows from it |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
 | [member-chronicle.md](./member-chronicle.md) | handing a member added after the work was done the group's signed record — why the events are not on the wire at all, and why the room's id is enough to verify them |

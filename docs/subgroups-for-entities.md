@@ -16,6 +16,28 @@ Read [subgroups.md](./subgroups.md) first — the four steps, what the birth
 certificate covers, and why the child's key is fresh. Nothing here changes any of
 that. Written against the code as it stood at `5875655a`.
 
+**Built**, eight phases, one commit each. The phases below are kept as the
+reasoning they were, because the code reads better against the argument it came
+from than against a summary of itself. Where the implementation chose
+differently the table says so, and it did so seven times worth reading:
+
+| what the plan said | what it turned out to be |
+|---|---|
+| schema 23 is the next free number | 23, 24 and 25 are all taken on an unmerged branch. Taken anyway, and Phase 0.2 says why: a number is free relative to the merge base, and pre-allocating 26 moves the renumbering rather than avoiding it |
+| `proposeBirthCertificate` takes an `origin` parameter, passed down from the view model | it already takes the whole `DkgSession`, so it reads `key.origin()`. A parameter would have been a second source for one fact, and the proposer's copy of it at that. Nothing in the repository or the ritual view model changed |
+| Phase 3 puts a button on each of four screens | Phase 7 replaced all four with one `LazyListScope` extension. The buttons were written twice, and the section should have been planned in Phase 3 — the giveaway was there in Phase 0.3, which already argued the entry point had to *grow* into a list |
+| `ArtifactDetailUIState` gains a capability flag | that, and a `ChatRepository` in the screen *and* the view model. `ProjectDetailViewModel` needed one too, which was not anticipated: `canSign` alone cannot answer whether a room is a Marmot one |
+| Phase 8 raises the M3 adaptive floor | it cannot. The floors count `MaterialTheme.breakpoint`, `BoxWithConstraints`, the pane scaffolds and the navigation components; `readableContent()` and `NavigateBackButton` are neither. A new screen conforming to the rules adds nothing to either count, and raising a floor the work did not earn would make it regress for an unrelated reason |
+| the card says what a subgroup is for in its supporting line | an overline. The supporting line was already carrying whether this device can open the room, which is a different question and both are worth a line |
+| the empty-dialect test deletes the rows | neither DAO has a `@Delete`, and adding one for a test is a schema surface nobody asked for. It seeds a third dialect with nothing in it, which is also the truer fixture — a room defines a dialect before it has anything in it |
+
+One more worth stating because it was a *drafting* error rather than a design
+one. The first draft of this plan cited `DialectScaffold`, `AfricanLanguages` and
+`docs/african-dialect-catalogue.md` as precedent. None of them are in this tree —
+that work is on `claude/african-dialect-convenience-de2f69`, unmerged — so the
+identity rule is now stated from the schema rather than cited, and Phase 1's
+parallel is `TranslationScaffold` and `ChapterScaffolding`, which do exist here.
+
 ## What the four have in common
 
 | entity | kind | name | room |
@@ -494,11 +516,18 @@ One commit.
 - A pointer from `docs/subgroups.md` beside the multiple-parents one.
 - A line in `docs/project-feature.md` under "what this does not do", since a
   project's room is the first thing that file says it lacks.
-- The M3 floors move. `docs/material-design-conformance.md` states "at least 12
-  adaptive API uses, at least 2 navigation components", checked from *below*
-  because they regress by being removed. Phase 2 adds a screen with
-  `readableContent()` and a `NavigateBackButton`, so the floor can be raised —
-  and should be, or a screen deleted later takes the guarantee with it silently.
+- **The M3 floors do not move, and the reason is worth keeping.** The plan said
+  Phase 2's new screen would let the adaptive floor be raised. It does not:
+  `FLOOR_ADAPTIVE_APIS` counts `MaterialTheme.breakpoint`,
+  `BoxWithConstraints`, `currentWindowAdaptiveInfo`, the pane scaffolds and
+  `listPaneWidthFor`, and `FLOOR_NAVIGATION_COMPONENTS` counts the navigation
+  components. `readableContent()` and `NavigateBackButton` are in neither list.
+
+  So a screen that follows every rule in CLAUDE.md adds nothing to either count,
+  and raising a floor to the number the tree happens to sit at would make it fail
+  the next time something unrelated was removed. The floors guard two-pane layout
+  and the navigation shell; a detail screen is neither. Both stay where phase 6
+  of the conformance work left them.
 
 ## Verifying
 

@@ -42,6 +42,13 @@ A subgroup is an ordinary Marmot room with an ordinary threshold key, made by an
 ordinary ChillDKG ceremony, plus a **birth certificate** — the parent group's
 signature over the child's room id — carried on the child's key state.
 
+A certificate can also say what the room is *for* — a dialect, an artifact, a
+translation or a project in the parent's own tables — which is one optional tag
+and is the whole of [subgroups-for-entities.md](./subgroups-for-entities.md).
+Nothing below changes for it: `certifies` never reads it, and a certificate with
+no origin at all is valid, which it has to be, since every one signed before that
+tag existed has none.
+
 The key state grows two tags for it, not one, and only the first is an artefact:
 
 | tag | what it is |
