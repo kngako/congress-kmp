@@ -73,6 +73,18 @@ object SubgroupManager {
     const val MINIMUM_ADMINS: Int = 3
 
     /**
+     * How far an ancestor walk goes before it gives up.
+     *
+     * A lineage is a DAG rather than a tree once a room can have two parents, so
+     * "is this group already beneath that one" is a graph walk. Bounded because a
+     * cycle is constructible: a child's quorum can certify its own parent -- the
+     * parent's threshold key is public -- and the parent's quorum can re-announce
+     * a state accepting it. Both have to cooperate in something pointless, which
+     * is no reason to let a reader loop forever.
+     */
+    const val MAXIMUM_LINEAGE_DEPTH: Int = 16
+
+    /**
      * Why these admins cannot hold a ceremony together, or null when they can.
      *
      * Read by the picker so a subgroup that could only fail is never offered, and
@@ -327,6 +339,378 @@ object SubgroupManager {
                     certificate = certificate.toEvent()
                 )
             )
+        )
+    }
+
+    // ---- Adoption: a group that already exists gaining a parent -------------
+    //
+    // Two signings and no ceremony, which is the whole of why this is cheap: the
+    // key exists, so there is no ChillDKG, and the room exists, so there is
+    // nothing to create.
+    //
+    // ```
+    //  1. birth certificate, in the adopting group -> its quorum signs the child's id
+    //  2. key state, in the child itself           -> the child's quorum re-announces,
+    //                                                 carrying every certificate it accepts
+    // ```
+    //
+    // The order is forced, not chosen: the key state carries the certificate, so
+    // the certificate has to exist first. Which means **the parent commits first
+    // and the child decides second** -- step 1 is an offer, and step 2 is the
+    // acceptance. Picking a parent is not choosing on the child's behalf.
+    //
+    // Both steps need somebody in both groups, and there is no way around it:
+    // step 1 needs the child's threshold key, which only the child's members
+    // hold, and step 2 needs the certificate, which `recordSignedEvents` files
+    // only for the adopting group's members. They need not be the same person and
+    // their capabilities differ. See docs/subgroups-multiple-parents.md.
+
+    /**
+     * Why [adoptingRoom] cannot offer to adopt [childChatRoomId], or null when it
+     * can.
+     *
+     * Read by the picker so nothing is offered that could only fail, and again
+     * before anything is published, because a screen not drawing something is not
+     * a guard. Each message says what to do rather than what is wrong.
+     *
+     * "This device" throughout means **the profile in the chair**, and
+     * `FrostSigningManager.canSign` does not currently tell the two apart -- see
+     * the note under docs/subgroups-multiple-parents.md. These refusals are
+     * honest about capability and silent about persona.
+     */
+    suspend fun refuseAdoption(
+        database: MantraDatabase,
+        adoptingRoom: LocalChatRoom,
+        childChatRoomId: String,
+        userPublicKey: HexKey
+    ): String? {
+        val adoptingChatRoomId = adoptingRoom.chatRoom.id
+
+        // The certificate is signed by the adopting group's key, so a device
+        // holding no share of it cannot open the session at all --
+        // `proposeSigningBatch` throws outright, and throwing at a button is not
+        // a UI. First, because it is the one refusal the user cannot fix by
+        // picking differently.
+        if (!FrostSigningManager.canSign(database, adoptingChatRoomId)) {
+            return "Only a member who holds a share of that group's key can adopt a group into it."
+        }
+
+        // Read off the room's own `MarmotGroupData` rather than off
+        // `Participant.adminAt`, for the reason `refuseSubgroup` gives: that
+        // column is written only by `processGroupMembershipChanges` on an
+        // arriving commit, so on a room this device created it is null for
+        // everybody, including the creator.
+        val adoptingAdmins = runCatching {
+            adoptingRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+        }.getOrNull()
+            ?: return "A group can only adopt another if it has admins."
+
+        if (!adoptingAdmins.contains(userPublicKey)) {
+            return "Only an admin of that group can adopt a group into it."
+        }
+
+        if (adoptingChatRoomId.equals(childChatRoomId, ignoreCase = true)) {
+            return "A group cannot be its own parent."
+        }
+
+        // The certificate carries the child's threshold key, and without it
+        // `certifies` fails its fourth question on every device including this
+        // one. That key lives on the child's own key state, which only the
+        // child's members hold -- so this is the overlap requirement showing up
+        // as a refusal.
+        val child = database.groupKeyStateDao().getLocalByChatRoomId(childChatRoomId)
+            ?: return "This group has not agreed what it signs with, so there is nothing to certify."
+
+        if (child.lineage()?.names(adoptingChatRoomId) == true) {
+            return "That group has already adopted this one."
+        }
+
+        // One certificate per child per parent. A second is a `d`-tag replacement
+        // of the first rather than a second adoption, and spending a quorum's
+        // attention to restate something they have already signed is worse than
+        // doing nothing.
+        if (certificateFor(database, childChatRoomId, adoptingChatRoomId) != null) {
+            return "That group has already offered to adopt this one."
+        }
+
+        // A cycle, as far as this device can see -- and only as far as that. The
+        // walk is bounded and visited-set guarded because a lineage is a DAG now
+        // rather than a tree: with one parent nothing was ever tempted to recurse.
+        if (isAncestorOf(database, childChatRoomId, adoptingChatRoomId)) {
+            return "That group is already a subgroup of this one."
+        }
+
+        return null
+    }
+
+    /**
+     * Whether [candidate] is [chatRoomId] or anything beneath it, as far as this
+     * device's own verified lineages reach.
+     *
+     * Bounded and visited-set guarded. A cycle is constructible -- two quorums
+     * cooperating in something pointless -- and more to the point a lineage is a
+     * DAG now, so the fan-out makes an unbounded walk worth refusing to write.
+     *
+     * Advisory. A device sees only the lineages it holds states for, so a false
+     * answer here is "I cannot see one", never "there is none". The real
+     * protection is that an adoption needs the child's own quorum.
+     */
+    private suspend fun isAncestorOf(
+        database: MantraDatabase,
+        chatRoomId: String,
+        candidate: String,
+        depth: Int = MAXIMUM_LINEAGE_DEPTH
+    ): Boolean {
+        val seen = mutableSetOf(chatRoomId.lowercase())
+        var frontier = listOf(chatRoomId)
+
+        repeat(depth) {
+            if (frontier.isEmpty()) return false
+
+            val children = frontier.flatMap { parent ->
+                database.groupKeyStateDao().getByParentChatRoomId(parent)
+                    .map { it.keyState.chatRoomId }
+            }
+
+            if (children.any { it.equals(candidate, ignoreCase = true) }) return true
+
+            frontier = children.filter { seen.add(it.lowercase()) }
+        }
+
+        return false
+    }
+
+    /**
+     * The groups this profile could offer [childChatRoomId] to, in room order.
+     *
+     * **The active profile's own rooms, and it cannot be anything else.** A
+     * certificate is proposed *inside* the adopting group, so a candidate has to
+     * be a room the key in the chair can already act in. Seeded from
+     * `getChatRoomListByUserPublicKey`, which is keyed by identity: since several
+     * profiles landed a device can hold rooms it must not offer here, because the
+     * key that would have to sign is not the one acting.
+     *
+     * A group cannot be offered as a parent by somebody who is not in it. That is
+     * the overlap requirement showing up as a list length, and an empty answer is
+     * a fact about this member rather than a failure -- the remedy is a person,
+     * not a button.
+     *
+     * Filtered through [refuseAdoption] itself rather than through a copy of its
+     * rules, so the picker and the manager cannot drift. The cost is one MLS
+     * decode per room, to reach `adminPubkeys`, plus two indexed reads; call it
+     * off the main thread.
+     */
+    suspend fun adoptingCandidatesFor(
+        database: MantraDatabase,
+        childChatRoomId: String,
+        userPublicKey: HexKey
+    ): List<LocalChatRoom> =
+        database.chatRoomDao().getChatRoomListByUserPublicKey(userPublicKey)
+            .filter { candidate ->
+                refuseAdoption(
+                    database = database,
+                    adoptingRoom = candidate,
+                    childChatRoomId = childChatRoomId,
+                    userPublicKey = userPublicKey
+                ) == null
+            }
+
+    /**
+     * Step 1: asks [adoptingRoom]'s quorum to certify an existing group as its
+     * child.
+     *
+     * The same event kind, the same six checks on the other side, and the same
+     * room it has always been proposed in -- what differs from founding is only
+     * that the child is already there, so its id and key are read off its key
+     * state rather than derived from a ceremony this device may not hold.
+     *
+     * **The roster and the name are the child's current ones**, and that is the
+     * honest value rather than a compromise. On a founding certificate they are
+     * the founding roster, frozen, because there is nothing else they could be.
+     * Here the adopting group's admins are being asked about a group that exists,
+     * and what they can weigh is who runs it now and what it is called now. They
+     * are still frozen the moment they are signed, and still never a live roster:
+     * `certifies` does not check either, for the reason it never did.
+     */
+    suspend fun proposeAdoption(
+        database: MantraDatabase,
+        adoptingRoom: LocalChatRoom,
+        childRoom: LocalChatRoom,
+        userPublicKey: HexKey
+    ): FrostSigningSession {
+        val adoptingChatRoomId = adoptingRoom.chatRoom.id
+        val childChatRoomId = childRoom.chatRoom.id
+
+        refuseAdoption(database, adoptingRoom, childChatRoomId, userPublicKey)?.let {
+            throw IllegalStateException(it)
+        }
+
+        val child = database.groupKeyStateDao().getLocalByChatRoomId(childChatRoomId)
+            ?: throw IllegalStateException("$childChatRoomId has agreed no key state to certify")
+
+        val path = child.keyState.pathIndices()
+            ?: throw IllegalStateException(
+                "$childChatRoomId names ${child.keyState.derivationPath}, which is not a path"
+            )
+
+        val childAdmins = runCatching {
+            childRoom.chatRoom.toMlsGroup()?.currentMarmotData()?.adminPubkeys
+        }.getOrNull().orEmpty()
+
+        val childName = MarmotGroupName.of(childRoom.chatRoom.subject.orEmpty().ifBlank { "a group" })
+
+        logger.i("Asking $adoptingChatRoomId to adopt $childChatRoomId as its subgroup")
+
+        return FrostSigningManager.proposeSigning(
+            database = database,
+            localChatRoom = adoptingRoom,
+            userPublicKey = userPublicKey,
+            kind = SubgroupBirthCertificateEvent.KIND,
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = childChatRoomId,
+                parentChatRoomId = adoptingChatRoomId,
+                thresholdPublicKey = child.keyState.thresholdPublicKey,
+                adminPublicKeys = childAdmins,
+                name = childName,
+                path = path
+            ),
+            content = childChatRoomId
+        )
+    }
+
+    /**
+     * Step 2: asks the child's own quorum to accept [parentChatRoomId], by
+     * re-announcing its key state with that parentage added.
+     *
+     * The acceptance, and the only half of an adoption that decides anything. The
+     * certificate is an offer until this is signed, which is why
+     * `ProposedEvent`'s 30326 arm leads with the parents -- this proposal is
+     * where a member of the child answers it.
+     *
+     * **Carries the resulting set, not the addition.** A key state is replaceable
+     * and the newest wins wholesale, so a state naming only the new parent would
+     * silently drop every existing one. The current lineage is read off the row
+     * here rather than taken from the caller, and `SubgroupLineage.plus` is what
+     * makes adding an addition.
+     *
+     * Signed in the child's **own** room, which it can be because the room
+     * exists: `GroupKeyStateManager.propose`'s first branch holds, and
+     * `FrostSigningManager.signingPath` resolves off the child's own key state.
+     * Founding could not do either, which is why its key state is signed where
+     * its ceremony ran.
+     */
+    suspend fun proposeAcceptance(
+        database: MantraDatabase,
+        childRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        parentChatRoomId: HexKey
+    ): FrostSigningSession {
+        val childChatRoomId = childRoom.chatRoom.id
+
+        val child = database.groupKeyStateDao().getLocalByChatRoomId(childChatRoomId)
+            ?: throw IllegalStateException(
+                "$childChatRoomId has agreed no key state, so it has none to re-announce"
+            )
+
+        val path = child.keyState.pathIndices()
+            ?: throw IllegalStateException(
+                "$childChatRoomId names ${child.keyState.derivationPath}, which is not a path"
+            )
+
+        // The certificate this device holds for the pair. Only a member of the
+        // adopting group has one -- `recordSignedEvents` files it against that
+        // group's room -- so this is the overlap requirement again, from the
+        // other side.
+        val certificate = certificateFor(database, childChatRoomId, parentChatRoomId)
+            ?: throw IllegalStateException(
+                "$parentChatRoomId has not certified $childChatRoomId, so there is nothing to accept"
+            )
+
+        val parentage = SubgroupParentage(
+            parentChatRoomId = parentChatRoomId,
+            certificate = certificate.toEvent()
+        )
+
+        val lineage = child.lineage()?.plus(parentage) ?: SubgroupLineage.of(parentage)
+        checkNotNull(lineage) { "$childChatRoomId already names $parentChatRoomId as a parent" }
+
+        val key = FrostSigningManager.completedKey(database, childChatRoomId)
+            ?: throw IllegalStateException(
+                "This device holds no share of $childChatRoomId's key to propose with"
+            )
+
+        logger.i(
+            "Asking $childChatRoomId to accept $parentChatRoomId, making " +
+                "${lineage.size} parents in all"
+        )
+
+        return GroupKeyStateManager.propose(
+            database = database,
+            localChatRoom = childRoom,
+            userPublicKey = userPublicKey,
+            key = key,
+            path = path,
+            lineage = lineage
+        )
+    }
+
+    /**
+     * Asks the child's own quorum to stop claiming [parentChatRoomId], by
+     * re-announcing its key state without that parentage.
+     *
+     * The same act as [proposeAcceptance] with the set the other way, and the
+     * reason `SubgroupLineage.minus` exists. It **revokes nothing**: a certificate
+     * is a signature and exists forever, and what this removes is the child's half
+     * of the link -- which is the half that decides, since a lineage is what the
+     * child's quorum most recently declared.
+     *
+     * The parent's own list does not follow. `subgroupsOf` reads that group's
+     * certificates, so it will go on naming this room; a parent device that also
+     * holds this room's key state can see that it no longer names them, and one
+     * that does not cannot and must not guess.
+     */
+    suspend fun proposeDisavowal(
+        database: MantraDatabase,
+        childRoom: LocalChatRoom,
+        userPublicKey: HexKey,
+        parentChatRoomId: HexKey
+    ): FrostSigningSession {
+        val childChatRoomId = childRoom.chatRoom.id
+
+        val child = database.groupKeyStateDao().getLocalByChatRoomId(childChatRoomId)
+            ?: throw IllegalStateException(
+                "$childChatRoomId has agreed no key state, so it has none to re-announce"
+            )
+
+        val path = child.keyState.pathIndices()
+            ?: throw IllegalStateException(
+                "$childChatRoomId names ${child.keyState.derivationPath}, which is not a path"
+            )
+
+        val current = child.lineage()
+        check(current?.names(parentChatRoomId) == true) {
+            "$childChatRoomId does not name $parentChatRoomId as a parent"
+        }
+
+        val key = FrostSigningManager.completedKey(database, childChatRoomId)
+            ?: throw IllegalStateException(
+                "This device holds no share of $childChatRoomId's key to propose with"
+            )
+
+        val remaining = current.minus(parentChatRoomId)
+
+        logger.i(
+            "Asking $childChatRoomId to stop claiming $parentChatRoomId, leaving " +
+                "${remaining?.size ?: 0} parents"
+        )
+
+        return GroupKeyStateManager.propose(
+            database = database,
+            localChatRoom = childRoom,
+            userPublicKey = userPublicKey,
+            key = key,
+            path = path,
+            lineage = remaining
         )
     }
 

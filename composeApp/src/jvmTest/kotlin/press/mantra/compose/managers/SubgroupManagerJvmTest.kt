@@ -34,6 +34,8 @@ import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
+import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Participant
@@ -41,6 +43,7 @@ import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 
 /**
@@ -501,6 +504,326 @@ class SubgroupManagerJvmTest {
      * room first, because `DkgSession.chatRoomId` is a foreign key onto it.
      */
     /** A ceremony held in the parent's room to make a subgroup run by [admins]. */
+    // ---- Adoption: a group that already exists gaining a parent -------------
+
+    @Test
+    fun `a group with a key state and an admin in both can be adopted`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState()
+
+        assertNull(refuseAdoptionOf(adopting))
+    }
+
+    @Test
+    fun `a group that has agreed no key state cannot be certified`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        // The room exists; it has never said what it signs with. The certificate
+        // carries the child's threshold key and there is none to carry, so
+        // `certifies` would fail its fourth question on every device.
+        seedRoom(childRoomId)
+
+        assertEquals(
+            "This group has not agreed what it signs with, so there is nothing to certify.",
+            refuseAdoptionOf(adopting)
+        )
+    }
+
+    @Test
+    fun `a member who holds no share of the adopting group's key is refused first`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob), canSign = false)
+        childWithKeyState()
+
+        assertEquals(
+            "Only a member who holds a share of that group's key can adopt a group into it.",
+            refuseAdoptionOf(adopting)
+        )
+    }
+
+    @Test
+    fun `a non-admin of the adopting group is refused`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob), isAdmin = false)
+        childWithKeyState()
+
+        assertEquals(
+            "Only an admin of that group can adopt a group into it.",
+            refuseAdoptionOf(adopting)
+        )
+    }
+
+    @Test
+    fun `a group cannot be its own parent`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState()
+
+        assertEquals(
+            "A group cannot be its own parent.",
+            SubgroupManager.refuseAdoption(
+                database = db,
+                adoptingRoom = adopting,
+                childChatRoomId = adopting.chatRoom.id,
+                userPublicKey = user
+            )
+        )
+    }
+
+    @Test
+    fun `a parent already in the lineage is not offered again`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState(parents = listOf(parentRoomId))
+
+        assertEquals("That group has already adopted this one.", refuseAdoptionOf(adopting))
+    }
+
+    @Test
+    fun `an offer that already stands is not made twice`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState()
+
+        // One certificate per child per parent: a second is a `d`-tag
+        // replacement of the first rather than a second adoption.
+        record(certificate())
+
+        assertEquals(
+            "That group has already offered to adopt this one.",
+            refuseAdoptionOf(adopting)
+        )
+    }
+
+    @Test
+    fun `a group already beneath this one cannot adopt it`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState()
+
+        // The adopting group is already the child's child, so adopting it back
+        // would close a cycle. Advisory -- this device sees only the lineages it
+        // holds states for -- and the real protection is the child's own quorum.
+        db.groupKeyStateDao().replace(
+            GroupKeyState(
+                chatRoomId = parentRoomId,
+                dkgSessionId = "parent-ceremony",
+                thresholdPublicKey = parentMaterial.thresholdPublicKey.value.toHex(),
+                derivationPath = SharedKeyDerivation.formatPath(path),
+                announcedBy = parentRoomId,
+                announcedAt = Instant.fromEpochSeconds(1_700_000_000),
+            ),
+            listOf(
+                GroupKeyStateParent(
+                    chatRoomId = parentRoomId,
+                    parentChatRoomId = childRoomId,
+                    birthCertificateJson = certificate().toJson(),
+                )
+            )
+        )
+
+        assertEquals(
+            "That group is already a subgroup of this one.",
+            refuseAdoptionOf(adopting)
+        )
+    }
+
+    @Test
+    fun `the picker offers only the rooms this profile can act in`() = runBlocking {
+        val adopting = parentWith(members = listOf(alice, bob))
+        childWithKeyState()
+
+        // A room this device is in but holds no share of, and one it is in but
+        // does not administer. Neither can carry the signature, so neither is
+        // offered -- and the filter runs the guard itself rather than a copy of
+        // its rules.
+        marmotRoom(
+            chatRoomId = siblingRoomId,
+            material = siblingMaterial,
+            ceremonyId = "sibling-ceremony",
+            name = "Elders",
+            members = listOf(alice),
+            canSign = false,
+        )
+
+        assertEquals(
+            listOf(adopting.chatRoom.id),
+            SubgroupManager.adoptingCandidatesFor(db, childRoomId, user).map { it.chatRoom.id }
+        )
+    }
+
+    @Test
+    fun `accepting a parent re-announces the key state with it added`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState()
+        record(certificate())
+
+        val session = SubgroupManager.proposeAcceptance(
+            database = db,
+            childRoom = child,
+            userPublicKey = user,
+            parentChatRoomId = parentRoomId
+        )
+
+        // Signed in the child's own room, which founding cannot do: the room
+        // exists, so `propose`'s first branch holds.
+        assertEquals(childRoomId, session.chatRoomId)
+
+        val proposed = Event.fromJson(
+            assertNotNull(db.frostSigningSessionDao().getItems(session.id).singleOrNull())
+                .unsignedEventJson
+        )
+        assertEquals(GroupKeyStateEvent.KIND, proposed.kind)
+        assertEquals(
+            listOf(parentRoomId),
+            GroupKeyStateEvent.parseLineage(proposed.tags)?.parentChatRoomIds
+        )
+    }
+
+    @Test
+    fun `accepting a second parent carries the first one too`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState(parents = listOf(siblingRoomId))
+        record(certificate())
+
+        val session = SubgroupManager.proposeAcceptance(
+            database = db,
+            childRoom = child,
+            userPublicKey = user,
+            parentChatRoomId = parentRoomId
+        )
+
+        // The footgun this guards: a key state is replaceable and the newest wins
+        // wholesale, so a state naming only the new parent would silently drop
+        // the one already there.
+        val proposed = Event.fromJson(
+            assertNotNull(db.frostSigningSessionDao().getItems(session.id).singleOrNull())
+                .unsignedEventJson
+        )
+        assertEquals(
+            listOf(parentRoomId, siblingRoomId).sorted(),
+            GroupKeyStateEvent.parseLineage(proposed.tags)?.parentChatRoomIds?.sorted()
+        )
+    }
+
+    @Test
+    fun `accepting a parent that has not certified this group is refused`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState()
+
+        // No certificate on file. Only a member of the adopting group has one, so
+        // this is the overlap requirement from the other side.
+        assertFailsWith<IllegalStateException> {
+            SubgroupManager.proposeAcceptance(
+                database = db,
+                childRoom = child,
+                userPublicKey = user,
+                parentChatRoomId = parentRoomId
+            )
+        }
+        Unit
+    }
+
+    @Test
+    fun `disavowing a parent re-announces the key state without it`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState(parents = listOf(parentRoomId, siblingRoomId))
+
+        val session = SubgroupManager.proposeDisavowal(
+            database = db,
+            childRoom = child,
+            userPublicKey = user,
+            parentChatRoomId = parentRoomId
+        )
+
+        val proposed = Event.fromJson(
+            assertNotNull(db.frostSigningSessionDao().getItems(session.id).singleOrNull())
+                .unsignedEventJson
+        )
+        assertEquals(
+            listOf(siblingRoomId),
+            GroupKeyStateEvent.parseLineage(proposed.tags)?.parentChatRoomIds
+        )
+    }
+
+    @Test
+    fun `disavowing the only parent leaves a state claiming none`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState(parents = listOf(parentRoomId))
+
+        val session = SubgroupManager.proposeDisavowal(
+            database = db,
+            childRoom = child,
+            userPublicKey = user,
+            parentChatRoomId = parentRoomId
+        )
+
+        val proposed = Event.fromJson(
+            assertNotNull(db.frostSigningSessionDao().getItems(session.id).singleOrNull())
+                .unsignedEventJson
+        )
+        // Nobody's child, which is a state rather than an absence of one. It
+        // revokes nothing: the certificate is a signature and exists forever.
+        assertFalse(GroupKeyStateEvent.claimsParentage(proposed.tags))
+        assertNull(GroupKeyStateEvent.parseLineage(proposed.tags))
+    }
+
+    @Test
+    fun `disavowing a parent this group never claimed is refused`() = runBlocking {
+        parentWith(members = listOf(alice, bob))
+        val child = childWithKeyState(parents = listOf(siblingRoomId))
+
+        assertFailsWith<IllegalStateException> {
+            SubgroupManager.proposeDisavowal(
+                database = db,
+                childRoom = child,
+                userPublicKey = user,
+                parentChatRoomId = parentRoomId
+            )
+        }
+        Unit
+    }
+
+    private suspend fun refuseAdoptionOf(adopting: LocalChatRoom): String? =
+        SubgroupManager.refuseAdoption(
+            database = db,
+            adoptingRoom = adopting,
+            childChatRoomId = childRoomId,
+            userPublicKey = user
+        )
+
+    /**
+     * The child as an adoption finds it: a real Marmot room of its own, with a
+     * key state saying what it signs with, and whatever lineage it already has.
+     */
+    private suspend fun childWithKeyState(
+        parents: List<String> = emptyList()
+    ): LocalChatRoom {
+        val room = marmotRoom(
+            chatRoomId = childRoomId,
+            material = childMaterial,
+            ceremonyId = "child-ceremony",
+            name = "Translators",
+            members = listOf(alice, bob),
+        )
+
+        db.groupKeyStateDao().replace(
+            GroupKeyState(
+                chatRoomId = childRoomId,
+                dkgSessionId = "child-ceremony",
+                thresholdPublicKey = childMaterial.thresholdPublicKey.value.toHex(),
+                derivationPath = SharedKeyDerivation.formatPath(path),
+                announcedBy = childRoomId,
+                announcedAt = Instant.fromEpochSeconds(1_700_000_000),
+            ),
+            parents.map { parent ->
+                GroupKeyStateParent(
+                    chatRoomId = childRoomId,
+                    parentChatRoomId = parent,
+                    birthCertificateJson = certificate(
+                        author = if (parent == parentRoomId) parentMaterial else siblingMaterial,
+                        parentChatRoomId = parent,
+                    ).toJson(),
+                )
+            }
+        )
+
+        return room
+    }
+
     private fun subgroupCeremony(id: String, admins: Set<String>) =
         ownCeremony(parentRoomId).copy(
             id = id,
@@ -584,15 +907,40 @@ class SubgroupManagerJvmTest {
         members: List<String>,
         canSign: Boolean = true,
         isAdmin: Boolean = true,
+    ): LocalChatRoom = marmotRoom(
+        chatRoomId = parentRoomId,
+        material = parentMaterial,
+        ceremonyId = "parent-ceremony",
+        name = "Ekklesia",
+        members = members,
+        canSign = canSign,
+        isAdmin = isAdmin,
+    )
+
+    /**
+     * Any of this app's group rooms, as what one *is*: the admin room derived
+     * from the group's own key, with its `MarmotGroupData` in the epoch-0
+     * extensions. Adoption needs two of them at once -- the adopting group and
+     * the child -- so this takes the id and the key rather than closing over
+     * the parent's.
+     */
+    private suspend fun marmotRoom(
+        chatRoomId: String,
+        material: KeyMaterial,
+        ceremonyId: String,
+        name: String,
+        members: List<String>,
+        canSign: Boolean = true,
+        isAdmin: Boolean = true,
     ): LocalChatRoom {
         (members + user).forEach { seedProfile(it) }
 
         val admins = if (isAdmin) members + user else members
 
         val metadata = MarmotGroupData(
-            nostrGroupId = parentRoomId,
-            name = "Ekklesia",
-            description = SharedKeyDerivation.describe("Admins of Ekklesia."),
+            nostrGroupId = chatRoomId,
+            name = name,
+            description = SharedKeyDerivation.describe("Admins of $name."),
             adminPubkeys = admins,
             relays = Relays.DefaultDMRelayList.map { it.url }
         )
@@ -604,9 +952,9 @@ class SubgroupManagerJvmTest {
 
         db.chatRoomDao().upsert(
             ChatRoom(
-                id = parentRoomId,
+                id = chatRoomId,
                 userPublicKey = user,
-                subject = "Ekklesia",
+                subject = name,
                 description = metadata.description,
                 mlsGroupState = mlsGroup.saveState().encodeTls().toHex(),
             )
@@ -620,7 +968,7 @@ class SubgroupManagerJvmTest {
             (members + user).map {
                 Participant(
                     participantPublicKey = it,
-                    chatRoomId = parentRoomId,
+                    chatRoomId = chatRoomId,
                     relayHint = null,
                 )
             }
@@ -631,8 +979,8 @@ class SubgroupManagerJvmTest {
             // matches, which is exactly how a real admin room resolves its key.
             db.dkgSessionDao().upsert(
                 DkgSession(
-                    id = "parent-ceremony",
-                    chatRoomId = parentRoomId,
+                    id = ceremonyId,
+                    chatRoomId = chatRoomId,
                     coordinatorPublicKey = user,
                     userPublicKey = user,
                     threshold = 2,
@@ -641,7 +989,7 @@ class SubgroupManagerJvmTest {
                     hostPublicKey = user,
                     round1Random = "aa".repeat(32),
                     round2AuxRandom = "bb".repeat(32),
-                    thresholdPublicKey = parentMaterial.thresholdPublicKey.value.toHex(),
+                    thresholdPublicKey = material.thresholdPublicKey.value.toHex(),
                     secretShare = "cc".repeat(32),
                 )
             )
@@ -653,7 +1001,7 @@ class SubgroupManagerJvmTest {
             (members + user).forEachIndexed { index, member ->
                 db.dkgSessionDao().upsert(
                     DkgParticipantMessage(
-                        sessionId = "parent-ceremony",
+                        sessionId = ceremonyId,
                         participantPublicKey = member,
                         kind = DkgRitualEvents.HOST_KEY,
                         payload = "0${index + 1}".repeat(33)
@@ -662,7 +1010,7 @@ class SubgroupManagerJvmTest {
             }
         }
 
-        return assertNotNull(db.chatRoomDao().findChatRoomById(parentRoomId))
+        return assertNotNull(db.chatRoomDao().findChatRoomById(chatRoomId))
     }
 
     private suspend fun seedProfile(publicKey: String) {
@@ -716,12 +1064,13 @@ class SubgroupManagerJvmTest {
         createdAt: Long = 1_700_000_000,
         author: KeyMaterial = parentMaterial,
         signer: KeyMaterial = author,
-        signature: String? = null
+        signature: String? = null,
+        parentChatRoomId: String = roomOf(author)
     ): Event {
         val subgroupChatRoomId = roomOf(subgroupMaterial)
         val eventTags = tags ?: SubgroupBirthCertificateEvent.assembleTags(
             subgroupChatRoomId = subgroupChatRoomId,
-            parentChatRoomId = parentRoomId,
+            parentChatRoomId = parentChatRoomId,
             thresholdPublicKey = subgroupMaterial.thresholdPublicKey.value.toHex(),
             adminPublicKeys = adminPublicKeys,
             name = name,
