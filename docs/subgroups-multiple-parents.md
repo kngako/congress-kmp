@@ -256,10 +256,12 @@ adoption is glad not to be entangled with.
 [found while reading](#found-while-reading)), and leaving it holding one of
 several parents makes it a cache that is wrong rather than merely unused.
 
-Schema **19 → 20** — 19 is Phase 10's, for `DkgSession.participantPublicKeys` and
-`subject`: one new table, one dropped column, and the existing rows carried across as
-a single parentage row each. Not an `AutoMigration`; schema
-9→10 already has the shape to copy.
+Schema **20 → 21**, and the number moves under this note faster than the design does:
+19 was Phase 10's, for `DkgSession.participantPublicKeys` and `subject`, and 20 was the
+several-profiles pull's, putting an owning identity on the queues. So take the version
+from `MantraDatabase` when this is built rather than from here. One new table, one
+dropped column, and the existing rows carried across as a single parentage row each.
+Not an `AutoMigration`; schema 9→10 already has the shape to copy.
 
 ### The zero-migration alternative, and why not
 
@@ -548,7 +550,7 @@ otherwise.
   key, a real P1 key and state, a real P2 key, a real certificate by P2 over the
   child, a real **re-announced** state carrying both, and the assertion that
   `stateFrom` accepts it and rejects each single-field mutation.
-- `SubgroupDaoJvmTest` — schema 20 round-trips the table, a newer state replaces
+- `SubgroupDaoJvmTest` — the new schema round-trips the table, a newer state replaces
   the parentage rows of an older one, and a re-announcement that drops a parent
   leaves no row behind.
 - `SubgroupManagerJvmTest` — the two guard tables, and the candidate filter: a room
