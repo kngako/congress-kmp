@@ -140,6 +140,7 @@ import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSigned
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.UploadChaptersRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
@@ -148,6 +149,7 @@ import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRo
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.ArtifactDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
+import press.mantra.compose.ui.composable.UploadChaptersScreen
 import press.mantra.compose.ui.composable.AddDialectScreen
 import press.mantra.compose.ui.composable.FrostSigningScreen
 import press.mantra.compose.ui.composable.ProposalListScreen
@@ -1334,6 +1336,33 @@ fun MantraNavHost(
                     }
                 )
             }
+            composable<UploadChaptersRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<UploadChaptersRoute>()
+
+                UploadChaptersScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    artifactId = route.artifactId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { listRoute ->
+                        // Replace this screen, so back returns to the artifact
+                        // rather than to a review list whose proposals have
+                        // already gone out.
+                        navController.navigate(route = listRoute) {
+                            popUpTo<UploadChaptersRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
             composable<AddChapterRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<AddChapterRoute>()
 

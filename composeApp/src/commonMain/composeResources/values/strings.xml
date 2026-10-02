@@ -501,4 +501,26 @@
     <string name="words_characters_size_chunks">%1$d words · %2$d characters · %3$s · %4$d of %5$d chunks</string>
     <string name="s_of_s">%1$s of %2$s</string>
     <string name="s_kib">%1$s KiB</string>
+    <string name="upload_chapters">Upload chapters</string>
+    <string name="upload_chapters_to">Upload chapters to %1$s</string>
+    <string name="choose_files">Choose files</string>
+    <string name="add_more_files">Add more files</string>
+    <string name="no_files_picked_yet">No files picked yet.</string>
+    <string name="one_proposal_per_file">Every file becomes its own proposal, and each one needs a quorum of the group to sign it. Twelve files is twelve things every other member is asked to read and approve.</string>
+    <string name="at_most_d_files_in_one_upload">At most %1$d files in one upload.</string>
+    <string name="propose_d_chapters">Propose %1$d chapters</string>
+    <string name="propose_the_remaining_d">Propose the remaining %1$d</string>
+    <string name="d_proposed_d_failed">%1$d proposed, %2$d failed.</string>
+    <string name="d_chapters_proposed">%1$d chapters proposed.</string>
+    <string name="chapter_d_of_the_version">Chapter %1$d of the version</string>
+    <string name="waiting_for_the_group_to_sign">Waiting for the group to sign</string>
+    <string name="remove_from_this_upload">Remove from this upload</string>
+    <string name="this_file_is_not_text">Not text. A chapter is markdown or plain text.</string>
+    <string name="this_file_is_too_large">Too large to be a chapter.</string>
+    <string name="this_file_is_empty">Nothing in it to translate.</string>
+    <string name="this_file_has_no_name">Give this chapter a name.</string>
+    <string name="d_chunks_is_too_many_to_sign">%1$d chunks, and the group signs at most %2$d in one go. Split this file.</string>
+    <string name="s_is_more_than_a_proposal_carries">%1$s, and a group message carries %2$s. Split this file.</string>
+    <string name="same_text_as_s">The same text as %1$s. Proposing both makes two chapters.</string>
+    <string name="proposing_this_one_failed">Proposing this one failed. Try again.</string>
 </resources>
