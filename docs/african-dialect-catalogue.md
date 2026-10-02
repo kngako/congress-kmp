@@ -502,16 +502,34 @@ translate into, and fifty of them arriving unasked is a statement nobody made.
 | `CatalogueRow.rowsOf` computes the three standings | it derives them from `missingFrom` | two functions deciding what is proposable is one too many. MISSING is whatever that function says, and held-versus-in-flight is a label on what it already excluded |
 | a wave "is small rather than just legal" — under a quarter of `MAX_PROPOSAL_BYTES` | at most 602 bytes *per entry* | the catalogue encodes to 16,832 bytes, which is 25.7% of the budget — the quarter was a guess and it failed. The per-entry cost is the thing that would actually drift, and it does not move when a language is added |
 
-### One thing found on the way
+### One thing found on the way, and fixed
 
-`docs/scripts/m3-touch-targets.py` reads comments as code. A KDoc line on the
-picker's row composable explaining that it used a clickable `Card` "rather than a
-`Modifier.clickable`" was counted as a bare clickable chain, which breaks a zero
-budget and so breaks `./gradlew check`. The comment was reworded to get around
-it, which is the wrong fix -- the sentence was right.
+`docs/scripts/m3-touch-targets.py` read comments as code. A KDoc line on the
+picker's row composable explaining that it used `Card(onClick = …)` "rather than
+a `Modifier.clickable`" was counted as a bare clickable chain, which breaks a
+zero budget and so breaks `./gradlew check`. The comment was first reworded to
+get around it, which was the wrong fix -- the sentence was right.
 
 `m3-audit.sh` already solves this for the colour check and says why, at
 `NOT_A_COMMENT`: "a note *about* a hardcoded colour counts as one -- which
 happened the first time a call site was fixed and the commit explained what it
-had replaced." The touch-target checker wants the same treatment, and
-`m3-title-case.py` should be looked at too, since it scans whole files.
+had replaced."
+
+Fixed on 2026-10-03, and the KDoc restored. Two things were worth knowing while
+looking:
+
+ - **The other two checkers already had it.** `m3-spacing-positions.py` skips
+   `\s*(//|\*|/\*)` and `m3-title-case.py` skips the same three prefixes as a
+   `startswith` tuple. Only the touch-target one was missing the two block-comment
+   prefixes, so the fix is the house rule rather than a new one.
+ - **The same function had the mirror bug, which is the dangerous direction.** It
+   looked for `minimumInteractiveComponentSize` in a two-line window without
+   stripping comments, so a comment above a real bare `.clickable` that merely
+   mentioned the modifier would have excused it. A false positive is noise; that
+   is a miss. Both lines of the window are now read as code only.
+
+The fix is a prefix test and not block tracking, deliberately: a `/* … */` body
+line that does not start with `*` still reads as code. There are 539 block
+comments under `ui/` and not one such line, because every KDoc here stars its
+body -- and three identical rules spelled three ways would be worse than one
+limitation written down.

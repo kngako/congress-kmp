@@ -382,12 +382,10 @@ private fun CatalogueList(
 /**
  * One catalogue entry.
  *
- * A clickable `Card` rather than a bare clickable modifier, so the whole row is
- * the target and is 48dp without anybody having to remember
+ * `Card(onClick = …)` rather than a `Modifier.clickable`, so the whole row is the
+ * target and it is 48dp without anybody having to remember
  * `minimumInteractiveComponentSize` -- the same shape `SelectSubgroupAdminsScreen`
- * uses for picking members. (Spelled this way round because
- * `m3-touch-targets.py` reads comments as code; see the note in m3-audit.sh on
- * the colour check, which hit the same thing.)
+ * uses for picking members.
  */
 @Composable
 private fun LanguageRow(
