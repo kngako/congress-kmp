@@ -414,6 +414,23 @@ class ChronicleApplyJvmTest {
             db.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(it.id)
         }
 
+        // The projects, and what each one holds.
+        //
+        // Counted here rather than in a test of their own, because the test that
+        // matters most for them is `pages arriving out of order still converge`
+        // -- and that test compares exactly this map. A membership is a foreign
+        // key into both a project and a version, so delivering backwards is the
+        // scenario where one gets refused and has to be retried, and this map not
+        // looking at the project tables is why that test once passed against an
+        // apply arm that swallowed the refusal and lost the row.
+        val projects = db.mantraProjectDao().getProjectsByChatRoomId(chatRoomId)
+        val projectSources = projects.flatMap {
+            db.mantraProjectArtifactVersionDao().getByProjectId(it.id)
+        }
+        val projectTranslations = projects.flatMap {
+            db.mantraProjectTranslationArtifactVersionDao().getByProjectId(it.id)
+        }
+
         return mapOf(
             "dialects" to dialects.size,
             "artifacts" to artifacts.size,
@@ -423,6 +440,9 @@ class ChronicleApplyJvmTest {
             "translationVersions" to translationVersions.size,
             "translationChapters" to translationChapters.size,
             "translationChunks" to translationChunks.size,
+            "projects" to projects.size,
+            "projectSources" to projectSources.size,
+            "projectTranslations" to projectTranslations.size,
         )
     }
 
@@ -473,7 +493,8 @@ class ChronicleApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
-                "translationChunks" to 0,
+                "translationChunks" to 0, "projects" to 0, "projectSources" to 0,
+                "projectTranslations" to 0,
             ),
             rowCounts(receiver),
             "the new member starts with nothing, which is the whole problem"
@@ -731,7 +752,8 @@ class ChronicleApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
-                "translationChunks" to 0,
+                "translationChunks" to 0, "projects" to 0, "projectSources" to 0,
+                "projectTranslations" to 0,
             ),
             rowCounts(receiver),
             "a bystander already holds the work; re-applying would only rewrite its provenance"

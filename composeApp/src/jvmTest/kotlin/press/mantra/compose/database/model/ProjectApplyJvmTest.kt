@@ -19,6 +19,7 @@ import press.mantra.compose.nostr.nip30303.tags.ProjectIdTag
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -295,8 +296,25 @@ class ProjectApplyJvmTest {
         )
     }
 
+    /**
+     * The refusal is **allowed out**, and that is the whole of why it matters.
+     *
+     * `ChronicleManager.applyPage` learns that a payload could not be applied
+     * only by catching the exception: it counts the payload failed, and `sweep`
+     * runs the pages again until failures stop falling. That loop is what
+     * delivers a membership whose project arrived in a *later* page. Swallow the
+     * violation here and the payload counts as applied, the sweep terminates,
+     * and the membership is lost silently -- on the one device that has nothing
+     * to fall back on.
+     *
+     * It was swallowed here for one commit, on the reasoning that
+     * `FrostSigningManager.applySignedEvent` must not report a succeeded session
+     * as failed. That reasoning was already satisfied -- it has its own
+     * try/catch -- and no sibling arm catches, so catching made this the only
+     * kind a chronicle could not retry.
+     */
     @Test
-    fun `a membership naming a version this device lacks leaves the project standing`() =
+    fun `a membership naming a version this device lacks throws, and spares the project`() =
         runBlocking {
             seed()
             val project = signed(projectTemplate())
@@ -307,11 +325,7 @@ class ProjectApplyJvmTest {
                 ProjectArtifactVersionEvent.membershipsOf(project, listOf(absent)).single()
             )
 
-            // The foreign key refuses it. What must not happen is the refusal
-            // escaping: `applySignedEvent` would report a session that succeeded
-            // as one that failed, and the group would be told to abandon a
-            // ceremony whose signature is perfectly good.
-            assertNull(apply(source))
+            assertFails { apply(source) }
 
             assertTrue(
                 db.mantraProjectArtifactVersionDao().getByProjectId(project.id).isEmpty()
@@ -323,7 +337,7 @@ class ProjectApplyJvmTest {
         }
 
     @Test
-    fun `a membership naming a project this device lacks is refused the same way`() =
+    fun `a membership naming a project this device lacks throws the same way`() =
         runBlocking {
             seed()
             val absentProject = "8".repeat(64)
@@ -334,11 +348,33 @@ class ProjectApplyJvmTest {
                 createdAt = 1_000,
             )
 
-            assertNull(apply(signed(template)))
+            assertFails { apply(signed(template)) }
             assertTrue(
                 db.mantraProjectArtifactVersionDao().getByProjectId(absentProject).isEmpty()
             )
         }
+
+    @Test
+    fun `a membership that arrives after its project applies cleanly`() = runBlocking {
+        seed()
+        val project = signed(projectTemplate())
+        val source = signed(
+            ProjectArtifactVersionEvent.membershipsOf(project, listOf(artifactVersionId)).single()
+        )
+
+        // The retry the sweep performs, in miniature: refused while the project
+        // is missing, accepted once it is there. Same event both times.
+        assertFails { apply(source) }
+        apply(project)
+        apply(source)
+
+        assertEquals(
+            listOf("1.0"),
+            db.mantraProjectArtifactVersionDao()
+                .getArtifactVersionsByProjectId(project.id)
+                .map { it.versionLabel }
+        )
+    }
 
     @Test
     fun `a membership missing the project it belongs to writes nothing`() = runBlocking {

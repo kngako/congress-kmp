@@ -14,6 +14,7 @@ it belongs to:
 | the `summarize` resolver is Phase 4 | the seam is Phase 4, the resolution is Phase 7c | two of its four call sites are composables and cannot await a database, so the names are pre-resolved in `FrostSigningViewModel` |
 | three chronicle tests to add | three to add and four to fix | the existing suite compares a seeded room against `CHRONICLABLE_KINDS` itself, and one test asserts every chroniclable kind can also be *rebuilt* -- which projects deliberately cannot |
 | around twenty new strings | eighteen, three of them already there | `projects`, `no_projects_exists_in_this_group` and `create_project` came with the stub |
+| the apply arms catch the foreign key violation | they let it out | `ChronicleManager.sweep` retries a page only on a *counted* failure, so catching it loses a membership that crosses a page boundary — and `applySignedEvent`, the reason for catching, already has its own try/catch |
 
 The one thing found while building that the plan did not anticipate: a project
 reaches a chronicle only off the `GroupSignedEvent` record, because there is no
@@ -725,11 +726,19 @@ already writes "The group signed …" when a session completes, which is the lin
 that covers it. Three new strings for a transcript the signing session is already
 narrating would be three places for the same event to be described differently.
 
-Both membership arms must tolerate the version not being here. The FK will refuse
-the insert; catch it, log it, and return null rather than letting it escape —
-`applySignedEvent` swallows throwables for a reason (the signature is valid
-whether or not this device could write the row down) but a refusal that reaches it
-is reported as a failed apply on a session that succeeded.
+**Both membership arms let the foreign key violation out, and must.** The
+temptation is to catch it — `applySignedEvent` swallows throwables so a succeeded
+session is not reported as failed — and that is what was built first. It was wrong
+twice over. `applySignedEvent` already has its own try/catch, so the reasoning was
+satisfied without doing anything; and `ChronicleManager.applyPage` learns a
+payload could not be applied **only** by catching the exception, counts it
+`failed`, and `sweep` re-runs the pages until failures stop falling. That loop is
+the entire mechanism for a membership whose project arrived in a later page.
+Swallowing it counts the payload as applied, the sweep terminates, and the row is
+lost silently on the one device with nothing to fall back on.
+
+No sibling arm catches either — a translation chapter naming an absent chapter
+throws today — so catching made this the only kind a chronicle could not retry.
 
 **Tests** (`jvmTest`): a `ProjectApplyJvmTest` in the shape of
 `TranslationChunkApplyJvmTest` — apply a project with three owners and assert

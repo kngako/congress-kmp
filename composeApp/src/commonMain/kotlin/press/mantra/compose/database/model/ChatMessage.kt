@@ -1330,13 +1330,23 @@ data class ChatMessage(
                 // writes "The group signed ..." when the session completes, and
                 // three more lines here would be a second account of it.
                 //
-                // The row may be refused: both references are foreign keys, so a
-                // membership naming a version this device does not hold cannot be
-                // written. That is the one-room scope decision doing its job
-                // rather than an error to propagate -- `applySignedEvent`
-                // swallows throwables because the signature is valid either way,
-                // and letting this one reach it would report a session that
-                // succeeded as a session that failed.
+                // **The foreign key violation is allowed out, and has to be.**
+                // Both references are keys, so a membership naming a version or
+                // a project this device does not hold cannot be written -- and
+                // `ChronicleManager.applyPage` learns that only by catching it.
+                // It counts the payload failed, and `sweep` runs the pages again
+                // until failures stop falling, which is the whole mechanism that
+                // delivers a membership whose project landed in a *later* page.
+                // Swallowing it here counts the payload as applied, the sweep
+                // terminates, and the membership is lost silently on the one
+                // device that has nothing else to fall back on.
+                //
+                // It was caught here for one commit, on the reasoning that
+                // `applySignedEvent` must not report a succeeded session as
+                // failed. That reasoning was already satisfied: it has its own
+                // try/catch. And no sibling arm catches -- a translation chapter
+                // naming an absent chapter throws today -- so catching made this
+                // the only kind the chronicle could not retry.
                 ProjectArtifactVersionEvent.KIND -> {
                     MantraProjectArtifactVersion.fromProjectArtifactVersionEvent(
                         projectArtifactVersionEvent = ProjectArtifactVersionEvent(
@@ -1349,21 +1359,12 @@ data class ChatMessage(
                         ),
                         chatRoomId = groupId,
                     )?.let { membership ->
-                        try {
-                            database.mantraProjectArtifactVersionDao().upsert(
-                                membership.copy(
-                                    marmotGroupEventId = marmotGroupEventId,
-                                    groupSignedEventId = groupSignedEventId,
-                                )
+                        database.mantraProjectArtifactVersionDao().upsert(
+                            membership.copy(
+                                marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
                             )
-                        } catch (error: Throwable) {
-                            logger.w(
-                                "Project ${membership.projectId.take(8)} names artifact " +
-                                    "version ${membership.artifactVersionId.take(8)}, which " +
-                                    "this device does not hold",
-                                error
-                            )
-                        }
+                        )
                     }
                     null
                 }
@@ -1383,22 +1384,12 @@ data class ChatMessage(
                                 ),
                             chatRoomId = groupId,
                         )?.let { membership ->
-                            try {
-                                database.mantraProjectTranslationArtifactVersionDao().upsert(
-                                    membership.copy(
-                                        marmotGroupEventId = marmotGroupEventId,
-                                        groupSignedEventId = groupSignedEventId,
-                                    )
+                            database.mantraProjectTranslationArtifactVersionDao().upsert(
+                                membership.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                    groupSignedEventId = groupSignedEventId,
                                 )
-                            } catch (error: Throwable) {
-                                logger.w(
-                                    "Project ${membership.projectId.take(8)} names " +
-                                        "translation " +
-                                        membership.translationArtifactVersionId.take(8) +
-                                        ", which this device does not hold",
-                                    error
-                                )
-                            }
+                            )
                         }
                     null
                 }
