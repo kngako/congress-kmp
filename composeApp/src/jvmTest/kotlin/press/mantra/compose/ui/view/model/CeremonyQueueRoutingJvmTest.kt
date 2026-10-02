@@ -13,6 +13,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.database.model.NegentropySynchronizeRequest
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalParticipant
@@ -151,7 +152,23 @@ class CeremonyQueueRoutingJvmTest {
         val viewModel = ChatMessageListViewModel(
             initialChatMessageListUIState = ChatMessageListUIState.Loading,
             localChatRoom = room(),
-            nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
+            // Not the bare no-op. `initiate` calls `scheduleSynchronization` on
+            // its second line, which launches on `Dispatchers.IO` and -- because
+            // `room()` gives every participant a null profile, so there is always
+            // somebody it cannot name -- reaches
+            // `queueNegentropySynchronizeRequest`. That member is one of the
+            // forty-one `TODO("Not yet implemented")` bodies on
+            // NO_OP_NOSTR_REPOSITORY, so it throws in a coroutine nobody awaits.
+            //
+            // Nothing catches it, so it reaches the default handler, and the next
+            // `runTest` in the same JVM reports it as `UncaughtExceptionsBeforeTest`
+            // -- against its own name. That is how this test failed
+            // `NavigationRoutingTest` four times a run while passing itself.
+            nostrRepository = object : NostrRepository by NostrRepository.NO_OP_NOSTR_REPOSITORY {
+                override suspend fun queueNegentropySynchronizeRequest(
+                    negentropySynchronizeRequests: List<NegentropySynchronizeRequest>
+                ) = Unit
+            },
             chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
             frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
             dkgRepository = object : DkgRepository by DkgRepository.NO_OP_DKG_REPOSITORY {
