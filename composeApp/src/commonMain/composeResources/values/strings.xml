@@ -32,6 +32,7 @@
     <string name="add_chapter">Add chapter</string>
     <string name="add_dialect">Add dialect</string>
     <string name="add_to_group">Add to group</string>
+    <string name="give_this_a_room_of_its_own">Give this a room of its own</string>
     <string name="add_translation">Add translation</string>
     <string name="after_this_there_is_no_turning_back">After this there is no turning back.</string>
     <string name="all_broadcasts_are_queued_so_that_we_can">All broadcasts are queued so that we can manage data usage on metered connections.</string>

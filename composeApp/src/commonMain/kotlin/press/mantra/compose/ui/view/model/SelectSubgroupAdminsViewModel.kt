@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.types.ChatRoomType
 import press.mantra.compose.managers.MarmotGroupCreation
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomMessagingRoute
@@ -53,6 +54,23 @@ class SelectSubgroupAdminsViewModel(
     val activeIdentityStateFlow: StateFlow<Identity?>,
     val chatRepository: ChatRepository,
     val dkgRepository: DkgRepository,
+    /**
+     * A name to open the field with, or null when the caller has nothing to
+     * suggest.
+     *
+     * Bare, with no `#` -- see [name] for where the convention is applied.
+     */
+    val suggestedName: String? = null,
+    /**
+     * What this subgroup is being made for, when it was asked for from a dialect,
+     * an artifact, a translation or a project.
+     *
+     * Held from here until [confirm] rides it onto the ceremony, which is the
+     * only thing this class does with it: the picker neither reads the entity nor
+     * checks that it exists. A room's own "Add subgroup" passes null and the
+     * subgroup is for nothing in particular, which is a normal subgroup.
+     */
+    val origin: SubgroupOrigin.Ref? = null,
 ): ViewModel() {
 
     var uiState: SelectSubgroupAdminsUIState by mutableStateOf(initialUIState)
@@ -73,8 +91,13 @@ class SelectSubgroupAdminsViewModel(
      * halfway through a word. It is added by `MarmotGroupName.of` where the
      * subgroup's name is actually used -- in the certificate the parent signs and
      * on the room itself -- which is idempotent, so the two agree.
+     *
+     * Seeded from [suggestedName] at construction rather than in [initiate],
+     * because a field the user may already be typing into must not be
+     * overwritten by a load completing underneath them. It stays editable after
+     * that: a pre-filled name is a suggestion, not a decision.
      */
-    val name: MutableState<String> = mutableStateOf("")
+    val name: MutableState<String> = mutableStateOf(suggestedName?.trim().orEmpty())
 
     val threshold: MutableState<Int> = mutableStateOf(ChatRoomType.MINIMUM_QUORUM)
 
@@ -246,6 +269,15 @@ class SelectSubgroupAdminsViewModel(
                 // being in it, and is not theirs to tick.
                 participantPublicKeys = selectedPublicKeys.toSet(),
                 subject = name.value.trim()
+                // [origin] is not on the ceremony yet. It will be, and for the
+                // same reason the name is: the certificate is proposed after the
+                // ceremony, possibly by an admin who was never on this screen, so
+                // anything it needs has to be on the stored session rather than
+                // in this lambda. That needs a `DkgSession` column and a tag on
+                // the proposal, which is Phase 5 of
+                // docs/subgroups-for-entities.md. Until then a subgroup made from
+                // an entity is named after it and nothing more, which is exactly
+                // the cheap version of this feature.
             )
 
             isActionPending.value = false
@@ -293,7 +325,9 @@ class SelectSubgroupAdminsViewModel(
             initialUIState: SelectSubgroupAdminsUIState = SelectSubgroupAdminsUIState.Loading,
             activeIdentityStateFlow: StateFlow<Identity?>,
             chatRepository: ChatRepository,
-            dkgRepository: DkgRepository
+            dkgRepository: DkgRepository,
+            suggestedName: String? = null,
+            origin: SubgroupOrigin.Ref? = null
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SelectSubgroupAdminsViewModel(
@@ -302,7 +336,9 @@ class SelectSubgroupAdminsViewModel(
                     initialUIState = initialUIState,
                     activeIdentityStateFlow = activeIdentityStateFlow,
                     chatRepository = chatRepository,
-                    dkgRepository = dkgRepository
+                    dkgRepository = dkgRepository,
+                    suggestedName = suggestedName,
+                    origin = origin
                 )
             }
         }

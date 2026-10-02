@@ -38,6 +38,14 @@ sealed interface TranslationArtifactVersionDetailUIState {
 
         /** Whether the group holds a shared key, without which nothing can be proposed. */
         val canSign: Boolean = false,
+
+        /**
+         * Whether this device could open a subgroup for this translation at all.
+         *
+         * [canSign] and a Marmot room, the same pair
+         * `ChatRoomDetailUIState.canAddSubgroup` states.
+         */
+        val canAddSubgroup: Boolean = false,
     ): TranslationArtifactVersionDetailUIState
 
     data class Error(

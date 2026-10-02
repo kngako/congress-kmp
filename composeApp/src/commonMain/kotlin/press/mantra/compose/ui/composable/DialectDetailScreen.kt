@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Card
@@ -21,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +36,7 @@ import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.country
 import mantra.composeapp.generated.resources.details
 import mantra.composeapp.generated.resources.dialect_detail
+import mantra.composeapp.generated.resources.give_this_a_room_of_its_own
 import mantra.composeapp.generated.resources.language
 import mantra.composeapp.generated.resources.library
 import mantra.composeapp.generated.resources.no_artifacts_are_written_in_this_dialect
@@ -40,10 +44,12 @@ import mantra.composeapp.generated.resources.no_translations_are_into_this_diale
 import mantra.composeapp.generated.resources.translations
 import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.DetailRow
@@ -226,6 +232,48 @@ fun DialectDetailScreen(
                             }
                         }
 
+                        item { HorizontalDivider() }
+
+                        item {
+                            // Hidden rather than disabled where it cannot work,
+                            // the way the room's own subgroup entry is: a device
+                            // with no share of the key cannot open the
+                            // certificate session at all, and a NIP-17 room has
+                            // no admins to be a parent's.
+                            if (dialectDetailUIState.canAddSubgroup) {
+                                TextButton(
+                                    onClick = {
+                                        val candidate = SubgroupOrigin.of(dialect)
+
+                                        onNavigateToRoute.invoke(
+                                            SelectSubgroupAdminsRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                parentChatRoomId = candidate.parentChatRoomId,
+                                                relayHint = relayHint,
+                                                name = candidate.name,
+                                                originKind = candidate.origin.kind,
+                                                originId = candidate.origin.id,
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountTree,
+                                        contentDescription = Decorative
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.width(
+                                            MaterialTheme.spacing.itemGap
+                                        )
+                                    )
+                                    Text(
+                                        stringResource(
+                                            Res.string.give_this_a_room_of_its_own
+                                        )
+                                    )
+                                }
+                            }
+                        }
                         item { HorizontalDivider() }
 
                         item {

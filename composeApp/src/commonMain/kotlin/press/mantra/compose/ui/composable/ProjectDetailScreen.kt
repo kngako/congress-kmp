@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.PostAdd
 import androidx.compose.material.icons.filled.Translate
@@ -38,6 +39,7 @@ import mantra.composeapp.generated.resources.add_source_version_to_project
 import mantra.composeapp.generated.resources.add_translation_to_project
 import mantra.composeapp.generated.resources.created_by
 import mantra.composeapp.generated.resources.details
+import mantra.composeapp.generated.resources.give_this_a_room_of_its_own
 import mantra.composeapp.generated.resources.no_source_versions_in_this_project
 import mantra.composeapp.generated.resources.no_translations_in_this_project
 import mantra.composeapp.generated.resources.owned_by_this_group
@@ -49,11 +51,14 @@ import mantra.composeapp.generated.resources.version
 import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.extensions.shortened
+import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.AddToProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
 import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.DetailRow
@@ -87,6 +92,7 @@ fun ProjectDetailScreen(
     mantraRepository: MantraRepository,
     nostrRepository: NostrRepository,
     frostSigningRepository: FrostSigningRepository,
+    chatRepository: ChatRepository,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -100,6 +106,7 @@ fun ProjectDetailScreen(
             mantraRepository = mantraRepository,
             nostrRepository = nostrRepository,
             frostSigningRepository = frostSigningRepository,
+            chatRepository = chatRepository,
         )
     )
 
@@ -258,6 +265,48 @@ fun ProjectDetailScreen(
 
                         item { HorizontalDivider() }
 
+                        item {
+                            // Hidden rather than disabled where it cannot work,
+                            // the way the room's own subgroup entry is: a device
+                            // with no share of the key cannot open the
+                            // certificate session at all, and a NIP-17 room has
+                            // no admins to be a parent's.
+                            if (projectDetailUIState.canAddSubgroup) {
+                                TextButton(
+                                    onClick = {
+                                        val candidate = SubgroupOrigin.of(project)
+
+                                        onNavigateToRoute.invoke(
+                                            SelectSubgroupAdminsRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                parentChatRoomId = candidate.parentChatRoomId,
+                                                relayHint = relayHint,
+                                                name = candidate.name,
+                                                originKind = candidate.origin.kind,
+                                                originId = candidate.origin.id,
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountTree,
+                                        contentDescription = Decorative
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.width(
+                                            MaterialTheme.spacing.itemGap
+                                        )
+                                    )
+                                    Text(
+                                        stringResource(
+                                            Res.string.give_this_a_room_of_its_own
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        item { HorizontalDivider() }
+
                         // Who it belongs to
                         item {
                             Text(
@@ -359,6 +408,7 @@ private fun ProjectDetailScreenPreview() {
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 nostrRepository = NostrRepository.NO_OP_NOSTR_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 onNavigateToRoute = {},
                 onNavigateBack = {},
             )

@@ -31,6 +31,15 @@ sealed interface ProjectDetailUIState {
          * pressed.
          */
         val canSign: Boolean = false,
+
+        /**
+         * Whether this device could open a subgroup for this project at all.
+         *
+         * [canSign] and a Marmot room, which is the same pair
+         * `ChatRoomDetailUIState.canAddSubgroup` states. Held separately rather
+         * than derived at the call site so there is one spelling of one rule.
+         */
+        val canAddSubgroup: Boolean = false,
     ): ProjectDetailUIState
 
     data class Error(

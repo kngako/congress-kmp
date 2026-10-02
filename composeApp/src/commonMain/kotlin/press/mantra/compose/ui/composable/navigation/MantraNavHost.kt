@@ -31,6 +31,7 @@ import press.mantra.compose.database.repository.DatabaseMarmotRepository
 import press.mantra.compose.database.repository.DatabaseNostrRepository
 import press.mantra.compose.database.repository.DatabaseSearchRepository
 import press.mantra.compose.managers.AuxDatabaseManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.ui.composable.ActiveProfileScreen
 import press.mantra.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import press.mantra.compose.ui.composable.ChatRoomCreationScreen
@@ -605,6 +606,13 @@ fun MantraNavHost(
                     activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
+                    suggestedName = route.name,
+                    // Both or neither. A route carrying one half of a reference
+                    // is a reference with the resolvable part missing, and
+                    // reassembling it here is the one place that can say so.
+                    origin = route.originKind?.let { kind ->
+                        route.originId?.let { id -> SubgroupOrigin.Ref(kind, id) }
+                    },
                     onNavigateToRoute = { nextRoute ->
                         navController.navigate(route = nextRoute)
                     },
@@ -1318,6 +1326,7 @@ fun MantraNavHost(
                     chatRoomId = route.chatRoomId,
                     relayHint = route.relayHint,
                     mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute
@@ -1359,6 +1368,7 @@ fun MantraNavHost(
                     mantraRepository = databaseMantraRepository,
                     nostrRepository = databaseNostrRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    chatRepository = databaseChatRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute

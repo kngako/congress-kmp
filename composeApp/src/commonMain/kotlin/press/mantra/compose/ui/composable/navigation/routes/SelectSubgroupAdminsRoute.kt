@@ -16,5 +16,29 @@ import kotlinx.serialization.Serializable
 data class SelectSubgroupAdminsRoute(
     val activeUserPublicKey: String,
     val parentChatRoomId: String,
-    val relayHint: String? = null
+    val relayHint: String? = null,
+
+    /**
+     * A name to open the field with, where the caller knows one.
+     *
+     * Set when the subgroup was asked for from a dialect, an artifact, a
+     * translation or a project -- the entity's own name, bare, with no `#`; see
+     * `SubgroupOrigin`. It is a suggestion and stays editable: a group naming its
+     * own room something else is not this route's business to prevent.
+     *
+     * Null from the room's own "Add subgroup", which knows nothing to suggest.
+     */
+    val name: String? = null,
+
+    /**
+     * The entity the subgroup is for, flattened: a kind and an event id.
+     *
+     * Two nullable fields rather than one type, because a route carries no
+     * domain types -- it is `@Serializable` and is reconstructed from a bundle.
+     * They are reassembled into a `SubgroupOrigin.Ref` by the view model, which
+     * requires both or neither: half a reference is a reference with the
+     * resolvable part removed.
+     */
+    val originKind: Int? = null,
+    val originId: String? = null,
 ): Route()

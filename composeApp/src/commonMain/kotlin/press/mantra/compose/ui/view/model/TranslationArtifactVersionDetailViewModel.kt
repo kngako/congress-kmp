@@ -17,7 +17,9 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.database.model.traits.SubgroupOriginEntity
 import press.mantra.compose.managers.FrostSigningManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
@@ -71,9 +73,27 @@ class TranslationArtifactVersionDetailViewModel(
                             .getChaptersForArtifactVersion(translation.artifactVersionId),
                     ),
                     canSign = frostSigningRepository.canSign(chatRoomId),
+                    canAddSubgroup = canAddSubgroupFor(translation),
                 )
             }
         }
+    }
+
+
+    /**
+     * Whether a subgroup could be opened for [entity] at all.
+     *
+     * The two conditions `ChatRoomDetailUIState.canAddSubgroup` states, read off
+     * the entity's *own* room rather than the route's: the parent of a subgroup
+     * made here is the room the entity actually lives in, and
+     * `SubgroupOrigin.of` is the one place that says which room that is.
+     */
+    private suspend fun canAddSubgroupFor(entity: SubgroupOriginEntity): Boolean {
+        val parentChatRoomId = SubgroupOrigin.of(entity).parentChatRoomId
+        val room = chatRepository.getChatRoomByIdentifier(parentChatRoomId)
+
+        return room?.chatRoom?.mlsGroupState != null &&
+            chatRepository.canSign(parentChatRoomId)
     }
 
     /**

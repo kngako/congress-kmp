@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.Card
@@ -32,12 +34,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
+import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
+import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.DetailRow
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.theme.MantraTheme
@@ -48,6 +53,7 @@ import mantra.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.stringResource
 import mantra.composeapp.generated.resources.chapters
 import mantra.composeapp.generated.resources.details
+import mantra.composeapp.generated.resources.give_this_a_room_of_its_own
 import mantra.composeapp.generated.resources.no_chapters
 import mantra.composeapp.generated.resources.propose
 import mantra.composeapp.generated.resources.this_group_has_no_shared_key_so_it_cannot
@@ -226,6 +232,48 @@ fun TranslationArtifactVersionDetailScreen(
                             }
                         }
 
+                        item { HorizontalDivider() }
+
+                        item {
+                            // Hidden rather than disabled where it cannot work,
+                            // the way the room's own subgroup entry is: a device
+                            // with no share of the key cannot open the
+                            // certificate session at all, and a NIP-17 room has
+                            // no admins to be a parent's.
+                            if (translationDetailUIState.canAddSubgroup) {
+                                TextButton(
+                                    onClick = {
+                                        val candidate = SubgroupOrigin.of(translation)
+
+                                        onNavigateToRoute.invoke(
+                                            SelectSubgroupAdminsRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                parentChatRoomId = candidate.parentChatRoomId,
+                                                relayHint = relayHint,
+                                                name = candidate.name,
+                                                originKind = candidate.origin.kind,
+                                                originId = candidate.origin.id,
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountTree,
+                                        contentDescription = Decorative
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.width(
+                                            MaterialTheme.spacing.itemGap
+                                        )
+                                    )
+                                    Text(
+                                        stringResource(
+                                            Res.string.give_this_a_room_of_its_own
+                                        )
+                                    )
+                                }
+                            }
+                        }
                         item { HorizontalDivider() }
 
                         // Details
