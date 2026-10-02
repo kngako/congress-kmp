@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
-import kotlinx.coroutines.launch
 import mantra.composeapp.generated.resources.Res
 import mantra.composeapp.generated.resources.asked_that_group_to_adopt_this_one
 import mantra.composeapp.generated.resources.no_group_here_can_adopt_this_one
@@ -40,6 +39,7 @@ import press.mantra.compose.ui.composable.widgets.ErrorState
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.theme.spacing
@@ -52,8 +52,15 @@ import press.mantra.compose.ui.view.state.SelectAdoptingGroupUIState
  * Tapping a row asks that group's quorum to certify this room as its child. That
  * is an **offer** and nothing more: this room becomes their subgroup only once
  * its own quorum re-announces its key state naming them, which is a card back on
- * the room's own screen. So this hands back rather than going anywhere new, and
- * the snackbar says what was asked rather than what was done.
+ * the room's own screen. So the snackbar says what was *asked* rather than what
+ * was done.
+ *
+ * **It does not navigate away on success**, and that is the fix for two things at
+ * once. A message launched here while the screen was being popped was racing its
+ * own scope's cancellation; and the list is the better confirmation anyway -- the
+ * row that was just asked leaves it, because a certificate now stands for the
+ * pair and `refuseAdoption` says so. The way out is the back button, which a
+ * pushed screen has to have regardless.
  *
  * The list is the profile's own rooms -- see `SelectAdoptingGroupViewModel` for
  * why it can be nothing else -- so empty is an ordinary answer and the empty
@@ -80,12 +87,10 @@ fun SelectAdoptingGroupScreen(
     LaunchedEffect(chatRoomId) { viewModel.initiate() }
 
     val snackbarHostState = LocalSnackbarHostState.current
-    val scope = rememberCoroutineScope()
 
-    // Read outside the handler: both of these are composable and an onClick
-    // lambda is not. The notifier takes the caller's scope because the message is
-    // shown as this screen navigates away, and one launched in the departing
-    // composable's scope would be cancelled with it.
+    // Both read outside the handler, because both are composable and an onClick
+    // lambda is not.
+    val notify = rememberNotifier(rememberCoroutineScope())
     val asked = stringResource(Res.string.asked_that_group_to_adopt_this_one)
 
     ScreenStateTransition(viewModel.uiState) { uiState ->
@@ -145,13 +150,11 @@ fun SelectAdoptingGroupScreen(
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 onClick = {
-                                    scope.launch {
-                                        viewModel.offerTo(candidate.chatRoom.id) { refusal ->
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(refusal ?: asked)
-                                            }
-                                            if (refusal == null) onNavigateBack()
-                                        }
+                                    // `offerTo` is not suspending and calls back
+                                    // on the main thread, so there is nothing to
+                                    // launch around it.
+                                    viewModel.offerTo(candidate.chatRoom.id) { message ->
+                                        notify(message ?: asked)
                                     }
                                 }
                             ) {
