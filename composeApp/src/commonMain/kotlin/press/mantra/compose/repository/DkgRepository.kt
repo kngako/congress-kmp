@@ -3,7 +3,7 @@ package press.mantra.compose.repository
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
-import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.intermdiate.LocalGroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
@@ -149,10 +149,10 @@ interface DkgRepository {
      * a finished subgroup with its key state signed, its certificate signed, and
      * no way to create the room -- the lookup found no ceremony at all.
      */
-    fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?>
+    fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?>
 
     /** Files the state the group signed for a room that now exists. */
-    suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
+    suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState?
 
     /**
      * Asks the parent's quorum to certify the subgroup this ceremony produced.
@@ -242,10 +242,10 @@ interface DkgRepository {
                 chatRoomId: String
             ): Flow<List<LocalFrostSigningSession>> = flowOf(emptyList())
 
-            override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?> =
+            override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?> =
                 flowOf(null)
 
-            override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
+            override suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState? = null
 
             override suspend fun proposeBirthCertificate(
                 parentChatRoomId: String,

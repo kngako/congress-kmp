@@ -55,7 +55,6 @@ class DatabaseChatRepository(
         userPublicKey: HexKey,
         keyPair: KeyPair,
         path: List<Long>,
-        parentChatRoomId: HexKey?,
     ): MarmotGroupCreation.Outcome = MarmotGroupCreation.create(
         database = database,
         chatRepository = this,
@@ -66,7 +65,6 @@ class DatabaseChatRepository(
         userPublicKey = userPublicKey,
         keyPair = keyPair,
         path = path,
-        parentChatRoomId = parentChatRoomId,
     )
     override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
         return database.chatRoomDao().observeChatRoomListByUserPublicKey(publicKey)
@@ -113,11 +111,11 @@ class DatabaseChatRepository(
         emptyList()
     }
 
-    override suspend fun parentOf(chatRoomId: String): HexKey? = try {
-        SubgroupManager.parentOf(database, chatRoomId)
+    override suspend fun parentsOf(chatRoomId: String): List<HexKey> = try {
+        SubgroupManager.parentsOf(database, chatRoomId)
     } catch (e: Throwable) {
-        logger.e("Error reading the parent of $chatRoomId", e)
-        null
+        logger.e("Error reading the parents of $chatRoomId", e)
+        emptyList()
     }
 
     override suspend fun groupSignedEvent(chatRoomId: String, id: HexKey): GroupSignedEvent? = try {

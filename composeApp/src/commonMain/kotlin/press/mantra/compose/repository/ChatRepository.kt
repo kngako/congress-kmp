@@ -70,14 +70,16 @@ interface ChatRepository {
     suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup>
 
     /**
-     * The group this room is a subgroup of, verified, or null if it is nobody's
-     * child.
+     * Every group that has certified this room as its child, verified, in
+     * canonical order -- empty if it is nobody's child.
      *
-     * Off the room's `GroupKeyState`, which only carries a parent whose
-     * certificate was checked. A member welcomed in after the founding holds no
-     * state and gets null here even when the room really is a subgroup.
+     * Off `GroupKeyStateParent`, whose rows exist only where the certificate was
+     * checked. More than one is ordinary: a group is founded with one parent and
+     * may be adopted by another later. A member welcomed in after the founding
+     * holds no state and gets an empty list even when the room really is a
+     * subgroup.
      */
-    suspend fun parentOf(chatRoomId: String): HexKey?
+    suspend fun parentsOf(chatRoomId: String): List<HexKey>
 
     /**
      * One event the group signed, as the group signed it, or null when this
@@ -203,7 +205,6 @@ interface ChatRepository {
         userPublicKey: HexKey,
         keyPair: KeyPair,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parentChatRoomId: HexKey? = null,
     ): MarmotGroupCreation.Outcome
 
     /**
@@ -279,7 +280,7 @@ interface ChatRepository {
             override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
                 emptyList()
 
-            override suspend fun parentOf(chatRoomId: String): HexKey? = null
+            override suspend fun parentsOf(chatRoomId: String): List<HexKey> = emptyList()
 
             override suspend fun groupSignedEvent(
                 chatRoomId: String,
@@ -386,7 +387,6 @@ interface ChatRepository {
                 userPublicKey: HexKey,
                 keyPair: KeyPair,
                 path: List<Long>,
-                parentChatRoomId: HexKey?,
             ): MarmotGroupCreation.Outcome =
                 MarmotGroupCreation.Outcome.Failed("No database")
 

@@ -66,25 +66,14 @@ interface ChatRoomDao {
     )
     fun observeChatRoomListByUserPublicKey(userPublicKey: String): Flow<List<LocalChatRoom>>
 
-    /**
-     * The subgroups of [parentChatRoomId] this device actually holds rooms for.
-     *
-     * Deliberately not the answer to "what subgroups does this group have" --
-     * that is `SubgroupManager.subgroupsOf`, which reads the parent's signed
-     * certificates and so can name a child whose room has not been created, or
-     * was created for somebody else. This names the ones there is something to
-     * open.
-     *
-     * Soft-deleted rooms are excluded like everywhere else: a room the user has
-     * cleared away should not reappear because its parent lists it.
-     */
-    @Transaction
-    @Query(
-        CHAT_ROOM_WITH_LAST_MESSAGE +
-            "WHERE ChatRoom.parentChatRoomId = :parentChatRoomId AND ChatRoom.deletedAt IS NULL " +
-            ORDER_BY_LAST_ACTIVITY
-    )
-    fun observeByParentChatRoomId(parentChatRoomId: String): Flow<List<LocalChatRoom>>
+    // "The subgroups of this room" used to be a column filter here, over a
+    // ChatRoom.parentChatRoomId that production never read -- the live answer
+    // went through GroupKeyState, and SubgroupManager.subgroupsOf reads the
+    // parent's own certificates, which can name a child whose room this device
+    // does not have. The column is gone at v21, because a room can have more
+    // than one parent and a single column would have held one of them. The
+    // rooms a parent's children occupy are reached through
+    // GroupKeyStateDao.getByParentChatRoomId and resolved from there.
 
     @Upsert
     suspend fun upsert(chatRoom: ChatRoom)

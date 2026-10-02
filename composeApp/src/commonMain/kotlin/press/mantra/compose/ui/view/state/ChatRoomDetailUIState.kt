@@ -49,7 +49,7 @@ sealed interface ChatRoomDetailUIState {
          * founding holds no state and so sees nothing here, even in a room that
          * really is a subgroup.
          */
-        val parentChatRoomId: HexKey? = null,
+        val parentChatRoomIds: List<HexKey> = emptyList(),
         /**
          * Whether this device could open a subgroup here at all.
          *

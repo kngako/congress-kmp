@@ -5,7 +5,7 @@ import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.database.model.FrostSigningSession
-import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.intermdiate.LocalGroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
@@ -110,7 +110,7 @@ class DatabaseDkgRepository(
     ): Flow<List<LocalFrostSigningSession>> =
         database.frostSigningSessionDao().observeSessionsForChatRoom(chatRoomId)
 
-    override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?> =
+    override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?> =
         database.groupSignedEventDao()
             .observeByKind(GroupKeyStateEvent.KIND)
             .map { signedEvents ->
@@ -132,7 +132,7 @@ class DatabaseDkgRepository(
                 subjectRoomId?.let { GroupKeyStateManager.stateAmong(signedEvents, it) }
             }
 
-    override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = try {
+    override suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState? = try {
         GroupKeyStateManager.adopt(database = database, chatRoomId = chatRoomId)
     } catch (e: Throwable) {
         // The room is made and usable either way; what it loses is the shortcut

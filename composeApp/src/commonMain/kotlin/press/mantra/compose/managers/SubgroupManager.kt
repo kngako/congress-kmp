@@ -410,18 +410,26 @@ object SubgroupManager {
             .sortedByDescending { it.certificate.createdAt }
 
     /**
-     * The group a room is a subgroup of, verified, or null if it is nobody's
-     * child.
+     * Every group that has certified a room as its child, verified, in canonical
+     * order -- empty for a room that is nobody's child.
      *
-     * Off the `GroupKeyState`, which only carries a parent whose certificate was
-     * checked -- see `GroupKeyStateManager.stateFrom`. A room whose state this
-     * device does not hold answers null even when it really is a subgroup, which
-     * is the position a member welcomed in after the founding is in; the
-     * unverified hint in the room's own description is the most they get, and it
-     * must never be written here.
+     * Off `GroupKeyStateParent`, whose rows exist only where the certificate was
+     * checked against that parent's own signature -- see
+     * `GroupKeyStateManager.stateFrom`, which drops the whole state rather than
+     * keeping a lineage it could not check. So every id here is a group that
+     * really did certify this room.
+     *
+     * More than one is the ordinary case now, not a corner: a group is founded
+     * with one parent and may be adopted by another later. The order is the
+     * lineage's own and says nothing about which came first.
+     *
+     * A room whose state this device does not hold answers empty even when it
+     * really is a subgroup, which is the position a member welcomed in after the
+     * founding is in. Nothing unverified may be written here.
      */
-    suspend fun parentOf(database: MantraDatabase, chatRoomId: String): HexKey? =
-        database.groupKeyStateDao().getByChatRoomId(chatRoomId)?.parentChatRoomId
+    suspend fun parentsOf(database: MantraDatabase, chatRoomId: String): List<HexKey> =
+        database.groupKeyStateDao().getLocalByChatRoomId(chatRoomId)?.parentChatRoomIds()
+            .orEmpty()
 
     /**
      * Files a certificate that arrived, or drops it and says why.

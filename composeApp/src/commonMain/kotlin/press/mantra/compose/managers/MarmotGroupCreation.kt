@@ -93,10 +93,6 @@ object MarmotGroupCreation {
      * appended to it, because MIP-01 has no field for one and the path is what
      * rebuilds the `TweakCache` a signing session needs.
      *
-     * [parentChatRoomId] is written onto the room when this is a subgroup. It is
-     * the verified value off the child's own key state -- never a claim off a
-     * proposal.
-     *
      * [name] is put under [MarmotGroupName] here rather than trusted from the
      * caller. Every Marmot room on a device is a `#name`, and this is the funnel
      * both flows that make one already go through, so it is the one place the
@@ -112,7 +108,6 @@ object MarmotGroupCreation {
         userPublicKey: HexKey,
         keyPair: KeyPair,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parentChatRoomId: HexKey? = null,
         keyPackageLookupTimeout: Long = KEY_PACKAGE_LOOKUP_TIMEOUT
     ): Outcome {
         chatRepository.getChatRoomByIdentifier(groupId)?.let { return Outcome.Existing(it) }
@@ -162,15 +157,6 @@ object MarmotGroupCreation {
             description = description,
             mlsGroupState = group.saveState().encodeTls().toHex()
         ) ?: return Outcome.Failed("Couldn't create the group. Please try again.")
-
-        if (parentChatRoomId != null) {
-            // Written after the room exists rather than passed into its creation,
-            // because `getOrCreateChatRoom` is shared with every other way a room
-            // appears and none of them has a parent to hand it.
-            database.chatRoomDao().upsert(
-                localChatRoom.chatRoom.copy(parentChatRoomId = parentChatRoomId)
-            )
-        }
 
         // The room comes into existence already knowing what it signs with. The
         // group agreed that before any of this ran and this device has been

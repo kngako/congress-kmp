@@ -259,8 +259,14 @@ fun ChatRoomDetailScreen(
                             // nobody's child, and absent -- rather than guessed --
                             // on a subgroup this device holds no key state for,
                             // since an unverified lineage is not one worth showing.
-                            chatRoomDetailUIState.parentChatRoomId?.let { parentChatRoomId ->
-                                item {
+                            //
+                            // One card per parent, because a room can have more
+                            // than one: founded with one and adopted by another
+                            // later. They are a set rather than a path -- neither
+                            // is "the" parent and the order says nothing about
+                            // which came first -- so each gets an equal row.
+                            chatRoomDetailUIState.parentChatRoomIds.forEach { parentChatRoomId ->
+                                item(key = "parent-$parentChatRoomId") {
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {

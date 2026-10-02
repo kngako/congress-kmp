@@ -16,31 +16,38 @@ import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.NostrEvent
 import press.mantra.compose.database.model.Profile
 import press.mantra.compose.database.model.types.DkgRitualStage
 
 /**
- * What schema 17 has to survive, and the one thing it must refuse to do.
+ * What schema 21 has to survive, and the two things it must refuse to do.
  *
- * Four nullable columns say a group is somebody's child. Three properties of
- * them are invisible to the compiler and each one is a way subgroups could break
- * quietly.
+ * A room's parentage is a table now rather than two nullable columns, because a
+ * room can be the child of more than one group -- founded with one and adopted by
+ * another later. Four properties of that are invisible to the compiler and each
+ * one is a way a lineage could break quietly.
  *
  * A parent pointer **may name a room this device does not have**. A member of a
  * subgroup who was never in its parent holds the id and nothing else, so a
- * dangling value is the normal state rather than an error -- and if any of these
- * columns were ever given a foreign key, that member's rows would stop being
+ * dangling value is the normal state rather than an error -- and if the parent
+ * side were ever given a foreign key, that member's rows would stop being
  * writable at all.
  *
  * Deleting a parent **must not touch its children**. Every other reference to a
- * room in this schema cascades. A self-referential cascade here would mean a user
+ * room in this schema cascades. A self-referential cascade would mean a user
  * tidying away a group they had left silently destroying a group they are still
  * in, together with its messages, participants, key state and signed work.
  *
- * And the two `GroupKeyState` columns **travel together**. One without the other
- * is a state whose parentage cannot be rechecked from the row, which is the whole
- * reason the certificate is stored whole rather than as a signature.
+ * A state's lineage **is replaced wholesale, never merged**. A key state is
+ * replaceable and the newest wins, so the set of parents it names is the set.
+ * That is what makes a disavowal expressible at all: a room drops a parent by
+ * re-announcing without it, and merged rows would leave the dropped parent
+ * surviving the statement that dropped it.
+ *
+ * And a lineage **does not outlive the state that claimed it**, which is the one
+ * cascade here that is wanted.
  */
 class SubgroupDaoJvmTest {
 
@@ -59,83 +66,72 @@ class SubgroupDaoJvmTest {
     /** A parent this device has never held a room for. */
     private val absentParent = "33".repeat(32)
 
-    private val certificate =
-        """{"id":"aa","pubkey":"bb","created_at":1700000000,"kind":30329,"tags":[],"content":"cc","sig":"dd"}"""
+    private fun certificate(by: String) =
+        """{"id":"aa","pubkey":"$by","created_at":1700000000,"kind":30329,""" +
+            """"tags":[],"content":"cc","sig":"dd"}"""
 
     @Test
-    fun `a key state keeps its parent and the certificate behind it`() = runBlocking {
+    fun `a key state keeps every parent and the certificate behind each`() = runBlocking {
         seedRooms()
 
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = childRoom,
-                parentChatRoomId = parentRoom,
-                birthCertificateJson = certificate
-            )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(parentRoom), parentage(absentParent))
         )
 
-        val stored = db.groupKeyStateDao().getByChatRoomId(childRoom)
+        val stored = db.groupKeyStateDao().getLocalByChatRoomId(childRoom)
 
-        assertEquals(parentRoom, stored?.parentChatRoomId)
-        assertEquals(certificate, stored?.birthCertificateJson)
+        assertEquals(
+            listOf(parentRoom, absentParent).sorted(),
+            stored?.parents?.map { it.parentChatRoomId }?.sorted()
+        )
+        assertEquals(
+            certificate(parentRoom),
+            stored?.parents?.single { it.parentChatRoomId == parentRoom }?.birthCertificateJson
+        )
     }
 
     @Test
-    fun `a group that is nobody's child keeps both columns null`() = runBlocking {
+    fun `a group that is nobody's child carries no parent rows`() = runBlocking {
         seedRooms()
 
-        db.groupKeyStateDao().upsert(keyState(chatRoomId = parentRoom))
+        db.groupKeyStateDao().replace(keyState(chatRoomId = parentRoom))
 
-        val stored = db.groupKeyStateDao().getByChatRoomId(parentRoom)
+        val stored = db.groupKeyStateDao().getLocalByChatRoomId(parentRoom)
 
         // Every group made before subgroups existed reads back this way, and so
-        // does every top-level group made after. Null here is not missing data.
-        assertNull(stored?.parentChatRoomId)
-        assertNull(stored?.birthCertificateJson)
+        // does every top-level group made after. No rows is not missing data, and
+        // it is one way of saying "nobody's child" rather than two.
+        assertEquals(emptyList(), stored?.parents)
+        assertNull(stored?.lineage())
     }
 
     @Test
-    fun `a key state may name a parent this device holds no room for`() = runBlocking {
+    fun `a parentage may name a parent this device holds no room for`() = runBlocking {
         seedRooms()
 
         // The position a subgroup member who was never in the parent is in: they
-        // hold the id off a certificate and nothing else. If this column were a
-        // foreign key their state could not be written at all.
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = childRoom,
-                parentChatRoomId = absentParent,
-                birthCertificateJson = certificate
-            )
+        // hold the id off a certificate and nothing else. Were the parent side a
+        // foreign key their lineage could not be written at all.
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(absentParent))
         )
-
-        assertEquals(absentParent, db.groupKeyStateDao().getByChatRoomId(childRoom)?.parentChatRoomId)
-        assertNull(db.chatRoomDao().findChatRoomById(absentParent))
-    }
-
-    @Test
-    fun `a room may name a parent this device holds no room for`() = runBlocking {
-        seedRooms()
-
-        db.chatRoomDao().upsert(room(childRoom).copy(parentChatRoomId = absentParent))
 
         assertEquals(
-            absentParent,
-            db.chatRoomDao().findChatRoomById(childRoom)?.chatRoom?.parentChatRoomId
+            listOf(absentParent),
+            db.groupKeyStateDao().getLocalByChatRoomId(childRoom)?.parents?.map { it.parentChatRoomId }
         )
+        assertNull(db.chatRoomDao().findChatRoomById(absentParent))
     }
 
     @Test
     fun `deleting a parent room leaves its subgroup standing`() = runBlocking {
         seedRooms()
 
-        db.chatRoomDao().upsert(room(childRoom).copy(parentChatRoomId = parentRoom))
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = childRoom,
-                parentChatRoomId = parentRoom,
-                birthCertificateJson = certificate
-            )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(parentRoom))
         )
 
         db.chatRoomDao().delete(room(parentRoom))
@@ -146,10 +142,27 @@ class SubgroupDaoJvmTest {
         // them owns.
         assertNull(db.chatRoomDao().findChatRoomById(parentRoom))
         assertEquals(
-            parentRoom,
-            db.chatRoomDao().findChatRoomById(childRoom)?.chatRoom?.parentChatRoomId
+            listOf(parentRoom),
+            db.groupKeyStateDao().getLocalByChatRoomId(childRoom)?.parents?.map { it.parentChatRoomId }
         )
-        assertEquals(parentRoom, db.groupKeyStateDao().getByChatRoomId(childRoom)?.parentChatRoomId)
+    }
+
+    @Test
+    fun `deleting the child takes its lineage with it`() = runBlocking {
+        seedRooms()
+
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(parentRoom))
+        )
+
+        // The one cascade that is wanted: a lineage must not outlive the state
+        // that claimed it, or a room recreated at the same derived id would
+        // inherit a parentage nobody signed for it.
+        db.chatRoomDao().delete(room(childRoom))
+
+        assertNull(db.groupKeyStateDao().getByChatRoomId(childRoom))
+        assertEquals(emptyList(), db.groupKeyStateDao().getParentsByChatRoomId(childRoom))
     }
 
     @Test
@@ -159,73 +172,130 @@ class SubgroupDaoJvmTest {
         val second = "44".repeat(32)
         db.chatRoomDao().upsert(room(second))
 
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = childRoom,
-                parentChatRoomId = parentRoom,
-                birthCertificateJson = certificate,
-                announcedAt = Instant.fromEpochSeconds(1_000)
-            )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(1_000)),
+            listOf(parentage(parentRoom))
         )
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = second,
-                parentChatRoomId = parentRoom,
-                birthCertificateJson = certificate,
-                announcedAt = Instant.fromEpochSeconds(2_000)
-            )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = second, announcedAt = Instant.fromEpochSeconds(2_000)),
+            listOf(parentage(parentRoom, child = second))
         )
         // Another group's child, to prove the filter is on the parent rather
         // than on having a parent at all.
-        db.groupKeyStateDao().upsert(
-            keyState(
-                chatRoomId = parentRoom,
-                parentChatRoomId = absentParent,
-                birthCertificateJson = certificate
-            )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = parentRoom),
+            listOf(parentage(absentParent, child = parentRoom))
         )
 
         assertEquals(
             listOf(second, childRoom),
-            db.groupKeyStateDao().getByParentChatRoomId(parentRoom).map { it.chatRoomId }
+            db.groupKeyStateDao().getByParentChatRoomId(parentRoom).map { it.keyState.chatRoomId }
         )
         assertEquals(
             listOf(second, childRoom),
-            db.groupKeyStateDao().observeByParentChatRoomId(parentRoom).first().map { it.chatRoomId }
+            db.groupKeyStateDao().observeByParentChatRoomId(parentRoom).first()
+                .map { it.keyState.chatRoomId }
         )
     }
 
     @Test
-    fun `a parent lists only the subgroup rooms this device actually holds`() = runBlocking {
+    fun `a child with two parents appears in both their lists`() = runBlocking {
         seedRooms()
 
-        db.chatRoomDao().upsert(room(childRoom).copy(parentChatRoomId = parentRoom))
+        db.chatRoomDao().upsert(room(absentParent))
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(parentRoom), parentage(absentParent))
+        )
 
-        val rooms = db.chatRoomDao().observeByParentChatRoomId(parentRoom).first()
-
-        assertEquals(listOf(childRoom), rooms.map { it.chatRoom.id })
-
-        // A child that was certified but whose room was never created here shows
-        // up nowhere in this query. That is the difference between it and
-        // SubgroupManager.subgroupsOf, which reads the parent's certificates.
-        assertTrue(db.chatRoomDao().observeByParentChatRoomId(absentParent).first().isEmpty())
-    }
-
-    @Test
-    fun `a soft-deleted subgroup drops out of its parent's list`() = runBlocking {
-        seedRooms()
-
-        db.chatRoomDao().upsert(room(childRoom).copy(parentChatRoomId = parentRoom))
-        db.chatRoomDao().upsert(
-            room(childRoom).copy(
-                parentChatRoomId = parentRoom,
-                deletedAt = Instant.fromEpochSeconds(9_000)
+        // The row that makes it this parent's child says nothing about who else
+        // certified it, which is the whole point of the join.
+        listOf(parentRoom, absentParent).forEach { parent ->
+            assertEquals(
+                listOf(childRoom),
+                db.groupKeyStateDao().getByParentChatRoomId(parent).map { it.keyState.chatRoomId },
+                "$parent should list the child it certified"
             )
+        }
+    }
+
+    @Test
+    fun `a newer state replaces the lineage rather than adding to it`() = runBlocking {
+        seedRooms()
+
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(1_000)),
+            listOf(parentage(parentRoom), parentage(absentParent))
         )
 
-        // A room the user has cleared away must not come back because its parent
-        // still lists it.
-        assertTrue(db.chatRoomDao().observeByParentChatRoomId(parentRoom).first().isEmpty())
+        // A disavowal: the child re-announces without one of them. Were these
+        // rows merged, the dropped parent would survive the statement dropping
+        // it -- and a parent nobody can drop is a parent for life.
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(2_000)),
+            listOf(parentage(parentRoom))
+        )
+
+        assertEquals(
+            listOf(parentRoom),
+            db.groupKeyStateDao().getLocalByChatRoomId(childRoom)?.parents?.map { it.parentChatRoomId }
+        )
+        assertTrue(db.groupKeyStateDao().getByParentChatRoomId(absentParent).isEmpty())
+    }
+
+    @Test
+    fun `a re-announcement to nobody's child clears the lineage`() = runBlocking {
+        seedRooms()
+
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(1_000)),
+            listOf(parentage(parentRoom))
+        )
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(2_000))
+        )
+
+        assertEquals(emptyList(), db.groupKeyStateDao().getParentsByChatRoomId(childRoom))
+    }
+
+    @Test
+    fun `an older state changes neither the state nor the lineage on file`() = runBlocking {
+        seedRooms()
+
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(2_000)),
+            listOf(parentage(parentRoom))
+        )
+
+        // A session replayed after a crash must not walk the room back to a
+        // state it has already moved past -- and must not walk its lineage back
+        // either, which is new: the parents are part of the statement now.
+        val kept = db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom, announcedAt = Instant.fromEpochSeconds(1_000)),
+            listOf(parentage(absentParent))
+        )
+
+        assertEquals(Instant.fromEpochSeconds(2_000), kept.keyState.announcedAt)
+        assertEquals(listOf(parentRoom), kept.parents.map { it.parentChatRoomId })
+        assertEquals(
+            listOf(parentRoom),
+            db.groupKeyStateDao().getLocalByChatRoomId(childRoom)?.parents?.map { it.parentChatRoomId }
+        )
+    }
+
+    @Test
+    fun `one parent gets one row, whatever a caller tries`() = runBlocking {
+        seedRooms()
+
+        // The primary key is the rule "one certificate per child per parent".
+        // `SubgroupLineage.of` refuses a repeat long before here; this is the
+        // store saying so too, so the rule does not rest on a reader remembering.
+        db.groupKeyStateDao().replace(
+            keyState(chatRoomId = childRoom),
+            listOf(parentage(parentRoom), parentage(parentRoom))
+        )
+
+        assertEquals(1, db.groupKeyStateDao().getParentsByChatRoomId(childRoom).size)
     }
 
     @Test
@@ -271,10 +341,15 @@ class SubgroupDaoJvmTest {
         mlsGroupState = null,
     )
 
+    private fun parentage(parentChatRoomId: String, child: String = childRoom) =
+        GroupKeyStateParent(
+            chatRoomId = child,
+            parentChatRoomId = parentChatRoomId,
+            birthCertificateJson = certificate(parentChatRoomId),
+        )
+
     private fun keyState(
         chatRoomId: String,
-        parentChatRoomId: String? = null,
-        birthCertificateJson: String? = null,
         announcedAt: Instant = Instant.fromEpochSeconds(1_700_000_000)
     ) = GroupKeyState(
         chatRoomId = chatRoomId,
@@ -283,8 +358,6 @@ class SubgroupDaoJvmTest {
         derivationPath = "m/9420/0/0",
         announcedBy = user,
         announcedAt = announcedAt,
-        parentChatRoomId = parentChatRoomId,
-        birthCertificateJson = birthCertificateJson,
     )
 
     private fun session(

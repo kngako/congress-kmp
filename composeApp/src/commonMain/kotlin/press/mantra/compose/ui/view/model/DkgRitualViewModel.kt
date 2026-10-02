@@ -607,11 +607,7 @@ class DkgRitualViewModel(
                 },
                 adminPublicKeys = members,
                 userPublicKey = activeUserPublicKey,
-                keyPair = keyPair,
-                // Verified by the time it is written: the key state this room was
-                // gated on carries the certificate, and `stateFrom` refused it
-                // otherwise.
-                parentChatRoomId = subgroupParent
+                keyPair = keyPair
             )
 
             isActionPending.value = false

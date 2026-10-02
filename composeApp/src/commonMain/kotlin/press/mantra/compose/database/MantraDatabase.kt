@@ -74,6 +74,7 @@ import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GiftWrapSeal
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.InReplyToRelation
 import press.mantra.compose.database.model.MantraArtifact
@@ -139,6 +140,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         GroupKeyState::class,
+        GroupKeyStateParent::class,
         GroupSignedEvent::class,
         InReplyToRelation::class,
         MantraArtifact::class,
@@ -177,7 +179,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 20,
+    version = 21,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -321,6 +323,15 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // which is what they were, and any identity may drain them. The broadcast
         // queue deliberately gets no owner: a signed event is anyone's to carry.
         AutoMigration(from = 19, to = 20),
+        // v21 moves a room's parentage off two GroupKeyState columns onto the new
+        // GroupKeyStateParent table, so a room can be the child of more than one
+        // group -- founded with one and adopted by another later. It copies
+        // before it drops, which no AutoMigration can express, and it drops
+        // ChatRoom.parentChatRoomId as well: that column was a cache of the
+        // verified value which nothing in production ever read, and keeping it
+        // would mean a column holding *one* of several parents, which is worse
+        // than unused. See MIGRATION_20_21 and
+        // docs/subgroups-multiple-parents.md.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
