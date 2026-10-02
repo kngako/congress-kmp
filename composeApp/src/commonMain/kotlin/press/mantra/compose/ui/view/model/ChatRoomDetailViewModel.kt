@@ -22,6 +22,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.types.MarmotReindexReport
 
 class ChatRoomDetailViewModel(
@@ -78,14 +79,62 @@ class ChatRoomDetailViewModel(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
                     dialects = mantraRepository.getDialects(chatRoomId),
+                    projects = mantraRepository.getProjects(chatRoomId),
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                     subgroups = chatRepository.subgroupsOf(chatRoomId),
-                    parentChatRoomId = chatRepository.parentOf(chatRoomId),
+                    parentChatRoomIds = chatRepository.parentsOf(chatRoomId),
                     canAddSubgroup = localChatRoom.chatRoom.mlsGroupState != null &&
+                        chatRepository.canSign(chatRoomId),
+                    adoptionOffers = chatRepository.adoptionOffersFor(chatRoomId),
+                    // A key state as well as a share: the certificate carries
+                    // this group's threshold key, and the acceptance re-announces
+                    // that very state, so a room that has agreed nothing has
+                    // neither half to work with.
+                    canAddParent = localChatRoom.chatRoom.mlsGroupState != null &&
+                        chatRepository.groupKeyState(chatRoomId) != null &&
                         chatRepository.canSign(chatRoomId),
                 )
             }
+        }
+    }
+
+    /**
+     * Asks this group's quorum to accept [parentChatRoomId] as a parent.
+     *
+     * The acceptance, and the half that decides: the certificate is an offer
+     * until a quorum of *this* group has re-announced its key state naming them.
+     * `SubgroupManager.proposeAcceptance` carries the whole resulting set, so a
+     * group that already has a parent keeps it.
+     *
+     * [onDone] is called with null on success and a message otherwise, so the
+     * caller can show it from a scope that outlives this screen.
+     */
+    fun acceptParent(parentChatRoomId: HexKey, onDone: (String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val accepted = chatRepository.acceptParent(
+                chatRoomId = chatRoomId,
+                parentChatRoomId = parentChatRoomId,
+                userPublicKey = activeUserPublicKey
+            )
+
+            if (!accepted) {
+                logger.e("Failed to ask $chatRoomId to accept $parentChatRoomId")
+                // On the main thread, because a caller's callback may touch
+                // things an IO coroutine must not -- navigation most of all. See
+                // `SelectAdoptingGroupViewModel.finish`, where calling back from
+                // IO crashed outright.
+                withContext(Dispatchers.Main) {
+                    onDone("Couldn't ask this group to accept that parent. Please try again.")
+                }
+                return@launch
+            }
+
+            // The offer leaves the list only when the state is signed and filed,
+            // which is a quorum away -- so this reloads rather than crossing it
+            // off, and the card stays until the group has actually agreed.
+            initiateChatRoomDetail()
+            withContext(Dispatchers.Main) { onDone(null) }
         }
     }
 

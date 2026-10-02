@@ -49,6 +49,7 @@ import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
@@ -176,12 +177,37 @@ fun ChatRoomMessagingScreen(
                                 ChatTranscript(
                                     viewModel = chatMessageListViewModel,
                                     onOpenSharedKey = { dkgSessionId ->
+                                        // The same two reasons the signing lines open
+                                        // the queue instead of one proposal. A line
+                                        // written before chat rows named their ceremony
+                                        // cannot say which it is about, and the room may
+                                        // hold several -- the list is the honest answer
+                                        // there, showing all of them with their own
+                                        // state rather than guessing at the newest,
+                                        // which since subgroups moved into the parent's
+                                        // room is routinely the finished one.
+                                        //
+                                        // The other is that the ceremony they tapped is
+                                        // not the only one waiting on them, in which
+                                        // case it is not the whole of what is being
+                                        // asked and a screen showing only it would say
+                                        // it was.
                                         onNavigateToRoute.invoke(
-                                            DkgRitualRoute(
-                                                activeUserPublicKey = activeUserPublicKey,
-                                                chatRoomId = chatRoomId,
-                                                dkgSessionId = dkgSessionId
-                                            )
+                                            if (dkgSessionId == null ||
+                                                chatMessageListViewModel
+                                                    .hidesOtherCeremonies(dkgSessionId)
+                                            ) {
+                                                DkgRitualListRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId
+                                                )
+                                            } else {
+                                                DkgRitualRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId,
+                                                    dkgSessionId = dkgSessionId
+                                                )
+                                            }
                                         )
                                     },
                                     onOpenSigning = { sessionId ->

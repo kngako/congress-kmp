@@ -11,6 +11,7 @@ import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.tags.FrostDerivationPathTag
 import press.mantra.compose.nostr.frost.tags.FrostKeyTag
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
 import press.mantra.compose.nostr.subgroup.tags.SubgroupBirthCertificateTag
 import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
@@ -110,46 +111,94 @@ object GroupKeyStateEvent {
         chatRoomId: String,
         dkgSessionId: String,
         path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
-        parent: SubgroupParentage? = null
+        lineage: SubgroupLineage? = null
     ): Array<Array<String>> = arrayOf(
         DTag.assemble(chatRoomId),
         FrostKeyTag.assemble(dkgSessionId),
         FrostDerivationPathTag.assemble(path)
     ) + (
-        parent?.let {
-            // Both or neither, which is why this arrives as one value rather
-            // than as two nullable parameters a caller could half-fill. A state
-            // carrying one without the other is dropped on read; emitting one is
-            // therefore only a way to make a state nobody will believe.
-            arrayOf(
+        lineage?.parents?.flatMap {
+            // Both or neither, and **adjacent**: one parent's id immediately
+            // followed by that parent's certificate, in the canonical order
+            // `SubgroupLineage` sorts them into. A state carrying one half
+            // without the other is dropped on read, so emitting one is only a
+            // way to make a state nobody will believe.
+            //
+            // The pairing is what a build predating several parents depends on.
+            // Such a reader takes the first tag of each name and checks them
+            // against each other: emitted in pairs it gets one real parent and
+            // one real certificate for it, verifies them, and files a true but
+            // partial lineage. Emitted as all the ids and then all the
+            // certificates it would pair the first id with a certificate that
+            // may belong to another parent, fail `certifies`, and drop the whole
+            // state -- losing the row that says which ceremony's share signs for
+            // this room, which is a worse outcome than not knowing about the
+            // second parent. See `SubgroupLineage`.
+            listOf(
                 SubgroupParentTag.assemble(it.parentChatRoomId),
                 SubgroupBirthCertificateTag.assemble(it.certificate)
             )
-        } ?: emptyArray()
+        }?.toTypedArray() ?: emptyArray()
     )
 
     /**
-     * The group this one claims to be a subgroup of, or null if it claims none.
+     * The lineage the tags claim, or null if they claim none or claim one that
+     * cannot be read.
      *
-     * A *claim* until [SubgroupBirthCertificateEvent.certifies] says otherwise.
-     * Read alongside [parseBirthCertificate] and never on its own -- see
-     * `GroupKeyStateManager.stateFrom`.
+     * The two outcomes share a null for the reason every parentage reader here
+     * does: a tag that is present and unparseable looks exactly like an absent
+     * one through a parser. [claimsParentage] is what tells them apart, and
+     * `GroupKeyStateManager.stateFrom` asks it first -- a state claiming a parent
+     * in a form nothing can check is refused rather than filed as top-level.
+     *
+     * Unreadable here means any of: an odd number of halves, a tag of either
+     * name that does not parse, or the same parent named twice. Each is a lineage
+     * this device cannot state back, and completing one from the other halves
+     * would be this device deciding what the group meant.
+     *
+     * **Pairing is positional.** The *n*th `parent_group` goes with the *n*th
+     * `birth_certificate`, which is how [assembleTags] writes them and how a
+     * reader that only ever looks at the first of each reads them. Nothing is
+     * matched up by looking inside the certificates: whether the pair agrees is
+     * `SubgroupBirthCertificateEvent.certifies`' question, asked once per pair,
+     * and a mismatched pair must fail it rather than be quietly re-paired into
+     * one that passes.
      */
-    fun parseParentChatRoomId(tags: Array<Array<String>>): HexKey? =
-        tags.firstNotNullOfOrNull(SubgroupParentTag::parse)?.parentChatRoomId
+    fun parseLineage(tags: Array<Array<String>>): SubgroupLineage? {
+        val parentTagCount = tags.count { it.isNotEmpty() && it[0] == SubgroupParentTag.TAG_NAME }
+        val certificateTagCount =
+            tags.count { it.isNotEmpty() && it[0] == SubgroupBirthCertificateTag.TAG_NAME }
 
-    /** The parent's signed certificate, as it signed it, or null if it carries none. */
-    fun parseBirthCertificate(tags: Array<Array<String>>): Event? =
-        tags.firstNotNullOfOrNull(SubgroupBirthCertificateTag::parse)?.certificate
+        if (parentTagCount == 0 || parentTagCount != certificateTagCount) return null
+
+        val parentChatRoomIds = tags.mapNotNull(SubgroupParentTag::parse)
+            .map { it.parentChatRoomId }
+        val certificates = tags.mapNotNull(SubgroupBirthCertificateTag::parse)
+            .map { it.certificate }
+
+        // Counted by tag name above and by successful parse here, so a half that
+        // is present and broken is told from one that was never written. Only
+        // the first would shift the pairing.
+        if (parentChatRoomIds.size != parentTagCount) return null
+        if (certificates.size != certificateTagCount) return null
+
+        return SubgroupLineage.of(
+            parentChatRoomIds.zip(certificates) { parentChatRoomId, certificate ->
+                SubgroupParentage(
+                    parentChatRoomId = parentChatRoomId,
+                    certificate = certificate
+                )
+            }
+        )
+    }
 
     /**
-     * Whether the tags carry either half of a parentage.
+     * Whether the tags carry any half of a parentage.
      *
-     * The question [parseParentChatRoomId] and [parseBirthCertificate] cannot
-     * answer between them: a tag that is present and unparseable reads as absent
-     * through both. A state claiming a parent in a form nothing can check must be
-     * refused rather than quietly filed as an ordinary top-level group, so this
-     * looks at the tag names alone.
+     * The question [parseLineage] cannot answer, because a tag that is present
+     * and unparseable reads as absent through it. A state claiming a parent in a
+     * form nothing can check must be refused rather than quietly filed as an
+     * ordinary top-level group, so this looks at the tag names alone.
      */
     fun claimsParentage(tags: Array<Array<String>>): Boolean =
         tags.any {

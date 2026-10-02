@@ -19,6 +19,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.SubmissionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
@@ -190,9 +193,56 @@ class ChronicleEventTest {
             TranslationArtifactVersionEvent.KIND,
             TranslationChapterEvent.KIND,
             TranslationChunkEvent.KIND,
+            ProjectEvent.KIND,
+            ProjectArtifactVersionEvent.KIND,
+            ProjectTranslationArtifactVersionEvent.KIND,
         ).forEach { assertTrue(ChronicleEvent.isChroniclable(it), "kind $it should be chroniclable") }
 
-        assertEquals(8, ChronicleEvent.CHRONICLABLE_KINDS.size)
+        assertEquals(11, ChronicleEvent.CHRONICLABLE_KINDS.size)
+    }
+
+    @Test
+    fun `a membership applies after the project and the version it names`() {
+        // The only thing APPLY_ORDER has to get right about projects. A
+        // membership is a foreign key into both, so a page that applied one
+        // first would have the insert refused and the membership lost -- on the
+        // one device that most needs it, since a chronicle is what a member who
+        // joined late is given instead of having been there.
+        val project = ChronicleEvent.applyRank(ProjectEvent.KIND)!!
+        val source = ChronicleEvent.applyRank(ProjectArtifactVersionEvent.KIND)!!
+        val translation = ChronicleEvent.applyRank(ProjectTranslationArtifactVersionEvent.KIND)!!
+
+        assertTrue(source > project, "a source membership must apply after its project")
+        assertTrue(translation > project, "a translation membership must apply after its project")
+
+        assertTrue(
+            source > ChronicleEvent.applyRank(ArtifactVersionEvent.KIND)!!,
+            "a source membership must apply after the version it names"
+        )
+        assertTrue(
+            translation > ChronicleEvent.applyRank(TranslationArtifactVersionEvent.KIND)!!,
+            "a translation membership must apply after the translation it names"
+        )
+    }
+
+    @Test
+    fun `a page of a whole project sorts into an order that will apply`() {
+        val shuffled = listOf(
+            payload(ProjectArtifactVersionEvent.KIND),
+            payload(ProjectEvent.KIND),
+            payload(ArtifactVersionEvent.KIND),
+            payload(ArtifactEvent.KIND),
+        )
+
+        assertEquals(
+            listOf(
+                ArtifactEvent.KIND,
+                ArtifactVersionEvent.KIND,
+                ProjectEvent.KIND,
+                ProjectArtifactVersionEvent.KIND,
+            ),
+            ChronicleEvent.inApplyOrder(shuffled).map { it.kind }
+        )
     }
 
     @Test

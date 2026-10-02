@@ -156,6 +156,25 @@ class ChatMessageListViewModel(
         proposalsAwaitingYou.size > 1 &&
             proposalsAwaitingYou.any { it.sessionId == sessionId }
 
+    /**
+     * Whether opening [sessionId] by itself would hide other ceremonies the room
+     * is waiting on this member for.
+     *
+     * [hidesOtherDecisions]'s counterpart, and the same argument: a ceremony line
+     * names one ceremony, and opening it is right while that is the only one
+     * asking. A room holds more than one as a matter of course since a subgroup's
+     * ChillDKG moved into its parent's room, and the second is not in the
+     * transcript beside the first -- so answering the one they tapped and leaving
+     * would look exactly like being done.
+     *
+     * Only for a ceremony that is itself waiting on them. A line about a ceremony
+     * the group finished is history, and a reader who taps one is asking to see
+     * that, not to be handed the queue.
+     */
+    fun hidesOtherCeremonies(sessionId: String): Boolean =
+        ceremoniesAwaitingYou.size > 1 &&
+            ceremoniesAwaitingYou.any { it.sessionId == sessionId }
+
     fun startDirectMessage(participant: Participant) {
         logger.d("Arming a direct message to ${participant.participantPublicKey}")
         directMessageRecipient = participant
@@ -228,7 +247,12 @@ class ChatMessageListViewModel(
                             // something, and the notice should say what.
                             lead = local.items.firstNotNullOfOrNull { item ->
                                 Event.fromJsonOrNull(item.unsignedEventJson)
-                                    ?.let { ProposedEvent.summarize(it) }
+                                    ?.let {
+                                        ProposedEvent.summarize(
+                                            event = it,
+                                            chatRoomId = localChatRoom.chatRoom.id,
+                                        )
+                                    }
                             },
                             eventCount = local.items.size
                         )

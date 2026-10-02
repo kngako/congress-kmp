@@ -9,6 +9,7 @@ silent, or a decision that looked arbitrary and was not.
 | [shared-key-ceremony.md](./shared-key-ceremony.md) | ChillDKG over NIP-17: the rounds, the approval gates, the chat transcript, participant ordering |
 | [shared-key-derivation.md](./shared-key-derivation.md) | deriving further keys from the group's threshold key with FROST tweaks — why not BIP32, why no chain code, and the one rule that must not be broken |
 | [subgroups.md](./subgroups.md) | a group making another group — the four ceremonies, what the parent's signature actually covers, and why the child's key is fresh rather than derived |
+| [subgroups-multiple-parents.md](./subgroups-multiple-parents.md) | adding a parent to a group that already exists — two signings and no ceremony, why the child's consent is the whole gate, and the certificate a group can truthfully sign about itself |
 | [frost-batch-signing.md](./frost-batch-signing.md) | signing several events in one ceremony — why one nonce can never cover two messages, and the phased schema, wire and UI work that follows from it |
 | [marmot-membership.md](./marmot-membership.md) | how members join an MLS group, and the epoch race that makes a missing member look like a successful invite |
 | [member-chronicle.md](./member-chronicle.md) | handing a member added after the work was done the group's signed record — why the events are not on the wire at all, and why the room's id is enough to verify them |
@@ -22,6 +23,7 @@ silent, or a decision that looked arbitrary and was not.
 | [jvm-target.md](./jvm-target.md) | what desktop support cost, phased — why the native chain was already done, why an empty source set in our phoenix fork was the real blocker, and why DAO tests need none of it |
 | [npub-profile-preview.md](./npub-profile-preview.md) | showing the person before a direct message is started from a pasted npub — why the preview is a screen keyed by public key, what "found" means when a row can be a placeholder, and the phase that makes the button honest about a key package that never comes |
 | [chapter-uploads.md](./chapter-uploads.md) | picking files off a device and having the group sign each one in as a chapter — why N files can never be one signing session, and the four things the single-chapter path gets away with |
+| [project-feature.md](./project-feature.md) | bringing the server schema's `project` and its two join models into a group that has no accounts and no server — a creator tag of its own and owners as a signed set of `p` tags, the role the parser has to be told about or every project lands ownerless, why a membership is its own signed event rather than a list, and the kind band that is already double-booked |
 | [material-design-conformance.md](./material-design-conformance.md) | what the M3 foundations actually require, measured against all 43 screens — the colour pairing that renders the app's own proposals invisible, and eight phases that put the decisions back in the theme |
 | [curated-to-mantra.md](./curated-to-mantra.md) | pulling the Curated fork's thirty-nine commits back under Mantra's names — which lines of work to take, the three decisions, and a measured way to replay a twice-rebranded history without touching seven hundred files by hand |
 | [curated-to-mantra-profiles.md](./curated-to-mantra-profiles.md) | the second pull: the fork's several-profiles line, ten commits and its first schema migration — which of it is a fix Mantra has today, who allocates a schema version number when two trees share one history, and the one conflict, which was Mantra's own |
@@ -39,7 +41,11 @@ and the one thing they cannot. The
 jvm-target note is unrelated to all of them: it is a build and packaging story.
 The subgroups note is a phased plan that has been built; it assumes both
 shared-key notes and reads as the ceremony's second half — what a group does
-once it has a key, and what it can say about a group that does not yet.
+once it has a key, and what it can say about a group that does not yet. The
+multiple-parents note is a phased plan that has been built, and reads only after
+it: it takes the one assumption that note never had to state — that a lineage is
+settled at founding — and finds that dropping it costs less than founding a
+subgroup does, because no ceremony is involved.
 The Material Design note is a phased plan that has not been built, and is the
 only one about what the app looks like rather than what it does; read the
 jvm-target note first if you want to know why its adaptive-layout phase exists.
@@ -82,3 +88,12 @@ built, because each of those is wrong in the single-chapter path today. Its two
 splitter phases are separable from the rest and worth reading on their own: what
 a chunk is, measured against the parser the web app translates with rather than
 assumed.
+The projects note is a phased plan that has been built as far as its seventh
+phase, and is the only one
+whose starting point is outside this repository: the platform's server schema,
+`mantra-db-models`, has had the three models for years. It reads as the
+translation domain's unanswered question — the app can say what a chapter is and
+who translated it, and cannot say what any of it is for — so read it after the
+nip30303 conventions are familiar, its decisions before its phases, and its scope
+fork before either, because that one changes the shape of the rest, and its
+table of where the build chose differently first.

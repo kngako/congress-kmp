@@ -25,7 +25,10 @@ import press.mantra.compose.database.model.GroupKeyState
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
+import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
+import press.mantra.compose.nostr.subgroup.tags.SubgroupBirthCertificateTag
+import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
@@ -67,6 +70,15 @@ class GroupKeyStateTest {
     private val otherKeyMaterial: KeyMaterial = Frost.trustedDealerKeygen(
         thresholdSecretKey = PrivateKey(
             ByteVector32("2bada550000000000000000000000000000000000000000000000000000000b2")
+        ),
+        nParticipants = participants,
+        threshold = threshold
+    )
+
+    /** A third group, for the lineages that name two parents. */
+    private val secondParentKeyMaterial: KeyMaterial = Frost.trustedDealerKeygen(
+        thresholdSecretKey = PrivateKey(
+            ByteVector32("3c0c0a0000000000000000000000000000000000000000000000000000000000c3")
         ),
         nParticipants = participants,
         threshold = threshold
@@ -304,15 +316,15 @@ class GroupKeyStateTest {
     fun `a state the group signed about the room it arrives in is taken`() {
         val state = GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState())
 
-        assertEquals(chatRoomId, state?.chatRoomId)
-        assertEquals("ceremony-1", state?.dkgSessionId)
-        assertEquals(thresholdPublicKey, state?.thresholdPublicKey)
-        assertEquals("m/9420/0/0", state?.derivationPath)
+        assertEquals(chatRoomId, state?.keyState?.chatRoomId)
+        assertEquals("ceremony-1", state?.keyState?.dkgSessionId)
+        assertEquals(thresholdPublicKey, state?.keyState?.thresholdPublicKey)
+        assertEquals("m/9420/0/0", state?.keyState?.derivationPath)
         // Attribution and ordering come off the event, not off the clock. The
         // author is the room itself now, which is the whole point: nobody in
         // particular said this.
-        assertEquals(chatRoomId, state?.announcedBy)
-        assertEquals(Instant.fromEpochSeconds(1_700_000_000), state?.announcedAt)
+        assertEquals(chatRoomId, state?.keyState?.announcedBy)
+        assertEquals(Instant.fromEpochSeconds(1_700_000_000), state?.keyState?.announcedAt)
     }
 
     @Test
@@ -409,8 +421,8 @@ class GroupKeyStateTest {
             )
         )
 
-        assertNotEquals(chatRoomId, state?.chatRoomId)
-        assertEquals(siblingRoom, state?.chatRoomId)
+        assertNotEquals(chatRoomId, state?.keyState?.chatRoomId)
+        assertEquals(siblingRoom, state?.keyState?.chatRoomId)
     }
 
     @Test
@@ -472,7 +484,8 @@ class GroupKeyStateTest {
 
         assertEquals(
             chatRoomId,
-            GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(tags = undirected))?.chatRoomId
+            GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(tags = undirected))
+                ?.keyState?.chatRoomId
         )
     }
 
@@ -757,6 +770,23 @@ class GroupKeyStateTest {
     /** The parent group's room, which is `otherKeyMaterial` wearing a second hat. */
     private val parentChatRoomId get() = identityOf(otherKeyMaterial).hex
 
+    /** A second, unrelated parent's room -- the group that adopts the child later. */
+    private val secondParentChatRoomId get() = identityOf(secondParentKeyMaterial).hex
+
+    /** A lineage of both parents, each with its own group's real signature. */
+    private fun bothParents() = SubgroupLineage.of(
+        listOf(
+            SubgroupParentage(parentChatRoomId, birthCertificate()),
+            SubgroupParentage(
+                secondParentChatRoomId,
+                birthCertificate(
+                    parent = secondParentChatRoomId,
+                    author = secondParentKeyMaterial
+                )
+            )
+        )
+    )
+
     /** A certificate by [author]'s room saying [subgroupChatRoomId] is its child. */
     private fun birthCertificate(
         subgroupChatRoomId: String = chatRoomId,
@@ -786,7 +816,9 @@ class GroupKeyStateTest {
             chatRoomId = chatRoomId,
             dkgSessionId = "ceremony-1",
             path = path,
-            parent = SubgroupParentage(parentChatRoomId = parent, certificate = certificate)
+            lineage = SubgroupLineage.of(
+                SubgroupParentage(parentChatRoomId = parent, certificate = certificate)
+            )
         )
     )
 
@@ -794,18 +826,26 @@ class GroupKeyStateTest {
     fun `a state whose parent certified it keeps the parent and the certificate`() {
         val state = GroupKeyStateManager.stateFrom(chatRoomId, keyStateWithParent())
 
-        assertEquals(parentChatRoomId, state?.parentChatRoomId)
-        assertEquals(birthCertificate().toJson(), state?.birthCertificateJson)
+        assertEquals(listOf(parentChatRoomId), state?.parentChatRoomIds())
+        assertEquals(
+            birthCertificate().toJson(),
+            state?.parents?.single()?.birthCertificateJson
+        )
+        // And the row points back at the child, which is what makes it a row
+        // rather than a column.
+        assertEquals(chatRoomId, state?.parents?.single()?.chatRoomId)
     }
 
     @Test
-    fun `a state claiming no parent keeps both fields null`() {
+    fun `a state claiming no parent carries no parent rows at all`() {
         // Every group made before subgroups existed, and every top-level group
-        // made after. Null here is the ordinary case, not missing data.
+        // made after. No rows is the ordinary case, not missing data -- and it is
+        // one way of saying "nobody's child" rather than two, which is why a
+        // lineage of none is null rather than empty.
         val state = GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState())
 
-        assertNull(state?.parentChatRoomId)
-        assertNull(state?.birthCertificateJson)
+        assertEquals(emptyList(), state?.parents)
+        assertNull(state?.lineage())
     }
 
     @Test
@@ -892,19 +932,183 @@ class GroupKeyStateTest {
             chatRoomId = chatRoomId,
             dkgSessionId = "ceremony-1",
             path = path,
-            parent = SubgroupParentage(parentChatRoomId, certificate)
+            lineage = SubgroupLineage.of(SubgroupParentage(parentChatRoomId, certificate))
         )
 
         assertTrue(GroupKeyStateEvent.claimsParentage(tags))
-        assertEquals(parentChatRoomId, GroupKeyStateEvent.parseParentChatRoomId(tags))
-        assertEquals(certificate.toJson(), GroupKeyStateEvent.parseBirthCertificate(tags)?.toJson())
+
+        val lineage = GroupKeyStateEvent.parseLineage(tags)
+
+        assertEquals(listOf(parentChatRoomId), lineage?.parentChatRoomIds)
+        assertEquals(certificate.toJson(), lineage?.parents?.single()?.certificate?.toJson())
 
         // And the tags a top-level group is proposed on carry neither, so every
         // state signed before subgroups existed reads exactly as it did.
         val plain = GroupKeyStateEvent.assembleTags(chatRoomId, "ceremony-1", path)
 
         assertFalse(GroupKeyStateEvent.claimsParentage(plain))
-        assertNull(GroupKeyStateEvent.parseParentChatRoomId(plain))
-        assertNull(GroupKeyStateEvent.parseBirthCertificate(plain))
+        assertNull(GroupKeyStateEvent.parseLineage(plain))
+    }
+
+    @Test
+    fun `two parents land as adjacent pairs, each id before its own certificate`() {
+        // The one thing in this design that exists for *other people's* builds. A
+        // reader that predates several parents takes the first `parent_group` and
+        // the first `birth_certificate` and checks them against each other, so
+        // the pairs have to be adjacent and in step. Were they emitted as all the
+        // ids and then all the certificates, such a reader would pair one
+        // parent's id with another's certificate, fail `certifies`, and drop the
+        // whole state -- losing the row that says which share signs for the room.
+        val tags = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            lineage = bothParents()
+        )
+
+        val names = tags.map { it[0] }.filter {
+            it == SubgroupParentTag.TAG_NAME || it == SubgroupBirthCertificateTag.TAG_NAME
+        }
+
+        assertEquals(
+            listOf(
+                SubgroupParentTag.TAG_NAME,
+                SubgroupBirthCertificateTag.TAG_NAME,
+                SubgroupParentTag.TAG_NAME,
+                SubgroupBirthCertificateTag.TAG_NAME
+            ),
+            names
+        )
+
+        // And the first pair an older reader would take is a matched one: the
+        // certificate beside the first id is the certificate *by* that parent.
+        val firstParent = tags.first { it[0] == SubgroupParentTag.TAG_NAME }[1]
+        val firstCertificate = tags.first { it[0] == SubgroupBirthCertificateTag.TAG_NAME }[1]
+
+        assertEquals(firstParent, Event.fromJson(firstCertificate).pubKey)
+    }
+
+    @Test
+    fun `a state claiming two parents keeps both, each with its own certificate`() {
+        // Two groups, two quorums, two signatures over the same child's id. The
+        // second one signed later and could not have named the first as a
+        // co-parent, which is why nothing requires the certificates to agree on
+        // the set -- the child's key state is the sole authority on it.
+        val state = signedKeyState(
+            tags = GroupKeyStateEvent.assembleTags(
+                chatRoomId = chatRoomId,
+                dkgSessionId = "ceremony-1",
+                path = path,
+                lineage = bothParents()
+            )
+        )
+
+        val local = GroupKeyStateManager.stateFrom(chatRoomId, state)
+
+        assertEquals(
+            listOf(parentChatRoomId, secondParentChatRoomId).sorted(),
+            local?.parentChatRoomIds()?.sorted()
+        )
+        assertEquals(2, local?.parents?.size)
+        // Each row carries the certificate of the parent it names, not whichever
+        // one came first off the tags.
+        local?.parents?.forEach { parent ->
+            assertEquals(
+                parent.parentChatRoomId,
+                Event.fromJson(parent.birthCertificateJson).pubKey,
+                "each parentage row keeps its own parent's certificate"
+            )
+        }
+    }
+
+    @Test
+    fun `one bad certificate in a set of two drops the whole state`() {
+        // All or nothing, generalised. Keeping the provable half would file a
+        // group as having one parent when its own members see two, and a set
+        // that is partly believed is not a weaker set.
+        val state = signedKeyState(
+            tags = GroupKeyStateEvent.assembleTags(
+                chatRoomId = chatRoomId,
+                dkgSessionId = "ceremony-1",
+                path = path,
+                lineage = SubgroupLineage.of(
+                    listOf(
+                        SubgroupParentage(parentChatRoomId, birthCertificate()),
+                        // Really signed by the second parent, but for a different
+                        // child -- so it certifies something, just not this.
+                        SubgroupParentage(
+                            secondParentChatRoomId,
+                            birthCertificate(
+                                subgroupChatRoomId = otherKey,
+                                parent = secondParentChatRoomId,
+                                author = secondParentKeyMaterial
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, state))
+    }
+
+    @Test
+    fun `a state naming the same parent twice is dropped`() {
+        val certificate = birthCertificate()
+        val doubled = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            lineage = SubgroupLineage.of(SubgroupParentage(parentChatRoomId, certificate))
+        ) + arrayOf(
+            SubgroupParentTag.assemble(parentChatRoomId),
+            SubgroupBirthCertificateTag.assemble(certificate)
+        )
+
+        assertTrue(GroupKeyStateEvent.claimsParentage(doubled))
+        assertNull(GroupKeyStateEvent.parseLineage(doubled))
+        assertNull(GroupKeyStateManager.stateFrom(chatRoomId, signedKeyState(tags = doubled)))
+    }
+
+    @Test
+    fun `an uneven number of halves is refused, not completed from the other`() {
+        val certificate = birthCertificate()
+
+        val extraParent = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            lineage = SubgroupLineage.of(SubgroupParentage(parentChatRoomId, certificate))
+        ) + arrayOf(SubgroupParentTag.assemble(chatRoomId))
+
+        assertNull(GroupKeyStateEvent.parseLineage(extraParent))
+
+        val extraCertificate = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            lineage = SubgroupLineage.of(SubgroupParentage(parentChatRoomId, certificate))
+        ) + arrayOf(SubgroupBirthCertificateTag.assemble(certificate))
+
+        assertNull(GroupKeyStateEvent.parseLineage(extraCertificate))
+    }
+
+    @Test
+    fun `a half that is present and broken shifts nothing, because it is counted`() {
+        // Counted by tag name as well as by successful parse, so a broken half is
+        // told from one that was never written. Only the first would slide the
+        // pairing along by one and pair an id with somebody else's certificate.
+        val broken = GroupKeyStateEvent.assembleTags(
+            chatRoomId = chatRoomId,
+            dkgSessionId = "ceremony-1",
+            path = path,
+            lineage = SubgroupLineage.of(SubgroupParentage(parentChatRoomId, birthCertificate()))
+        ) + arrayOf(
+            SubgroupParentTag.assemble(chatRoomId),
+            arrayOf(SubgroupBirthCertificateTag.TAG_NAME, "not an event")
+        )
+
+        assertTrue(GroupKeyStateEvent.claimsParentage(broken))
+        assertNull(GroupKeyStateEvent.parseLineage(broken))
     }
 }

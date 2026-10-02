@@ -578,7 +578,8 @@ fun ChatTranscript(
 @Composable
 private fun CeremoniesAwaitingYouNotice(
     ceremonies: List<ChatMessageListViewModel.AwaitingCeremony>,
-    onClick: (dkgSessionId: String) -> Unit,
+    /** Null where the notice stands for more than one, which no single screen can show. */
+    onClick: (dkgSessionId: String?) -> Unit,
 ) {
     val single = ceremonies.singleOrNull()
 
@@ -602,7 +603,11 @@ private fun CeremoniesAwaitingYouNotice(
     }
 
     Card(
-        onClick = { onClick(ceremonies.first().sessionId) },
+        // The one it names when it names one, and the list otherwise. A notice
+        // reading "3 key ceremonies need you" that opened the first of them --
+        // which is what this did -- answered a different question from the one
+        // it asked, and left the other two exactly as hard to find as before.
+        onClick = { onClick(single?.sessionId) },
         modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.space50),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -812,7 +817,8 @@ private fun RitualNotice(
         // An invite made and an invite sent are two separate steps on the deferred
         // path, so they get separate icons -- the whole reason both lines exist is
         // to be able to see that the first happened and the second did not.
-        ChatMessage.TYPE_SUBGROUP_CERTIFIED -> Icons.Default.AccountTree
+        ChatMessage.TYPE_SUBGROUP_CERTIFIED,
+        ChatMessage.TYPE_SUBGROUP_ADOPTION_OFFERED -> Icons.Default.AccountTree
         ChatMessage.TYPE_MEMBER_INVITED -> Icons.Default.PersonAdd
         ChatMessage.TYPE_MEMBER_INVITE_SENT -> Icons.Default.Upload
         ChatMessage.TYPE_MEMBER_INVITE_FAILED -> Icons.Default.ErrorOutline

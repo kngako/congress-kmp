@@ -87,12 +87,13 @@ class ProposalListViewModel(
                 else -> local.proposer?.humanReadableNameOrPubkey()
                     ?: local.session.coordinatorPublicKey.shortened()
             },
-            // Counted from the batch rather than derived from the chapter's
-            // text -- the number a member reads has to be the number of events
-            // they are approving. See ProposedEvent.summarize.
+            // The chunk count is counted from the batch rather than derived
+            // from the chapter's text -- the number a member reads has to be the
+            // number of events they are approving. See ProposedEvent.summarize.
             signs = events.map { event ->
                 ProposedEvent.summarize(
                     event = event,
+                    chatRoomId = chatRoomId,
                     chunkCount = events.count { it.kind == ChunkEvent.KIND },
                 )
             },

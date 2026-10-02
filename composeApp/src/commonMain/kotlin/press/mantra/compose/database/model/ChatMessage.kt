@@ -37,6 +37,9 @@ import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributor
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationEvent
 import co.touchlab.kermit.Logger
@@ -384,6 +387,26 @@ data class ChatMessage(
         const val TYPE_SUBGROUP_CERTIFIED = "subgroupCertified"
 
         /**
+         * Another group has certified **this** room as its child.
+         *
+         * The other side of the line above, and it appears in the *child's* room.
+         * A group is founded with a parent and may be adopted by another later --
+         * see docs/subgroups-multiple-parents.md -- and an adoption is two
+         * signings: the new parent certifies, then this room's own quorum
+         * re-announces its key state accepting it. The parent commits first, so
+         * this line is the offer, and it is the only notice the child's admins
+         * get before a proposal asks for their signature.
+         *
+         * **An offer rather than a fact about the lineage.** Nothing is adopted
+         * until this room's quorum says so, and nothing is filed: a child device
+         * cannot store an event signed by a group it is not in, and does not need
+         * to. The certificate itself travels inside the key state at the second
+         * signing. The wording has to carry that, or a member reads it as a
+         * relationship that already exists.
+         */
+        const val TYPE_SUBGROUP_ADOPTION_OFFERED = "subgroupAdoptionOffered"
+
+        /**
          * Every subgroup line, for the one check the transcript dispatches on.
          *
          * One member today, and a set anyway. A type missing from here renders as
@@ -392,6 +415,7 @@ data class ChatMessage(
          */
         val SUBGROUP_TYPES = setOf(
             TYPE_SUBGROUP_CERTIFIED,
+            TYPE_SUBGROUP_ADOPTION_OFFERED,
         )
 
         /**
@@ -1270,6 +1294,127 @@ data class ChatMessage(
                         )
                     }
                 }
+                // A body of work the group has named: which source versions it
+                // is translating and which translations it is producing.
+                //
+                // The memberships are their own events, signed in the same
+                // session and applied after this one -- see
+                // AddProjectViewModel.addProject. Nothing to do here but the
+                // project itself.
+                //
+                // The line names the project and not its creator. On a
+                // group-signed row `senderPublicKey` is the session's
+                // coordinator, so "X started the project" would be the
+                // transcript's own guess at something the event states exactly;
+                // the creator and the owners are on the row, and the detail
+                // screen is where they are read.
+                ProjectEvent.KIND -> {
+                    MantraProject.fromProjectEvent(
+                        projectEvent = ProjectEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraProject ->
+                        database.mantraProjectDao().upsert(
+                            mantraProject.copy(
+                                marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "project",
+                            marmotGroupEventId = marmotGroupEventId,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = isUserMessage,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Started the ${mantraProject.name} project"
+                        )
+                    }
+                }
+
+                // One source version is part of one project.
+                //
+                // No line of its own, the way a version writes none beside its
+                // artifact and a chunk none beside its chapter: a membership
+                // arrives as a later item of the batch that founds the project,
+                // which has already said so. One added to an existing project
+                // later is not silent either -- `FrostSigningManager.announce`
+                // writes "The group signed ..." when the session completes, and
+                // three more lines here would be a second account of it.
+                //
+                // **The foreign key violation is allowed out, and has to be.**
+                // Both references are keys, so a membership naming a version or
+                // a project this device does not hold cannot be written -- and
+                // `ChronicleManager.applyPage` learns that only by catching it.
+                // It counts the payload failed, and `sweep` runs the pages again
+                // until failures stop falling, which is the whole mechanism that
+                // delivers a membership whose project landed in a *later* page.
+                // Swallowing it here counts the payload as applied, the sweep
+                // terminates, and the membership is lost silently on the one
+                // device that has nothing else to fall back on.
+                //
+                // It was caught here for one commit, on the reasoning that
+                // `applySignedEvent` must not report a succeeded session as
+                // failed. That reasoning was already satisfied: it has its own
+                // try/catch. And no sibling arm catches -- a translation chapter
+                // naming an absent chapter throws today -- so catching made this
+                // the only kind the chronicle could not retry.
+                ProjectArtifactVersionEvent.KIND -> {
+                    MantraProjectArtifactVersion.fromProjectArtifactVersionEvent(
+                        projectArtifactVersionEvent = ProjectArtifactVersionEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { membership ->
+                        database.mantraProjectArtifactVersionDao().upsert(
+                            membership.copy(
+                                marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
+                            )
+                        )
+                    }
+                    null
+                }
+
+                // The other half. See the arm above.
+                ProjectTranslationArtifactVersionEvent.KIND -> {
+                    MantraProjectTranslationArtifactVersion
+                        .fromProjectTranslationArtifactVersionEvent(
+                            projectTranslationArtifactVersionEvent =
+                                ProjectTranslationArtifactVersionEvent(
+                                    id = event.id,
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
+                                ),
+                            chatRoomId = groupId,
+                        )?.let { membership ->
+                            database.mantraProjectTranslationArtifactVersionDao().upsert(
+                                membership.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                    groupSignedEventId = groupSignedEventId,
+                                )
+                            )
+                        }
+                    null
+                }
+
                 // A signing session's own protocol messages. FrostSigningManager
                 // applies them and writes its own transcript lines naming who did
                 // what, so an "unsupported" row here would be a second, worse
@@ -1336,29 +1481,61 @@ data class ChatMessage(
                 // that was ever put to this room -- the child may since have been
                 // renamed, and this line is a record of what was agreed rather
                 // than a view of what is.
-                SubgroupBirthCertificateEvent.KIND -> {
-                    SubgroupManager.record(
-                        database = database,
-                        chatRoomId = groupId,
-                        innerEvent = event
-                    ) ?: return null
+                //
+                // Two true things a certificate can be, and the room it arrived
+                // in is what tells them apart -- see `SubgroupManager.classify`.
+                // This room signed it about another, or another signed it about
+                // this one, which is a parent offering to adopt a group that
+                // already exists. Anything else is nobody's business here.
+                SubgroupBirthCertificateEvent.KIND ->
+                    when (val arriving = SubgroupManager.classify(groupId, event)) {
+                        is SubgroupManager.ArrivingCertificate.OurChild -> {
+                            SubgroupManager.record(
+                                database = database,
+                                chatRoomId = groupId,
+                                innerEvent = event
+                            ) ?: return null
 
-                    val name = SubgroupBirthCertificateEvent.parseName(event.tags)
-                    val admins = SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags).size
+                            val name = SubgroupBirthCertificateEvent.parseName(event.tags)
+                            val admins =
+                                SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags).size
 
-                    ChatMessage(
-                        giftWrapPayloadId = null,
-                        messageType = TYPE_SUBGROUP_CERTIFIED,
-                        marmotGroupEventId = marmotGroupEventId,
-                        marmotInnerEventId = marmotInnerEventId,
-                        senderPublicKey = senderPublicKey,
-                        isUserMessage = isUserMessage,
-                        chatRoomId = groupId,
-                        createdAt = createdAt,
-                        content = "The group made ${name ?: "a subgroup"} a subgroup, " +
-                            "run by $admins of its members"
-                    )
-                }
+                            ChatMessage(
+                                giftWrapPayloadId = null,
+                                messageType = TYPE_SUBGROUP_CERTIFIED,
+                                marmotGroupEventId = marmotGroupEventId,
+                                marmotInnerEventId = marmotInnerEventId,
+                                senderPublicKey = senderPublicKey,
+                                isUserMessage = isUserMessage,
+                                chatRoomId = groupId,
+                                createdAt = createdAt,
+                                content = "The group made ${name ?: "a subgroup"} a subgroup, " +
+                                    "run by $admins of its members"
+                            )
+                        }
+
+                        // Deliberately writes a line and files nothing. The offer
+                        // is real and verified -- that group's quorum signed it --
+                        // but this room is not adopted until its own quorum says
+                        // so, and the certificate reaches these devices for real
+                        // inside the key state that says it.
+                        is SubgroupManager.ArrivingCertificate.OfferToUs -> ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = TYPE_SUBGROUP_ADOPTION_OFFERED,
+                            marmotGroupEventId = marmotGroupEventId,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = isUserMessage,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "${arriving.parentChatRoomId.take(16)} has offered to " +
+                                "adopt this group as a subgroup. It is a subgroup of theirs " +
+                                "only once this group agrees what it signs with again, " +
+                                "naming them."
+                        )
+
+                        null -> return null
+                    }
 
                 else -> {
                     ChatMessage(

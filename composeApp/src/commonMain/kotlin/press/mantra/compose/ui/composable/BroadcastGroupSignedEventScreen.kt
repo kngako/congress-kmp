@@ -188,7 +188,10 @@ fun BroadcastGroupSignedEventScreen(
                 // what goes on the wire, because the point of copying it is to
                 // hand somebody something they can verify.
                 val json = signedEvent.toEvent().toJson()
-                val summary = ProposedEvent.summarize(signedEvent.toEvent())
+                val summary = ProposedEvent.summarize(
+                    event = signedEvent.toEvent(),
+                    chatRoomId = signedEvent.chatRoomId,
+                )
 
                 val canSend = !isPending
 

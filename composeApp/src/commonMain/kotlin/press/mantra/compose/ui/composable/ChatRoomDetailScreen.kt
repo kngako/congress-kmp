@@ -70,6 +70,7 @@ import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendin
 import press.mantra.compose.ui.composable.navigation.routes.ProfilePreviewRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualRoute
+import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProposalListRoute
 import press.mantra.compose.ui.composable.navigation.routes.SearchMemberToAddToChatRoomRoute
 import press.mantra.compose.extensions.toFormattedTimeAndDateString
@@ -83,17 +84,25 @@ import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.run_by_members
 import mantra.composeapp.generated.resources.parent_group
+import mantra.composeapp.generated.resources.accept_as_a_parent
+import mantra.composeapp.generated.resources.add_a_parent_group
+import mantra.composeapp.generated.resources.a_group_is_a_subgroup_once_its_own_quorum_says_so
+import mantra.composeapp.generated.resources.asked_this_group_to_accept_that_parent
+import mantra.composeapp.generated.resources.s_has_offered_to_adopt_this_group
 import mantra.composeapp.generated.resources.a_subgroup
 import mantra.composeapp.generated.resources.created_you_are_not_a_member
 import mantra.composeapp.generated.resources.certified_not_yet_created
 import mantra.composeapp.generated.resources.no_subgroups_have_been_made_by_this_group
 import mantra.composeapp.generated.resources.add_subgroup
 import mantra.composeapp.generated.resources.subgroups
+import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
@@ -117,6 +126,7 @@ import mantra.composeapp.generated.resources.no_projects_exists_in_this_group
 import mantra.composeapp.generated.resources.projects
 import mantra.composeapp.generated.resources.proposals
 import mantra.composeapp.generated.resources.reindex_events
+import mantra.composeapp.generated.resources.key_ceremonies
 import mantra.composeapp.generated.resources.shared_key
 import mantra.composeapp.generated.resources.signing_key
 import mantra.composeapp.generated.resources.the_key_this_room_signs_as
@@ -165,6 +175,13 @@ fun ChatRoomDetailScreen(
             activeUserPublicKey = activeUserPublicKey
         )
     )
+
+    // Both read here because both are composable and an onClick lambda is not.
+    // The notifier takes the caller's scope on purpose: an acceptance is shown
+    // while the screen reloads around it, and a message launched in a departing
+    // composable's scope would be cancelled with it.
+    val notify = rememberNotifier(rememberCoroutineScope())
+    val acceptedParent = stringResource(Res.string.asked_this_group_to_accept_that_parent)
 
     ScreenStateTransition(chatRoomDetailViewModel.chatRoomDetailUIState) { uiState ->
     when (val chatRoomDetailUIState = uiState) {
@@ -259,8 +276,14 @@ fun ChatRoomDetailScreen(
                             // nobody's child, and absent -- rather than guessed --
                             // on a subgroup this device holds no key state for,
                             // since an unverified lineage is not one worth showing.
-                            chatRoomDetailUIState.parentChatRoomId?.let { parentChatRoomId ->
-                                item {
+                            //
+                            // One card per parent, because a room can have more
+                            // than one: founded with one and adopted by another
+                            // later. They are a set rather than a path -- neither
+                            // is "the" parent and the order says nothing about
+                            // which came first -- so each gets an equal row.
+                            chatRoomDetailUIState.parentChatRoomIds.forEach { parentChatRoomId ->
+                                item(key = "parent-$parentChatRoomId") {
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
@@ -300,6 +323,99 @@ fun ChatRoomDetailScreen(
                                                 )
                                             }
                                         )
+                                    }
+                                }
+                            }
+
+                            // An offer, and it has to read like one. The other
+                            // group's quorum has signed; this group has not, and
+                            // until it does the lineage is unchanged. Rendered as
+                            // a fact about the lineage it would be the consent gap
+                            // reopened from the other end.
+                            chatRoomDetailUIState.adoptionOffers.forEach { offeringChatRoomId ->
+                                item(key = "offer-$offeringChatRoomId") {
+                                    Card(modifier = Modifier.fillMaxWidth()) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.AccountTree,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(
+                                                    text = stringResource(
+                                                        Res.string.s_has_offered_to_adopt_this_group,
+                                                        offeringChatRoomId.take(16)
+                                                    )
+                                                )
+                                            },
+                                            supportingContent = {
+                                                Text(
+                                                    text = stringResource(
+                                                        Res.string
+                                                            .a_group_is_a_subgroup_once_its_own_quorum_says_so
+                                                    ),
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            },
+                                            trailingContent = {
+                                                // Offered to whoever opens the
+                                                // screen and can act, not only to
+                                                // the member who asked -- every
+                                                // step after the ceremony is open
+                                                // to any admin holding a share.
+                                                if (chatRoomDetailUIState.canAddParent) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            chatRoomDetailViewModel.acceptParent(
+                                                                offeringChatRoomId
+                                                            ) { message ->
+                                                                notify(message ?: acceptedParent)
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            stringResource(
+                                                                Res.string.accept_as_a_parent
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Hidden rather than disabled, the way the subgroup
+                            // entry is: a room with no key state has neither half
+                            // of an adoption to work with, and a device with no
+                            // share cannot sign either of them.
+                            if (chatRoomDetailUIState.canAddParent) {
+                                item {
+                                    TextButton(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                SelectAdoptingGroupRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AccountTree,
+                                            contentDescription = Decorative
+                                        )
+
+                                        Spacer(
+                                            modifier = Modifier
+                                                .width(MaterialTheme.spacing.relatedGap)
+                                        )
+
+                                        Text(stringResource(Res.string.add_a_parent_group))
                                     }
                                 }
                             }
@@ -468,35 +584,74 @@ fun ChatRoomDetailScreen(
                                 HorizontalDivider()
                             }
 
-                            // TODO: Add projects...
-
                             item {
-                                // Artifacts
+                                // Projects -- what the library above is for
                                 Text(
                                     text = stringResource(Res.string.projects),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }
 
-                            item {
-                                Text(stringResource(Res.string.no_projects_exists_in_this_group))
+                            if (chatRoomDetailUIState.projects.isEmpty()) {
+                                item {
+                                    Text(stringResource(Res.string.no_projects_exists_in_this_group))
+                                }
+                            } else {
+                                items(
+                                    items = chatRoomDetailUIState.projects,
+                                    key = { project -> project.id }
+                                ) { project ->
+                                    Card(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ProjectDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    projectId = project.id,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.Schema,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(text = project.name)
+                                            },
+                                            supportingContent = {
+                                                Text(text = project.description)
+                                            }
+                                        )
+                                    }
+                                }
                             }
 
                             item {
                                 TextButton(
                                     onClick = {
-                                        // Navigate to the invite user screen...
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Add new project"
+                                            AddProjectRoute(
+                                                chatRoomId = chatRoomId,
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                relayHint = relayHint
                                             )
                                         )
                                     }
                                 ) {
-
                                     Icon(
                                         Icons.Default.Schema,
-                                        contentDescription = "create new projec"
+                                        contentDescription = Decorative
                                     )
 
                                     Spacer(
@@ -627,6 +782,39 @@ fun ChatRoomDetailScreen(
 
                                         Text(stringResource(Res.string.shared_key))
                                     }
+                                }
+                            }
+
+                            // Every room, including the Marmot ones the `mlsGroupState`
+                            // check above keeps "Shared key" out of. That button offers
+                            // a room a key of its own, which only a NIP-17 room can
+                            // want; this one lists the ceremonies a room *holds*, and a
+                            // parent's Marmot room holds one per subgroup the group has
+                            // ever made. Until this there was no way to reach the second
+                            // of them except by scrolling the transcript to its request
+                            // line, and no way at all to reach one whose line had never
+                            // arrived.
+                            item {
+                                TextButton(
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            DkgRitualListRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                chatRoomId = chatRoomId
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Key,
+                                        contentDescription = "Key ceremonies"
+                                    )
+
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+
+                                    Text(stringResource(Res.string.key_ceremonies))
                                 }
                             }
 

@@ -29,6 +29,9 @@ import press.mantra.compose.database.dao.MantraChapterDao
 import press.mantra.compose.database.dao.MantraChunkDao
 import press.mantra.compose.database.dao.MantraDao
 import press.mantra.compose.database.dao.MantraDialectDao
+import press.mantra.compose.database.dao.MantraProjectArtifactVersionDao
+import press.mantra.compose.database.dao.MantraProjectDao
+import press.mantra.compose.database.dao.MantraProjectTranslationArtifactVersionDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionContributorDao
 import press.mantra.compose.database.dao.MantraTranslationChapterDao
@@ -74,6 +77,7 @@ import press.mantra.compose.database.model.GiftWrapMessage
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GiftWrapSeal
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.GroupKeyStateParent
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.InReplyToRelation
 import press.mantra.compose.database.model.MantraArtifact
@@ -81,6 +85,9 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
+import press.mantra.compose.database.model.MantraProjectArtifactVersion
+import press.mantra.compose.database.model.MantraProjectTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslation
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationArtifactVersionContributor
@@ -139,6 +146,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         GiftWrapSeal::class,
         GiftWrapPayload::class,
         GroupKeyState::class,
+        GroupKeyStateParent::class,
         GroupSignedEvent::class,
         InReplyToRelation::class,
         MantraArtifact::class,
@@ -146,6 +154,9 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         MantraChapter::class,
         MantraChunk::class,
         MantraDialect::class,
+        MantraProject::class,
+        MantraProjectArtifactVersion::class,
+        MantraProjectTranslationArtifactVersion::class,
         MantraTranslation::class,
         MantraTranslationArtifactVersion::class,
         MantraTranslationArtifactVersionContributor::class,
@@ -177,7 +188,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 20,
+    version = 22,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -321,6 +332,38 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // which is what they were, and any identity may drain them. The broadcast
         // queue deliberately gets no owner: a signed event is anyone's to carry.
         AutoMigration(from = 19, to = 20),
+        // v21 moves a room's parentage off two GroupKeyState columns onto the new
+        // GroupKeyStateParent table, so a room can be the child of more than one
+        // group -- founded with one and adopted by another later. It copies
+        // before it drops, which no AutoMigration can express, and it drops
+        // ChatRoom.parentChatRoomId as well: that column was a cache of the
+        // verified value which nothing in production ever read, and keeping it
+        // would mean a column holding *one* of several parents, which is worse
+        // than unused. See MIGRATION_20_21 and
+        // docs/subgroups-multiple-parents.md.
+        //
+        // v22 adds the three project tables -- a project, and one row per source
+        // version or translation that is part of it. Three new tables and
+        // nothing existing changes shape, so Room generates this one itself.
+        //
+        // It is v22 rather than v21 because two trees allocated out of the same
+        // space in one release window: this landed as 21 on its own branch while
+        // the parentage table above took 21 on `mantra`. Renumbering was free --
+        // nothing had shipped -- but see Phase 0 of docs/project-feature.md,
+        // which says to check, and checked the wrong tree.
+        //
+        // A project's contents are foreign keys into this room's own rows, with
+        // CASCADE, like every other reference in this family. That is the
+        // one-room scope decision made load-bearing: a membership naming a
+        // version this device does not hold fails at insert rather than landing
+        // as a row pointing at nothing. Projects that span rooms take those keys
+        // away again -- see Phase 9 of docs/project-feature.md -- and that is a
+        // migration rather than something to carry unused until then.
+        //
+        // The owners are a comma-joined sorted string on the project row rather
+        // than a fourth table, which is what DkgSession.participantPublicKeys
+        // already does with a set of keys and for the same reason.
+        AutoMigration(from = 21, to = 22),
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
@@ -367,6 +410,12 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun mantraChunkDao(): MantraChunkDao
 
     abstract fun mantraDialectDao(): MantraDialectDao
+
+    abstract fun mantraProjectDao(): MantraProjectDao
+
+    abstract fun mantraProjectArtifactVersionDao(): MantraProjectArtifactVersionDao
+
+    abstract fun mantraProjectTranslationArtifactVersionDao(): MantraProjectTranslationArtifactVersionDao
 
     abstract fun mantraTranslationArtifactVersionDao(): MantraTranslationArtifactVersionDao
 

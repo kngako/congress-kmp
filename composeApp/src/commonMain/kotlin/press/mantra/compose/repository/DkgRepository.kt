@@ -3,7 +3,7 @@ package press.mantra.compose.repository
 import press.mantra.compose.database.model.DkgParticipantMessage
 import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.FrostSigningSession
-import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.intermdiate.LocalGroupKeyState
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
@@ -64,6 +64,19 @@ interface DkgRepository {
     suspend fun roomAwaitingCreation(session: DkgSession): String?
 
     suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
+
+    /**
+     * The id of the room a ceremony's key derives, or null while it has no key.
+     *
+     * The one name a ceremony and the room it makes have in common, and the only
+     * way to tell two of a parent's subgroups apart in anything written about
+     * the room rather than about the ceremony -- a birth certificate names the
+     * child, not the ceremony that produced it.
+     *
+     * Null is the ordinary answer rather than a failure: a ceremony has no key
+     * until it finishes, and every caller here is watching from before that.
+     */
+    suspend fun roomDerivedBy(dkgSessionId: String): String?
 
     /**
      * Opens a ritual in [localChatRoom], making this device the coordinator.
@@ -149,10 +162,10 @@ interface DkgRepository {
      * a finished subgroup with its key state signed, its certificate signed, and
      * no way to create the room -- the lookup found no ceremony at all.
      */
-    fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?>
+    fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?>
 
     /** Files the state the group signed for a room that now exists. */
-    suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState?
+    suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState?
 
     /**
      * Asks the parent's quorum to certify the subgroup this ceremony produced.
@@ -213,6 +226,8 @@ interface DkgRepository {
 
             override suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession? = null
 
+            override suspend fun roomDerivedBy(dkgSessionId: String): String? = null
+
             override suspend fun proposeRitual(
                 localChatRoom: LocalChatRoom,
                 userPublicKey: HexKey,
@@ -242,10 +257,10 @@ interface DkgRepository {
                 chatRoomId: String
             ): Flow<List<LocalFrostSigningSession>> = flowOf(emptyList())
 
-            override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<GroupKeyState?> =
+            override fun observeSignedGroupKeyState(dkgSessionId: String): Flow<LocalGroupKeyState?> =
                 flowOf(null)
 
-            override suspend fun adoptGroupKeyState(chatRoomId: String): GroupKeyState? = null
+            override suspend fun adoptGroupKeyState(chatRoomId: String): LocalGroupKeyState? = null
 
             override suspend fun proposeBirthCertificate(
                 parentChatRoomId: String,
