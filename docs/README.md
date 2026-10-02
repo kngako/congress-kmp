@@ -73,10 +73,12 @@ smallest of the plans: it changes the entrance to the direct-message flow and
 nothing past it, so read it with `StartDirectMessageToNpubOrNip05Dialog` and
 `ChatRoomMessagingViewModel.initiateNewChat` open, its four decisions before its
 four phases, and its table of where the build chose differently first.
-The projects note is a phased plan that has not been built, and is the only one
+The projects note is a phased plan that has been built as far as its seventh
+phase, and is the only one
 whose starting point is outside this repository: the platform's server schema,
 `mantra-db-models`, has had the three models for years. It reads as the
 translation domain's unanswered question — the app can say what a chapter is and
 who translated it, and cannot say what any of it is for — so read it after the
 nip30303 conventions are familiar, its decisions before its phases, and its scope
-fork before either, because that one changes the shape of the rest.
+fork before either, because that one changes the shape of the rest, and its
+table of where the build chose differently first.

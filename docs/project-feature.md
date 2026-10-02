@@ -1,6 +1,28 @@
 # Projects
 
-A phased plan, not yet built.
+Phases 0 through 7 are built. Phases 8 and 9 -- removing something from a
+project, and projects that span rooms -- are not, and the reasoning for both is
+below rather than anywhere else.
+
+**Where the build chose differently**, each of which is explained in the phase
+it belongs to:
+
+| the plan said | the build did | why |
+|---|---|---|
+| a `creator` tag and an `owner` tag | a `creator` tag, and owners as `ContributorTag`s with `ROLE_OWNER` | a project has several owners, which is the cardinality `ContributorTag` is for |
+| the room's project section is new | it replaced a stub | `ChatRoomDetailScreen` already had a heading, a permanent empty line and an `ImplementationPendingRoute`, under a `// TODO: Add projects...` |
+| the `summarize` resolver is Phase 4 | the seam is Phase 4, the resolution is Phase 7c | two of its four call sites are composables and cannot await a database, so the names are pre-resolved in `FrostSigningViewModel` |
+| three chronicle tests to add | three to add and four to fix | the existing suite compares a seeded room against `CHRONICLABLE_KINDS` itself, and one test asserts every chroniclable kind can also be *rebuilt* -- which projects deliberately cannot |
+| around twenty new strings | eighteen, three of them already there | `projects`, `no_projects_exists_in_this_group` and `create_project` came with the stub |
+
+The one thing found while building that the plan did not anticipate: a project
+reaches a chronicle only off the `GroupSignedEvent` record, because there is no
+`toProjectEvent` rebuild. `recordSignedEvents` catches its own failure so that a
+ceremony that succeeded is not reported as failed, which leaves a narrow window
+where a project row exists and its signed event does not -- a project this
+device can show and can never hand on. `ChronicleAssemblyJvmTest.a project is
+only ever chronicled off the record` holds that case open rather than letting it
+be discovered later.
 
 `mantra-db-models` — the platform's server-side Sequelize schema — has had three
 models waiting for this app since before it existed: `project`, with a name and a
