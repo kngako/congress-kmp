@@ -615,22 +615,38 @@ The transcript and the proposal list were built for two concurrent sessions —
 scaffolding were open together. Twelve is the same problem at a scale that will
 find whatever that fix missed.
 
-What to check rather than assume:
+What to check rather than assume — and **all three already held**, so this
+phase is its tests and this paragraph:
 
-- `ProposalListScreen` with twenty open sessions: the ones waiting on the reader
-  gather at the top, and `ProposedEvent.summarize` gives a chapter a name rather
-  than "Event of kind 30302". Chapters are summarised today; confirm the
-  summary is the chapter's *name*, since twelve rows reading "Chapter" are
-  twelve rows a member cannot choose between.
-- Twelve "Review" lines in the transcript, each resolving its own session.
-  `answeredRequests`/`settledRequests` read `frostSigningSessionId` when both
-  rows have one; twelve is where a fallback-to-clock path would show.
-- Twelve approval gates. No batching of the gate — that is the one thing the
-  batch-signing note refuses, and for the same reason: "a member who cannot
-  scroll the whole list should not be able to approve it". What can be done is
-  make the *list* cheap to work through, which is the point above.
+- **The list already groups.** `ProposalListScreen` renders a "Waiting for you"
+  header over the sessions `FrostSigningManager.isAwaitingApproval` picks out and
+  an "Everything else" header under them, over a query that is already
+  `ORDER BY createdAt DESC`. Twelve proposals arrive sorted and the three that
+  need the reader are at the top.
+- **The summary already names the chapter.** `ProposedEvent.summarize`'s chapter
+  branch is `name · N words · N chunks`, not "Chapter" — so twelve rows are
+  twelve distinguishable rows.
+- **`isAbout` already matches on the session.** `answeredRequests` and
+  `settledRequests` compare `frostSigningSessionId` when both rows carry one and
+  fall back to the clock only when either does not. Now tested at twelve, with
+  the answers given in the opposite order to the asking so that neither the
+  clock nor the list order could produce the right answer by accident, plus one
+  failure settling only its own row.
+- **Twelve approval gates, unbatched.** Unchanged by design: the gate shows every
+  event rather than a count, because "a member who cannot scroll the whole list
+  should not be able to approve it".
 
 No new `ChatMessage` type, no new set to add to.
+
+### One thing N does make worse, and it is Phase 8's to fix
+
+`observeSessionsForChatRoom` carries every session's items, and a chapter item's
+`unsignedEventJson` holds the whole markdown. Twenty open chapter proposals is
+roughly 900 KB of JSON parsed and summarised **on every emission** — and
+`summarize` then re-splits each chapter's text to count its chunks, which is the
+derived count Phase 8 replaces with the session's own item count. Fixing it
+there removes the re-split; the parse is inherent to the query and is the price
+of the list showing what each proposal signs without one query per row.
 
 ---
 
