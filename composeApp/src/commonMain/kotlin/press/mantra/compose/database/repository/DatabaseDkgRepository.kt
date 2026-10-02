@@ -21,19 +21,39 @@ import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import press.mantra.compose.identity.Identity
 
+/**
+ * @param activeIdentity whose rituals this answers about. A `DkgSession` is keyed by
+ *   the ceremony *and* the profile that ran it, so none of the reads below name a row
+ *   without one -- and the profile is the repository's to supply rather than the
+ *   screen's, which asks about the ritual it is showing and can mean no one else.
+ *   Defaults to nobody, which has no rituals, and is what a test with no identity
+ *   gets.
+ */
 class DatabaseDkgRepository(
     private val database: MantraDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val activeIdentity: StateFlow<Identity?> = MutableStateFlow(null),
 ): DkgRepository {
     private val logger = Logger.withTag(TAG)
 
+    /** The profile asking, or null when nothing is open. */
+    private val userPublicKey: HexKey? get() = activeIdentity.value?.nostrPublicKey
+
     override fun observeSessionById(sessionId: String): Flow<DkgSession?> =
-        database.dkgSessionDao().observeSessionById(sessionId)
+        userPublicKey
+            ?.let { database.dkgSessionDao().observeSessionById(sessionId, it) }
+            ?: flowOf(null)
 
     override fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>> =
-        database.dkgSessionDao().observeSessionsForChatRoom(chatRoomId)
+        userPublicKey
+            ?.let { database.dkgSessionDao().observeSessionsForChatRoom(chatRoomId, it) }
+            ?: flowOf(emptyList())
 
     override suspend fun roomAwaitingCreation(session: DkgSession): String? {
         if (session.stage != DkgRitualStage.COMPLETE) return null
@@ -49,13 +69,17 @@ class DatabaseDkgRepository(
         chatRoomId: String,
         parentChatRoomId: String?,
     ): Flow<DkgSession?> =
-        database.dkgSessionDao().observeLatestSessionFor(chatRoomId, parentChatRoomId)
+        userPublicKey
+            ?.let { database.dkgSessionDao().observeLatestSessionFor(chatRoomId, parentChatRoomId, it) }
+            ?: flowOf(null)
 
     override fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>> =
-        database.dkgSessionDao().observeMessages(sessionId)
+        userPublicKey
+            ?.let { database.dkgSessionDao().observeMessages(sessionId, it) }
+            ?: flowOf(emptyList())
 
     override suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession? =
-        database.dkgSessionDao().getLatestSessionForChatRoom(chatRoomId)
+        userPublicKey?.let { database.dkgSessionDao().getLatestSessionForChatRoom(chatRoomId, it) }
 
     override suspend fun proposeRitual(
         localChatRoom: LocalChatRoom,
@@ -124,9 +148,10 @@ class DatabaseDkgRepository(
                 // -- for a room holding only a subgroup's ceremony, asking for the
                 // room's *own* found nothing at all, and a finished subgroup with
                 // a signed key state could never be created.
+                // The ceremony's own key, not a profile's row: what is wanted is the
+                // room it derives, which every member agrees on.
                 val subjectRoomId = database.dkgSessionDao()
-                    .getSessionById(dkgSessionId)
-                    ?.thresholdPublicKey
+                    .getCeremonyThresholdPublicKey(dkgSessionId)
                     ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
 
                 subjectRoomId?.let { GroupKeyStateManager.stateAmong(signedEvents, it) }
@@ -180,8 +205,7 @@ class DatabaseDkgRepository(
                 // rather than once: the ceremony has no key until it finishes,
                 // and this flow is running before it does.
                 val subgroupChatRoomId = database.dkgSessionDao()
-                    .getSessionById(dkgSessionId)
-                    ?.thresholdPublicKey
+                    .getCeremonyThresholdPublicKey(dkgSessionId)
                     ?.let { runCatching { SharedKeyDerivation.marmotGroupId(it) }.getOrNull() }
                     ?: return@map null
 
@@ -225,6 +249,9 @@ class DatabaseDkgRepository(
                 database = database,
                 localChatRoom = localChatRoom,
                 sessionId = sessionId,
+                // Whose approval it is. Nobody open approves nothing: the manager
+                // reads the row for this profile, and there is no row for null.
+                userPublicKey = userPublicKey ?: return,
                 step = step,
                 nostrPrivateKey = nostrPrivateKey
             )

@@ -310,9 +310,9 @@ class SubgroupDaoJvmTest {
         // is no way back at all.
         assertEquals(
             listOf("s1"),
-            db.dkgSessionDao().getByParentChatRoomId(parentRoom).map { it.id }
+            db.dkgSessionDao().getByParentChatRoomId(parentRoom, user).map { it.id }
         )
-        assertNull(db.dkgSessionDao().getSessionById("s2")?.parentChatRoomId)
+        assertNull(db.dkgSessionDao().getSessionById("s2", user)?.parentChatRoomId)
     }
 
     private suspend fun seedRooms() {

@@ -7,18 +7,30 @@ import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip01Core.signers.EventTemplate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.model.FrostSignerMessage
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.database.model.intermdiate.LocalFrostSigningSession
+import press.mantra.compose.identity.Identity
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.FrostSigningRepository
 
+/**
+ * @param activeIdentity whose shares [canSign] answers about. A device holds as many
+ *   profiles as the user signed in, and a group one of them holds a share of is a
+ *   group the next is only reading; the question is therefore per-profile and the
+ *   answer is the repository's to scope, not the call site's -- a screen asking "can
+ *   this group sign" means itself, and cannot be made to mean anyone else. Defaults
+ *   to nobody, which can sign nothing, and is what a test with no identity gets.
+ */
 class DatabaseFrostSigningRepository(
     private val database: MantraDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val activeIdentity: StateFlow<Identity?> = MutableStateFlow(null),
 ): FrostSigningRepository {
     private val logger = Logger.withTag(TAG)
 
@@ -40,8 +52,18 @@ class DatabaseFrostSigningRepository(
     override suspend fun getSessionById(sessionId: String): FrostSigningSession? =
         database.frostSigningSessionDao().getSessionById(sessionId)
 
-    override suspend fun canSign(chatRoomId: String): Boolean =
-        FrostSigningManager.canSign(database, chatRoomId)
+    /**
+     * Whether the active profile can sign for this room.
+     *
+     * Nobody active signs nothing. A read-only profile reaches here too and is
+     * refused on the share rather than on the private key -- it holds no ceremony,
+     * so there is nothing to find.
+     */
+    override suspend fun canSign(chatRoomId: String): Boolean {
+        val userPublicKey = activeIdentity.value?.nostrPublicKey ?: return false
+
+        return FrostSigningManager.canSign(database, chatRoomId, userPublicKey)
+    }
 
     override suspend fun proposeSigning(
         localChatRoom: LocalChatRoom,

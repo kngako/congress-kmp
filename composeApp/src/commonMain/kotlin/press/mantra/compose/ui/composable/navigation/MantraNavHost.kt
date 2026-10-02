@@ -185,7 +185,9 @@ fun MantraNavHost(
     }
 
     // Before the repositories: the nostr repository stamps every fetch request it queues
-    // with the active identity, and takes the flow at construction.
+    // with the active identity, the chat and signing repositories answer "can this group
+    // sign" about it, the dkg repository reads the rituals belonging to it, and all four
+    // take the flow at construction.
     val sovereignWalletViewModel: SovereignWalletViewModel = viewModel(
         factory = SovereignWalletViewModel.factory(
             phoenixGlobal = phoenixGlobal
@@ -203,21 +205,24 @@ fun MantraNavHost(
     val databaseChatRepository = remember {
         DatabaseChatRepository(
             database = auxDatabaseManager.auxDatabase,
-            applicationIOScope
+            applicationIOScope,
+            activeIdentity = sovereignWalletViewModel.activeIdentity,
         )
     }
 
     val databaseDkgRepository = remember {
         DatabaseDkgRepository(
             database = auxDatabaseManager.auxDatabase,
-            applicationIOScope
+            applicationIOScope,
+            activeIdentity = sovereignWalletViewModel.activeIdentity,
         )
     }
 
     val databaseFrostSigningRepository = remember {
         DatabaseFrostSigningRepository(
             database = auxDatabaseManager.auxDatabase,
-            applicationIOScope
+            applicationIOScope,
+            activeIdentity = sovereignWalletViewModel.activeIdentity,
         )
     }
 

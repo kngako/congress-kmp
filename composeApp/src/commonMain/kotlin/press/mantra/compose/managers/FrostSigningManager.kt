@@ -160,9 +160,11 @@ object FrostSigningManager {
      * Everybody else leaves it null and is resolved from the room, which is the
      * only form that cannot name a ceremony the room has nothing to do with.
      *
-     * Even then it is taken only if this device actually holds a share of it, so
-     * naming one cannot talk the session into signing with material it has not
-     * got; anything else falls back as though none was given.
+     * Even then it is taken only if [userPublicKey] actually holds a share of it,
+     * so naming one cannot talk the session into signing with material it has not
+     * got -- nor with the material of the other profile on this device, which is
+     * the same rule read across personas rather than across devices. Anything
+     * else falls back as though none was given.
      */
     suspend fun proposeSigning(
         database: MantraDatabase,
@@ -244,8 +246,12 @@ object FrostSigningManager {
         dependents: (lead: Event) -> List<EventTemplate<*>>,
         key: DkgSession? = null
     ): FrostSigningSession {
-        val ceremony = key?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
-            ?: completedKey(database, localChatRoom.chatRoom.id)
+        val ceremony = key?.takeIf {
+            it.stage == DkgRitualStage.COMPLETE &&
+                it.secretShare != null &&
+                it.userPublicKey == userPublicKey
+        }
+            ?: completedKey(database, localChatRoom.chatRoom.id, userPublicKey)
             ?: throw IllegalStateException("This group has no shared key to sign with")
 
         val signerId = signerIdOf(database, ceremony, userPublicKey)
@@ -394,9 +400,13 @@ object FrostSigningManager {
             return null
         }
 
-        val key = database.dkgSessionDao().getSessionById(dkgSessionId)
+        // Scoped to the profile being asked. The proposal names a ceremony, which is
+        // a row per profile that took part; a device holding the other profile's
+        // would otherwise answer here, and `signerIdOf` below would be looking up
+        // this profile's index in a ceremony whose share belongs to the other.
+        val key = database.dkgSessionDao().getSessionById(dkgSessionId, userPublicKey)
         if (key == null || key.stage != DkgRitualStage.COMPLETE) {
-            logger.w("Signing proposal $sessionId names key $dkgSessionId, which this device does not hold; dropping")
+            logger.w("Signing proposal $sessionId names key $dkgSessionId, which this profile does not hold; dropping")
             return null
         }
 
@@ -668,7 +678,8 @@ object FrostSigningManager {
         var session = database.frostSigningSessionDao().getSessionById(sessionId) ?: return
         if (session.stage == FrostSigningStage.COMPLETE || session.stage == FrostSigningStage.FAILED) return
 
-        val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return
+        val key = database.dkgSessionDao()
+            .getSessionById(session.dkgSessionId, session.userPublicKey) ?: return
         val secretShare = key.secretShare?.let { PrivateKey(ByteVector32(it)) } ?: return
         val thresholdPublicKey = key.thresholdPublicKey ?: return
 
@@ -1163,7 +1174,8 @@ object FrostSigningManager {
         session: FrostSigningSession,
         items: Int
     ): List<Pair<Int, List<IndividualNonce>>>? {
-        val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return null
+        val key = database.dkgSessionDao()
+            .getSessionById(session.dkgSessionId, session.userPublicKey) ?: return null
         val idByMember = signerIds(database, key)
 
         val offered = database.frostSigningSessionDao()
@@ -1201,7 +1213,8 @@ object FrostSigningManager {
         signerIds: List<Int>,
         items: Int
     ): List<List<ByteArray>>? {
-        val key = database.dkgSessionDao().getSessionById(session.dkgSessionId) ?: return null
+        val key = database.dkgSessionDao()
+            .getSessionById(session.dkgSessionId, session.userPublicKey) ?: return null
         val memberById = signerIds(database, key).entries.associate { (member, id) -> id to member }
 
         val payloadByMember = database.frostSigningSessionDao()
@@ -1279,7 +1292,7 @@ object FrostSigningManager {
         key: DkgSession
     ): Map<HexKey, Int> {
         val hostKeys = database.dkgSessionDao()
-            .getMessagesByKind(key.id, DkgRitualEvents.HOST_KEY)
+            .getMessagesByKind(key.id, key.userPublicKey, DkgRitualEvents.HOST_KEY)
             .associate { it.participantPublicKey to it.payload.lowercase() }
 
         val order = hostKeys.values.sorted()
@@ -1337,17 +1350,55 @@ object FrostSigningManager {
      * through here at all, because it names the ceremony outright: the room it
      * runs in is the NIP-17 room the ceremony was held in, which signs nothing
      * else and has no key state of its own.
+     *
+     * ### Whose key
+     *
+     * [userPublicKey] is the profile asking, and every one of the three answers is
+     * scoped to it. A device holds several profiles, each with its own ceremonies
+     * and its own groups, and every one of those rows is in this one table --
+     * `ChatRoom` is keyed by the group id alone, so even the rooms are shared.
+     * Nothing in a room, a key state or a threshold key says which profile is
+     * asking; only the ceremony row does, in `DkgSession.userPublicKey`.
+     *
+     * Unscoped, each answer hands profile B a ceremony belonging to profile A, and
+     * what comes back is a session whose `secretShare` is A's. B is not a
+     * participant of it, so [signerIdOf] throws and the user meets a button that
+     * fails having been offered -- which is the outcome this is read to avoid. It
+     * is no escalation across users: both secrets are already one person's, on one
+     * disk. It is the separation between personas, which is the whole of what a
+     * profile is.
+     *
+     * The key-state lookup is filtered rather than scoped, because it cannot be
+     * scoped: `DkgSession`'s primary key is the ceremony id the coordinator
+     * minted, which is the same string on every participant's device, so there is
+     * one row per ceremony per database and no second one to find. A state naming
+     * a ceremony that belongs to another profile therefore resolves to nothing
+     * here, which is the honest answer -- this profile has no share of it.
+     *
+     * That same single row is why two profiles *both* in one group is not merely
+     * scoped here but refused: `ChillDkgRitualManager.acceptProposal` returns the
+     * row the first of them wrote rather than writing a second, so the second
+     * profile holds no ceremony of its own to find and cannot sign, where before
+     * it would have signed with the first's share. Keying the row per profile is
+     * the fix for that, and it is a migration rather than a predicate.
      */
-    suspend fun completedKey(database: MantraDatabase, chatRoomId: String): DkgSession? {
+    suspend fun completedKey(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): DkgSession? {
         GroupKeyStateManager.keyStateFor(database, chatRoomId)?.let { state ->
-            database.dkgSessionDao().getSessionById(state.dkgSessionId)?.takeIf { key ->
-                key.stage == DkgRitualStage.COMPLETE &&
-                    key.secretShare != null &&
-                    key.thresholdPublicKey == state.thresholdPublicKey
-            }?.let { return it }
+            database.dkgSessionDao()
+                .getSessionById(state.dkgSessionId, userPublicKey)
+                ?.takeIf { key ->
+                    key.stage == DkgRitualStage.COMPLETE &&
+                        key.secretShare != null &&
+                        key.thresholdPublicKey == state.thresholdPublicKey
+                }
+                ?.let { return it }
         }
 
-        database.dkgSessionDao().getKeyHoldingSessions().firstOrNull { session ->
+        database.dkgSessionDao().getKeyHoldingSessions(userPublicKey).firstOrNull { session ->
             session.stage == DkgRitualStage.COMPLETE &&
                 session.thresholdPublicKey?.let {
                     SharedKeyDerivation.marmotGroupId(it) == chatRoomId
@@ -1355,13 +1406,22 @@ object FrostSigningManager {
         }?.let { return it }
 
         return database.dkgSessionDao()
-            .getLatestOwnSessionForChatRoom(chatRoomId)
+            .getLatestOwnSessionForChatRoom(chatRoomId, userPublicKey)
             ?.takeIf { it.stage == DkgRitualStage.COMPLETE && it.secretShare != null }
     }
 
-    /** Whether this group can sign at all, read by the UI so it offers nothing that would fail. */
-    suspend fun canSign(database: MantraDatabase, chatRoomId: String): Boolean =
-        completedKey(database, chatRoomId) != null
+    /**
+     * Whether [userPublicKey] can sign for this group at all, read by the UI so it
+     * offers nothing that would fail.
+     *
+     * The profile is part of the question, not context around it. A group one
+     * profile holds a share of is a group the next profile is merely looking at.
+     */
+    suspend fun canSign(
+        database: MantraDatabase,
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): Boolean = completedKey(database, chatRoomId, userPublicKey) != null
 
     /**
      * The path off [key] that a signature made in this room is derived at, or

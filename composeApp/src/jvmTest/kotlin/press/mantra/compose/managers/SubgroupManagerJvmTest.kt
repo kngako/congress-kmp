@@ -1002,6 +1002,7 @@ class SubgroupManagerJvmTest {
                 db.dkgSessionDao().upsert(
                     DkgParticipantMessage(
                         sessionId = ceremonyId,
+                        userPublicKey = user,
                         participantPublicKey = member,
                         kind = DkgRitualEvents.HOST_KEY,
                         payload = "0${index + 1}".repeat(33)

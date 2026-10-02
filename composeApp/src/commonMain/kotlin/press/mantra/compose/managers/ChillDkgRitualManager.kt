@@ -207,7 +207,7 @@ object ChillDkgRitualManager {
         // requested threshold moot -- it settled that question when it opened.
         val running = if (parentChatRoomId == null) {
             database.dkgSessionDao()
-                .getLatestSessionFor(localChatRoom.chatRoom.id, null)
+                .getLatestSessionFor(localChatRoom.chatRoom.id, null, userPublicKey)
                 ?.takeIf { it.stage != DkgRitualStage.FAILED }
         } else {
             // Same parent, same admins -- and still running. A *completed* one is
@@ -219,7 +219,8 @@ object ChillDkgRitualManager {
             database.dkgSessionDao().getLatestSubgroupSessionFor(
                 chatRoomId = localChatRoom.chatRoom.id,
                 parentChatRoomId = parentChatRoomId,
-                participantPublicKeys = DkgSession.formatParticipants(members).orEmpty()
+                participantPublicKeys = DkgSession.formatParticipants(members).orEmpty(),
+                userPublicKey = userPublicKey
             )?.takeIf {
                 it.stage != DkgRitualStage.FAILED && it.stage != DkgRitualStage.COMPLETE
             }
@@ -362,7 +363,7 @@ object ChillDkgRitualManager {
             // top of that -- so a round-1 message routinely lands before the
             // proposal that opens the ritual. The payload is already stored, and
             // [acceptProposal] replays it once the proposal turns up.
-            database.dkgSessionDao().getSessionById(sessionId)
+            database.dkgSessionDao().getSessionById(sessionId, userPublicKey)
         }
 
         if (session == null) {
@@ -381,12 +382,13 @@ object ChillDkgRitualManager {
             database = database,
             localChatRoom = localChatRoom,
             sessionId = session.id,
+            userPublicKey = session.userPublicKey,
             nostrPrivateKey = nostrPrivateKey
         )
     }
 
     /**
-     * Records a proposal and answers it with this device's host key. Returns the
+     * Records a proposal and answers it with this profile's host key. Returns the
      * session, whether it was just created or already known.
      */
     private suspend fun acceptProposal(
@@ -397,7 +399,10 @@ object ChillDkgRitualManager {
         userPublicKey: HexKey,
         nostrPrivateKey: ByteArray
     ): DkgSession? {
-        database.dkgSessionDao().getSessionById(sessionId)?.let { return it }
+        // This profile's row, not the device's. Two profiles in one group are two
+        // participants of the ceremony, and the second of them finding the first's
+        // row here is what made it run behind the first's host key and share.
+        database.dkgSessionDao().getSessionById(sessionId, userPublicKey)?.let { return it }
 
         // The participant set is the proposal's own p-tags plus its sender, NOT
         // this device's view of the room. `n` is hashed into the session identity,
@@ -577,12 +582,17 @@ object ChillDkgRitualManager {
                 // and a replay feeds the whole backlog through here again; the
                 // upsert below absorbs that, but a chat row has no key to absorb it
                 // with.
-                val known = database.dkgSessionDao()
-                    .getMessage(session.id, innerEvent.kind, innerEvent.pubKey) != null
+                val known = database.dkgSessionDao().getMessage(
+                    sessionId = session.id,
+                    userPublicKey = session.userPublicKey,
+                    kind = innerEvent.kind,
+                    participantPublicKey = innerEvent.pubKey
+                ) != null
 
                 database.dkgSessionDao().upsert(
                     DkgParticipantMessage(
                         sessionId = session.id,
+                        userPublicKey = session.userPublicKey,
                         participantPublicKey = innerEvent.pubKey,
                         kind = innerEvent.kind,
                         payload = innerEvent.content
@@ -669,9 +679,10 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
         sessionId: String,
+        userPublicKey: HexKey,
         nostrPrivateKey: ByteArray
     ) {
-        var session = database.dkgSessionDao().getSessionById(sessionId) ?: return
+        var session = database.dkgSessionDao().getSessionById(sessionId, userPublicKey) ?: return
         if (session.stage == DkgRitualStage.COMPLETE || session.stage == DkgRitualStage.FAILED) return
 
         val hostSeckey = deriveHostSecretKey(nostrPrivateKey)
@@ -845,7 +856,8 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         session: DkgSession
     ): List<PublicKey>? {
-        val hostKeys = database.dkgSessionDao().getMessagesByKind(session.id, DkgRitualEvents.HOST_KEY)
+        val hostKeys = database.dkgSessionDao()
+            .getMessagesByKind(session.id, session.userPublicKey, DkgRitualEvents.HOST_KEY)
 
         if (hostKeys.size < session.participantCount) {
             logger.d("Ritual ${session.id}: ${hostKeys.size}/${session.participantCount} host keys")
@@ -922,10 +934,11 @@ object ChillDkgRitualManager {
         kind: Kind
     ): List<ByteArray>? {
         val hostKeyByParticipant = database.dkgSessionDao()
-            .getMessagesByKind(session.id, DkgRitualEvents.HOST_KEY)
+            .getMessagesByKind(session.id, session.userPublicKey, DkgRitualEvents.HOST_KEY)
             .associate { it.participantPublicKey to it.payload }
 
-        val messages = database.dkgSessionDao().getMessagesByKind(session.id, kind)
+        val messages = database.dkgSessionDao()
+            .getMessagesByKind(session.id, session.userPublicKey, kind)
         if (messages.size < session.participantCount) {
             logger.d("Ritual ${session.id}: ${messages.size}/${session.participantCount} of kind $kind")
             return null
@@ -949,13 +962,20 @@ object ChillDkgRitualManager {
             .map { (_, payload) -> payload.hexToByteArray() }
     }
 
-    /** This device's own message of [kind], if it has published one. */
+    /**
+     * This profile's own message of [kind], if it has published one.
+     *
+     * The profile is both the row's owner and the sender here, which is why the
+     * same value appears twice: this is the one message in the ritual that this
+     * profile both received and wrote.
+     */
     private suspend fun ownMessage(
         database: MantraDatabase,
         session: DkgSession,
         kind: Kind
     ): DkgParticipantMessage? = database.dkgSessionDao().getMessage(
         sessionId = session.id,
+        userPublicKey = session.userPublicKey,
         kind = kind,
         participantPublicKey = session.userPublicKey
     )
@@ -972,7 +992,8 @@ object ChillDkgRitualManager {
         session: DkgSession,
         transform: (DkgSession) -> DkgSession
     ): DkgSession {
-        val current = database.dkgSessionDao().getSessionById(session.id) ?: session
+        val current = database.dkgSessionDao()
+            .getSessionById(session.id, session.userPublicKey) ?: session
         val updated = transform(current)
 
         if (updated == current) return current
@@ -1010,7 +1031,8 @@ object ChillDkgRitualManager {
         // Read before writing so the notice goes out once. A ritual can be failed
         // from two directions -- a FAILURE message from a member, and a fault raised
         // locally -- and the group does not need to be told twice.
-        val current = database.dkgSessionDao().getSessionById(session.id) ?: session
+        val current = database.dkgSessionDao()
+            .getSessionById(session.id, session.userPublicKey) ?: session
         if (current.stage == DkgRitualStage.FAILED) return
 
         update(database, current) {
@@ -1075,7 +1097,7 @@ object ChillDkgRitualManager {
             // is computed over every member's host key, so asking earlier would be
             // asking about a ceremony whose shape is not yet known.
             val hostKeys = database.dkgSessionDao()
-                .countMessagesByKind(session.id, DkgRitualEvents.HOST_KEY)
+                .countMessagesByKind(session.id, session.userPublicKey, DkgRitualEvents.HOST_KEY)
 
             return if (hostKeys >= session.participantCount) DkgApprovalStep.ROUND_1 else null
         }
@@ -1100,10 +1122,13 @@ object ChillDkgRitualManager {
         database: MantraDatabase,
         localChatRoom: LocalChatRoom,
         sessionId: String,
+        userPublicKey: HexKey,
         step: DkgApprovalStep,
         nostrPrivateKey: ByteArray
     ) {
-        val session = database.dkgSessionDao().getSessionById(sessionId) ?: return
+        // Whose approval this is. A ritual id alone names no row, and approving on
+        // behalf of the other profile on the device would publish its host key.
+        val session = database.dkgSessionDao().getSessionById(sessionId, userPublicKey) ?: return
 
         if (pendingApproval(database, session) != step) {
             logger.i("Ritual $sessionId is not waiting on $step; ignoring the approval")
@@ -1125,6 +1150,7 @@ object ChillDkgRitualManager {
             database = database,
             localChatRoom = localChatRoom,
             sessionId = sessionId,
+            userPublicKey = userPublicKey,
             nostrPrivateKey = nostrPrivateKey
         )
     }
@@ -1235,7 +1261,7 @@ object ChillDkgRitualManager {
 
     /** The stored session, for reading a column back before overwriting it. */
     private suspend fun current(database: MantraDatabase, session: DkgSession): DkgSession =
-        database.dkgSessionDao().getSessionById(session.id) ?: session
+        database.dkgSessionDao().getSessionById(session.id, session.userPublicKey) ?: session
 
     /**
      * Puts a ritual milestone in the group's chat.
@@ -1311,6 +1337,7 @@ object ChillDkgRitualManager {
         database.dkgSessionDao().upsert(
             DkgParticipantMessage(
                 sessionId = session.id,
+                userPublicKey = session.userPublicKey,
                 participantPublicKey = session.userPublicKey,
                 kind = kind,
                 payload = content

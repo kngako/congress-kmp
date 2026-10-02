@@ -84,11 +84,12 @@ class DkgSessionDaoJvmTest {
         thresholdPublicKey: String? = null,
         secretShare: String? = null,
         stage: DkgRitualStage = DkgRitualStage.COLLECTING_HOST_KEYS,
+        userPublicKey: String = user,
     ): DkgSession = DkgSession(
         id = id,
         chatRoomId = chatRoomId,
         coordinatorPublicKey = user,
-        userPublicKey = user,
+        userPublicKey = userPublicKey,
         threshold = 2,
         participantCount = 3,
         stage = stage,
@@ -106,9 +107,11 @@ class DkgSessionDaoJvmTest {
         kind: Int = hostKeyKind,
         payload: String = "aa".repeat(32),
         createdAt: Instant = Instant.fromEpochSeconds(1_000),
+        userPublicKey: String = user,
     ) = db.dkgSessionDao().upsert(
         DkgParticipantMessage(
             sessionId = sessionId,
+            userPublicKey = userPublicKey,
             participantPublicKey = participant,
             kind = kind,
             payload = payload,
@@ -127,7 +130,7 @@ class DkgSessionDaoJvmTest {
         session("abandoned", createdAt = Instant.fromEpochSeconds(1_000))
         session("live", createdAt = Instant.fromEpochSeconds(2_000))
 
-        assertEquals("live", db.dkgSessionDao().getLatestSessionForChatRoom(roomOne)?.id)
+        assertEquals("live", db.dkgSessionDao().getLatestSessionForChatRoom(roomOne, user)?.id)
     }
 
     @Test
@@ -136,8 +139,8 @@ class DkgSessionDaoJvmTest {
         session("theirs", chatRoomId = roomTwo, createdAt = Instant.fromEpochSeconds(2_000))
         session("mine", chatRoomId = roomOne, createdAt = Instant.fromEpochSeconds(1_000))
 
-        assertEquals("mine", db.dkgSessionDao().getLatestSessionForChatRoom(roomOne)?.id)
-        assertNull(db.dkgSessionDao().getLatestSessionForChatRoom("33".repeat(32)))
+        assertEquals("mine", db.dkgSessionDao().getLatestSessionForChatRoom(roomOne, user)?.id)
+        assertNull(db.dkgSessionDao().getLatestSessionForChatRoom("33".repeat(32), user))
     }
 
     /**
@@ -153,7 +156,7 @@ class DkgSessionDaoJvmTest {
         session("shareOnly", thresholdPublicKey = null, secretShare = "ee".repeat(32))
         session("neither")
 
-        val holding = db.dkgSessionDao().getKeyHoldingSessions().map { it.id }
+        val holding = db.dkgSessionDao().getKeyHoldingSessions(user).map { it.id }
 
         assertEquals(listOf("complete"), holding)
     }
@@ -165,7 +168,55 @@ class DkgSessionDaoJvmTest {
         session("older", createdAt = Instant.fromEpochSeconds(1_000), thresholdPublicKey = "dd".repeat(32), secretShare = "ee".repeat(32))
         session("newer", createdAt = Instant.fromEpochSeconds(2_000), thresholdPublicKey = "dd".repeat(32), secretShare = "ee".repeat(32))
 
-        assertEquals(listOf("newer", "older"), db.dkgSessionDao().getKeyHoldingSessions().map { it.id })
+        assertEquals(listOf("newer", "older"), db.dkgSessionDao().getKeyHoldingSessions(user).map { it.id })
+    }
+
+    /**
+     * The isolation between two profiles on one device. `ChatRoom` is keyed by the group id
+     * alone, so when both profiles are in a group their ceremonies of it sit in one table with
+     * nothing but this column to tell them apart -- and a share is only usable by the profile
+     * whose ceremony derived it.
+     */
+    @Test
+    fun `a profile holds only its own ceremonies key`() = runBlocking {
+        seedRooms()
+        session(
+            "mine",
+            thresholdPublicKey = "dd".repeat(32),
+            secretShare = "ee".repeat(32),
+            userPublicKey = user,
+        )
+        session(
+            "the other profiles",
+            thresholdPublicKey = "dd".repeat(32),
+            secretShare = "ff".repeat(32),
+            userPublicKey = alice,
+        )
+
+        assertEquals(listOf("mine"), db.dkgSessionDao().getKeyHoldingSessions(user).map { it.id })
+        assertEquals(
+            listOf("the other profiles"),
+            db.dkgSessionDao().getKeyHoldingSessions(alice).map { it.id },
+        )
+        assertEquals(emptyList(), db.dkgSessionDao().getKeyHoldingSessions(bob).map { it.id })
+    }
+
+    /** The same scoping on the room-shaped read `completedKey` falls back to. */
+    @Test
+    fun `a rooms own ceremony is the asking profiles own`() = runBlocking {
+        seedRooms()
+        session("mine", stage = DkgRitualStage.COMPLETE, userPublicKey = user)
+        session("the other profiles", stage = DkgRitualStage.COMPLETE, userPublicKey = alice)
+
+        assertEquals(
+            "mine",
+            db.dkgSessionDao().getLatestOwnSessionForChatRoom(roomOne, user)?.id,
+        )
+        assertEquals(
+            "the other profiles",
+            db.dkgSessionDao().getLatestOwnSessionForChatRoom(roomOne, alice)?.id,
+        )
+        assertNull(db.dkgSessionDao().getLatestOwnSessionForChatRoom(roomOne, bob))
     }
 
     /**
@@ -182,10 +233,10 @@ class DkgSessionDaoJvmTest {
 
         message("s1", alice, payload = "bb".repeat(32))
 
-        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", hostKeyKind))
+        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", user, hostKeyKind))
         assertEquals(
             "bb".repeat(32),
-            db.dkgSessionDao().getMessage("s1", hostKeyKind, alice)?.payload,
+            db.dkgSessionDao().getMessage("s1", user, hostKeyKind, alice)?.payload,
             "the resent payload should have replaced the earlier one",
         )
     }
@@ -198,11 +249,11 @@ class DkgSessionDaoJvmTest {
         message("s1", alice, kind = hostKeyKind, payload = "aa".repeat(32))
         message("s1", alice, kind = round1Kind, payload = "cc".repeat(32))
 
-        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", hostKeyKind))
-        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", round1Kind))
+        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", user, hostKeyKind))
+        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", user, round1Kind))
         assertEquals(
             "aa".repeat(32),
-            db.dkgSessionDao().getMessage("s1", hostKeyKind, alice)?.payload,
+            db.dkgSessionDao().getMessage("s1", user, hostKeyKind, alice)?.payload,
             "the round-1 message overwrote the host key message",
         )
     }
@@ -221,7 +272,7 @@ class DkgSessionDaoJvmTest {
         message("s1", ordered[0], createdAt = Instant.fromEpochSeconds(2_000))
         message("s1", ordered[1], createdAt = Instant.fromEpochSeconds(3_000))
 
-        val found = db.dkgSessionDao().getMessagesByKind("s1", hostKeyKind).map { it.participantPublicKey }
+        val found = db.dkgSessionDao().getMessagesByKind("s1", user, hostKeyKind).map { it.participantPublicKey }
 
         assertEquals(ordered, found, "a round must assemble in canonical participant order")
     }
@@ -237,9 +288,9 @@ class DkgSessionDaoJvmTest {
         message("s1", alice, kind = round1Kind)
         message("s2", alice, kind = hostKeyKind)
 
-        assertEquals(2, db.dkgSessionDao().countMessagesByKind("s1", hostKeyKind))
-        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", round1Kind))
-        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s2", hostKeyKind))
-        assertNull(db.dkgSessionDao().getMessage("s2", round1Kind, alice))
+        assertEquals(2, db.dkgSessionDao().countMessagesByKind("s1", user, hostKeyKind))
+        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s1", user, round1Kind))
+        assertEquals(1, db.dkgSessionDao().countMessagesByKind("s2", user, hostKeyKind))
+        assertNull(db.dkgSessionDao().getMessage("s2", user, round1Kind, alice))
     }
 }

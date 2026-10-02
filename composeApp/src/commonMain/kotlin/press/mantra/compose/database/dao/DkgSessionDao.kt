@@ -9,23 +9,70 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Every read here names a profile, and that is not defensive repetition.
+ *
+ * `DkgSession`'s key is (`id`, `userPublicKey`) -- see the note on its entity --
+ * so a query that gives only the ceremony id, or only the room, does not identify
+ * a row. It would return whichever profile's the database happened to order first,
+ * and what it would hand back is that profile's host key, randomness and share.
+ * There is deliberately no unscoped overload to reach for.
+ */
 @Dao
 interface DkgSessionDao {
-    @Query("SELECT * FROM DkgSession WHERE id = :sessionId")
-    suspend fun getSessionById(sessionId: String): DkgSession?
+    @Query("SELECT * FROM DkgSession WHERE id = :sessionId AND userPublicKey = :userPublicKey")
+    suspend fun getSessionById(sessionId: String, userPublicKey: HexKey): DkgSession?
 
-    @Query("SELECT * FROM DkgSession WHERE id = :sessionId")
-    fun observeSessionById(sessionId: String): Flow<DkgSession?>
+    @Query("SELECT * FROM DkgSession WHERE id = :sessionId AND userPublicKey = :userPublicKey")
+    fun observeSessionById(sessionId: String, userPublicKey: HexKey): Flow<DkgSession?>
+
+    /**
+     * The key a ceremony produced, whichever profile is asking -- the one read here
+     * that names no profile, and says so in its name.
+     *
+     * The scoping rule above is about rows that carry secrets. This projects a
+     * single public column: the threshold key is the ceremony's published result and
+     * is the same value on every participant's row by construction, so there is
+     * nothing for a profile to disambiguate and nothing of anyone's to leak. What a
+     * caller gets is what every member of the group already has.
+     *
+     * It exists because the alternative was worse in both directions. Scoping it
+     * would make a screen resolve nothing while no profile is open, for a fact that
+     * does not depend on one; leaving `getSessionById` unscoped would hand back a
+     * whole row -- host key, randomness, share -- to answer a question about a
+     * public key.
+     *
+     * Any row of the ceremony answers, so it takes one. A ceremony that has not
+     * finished has the column null on every row and answers null, which the callers
+     * want: both of them run from before it finishes.
+     */
+    @Query(
+        "SELECT thresholdPublicKey FROM DkgSession WHERE id = :sessionId AND " +
+            "thresholdPublicKey IS NOT NULL LIMIT 1"
+    )
+    suspend fun getCeremonyThresholdPublicKey(sessionId: String): HexKey?
 
     /**
      * The ritual a room is currently running, newest first. A group may have
      * abandoned earlier attempts; the live one is the most recent.
      */
-    @Query("SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC LIMIT 1")
-    fun observeLatestSessionForChatRoom(chatRoomId: String): Flow<DkgSession?>
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND userPublicKey = :userPublicKey " +
+            "ORDER BY createdAt DESC LIMIT 1"
+    )
+    fun observeLatestSessionForChatRoom(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): Flow<DkgSession?>
 
-    @Query("SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC LIMIT 1")
-    suspend fun getLatestSessionForChatRoom(chatRoomId: String): DkgSession?
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND userPublicKey = :userPublicKey " +
+            "ORDER BY createdAt DESC LIMIT 1"
+    )
+    suspend fun getLatestSessionForChatRoom(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): DkgSession?
 
     /**
      * The room's newest ceremony **of its own**, newest first -- never one it is
@@ -45,12 +92,20 @@ interface DkgSessionDao {
      * abused in is a member *excluding* a ceremony from this answer, and a
      * ceremony they can exclude is one they proposed, whose key they would
      * simply not have proposed at all.
+     *
+     * Scoped to [userPublicKey] because a room's rows are not: `ChatRoom` is keyed
+     * by the group id alone, so two profiles on one device that are both in a group
+     * hold their ceremonies of it side by side in one table. Only the asking
+     * profile's own row carries a share it can sign with.
      */
     @Query(
         "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND parentChatRoomId IS NULL " +
-            "ORDER BY createdAt DESC LIMIT 1"
+            "AND userPublicKey = :userPublicKey ORDER BY createdAt DESC LIMIT 1"
     )
-    suspend fun getLatestOwnSessionForChatRoom(chatRoomId: String): DkgSession?
+    suspend fun getLatestOwnSessionForChatRoom(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): DkgSession?
 
     /**
      * The room's newest ceremony *for one purpose*: the group's own when
@@ -72,19 +127,29 @@ interface DkgSessionDao {
      */
     @Query(
         "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
+            "userPublicKey = :userPublicKey AND " +
             "(parentChatRoomId = :parentChatRoomId OR " +
             "(:parentChatRoomId IS NULL AND parentChatRoomId IS NULL)) " +
             "ORDER BY createdAt DESC LIMIT 1"
     )
-    suspend fun getLatestSessionFor(chatRoomId: String, parentChatRoomId: String?): DkgSession?
+    suspend fun getLatestSessionFor(
+        chatRoomId: String,
+        parentChatRoomId: String?,
+        userPublicKey: HexKey
+    ): DkgSession?
 
     @Query(
         "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
+            "userPublicKey = :userPublicKey AND " +
             "(parentChatRoomId = :parentChatRoomId OR " +
             "(:parentChatRoomId IS NULL AND parentChatRoomId IS NULL)) " +
             "ORDER BY createdAt DESC LIMIT 1"
     )
-    fun observeLatestSessionFor(chatRoomId: String, parentChatRoomId: String?): Flow<DkgSession?>
+    fun observeLatestSessionFor(
+        chatRoomId: String,
+        parentChatRoomId: String?,
+        userPublicKey: HexKey
+    ): Flow<DkgSession?>
 
     /**
      * The newest ceremony making a subgroup of [parentChatRoomId] over exactly
@@ -111,13 +176,15 @@ interface DkgSessionDao {
     @Query(
         "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND " +
             "parentChatRoomId = :parentChatRoomId AND " +
-            "participantPublicKeys = :participantPublicKeys " +
+            "participantPublicKeys = :participantPublicKeys AND " +
+            "userPublicKey = :userPublicKey " +
             "ORDER BY createdAt DESC LIMIT 1"
     )
     suspend fun getLatestSubgroupSessionFor(
         chatRoomId: String,
         parentChatRoomId: String,
-        participantPublicKeys: String
+        participantPublicKeys: String,
+        userPublicKey: HexKey
     ): DkgSession?
 
     /**
@@ -127,18 +194,34 @@ interface DkgSessionDao {
      * group, so the standing "this needs you" notice in the transcript cannot ask
      * about "the room's ceremony" -- it has to look at all of them and say which.
      */
-    @Query("SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId ORDER BY createdAt DESC")
-    fun observeSessionsForChatRoom(chatRoomId: String): Flow<List<DkgSession>>
+    @Query(
+        "SELECT * FROM DkgSession WHERE chatRoomId = :chatRoomId AND userPublicKey = :userPublicKey " +
+            "ORDER BY createdAt DESC"
+    )
+    fun observeSessionsForChatRoom(
+        chatRoomId: String,
+        userPublicKey: HexKey
+    ): Flow<List<DkgSession>>
 
     /**
-     * Every ceremony this device came out of holding a share, newest first.
+     * Every ceremony [userPublicKey] came out of holding a share, newest first.
      *
      * Signing happens in the admin room, whose id is derived from the key
      * rather than from the room the ceremony ran in, so the key is found by
      * matching that derivation rather than by a stored room id.
+     *
+     * One profile's, not the device's. A device holds as many of these as it has
+     * profiles, and a share is only usable by the profile whose ceremony produced
+     * it: the secret here reconstructs *that* participant's share, and the signer
+     * id a session would use is that participant's index. Handing one profile the
+     * other's ceremony answers "this group can sign" to somebody holding nothing
+     * to sign with, which the UI reads as permission to offer the action.
      */
-    @Query("SELECT * FROM DkgSession WHERE thresholdPublicKey IS NOT NULL AND secretShare IS NOT NULL ORDER BY createdAt DESC")
-    suspend fun getKeyHoldingSessions(): List<DkgSession>
+    @Query(
+        "SELECT * FROM DkgSession WHERE thresholdPublicKey IS NOT NULL AND secretShare IS NOT NULL " +
+            "AND userPublicKey = :userPublicKey ORDER BY createdAt DESC"
+    )
+    suspend fun getKeyHoldingSessions(userPublicKey: HexKey): List<DkgSession>
 
     /**
      * Ceremonies opened to make a subgroup of [parentChatRoomId], newest first.
@@ -153,8 +236,14 @@ interface DkgSessionDao {
      * of appearing in this list. It decides which screen to offer, not who may
      * do what.
      */
-    @Query("SELECT * FROM DkgSession WHERE parentChatRoomId = :parentChatRoomId ORDER BY createdAt DESC")
-    suspend fun getByParentChatRoomId(parentChatRoomId: String): List<DkgSession>
+    @Query(
+        "SELECT * FROM DkgSession WHERE parentChatRoomId = :parentChatRoomId AND " +
+            "userPublicKey = :userPublicKey ORDER BY createdAt DESC"
+    )
+    suspend fun getByParentChatRoomId(
+        parentChatRoomId: String,
+        userPublicKey: HexKey
+    ): List<DkgSession>
 
     @Upsert
     suspend fun upsert(dkgSession: DkgSession)
@@ -162,15 +251,58 @@ interface DkgSessionDao {
     @Upsert
     suspend fun upsert(dkgParticipantMessage: DkgParticipantMessage)
 
-    @Query("SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId AND kind = :kind ORDER BY participantPublicKey ASC")
-    suspend fun getMessagesByKind(sessionId: String, kind: Kind): List<DkgParticipantMessage>
+    /**
+     * The messages [userPublicKey] has received of one round, in participant order.
+     *
+     * Ordered by sender, which is what makes it usable: the ritual derives each
+     * participant's FROST id from the bytewise sort of the host keys, so a caller
+     * reading this back gets the same order every device did.
+     */
+    @Query(
+        "SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId AND " +
+            "userPublicKey = :userPublicKey AND kind = :kind ORDER BY participantPublicKey ASC"
+    )
+    suspend fun getMessagesByKind(
+        sessionId: String,
+        userPublicKey: HexKey,
+        kind: Kind
+    ): List<DkgParticipantMessage>
 
-    @Query("SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId ORDER BY createdAt ASC")
-    fun observeMessages(sessionId: String): Flow<List<DkgParticipantMessage>>
+    @Query(
+        "SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId AND " +
+            "userPublicKey = :userPublicKey ORDER BY createdAt ASC"
+    )
+    fun observeMessages(
+        sessionId: String,
+        userPublicKey: HexKey
+    ): Flow<List<DkgParticipantMessage>>
 
-    @Query("SELECT COUNT(*) FROM DkgParticipantMessage WHERE sessionId = :sessionId AND kind = :kind")
-    suspend fun countMessagesByKind(sessionId: String, kind: Kind): Int
+    /**
+     * How many of a round's messages [userPublicKey] holds -- which is how the
+     * ritual knows whether a step can run.
+     *
+     * The count is of one profile's rows on purpose. Counting the device's would
+     * reach the threshold while this profile had heard from nobody.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM DkgParticipantMessage WHERE sessionId = :sessionId AND " +
+            "userPublicKey = :userPublicKey AND kind = :kind"
+    )
+    suspend fun countMessagesByKind(
+        sessionId: String,
+        userPublicKey: HexKey,
+        kind: Kind
+    ): Int
 
-    @Query("SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId AND kind = :kind AND participantPublicKey = :participantPublicKey")
-    suspend fun getMessage(sessionId: String, kind: Kind, participantPublicKey: HexKey): DkgParticipantMessage?
+    @Query(
+        "SELECT * FROM DkgParticipantMessage WHERE sessionId = :sessionId AND " +
+            "userPublicKey = :userPublicKey AND kind = :kind AND " +
+            "participantPublicKey = :participantPublicKey"
+    )
+    suspend fun getMessage(
+        sessionId: String,
+        userPublicKey: HexKey,
+        kind: Kind,
+        participantPublicKey: HexKey
+    ): DkgParticipantMessage?
 }

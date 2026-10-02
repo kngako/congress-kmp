@@ -3,7 +3,6 @@ package press.mantra.compose.database.model
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
-import androidx.room3.PrimaryKey
 import press.mantra.compose.database.model.traits.LocalStoreEntity
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.types.DkgApprovalStep
@@ -31,6 +30,14 @@ import kotlin.time.Instant
  * assumption `MlsGroupState` already relies on.
  */
 @Entity(
+    // One ritual, one row *per profile*. [id] alone cannot be the key: it is minted
+    // by the coordinator and carried on the wire, so it is the same string on every
+    // device and for every profile that takes part. Two profiles on one device are
+    // two participants of the ceremony, each with its own host key, its own
+    // randomness and its own share, and keying by the ceremony alone let the second
+    // of them adopt the first's row -- running the ritual behind one host key where
+    // the protocol has two.
+    primaryKeys = ["id", "userPublicKey"],
     foreignKeys = [
         ForeignKey(
             entity = ChatRoom::class,
@@ -44,8 +51,13 @@ import kotlin.time.Instant
     ],
 )
 data class DkgSession(
-    /** Minted by the coordinator, carried on every message as `dkg_session`. */
-    @PrimaryKey
+    /**
+     * Minted by the coordinator, carried on every message as `dkg_session`.
+     *
+     * The ceremony's identity, not the row's -- see the note on the key above, and
+     * [userPublicKey] for the other half of it. Every tag that names a ceremony on
+     * the wire carries this and nothing else, so it stays the value to put there.
+     */
     val id: String,
 
     val chatRoomId: String,
@@ -53,7 +65,14 @@ data class DkgSession(
     /** The member running the ritual — by construction, the room's creator. */
     val coordinatorPublicKey: HexKey,
 
-    /** Whose device this row belongs to, for multi-account support. */
+    /**
+     * Whose profile this row belongs to: the other half of the key.
+     *
+     * Not merely which account is open. It says whose host key [hostPublicKey] is,
+     * whose randomness [round1Random] and [round2AuxRandom] are, and whose share
+     * [secretShare] is -- so a read of any of those without this column is a read
+     * of somebody else's secrets. Every query here carries it for that reason.
+     */
     val userPublicKey: HexKey,
 
     /** The `t` of t-of-n, taken from the quorum chosen when the group was made. */

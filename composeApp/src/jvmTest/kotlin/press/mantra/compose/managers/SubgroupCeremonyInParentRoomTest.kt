@@ -252,7 +252,7 @@ class SubgroupCeremonyInParentRoomTest {
         )
 
         assertNull(
-            receiver.dkgSessionDao().getSessionById(session.id),
+            receiver.dkgSessionDao().getSessionById(session.id, malloryPublicKey),
             "a member outside the p-tags opens no session",
         )
         assertTrue(
@@ -287,7 +287,7 @@ class SubgroupCeremonyInParentRoomTest {
         )
 
         val joined = assertNotNull(
-            receiver.dkgSessionDao().getLatestSessionForChatRoom(parentRoomId),
+            receiver.dkgSessionDao().getLatestSessionForChatRoom(parentRoomId, alice),
             "a picked admin records the ceremony",
         )
         assertEquals(3, joined.participantCount)
@@ -306,6 +306,7 @@ class SubgroupCeremonyInParentRoomTest {
             database = receiver,
             localChatRoom = theirRoom,
             sessionId = joined.id,
+            userPublicKey = alice,
             step = DkgApprovalStep.HOST_KEY,
             nostrPrivateKey = aliceKeys.privKey!!
         )
@@ -364,7 +365,7 @@ class SubgroupCeremonyInParentRoomTest {
         )
 
         assertNotNull(
-            receiver.dkgSessionDao().getMessage(session.id, DkgRitualEvents.HOST_KEY, bob),
+            receiver.dkgSessionDao().getMessage(session.id, alice, DkgRitualEvents.HOST_KEY, bob),
             "the message that lost the race is not lost",
         )
     }
@@ -414,7 +415,7 @@ class SubgroupCeremonyInParentRoomTest {
         )
 
         assertNull(
-            FrostSigningManager.completedKey(parent, parentRoomId),
+            FrostSigningManager.completedKey(parent, parentRoomId, user),
             "a ceremony run to make a subgroup is never the room's own key",
         )
 
@@ -426,7 +427,8 @@ class SubgroupCeremonyInParentRoomTest {
                 parent,
                 SharedKeyDerivation.marmotGroupId(
                     childMaterial.thresholdPublicKey.value.toHex()
-                )
+                ),
+                user
             )?.id,
         )
     }
@@ -494,6 +496,7 @@ class SubgroupCeremonyInParentRoomTest {
                 parent.dkgSessionDao().upsert(
                     DkgParticipantMessage(
                         sessionId = "parent-ceremony",
+                        userPublicKey = user,
                         participantPublicKey = member,
                         kind = DkgRitualEvents.HOST_KEY,
                         payload = "0${index + 1}".repeat(33)

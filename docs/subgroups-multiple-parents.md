@@ -736,7 +736,8 @@ the reason is the interesting part: P1 signed before P2 was a possibility. See
 
 ## Found while reading
 
-Six things, none caused by this, all worth knowing.
+Seven things, none caused by this, all worth knowing. Two have since been fixed,
+and say so.
 
 **A built, unreachable path would put any group-signed event on public relays.**
 `BroadcastGroupSignedEventViewModel`, not restricted by kind, reachable by wiring in
@@ -745,17 +746,33 @@ one button. Argued above as the
 listed again here because it is a fact about the tree rather than about this design,
 and the next person to wire a broadcast button will not be reading this note.
 
-**`ChatRoom` is keyed by the group id alone, not by (group, profile).** So two
-profiles on one device cannot both hold one group — the second one's Welcome is
-refused by `679d5249` — while rows belonging to different profiles sit in one database
-with nothing scoping a read by id across them.
+**`ChatRoom` is keyed by the group id alone, not by (group, profile).** Rows belonging
+to different profiles sit in one database with nothing scoping a read by id across
+them. `679d5249` refuses the second profile's *Welcome*, so two of them cannot both
+hold one **Marmot** group — but a NIP-17 room has no Welcome and no equivalent check,
+and a group's own key ceremony is held in exactly such a room. So two profiles both
+taking part in one ceremony was reachable, and the room is still keyed by the group id.
 
-**`FrostSigningManager.canSign` is device-wide, not profile-wide.**
-`getKeyHoldingSessions()` carries no identity predicate although `DkgSession` has the
-column, so the active profile can resolve a key whose share another profile
-generated. Device-local and pre-existing, and a profile-isolation gap rather than a
-cross-user one, but it is load-bearing for every "can this act" check in the app and
-not only for the ones here.
+**`FrostSigningManager.canSign` was device-wide, not profile-wide — fixed.**
+`getKeyHoldingSessions()` carried no identity predicate although `DkgSession` had the
+column, so the active profile could resolve a key whose share another profile
+generated. Device-local and a profile-isolation gap rather than a cross-user one, but
+load-bearing for every "can this act" check in the app and not only for the ones here.
+`completedKey` and `canSign` now take the asking profile and scope all three of their
+answers by it; `ProfileScopedSigningKeyJvmTest` covers the three routes and the
+repository seam the UI reads.
+
+**`DkgSession` was keyed by the ceremony alone — fixed, schema 22.** The id is minted
+by the coordinator and travels on the wire, so it is one string for every participant,
+and two profiles are two participants: `acceptProposal` returned the row the first of
+them wrote and the second ran the ritual out of it, behind the first's host key, its
+randomness and in the end its share. The key is `(id, userPublicKey)` now, and
+`DkgParticipantMessage` carries the receiving profile for the same reason — a message
+is an input to *that* profile's recomputation, and the cascade needs a unique parent to
+point at. `TwoProfilesInOneCeremonyJvmTest` runs both profiles through one ceremony in
+one database; `DkgSessionPerProfileMigrationJvmTest` covers the rebuild with foreign
+keys on, which is the setting under which a mis-ordered drop would take the messages
+with it.
 
 **`ChatRoom.parentChatRoomId` is write-only in production.**
 `MarmotGroupCreation` sets it; its only reader is

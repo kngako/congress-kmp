@@ -133,6 +133,7 @@ class TranslationBatchProposalJvmTest {
             db.dkgSessionDao().upsert(
                 DkgParticipantMessage(
                     sessionId = ceremonyId,
+                    userPublicKey = proposer,
                     participantPublicKey = member,
                     kind = DkgRitualEvents.HOST_KEY,
                     payload = hostKeys[index]

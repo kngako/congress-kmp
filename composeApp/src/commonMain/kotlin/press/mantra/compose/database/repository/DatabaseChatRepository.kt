@@ -38,12 +38,22 @@ import com.vitorpamplona.quartz.nipC7Chats.ChatEvent
 import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import press.mantra.compose.identity.Identity
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+/**
+ * @param activeIdentity whose shares [canSign] answers about -- see the same
+ *   parameter on `DatabaseFrostSigningRepository`, which this one's [canSign]
+ *   duplicates for the group detail screen. Defaults to nobody, which can sign
+ *   nothing.
+ */
 class DatabaseChatRepository(
     private val database: MantraDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val activeIdentity: StateFlow<Identity?> = MutableStateFlow(null),
 ): press.mantra.compose.repository.ChatRepository {
     val logger = Logger.withTag(TAG)
 
@@ -207,7 +217,9 @@ class DatabaseChatRepository(
     }
 
     override suspend fun canSign(chatRoomId: String): Boolean = try {
-        FrostSigningManager.canSign(database, chatRoomId)
+        activeIdentity.value?.nostrPublicKey?.let { userPublicKey ->
+            FrostSigningManager.canSign(database, chatRoomId, userPublicKey)
+        } ?: false
     } catch (e: Throwable) {
         logger.e("Error reading whether $chatRoomId can sign", e)
         false

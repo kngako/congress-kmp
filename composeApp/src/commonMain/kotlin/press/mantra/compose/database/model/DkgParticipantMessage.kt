@@ -9,30 +9,48 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
- * One ritual message from one member, keyed so a duplicate delivery overwrites
- * rather than accumulates — relays redeliver, and feeding the same round-1
- * message in twice would make the coordinator's participant list the wrong
- * length.
+ * One ritual message from one member, as one profile received it — keyed so a
+ * duplicate delivery overwrites rather than accumulates, because relays redeliver
+ * and feeding the same round-1 message in twice would make the coordinator's
+ * participant list the wrong length.
  *
  * Covers the host key, round 1 and round 2; the coordinator's own broadcasts
  * live on [DkgSession] because there is only ever one of each.
+ *
+ * ### Why the receiving profile is part of the key
+ *
+ * The payload is a public protocol value and identical for everyone who sees it,
+ * so a row looks at first like the ceremony's rather than a profile's. What is
+ * per-profile is not the bytes but the *having received them*: `DkgSession`
+ * deliberately stores inputs instead of protocol state, and the messages are
+ * those inputs, recomputed from alongside that profile's own randomness. A
+ * profile's view of the ritual is how far it can recompute, and that is what this
+ * table holds.
+ *
+ * It also keeps the cascade. [DkgSession]'s key is (`id`, `userPublicKey`), and a
+ * foreign key must name a unique parent, so a child keyed by the ceremony alone
+ * could not reference it at all -- and deleting a room would leave its rituals'
+ * messages behind.
  */
 @Entity(
-    primaryKeys = ["sessionId", "participantPublicKey", "kind"],
+    primaryKeys = ["sessionId", "userPublicKey", "participantPublicKey", "kind"],
     foreignKeys = [
         ForeignKey(
             entity = DkgSession::class,
-            parentColumns = ["id"],
-            childColumns = ["sessionId"],
+            parentColumns = ["id", "userPublicKey"],
+            childColumns = ["sessionId", "userPublicKey"],
             onDelete = ForeignKey.CASCADE,
         )
     ],
     indices = [
-        Index("sessionId"),
+        Index("sessionId", "userPublicKey"),
     ],
 )
 data class DkgParticipantMessage(
     val sessionId: String,
+
+    /** Whose profile received it — the [DkgSession] row this belongs to. */
+    val userPublicKey: HexKey,
 
     /** The member's nostr public key — who sent it. */
     val participantPublicKey: HexKey,

@@ -179,7 +179,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 21,
+    version = 22,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -332,6 +332,19 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // would mean a column holding *one* of several parents, which is worse
         // than unused. See MIGRATION_20_21 and
         // docs/subgroups-multiple-parents.md.
+        //
+        // v22 keys a DkgSession by the profile that ran the ritual as well as by the
+        // ceremony, and gives DkgParticipantMessage the profile that received each
+        // message. A ceremony id is minted by its coordinator and travels on the
+        // wire, so it is the same string for every participant -- including two
+        // profiles on one device, which is two participants and was one row. The
+        // second of them adopted the first's host key, its randomness and in the end
+        // its share.
+        //
+        // Changing a primary key is not a shape Room migrates, and the column added
+        // to the messages is NOT NULL off a value read from another table, so this is
+        // manual too and passed to the builder rather than listed here. See
+        // MIGRATION_21_22.
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)

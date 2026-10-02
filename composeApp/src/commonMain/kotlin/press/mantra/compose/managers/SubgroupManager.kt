@@ -103,12 +103,16 @@ object SubgroupManager {
         val admins = adminPublicKeys + coordinatorPublicKey
         val parentChatRoomId = parentRoom.chatRoom.id
 
-        // A subgroup is certified by the parent's key, so a device holding no
+        // A subgroup is certified by the parent's key, so a profile holding no
         // share of it cannot open the session at all --
         // `FrostSigningManager.proposeSigningBatch` throws outright, and throwing
         // at a button is not a UI. Checked before the size rules because it is the
         // one refusal the user cannot fix by picking differently.
-        if (!FrostSigningManager.canSign(database, parentChatRoomId)) {
+        //
+        // Asked of the coordinator, who is the profile doing this. The device may
+        // hold another profile's share of the same group; that is not a share this
+        // one can sign the certificate with.
+        if (!FrostSigningManager.canSign(database, parentChatRoomId, coordinatorPublicKey)) {
             return "Only a member who holds a share of this group's key can make a subgroup."
         }
 
@@ -176,7 +180,11 @@ object SubgroupManager {
         val running = database.dkgSessionDao().getLatestSubgroupSessionFor(
             chatRoomId = parentChatRoomId,
             parentChatRoomId = parentChatRoomId,
-            participantPublicKeys = DkgSession.formatParticipants(admins).orEmpty()
+            participantPublicKeys = DkgSession.formatParticipants(admins).orEmpty(),
+            // The coordinator's own ceremonies. A ritual the other profile on this
+            // device is running is not one this person can answer for, so it is no
+            // reason to refuse them a ceremony of their own.
+            userPublicKey = coordinatorPublicKey
         )
         if (running != null &&
             running.stage != DkgRitualStage.FAILED &&
@@ -391,7 +399,9 @@ object SubgroupManager {
         // `proposeSigningBatch` throws outright, and throwing at a button is not
         // a UI. First, because it is the one refusal the user cannot fix by
         // picking differently.
-        if (!FrostSigningManager.canSign(database, adoptingChatRoomId)) {
+        // Asked of the profile doing the adopting. The device may hold another
+        // profile's share of that group; it is not a share this one can certify with.
+        if (!FrostSigningManager.canSign(database, adoptingChatRoomId, userPublicKey)) {
             return "Only a member who holds a share of that group's key can adopt a group into it."
         }
 
@@ -661,9 +671,9 @@ object SubgroupManager {
         val lineage = child.lineage()?.plus(parentage) ?: SubgroupLineage.of(parentage)
         checkNotNull(lineage) { "$childChatRoomId already names $parentChatRoomId as a parent" }
 
-        val key = FrostSigningManager.completedKey(database, childChatRoomId)
+        val key = FrostSigningManager.completedKey(database, childChatRoomId, userPublicKey)
             ?: throw IllegalStateException(
-                "This device holds no share of $childChatRoomId's key to propose with"
+                "This profile holds no share of $childChatRoomId's key to propose with"
             )
 
         logger.i(
@@ -719,9 +729,9 @@ object SubgroupManager {
             "$childChatRoomId does not name $parentChatRoomId as a parent"
         }
 
-        val key = FrostSigningManager.completedKey(database, childChatRoomId)
+        val key = FrostSigningManager.completedKey(database, childChatRoomId, userPublicKey)
             ?: throw IllegalStateException(
-                "This device holds no share of $childChatRoomId's key to propose with"
+                "This profile holds no share of $childChatRoomId's key to propose with"
             )
 
         val remaining = current.minus(parentChatRoomId)

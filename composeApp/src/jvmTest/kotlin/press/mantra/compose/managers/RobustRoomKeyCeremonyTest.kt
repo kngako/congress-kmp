@@ -332,7 +332,7 @@ class RobustRoomKeyCeremonyTest {
 
         // What the screen asks when somebody arrives from the transcript, with
         // nothing but the room.
-        val found = db.dkgSessionDao().observeLatestSessionForChatRoom(room.chatRoom.id).first()
+        val found = db.dkgSessionDao().observeLatestSessionForChatRoom(room.chatRoom.id, user).first()
 
         assertEquals(session.id, found?.id, "a member arriving by room has to find the ceremony")
         assertEquals(
@@ -357,11 +357,11 @@ class RobustRoomKeyCeremonyTest {
 
         assertEquals(
             own.id,
-            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null)?.id,
+            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null, user)?.id,
         )
         assertEquals(
             subgroup.id,
-            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, parent)?.id,
+            db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, parent, user)?.id,
         )
 
         // And asking again for the same purpose hands back what is already
@@ -416,7 +416,7 @@ class RobustRoomKeyCeremonyTest {
         lines.filter { it.dkgSessionId == subgroup.id }.forEach {
             assertEquals(
                 subgroup.id,
-                db.dkgSessionDao().observeSessionById(it.dkgSessionId!!).first()?.id,
+                db.dkgSessionDao().observeSessionById(it.dkgSessionId!!, user).first()?.id,
                 "tapping a subgroup line reaches the subgroup's ceremony",
             )
         }
@@ -450,8 +450,8 @@ class RobustRoomKeyCeremonyTest {
         // ceremony is being shown.
         assertEquals(
             2,
-            db.dkgSessionDao().getByParentChatRoomId("ab".repeat(32)).size +
-                (if (db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null) != null) 1 else 0),
+            db.dkgSessionDao().getByParentChatRoomId("ab".repeat(32), user).size +
+                (if (db.dkgSessionDao().getLatestSessionFor(room.chatRoom.id, null, user) != null) 1 else 0),
             "a room can end up holding two ceremonies, so the UI must not offer a third",
         )
     }

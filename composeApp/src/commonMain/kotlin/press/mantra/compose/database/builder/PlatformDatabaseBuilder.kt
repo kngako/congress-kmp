@@ -3,10 +3,11 @@ package press.mantra.compose.database.builder
 import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import press.mantra.compose.database.migrations.MIGRATION_3_4
-import press.mantra.compose.database.migrations.MIGRATION_20_21
 import press.mantra.compose.database.migrations.MIGRATION_9_10
 import press.mantra.compose.database.migrations.MIGRATION_13_14
 import press.mantra.compose.database.migrations.MIGRATION_14_15
+import press.mantra.compose.database.migrations.MIGRATION_20_21
+import press.mantra.compose.database.migrations.MIGRATION_21_22
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
@@ -20,20 +21,22 @@ fun getRoomDatabase(
     builder: RoomDatabase.Builder<press.mantra.compose.database.MantraDatabase>
 ): press.mantra.compose.database.MantraDatabase {
     return builder
-        // Everything else Room generates itself. These five move data rather than
+        // Everything else Room generates itself. These six move data rather than
         // only changing shape, which an AutoMigration cannot express: 3->4 rewrites
         // chat rows, 9->10 copies a session's per-event columns onto the items
         // table before dropping them, 13->14 renames a column and rewrites the
         // chat rows that named it the old way, 14->15 adds a column and deletes
         // the chat rows written for messages from before this device joined, and
         // 20->21 copies each room's single parentage onto the table that can hold
-        // several before dropping the columns it came from.
+        // several before dropping the columns it came from, and 21->22 rebuilds the
+        // two ritual tables to key them by profile.
         .addMigrations(
             MIGRATION_3_4,
             MIGRATION_9_10,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_20_21
+            MIGRATION_20_21,
+            MIGRATION_21_22,
         )
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)

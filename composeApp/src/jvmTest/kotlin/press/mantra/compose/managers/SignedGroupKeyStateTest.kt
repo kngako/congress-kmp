@@ -284,6 +284,7 @@ class SignedGroupKeyStateTest {
             db.dkgSessionDao().upsert(
                 DkgParticipantMessage(
                     sessionId = ceremonyId,
+                    userPublicKey = publicKey,
                     participantPublicKey = member,
                     kind = DkgRitualEvents.HOST_KEY,
                     payload = hostKeys[index]
@@ -300,7 +301,7 @@ class SignedGroupKeyStateTest {
     }
 
     private suspend fun ceremonyOn(device: Device): DkgSession =
-        device.db.dkgSessionDao().getSessionById(ceremonyId)!!
+        device.db.dkgSessionDao().getSessionById(ceremonyId, device.publicKey)!!
 
     /**
      * One queued protocol message, whichever store it came out of.
