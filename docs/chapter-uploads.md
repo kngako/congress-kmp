@@ -987,7 +987,38 @@ and stays retryable, and a second pass after the key arrives proposes all three
 numbered from zero. The failed pass spent no indices, because it created
 nothing.
 
-Total: 995 tests, and the counts per phase are in each commit.
+Total: 1030 tests, and the counts per phase are in each commit.
+
+### The five gaps a coverage pass found afterwards
+
+Counting tests per file rather than per feature turned up five things with none,
+and one of them mattered:
+
+- **`MAX_PROPOSAL_BYTES` was enforced and never tested, on either side.** The
+  inbound check is the half that counts — the proposal is where a remote party
+  decides how much work everybody else does — and it had nothing. Now four
+  tests, propose and accept, bytes and count, in `SignedGroupKeyStateTest` where
+  the adversarial inbound tests live. The count cap's accept side was missing
+  too, although the propose-side test's own comment already claimed it.
+- **Two of those tests passed vacuously when first written**, which is the part
+  worth remembering. `acceptProposal` rebuilds every event under the room's path
+  and drops the proposal if an id does not match its fields, so a hand-built
+  event with an invented id is refused whatever its size — and an `assertNull`
+  then passes with the cap deleted. The fix is `authoredProposal`, which takes
+  its events from real proposals so the ids are the ones the manager computes,
+  plus a control asserting that a well-formed proposal of the same shape *does*
+  open a session. The control failed on the first run, which is how this was
+  found; commenting the guard out now fails exactly the test named after it.
+- **`UploadChaptersScreen` had no UI test**, against a project that has fifteen
+  `runDesktopComposeUiTest` files and tests other screens this way. Ten now: the
+  cost stated before the picker, the index and name per row, every per-row
+  reason rendering, and the FAB counting only what it would actually propose.
+- **`canPropose`, `kibibytes` and the chapter summary** had none either, being
+  read only by composables. Eleven, five and five.
+
+The gap that stays open is the three `FilePicker` actuals, which need
+instrumentation this project does not have — and on iOS a host that can compile
+them.
 
 Rollout needs no flag. The chapter and chunk kinds, their tags and their apply
 branches are unchanged, so an older build receives an uploaded chapter as the
