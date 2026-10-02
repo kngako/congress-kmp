@@ -297,9 +297,46 @@ admin rights in P2, step 2 needs a share of C's key. But **adoption requires at
 least one person in both groups**, and there is no way around it: the certificate
 has to cross a boundary that nothing in the app crosses.
 
-That is still much weaker than founding-time multi-parent, where one coordinator
-had to administer both parents *and* run a ceremony. And it is a realistic
-requirement — a group being adopted by another group almost certainly has someone
+### One human, two profiles, and an unscoped read
+
+Since several profiles landed, "one person in both groups" has a second reading, and
+it is the one that will happen first: the same human as a P2 admin under one profile
+and a holder of C's share under another.
+
+That satisfies both steps and needs no single key in both groups, which is a real
+loosening. The mechanism is the part to be careful about. `ChatRoom` is keyed by **the
+group id alone** — `679d5249`'s message says so, and the MLS state, the DKG sessions
+and the FROST shares all hang off the room — so the two rooms are two rows with
+different ids and different `userPublicKey` holders in **one** database. P2's
+certificate is a `GroupSignedEvent` hanging off P2's room, and
+`groupSignedEventDao().getById(id)` is not scoped by identity, so the other profile's
+code can read it.
+
+So it works, and it works by reading across a boundary the app has already had to
+defend once: `679d5249` exists because the Welcome branch could not tell a redelivered
+Welcome from one for a room another profile holds, and told nobody.
+
+**And the key check this design leans on does not draw that boundary either.**
+`DkgSession` carries a `userPublicKey`, but `getKeyHoldingSessions()` is
+`WHERE thresholdPublicKey IS NOT NULL AND secretShare IS NOT NULL` with no identity in
+it, and `getLatestOwnSessionForChatRoom` is scoped only by room and
+`parentChatRoomId IS NULL`. So `FrostSigningManager.canSign` answers a **device-wide**
+question — this device holds a share — where every sentence in this note that says
+"this device holds no share of P2's key" means the profile in the chair.
+
+That is pre-existing and device-local: both profiles' shares are already on one disk,
+owned by one person, so nothing crosses a user boundary. What it costs is profile
+isolation, which is the point of having profiles at all — and it is why **a step-2
+proposer must take the certificate from a source scoped to the profile that is
+acting**, rather than from whatever the database happens to hold. Otherwise adoption
+is a feature that silently works better when you own both sides, which is the shape of
+a leak rather than of a convenience. Worth its own look, not this note's to fix.
+
+### Still weaker than founding-time multi-parent
+
+Where one coordinator had to administer both parents *and* run a ceremony. And it is a
+realistic requirement — a group being adopted by another group almost certainly has
+someone
 in both.
 
 What would remove it is a cross-group request: a way for C to publish "we would
@@ -320,6 +357,36 @@ the certificate travels inside it — verified standalone by `stateFrom` on ever
 child device, exactly as at founding. The proposer needs the event; nobody else
 does.
 
+### The one channel that must not be used, and it is already built
+
+There is now a path that would carry a certificate out of the encryption, and it is
+dormant rather than absent. `BroadcastGroupSignedEventViewModel` sends one
+group-signed event to relays a member picks, and its own comment states the property
+that makes it dangerous here: *"the signature is the group's, so any member holding
+the event can send it and no share of the key is needed."* It is **not** restricted by
+kind — "the seed is the same for every event of every kind" — and nothing opens it
+today only because the rows that carried the button went with the curated lists.
+`BroadcastGroupSignedEventRoute` is still registered and `BroadcastButton` still
+built, so, in that file's words, wiring a button in is all it takes.
+
+A certificate is the worst event in the app to send. It carries the parent-child
+lineage, the child's threshold key, and the founding admin roster in its `p` tags —
+a membership list — and `subgroups.md` places kind 30329 "in the private 303xx range
+with everything else that never leaves an encryption".
+`SubgroupBirthCertificateEvent`'s own comment leans on that: because it only ever
+exists inside an encryption a relay cannot open, "the addressable semantics of the
+3xxxx range never fire". Published, they fire — it is `d`-tagged on the child's room
+id, so relays would treat certificates as replacements of one another, which is a
+thing this design settles locally and on purpose.
+
+**So this design carries a negative rule: the subgroups list and the parent cards must
+never grow a broadcast button**, and a certificate must not be reachable from whatever
+screen a future "broadcast this" sweep walks. It is also why relays are not the answer
+to the overlap requirement above, tempting as it looks: a P2 member could publish the
+certificate and a C member could fetch and verify it — `certifies` needs no lookup —
+but the price is publishing the lineage and the roster to anyone, to save one person
+being in two groups.
+
 ## Choosing the parent
 
 Worth its own section, because "pick a group" is not what the picker can offer and
@@ -329,8 +396,10 @@ designing the screen around the wrong list would be the easy mistake.
 
 A certificate is proposed **inside** the adopting group, by
 `FrostSigningManager.proposeSigning` in that room. So the candidate list is not "the
-groups that exist" or "the groups C's admins can name" — it is the rooms *this
-device* can already act in:
+groups that exist" or "the groups C's admins can name" — it is the rooms **the active
+profile** can act in. Not the device's: `getChatRoomListByUserPublicKey` is keyed by
+identity, and since several profiles landed a device can hold rooms it must not offer
+here, because the key that would have to sign is not the one in the chair.
 
 ```
 getChatRoomListByUserPublicKey(user)
@@ -342,8 +411,8 @@ getChatRoomListByUserPublicKey(user)
   filter { it.id is not a descendant of C }
 ```
 
-The first three are `SubgroupManager.refuseSubgroup`'s existing checks with the
-target moved from "the parent of a new subgroup" to "the adopting group", and the
+The first three filters are `SubgroupManager.refuseSubgroup`'s existing checks with
+the target moved from "the parent of a new subgroup" to "the adopting group", and the
 admin one reads `MarmotGroupData.adminPubkeys` rather than `Participant.adminAt`, for
 the reason that function already gives: the flag is written only by
 `processGroupMembershipChanges` on an arriving commit, so it is null for everybody on
@@ -483,6 +552,11 @@ retargeted from "the parent of a new subgroup" to "the adopting group":
 | the set has a duplicate parent | check (5), at the door rather than only on read |
 | the set is unchanged from the current row | nothing to agree |
 
+**"This device" in both tables means the profile in the chair**, and `canSign` does
+not currently tell the two apart — see
+[one human, two profiles](#one-human-two-profiles-and-an-unscoped-read). Until it
+does, these guards are honest about capability and silent about persona.
+
 ## New failure modes
 
 **A lineage is a DAG now, so a walk can loop.** With one parent it is a tree and
@@ -512,7 +586,10 @@ already show and approve.
 
 **"Add a parent group"** opens the picker described under [choosing the
 parent](#choosing-the-parent) and proposes the certificate in whichever group is
-chosen. Offered only where step 1's guards pass, hidden rather than disabled, in the
+chosen. The picker is a pushed screen, so it takes an `onNavigateBack` and puts
+`NavigateBackButton` in its app bar's leading slot — `CLAUDE.md` gained that rule
+while this note sat unbuilt, and the desktop target has neither a system back nor an
+edge swipe to fall back on. Offered only where step 1's guards pass, hidden rather than disabled, in the
 same way the shared-key entry is hidden on an MLS room — and empty for a member who
 administers none of C's candidate parents, which is a fact about them rather than a
 failure.
@@ -631,7 +708,26 @@ the reason is the interesting part: P1 signed before P2 was a possibility. See
 
 ## Found while reading
 
-Four things, none caused by this, all worth knowing.
+Six things, none caused by this, all worth knowing.
+
+**A built, unreachable path would put any group-signed event on public relays.**
+`BroadcastGroupSignedEventViewModel`, not restricted by kind, reachable by wiring in
+one button. Argued above as the
+[channel that must not be used](#the-one-channel-that-must-not-be-used-and-it-is-already-built);
+listed again here because it is a fact about the tree rather than about this design,
+and the next person to wire a broadcast button will not be reading this note.
+
+**`ChatRoom` is keyed by the group id alone, not by (group, profile).** So two
+profiles on one device cannot both hold one group — the second one's Welcome is
+refused by `679d5249` — while rows belonging to different profiles sit in one database
+with nothing scoping a read by id across them.
+
+**`FrostSigningManager.canSign` is device-wide, not profile-wide.**
+`getKeyHoldingSessions()` carries no identity predicate although `DkgSession` has the
+column, so the active profile can resolve a key whose share another profile
+generated. Device-local and pre-existing, and a profile-isolation gap rather than a
+cross-user one, but it is load-bearing for every "can this act" check in the app and
+not only for the ones here.
 
 **`ChatRoom.parentChatRoomId` is write-only in production.**
 `MarmotGroupCreation` sets it; its only reader is
