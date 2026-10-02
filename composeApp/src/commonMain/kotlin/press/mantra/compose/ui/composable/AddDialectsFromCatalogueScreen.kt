@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +43,8 @@ import mantra.composeapp.generated.resources.already_in_this_group
 import mantra.composeapp.generated.resources.clear_the_selection
 import mantra.composeapp.generated.resources.nothing_matched_that_search
 import mantra.composeapp.generated.resources.pick_the_languages_this_group_will_translate_into
+import mantra.composeapp.generated.resources.propose_dialect
+import mantra.composeapp.generated.resources.propose_s_dialects
 import mantra.composeapp.generated.resources.s_of_s_selected
 import mantra.composeapp.generated.resources.search_by_language_country_or_code
 import mantra.composeapp.generated.resources.select_everything_missing
@@ -55,6 +59,7 @@ import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.EmptyState
@@ -63,6 +68,7 @@ import press.mantra.compose.ui.composable.widgets.LoadingDataIndicator
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 import press.mantra.compose.ui.theme.MantraTheme
 import press.mantra.compose.ui.theme.readableContent
@@ -92,6 +98,7 @@ fun AddDialectsFromCatalogueScreen(
     chatRepository: ChatRepository,
     mantraRepository: MantraRepository,
     frostSigningRepository: FrostSigningRepository,
+    onNavigateToRouteAndPopUpInclusive: (Route) -> Unit,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -130,6 +137,47 @@ fun AddDialectsFromCatalogueScreen(
                             title = { Text(stringResource(Res.string.add_dialects_from_a_list)) },
                             navigationIcon = { NavigateBackButton(onNavigateBack) },
                         )
+                    },
+                    bottomBar = {
+                        // Only where there is something to propose. A room that
+                        // holds the whole catalogue gets the empty state and its
+                        // way to the form, and "Propose 0 dialects" underneath it
+                        // would be a button that can never do anything.
+                        if (state.missing.isNotEmpty()) {
+                            BottomAppBar(
+                                actions = {},
+                                floatingActionButton = {
+                                    ProposeWaveFab(
+                                        count = viewModel.selected.size,
+                                        enabled = state.canSign &&
+                                            viewModel.selected.isNotEmpty(),
+                                        onClick = {
+                                            viewModel.proposeSelectedDialects(
+                                                localChatRoom = state.localChatRoom,
+                                                onSuccess = { sessionId ->
+                                                    // Onto the session rather than
+                                                    // back to the group. Nothing
+                                                    // has been created yet -- the
+                                                    // dialects appear when enough
+                                                    // members sign -- so landing on
+                                                    // a list they are not in would
+                                                    // read as a failure.
+                                                    onNavigateToRouteAndPopUpInclusive.invoke(
+                                                        FrostSigningRoute(
+                                                            activeUserPublicKey =
+                                                                activeUserPublicKey,
+                                                            chatRoomId = chatRoomId,
+                                                            sessionId = sessionId
+                                                        )
+                                                    )
+                                                },
+                                                onFailure = {},
+                                            )
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 ) { innerPadding ->
                     Column(
@@ -220,6 +268,32 @@ fun AddDialectsFromCatalogueScreen(
             viewModel.initiate()
         }
     }
+}
+
+/**
+ * Asks the group to sign what is ticked.
+ *
+ * Counted in the label because a wave is the thing being proposed and its size
+ * is the whole of what distinguishes one from another -- a member who has
+ * scrolled away from the summary still has to be told how many they are about to
+ * put in front of the group.
+ */
+@Composable
+private fun ProposeWaveFab(
+    count: Int,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    ExtendedFab(
+        label = if (count == 1) {
+            stringResource(Res.string.propose_dialect)
+        } else {
+            stringResource(Res.string.propose_s_dialects, count)
+        },
+        icon = { Icon(Icons.Default.Add, contentDescription = Decorative) },
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 /**
@@ -398,6 +472,7 @@ private fun AddDialectsFromCataloguePreview() {
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {},
                 onNavigateBack = {},
             )
@@ -425,6 +500,7 @@ private fun AddDialectsFromCatalogueNothingLeftPreview() {
                 chatRepository = ChatRepository.NO_OP_CHAT_REPOSITORY,
                 mantraRepository = MantraRepository.NO_OP_MANTRA_REPOSITORY,
                 frostSigningRepository = FrostSigningRepository.NO_OP_FROST_SIGNING_REPOSITORY,
+                onNavigateToRouteAndPopUpInclusive = {},
                 onNavigateToRoute = {},
                 onNavigateBack = {},
             )

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import com.vitorpamplona.quartz.utils.TimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,8 +18,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.language.AfricanLanguage
 import press.mantra.compose.managers.DialectScaffold
+import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
@@ -179,6 +182,83 @@ class AddDialectsFromCatalogueViewModel(
         val loaded = _uiState.value as? AddDialectsFromCatalogueUIState.Loaded ?: return emptyList()
 
         return loaded.missing.filter { DialectScaffold.keyOf(it) in selected }
+    }
+
+    /**
+     * Asks the group to sign the ticked dialects into existence.
+     *
+     * None of them are created here and none of them exist yet. What goes out is
+     * a proposal, and the dialects appear -- on every member's device at once,
+     * authored by the room's own key rather than by whoever ticked them -- when
+     * enough members have signed.
+     *
+     * One session per [FrostSigningManager.MAX_BATCH_SIZE] entries, the same way
+     * `TranslationArtifactVersionDetailViewModel` catches up a translation's
+     * missing chapters. The catalogue is smaller than one batch today, so the
+     * chunking never fires; it is a line, it is the established idiom, and it is
+     * what stops the sixty-fifth catalogue entry from being a bug rather than a
+     * second session. `DialectCatalogueSizeTest` is the tripwire.
+     *
+     * One timestamp for the lot, so a wave reads as the one act it is rather than
+     * as entries that happen to share a minute.
+     *
+     * A batch is all-or-nothing: if one item cannot be aggregated the session
+     * fails and none of them are applied, and a retry has to be a fresh proposal
+     * because the items' nonce seeds have already been published. Both are
+     * answered by the rule this screen is built on -- it only ever proposes what
+     * is missing -- so asking again after a failed wave lands exactly the
+     * entries the failed one did not, and the signing screen is right to tell a
+     * member it is safe to ask.
+     */
+    fun proposeSelectedDialects(
+        localChatRoom: LocalChatRoom,
+        onSuccess: (sessionId: String) -> Unit,
+        onFailure: () -> Unit,
+    ) {
+        val languages = selectedLanguages()
+
+        if (languages.isEmpty()) {
+            onFailure.invoke()
+            return
+        }
+
+        // Guard against double submits from repeated taps.
+        if (isActionPending.value) return
+        isActionPending.value = true
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val createdAt = TimeUtils.now()
+
+            val sessions = runCatching {
+                languages.chunked(FrostSigningManager.MAX_BATCH_SIZE).mapNotNull { wave ->
+                    frostSigningRepository.proposeSigningBatch(
+                        localChatRoom = localChatRoom,
+                        userPublicKey = activeUserPublicKey,
+                        events = DialectScaffold.dialectsOf(
+                            languages = wave,
+                            createdAt = createdAt,
+                        ),
+                    )
+                }
+            }.onFailure { error ->
+                logger.e("Failed to propose a wave of dialects for signing", error)
+            }.getOrNull().orEmpty()
+
+            // The first, because it is the one that opened; any others are in the
+            // room's proposal list beside it.
+            val session = sessions.firstOrNull()
+
+            if (session != null) selected.clear()
+
+            // On the main thread because the callback navigates, and navigating
+            // off Dispatchers.IO crashes. The handoff belongs here rather than at
+            // the call site.
+            viewModelScope.launch(Dispatchers.Main) {
+                if (session != null) onSuccess.invoke(session.id) else onFailure.invoke()
+            }
+
+            isActionPending.value = false
+        }
     }
 
     companion object {

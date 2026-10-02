@@ -1252,6 +1252,15 @@ fun MantraNavHost(
                     chatRepository = databaseChatRepository,
                     mantraRepository = databaseMantraRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this picker so back returns to the group rather
+                        // than to a selection whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddDialectsFromCatalogueRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(route = actionRoute)
                     },
