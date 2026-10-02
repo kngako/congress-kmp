@@ -2,6 +2,7 @@ package press.mantra.compose.text
 
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.ProjectEvent
 import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import kotlin.test.Test
@@ -10,6 +11,7 @@ import kotlin.test.assertTrue
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupLineage
 import press.mantra.compose.nostr.subgroup.SubgroupParentage
@@ -344,6 +346,103 @@ class ProposedEventTest {
         parentChatRoomId = parentChatRoomId,
         certificate = event(SubgroupBirthCertificateEvent.KIND, content = parentChatRoomId)
     )
+
+    // --- what a subgroup is for, on the certificate a quorum is asked to sign ---
+
+    /** The parent doing the certifying. Its own id, as the author would be. */
+    private val certifyingParent = "9".repeat(64)
+
+    /**
+     * The line that pays for the origin tag.
+     *
+     * A parent admin approving a certificate is putting the group's signature to
+     * a room id produced by a ceremony most of them were not in. A name and a
+     * head count say how big the thing is; this says what it does, and it is the
+     * only line on the screen that does.
+     */
+    @Test
+    fun `a certificate says what the subgroup is for, by name where the row is held`() {
+        val projectId = "a1".padEnd(64, '0')
+
+        val summary = ProposedEvent.summarize(
+            event = event(
+                kind = SubgroupBirthCertificateEvent.KIND,
+                tags = SubgroupBirthCertificateEvent.assembleTags(
+                    subgroupChatRoomId = "d".repeat(64),
+                    parentChatRoomId = certifyingParent,
+                    thresholdPublicKey = "02" + "e".repeat(64),
+                    adminPublicKeys = listOf("1".repeat(64), "2".repeat(64), "3".repeat(64)),
+                    name = "#Setswana Luke",
+                    origin = SubgroupOrigin.Ref(kind = ProjectEvent.KIND, id = projectId)
+                ),
+                content = "d".repeat(64)
+            ),
+            resolve = { if (it == projectId) "Gospel of John" else null }
+        )
+
+        assertEquals("A new subgroup of this group", summary.label)
+        assertEquals(
+            "#Setswana Luke · for the project Gospel of John · run by 3 members",
+            summary.detail
+        )
+    }
+
+    /**
+     * Unresolvable is a fact to state, not a gap to hide. A certificate may name
+     * a row the reader will never hold -- these entities live in the parent's
+     * tables and a subgroup's members need never have been in the parent -- so
+     * the kind is still said and the id is truncated, which is what the rest of
+     * the app does with something it has not seen.
+     */
+    @Test
+    fun `an unresolvable origin still says what kind of thing it is`() {
+        val summary = ProposedEvent.summarize(
+            event = event(
+                kind = SubgroupBirthCertificateEvent.KIND,
+                tags = SubgroupBirthCertificateEvent.assembleTags(
+                    subgroupChatRoomId = "d".repeat(64),
+                    parentChatRoomId = certifyingParent,
+                    thresholdPublicKey = "02" + "e".repeat(64),
+                    adminPublicKeys = listOf("1".repeat(64)),
+                    name = "#Sesotho",
+                    origin = SubgroupOrigin.Ref(
+                        kind = DialectEvent.KIND,
+                        id = "beef".padEnd(64, '0')
+                    )
+                ),
+                content = "d".repeat(64)
+            )
+        )
+
+        assertTrue(
+            summary.detail.contains("for the dialect beef00000000"),
+            "the detail did not name the kind and the short hash: ${summary.detail}"
+        )
+    }
+
+    /**
+     * A subgroup for nothing in particular says nothing about an origin, rather
+     * than saying "for nothing". That is the group's own "Add subgroup", and it
+     * is also every certificate signed before the tag existed.
+     */
+    @Test
+    fun `a subgroup for nothing in particular reads as it always did`() {
+        val summary = ProposedEvent.summarize(
+            event = event(
+                kind = SubgroupBirthCertificateEvent.KIND,
+                tags = SubgroupBirthCertificateEvent.assembleTags(
+                    subgroupChatRoomId = "d".repeat(64),
+                    parentChatRoomId = certifyingParent,
+                    thresholdPublicKey = "02" + "e".repeat(64),
+                    adminPublicKeys = listOf("1".repeat(64), "2".repeat(64)),
+                    name = "#Translators"
+                ),
+                content = "d".repeat(64)
+            )
+        )
+
+        assertEquals("#Translators · run by 2 members", summary.detail)
+    }
 
     private fun event(
         kind: Int,

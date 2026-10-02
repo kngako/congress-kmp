@@ -18,6 +18,11 @@ import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import co.touchlab.kermit.Logger
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
+import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -75,6 +80,11 @@ class ChatRoomDetailViewModel(
                 // Initiate new chat... and navigate to new chat...
                 ChatRoomDetailUIState.Error("Missing chat room")
             } else {
+                // Read into a local so the names are resolved from exactly the
+                // list the cards are drawn from. Resolving inside the argument
+                // list would make the two depend on evaluation order.
+                val subgroups = chatRepository.subgroupsOf(chatRoomId)
+
                 ChatRoomDetailUIState.Loaded(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
@@ -82,7 +92,8 @@ class ChatRoomDetailViewModel(
                     projects = mantraRepository.getProjects(chatRoomId),
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
-                    subgroups = chatRepository.subgroupsOf(chatRoomId),
+                    subgroups = subgroups,
+                    subgroupOriginNames = originNamesIn(subgroups),
                     parents = chatRepository.parentsOf(chatRoomId),
                     canAddSubgroup = localChatRoom.chatRoom.mlsGroupState != null &&
                         chatRepository.canSign(chatRoomId),
@@ -96,6 +107,35 @@ class ChatRoomDetailViewModel(
                         chatRepository.canSign(chatRoomId),
                 )
             }
+        }
+    }
+
+    /**
+     * What each subgroup's origin is called, where this device holds the row.
+     *
+     * Only the rows the certificates actually name, and only from this device's
+     * own tables. An entity that is not here is left out, and the card shows a
+     * short hash -- which is truthful rather than a gap, because a certificate is
+     * allowed to name something the reader has never seen: these entities live in
+     * the parent's tables, and a parent member reading a certificate may hold the
+     * room without holding the row.
+     */
+    private suspend fun originNamesIn(
+        subgroups: List<SubgroupManager.Subgroup>
+    ): Map<HexKey, String> = buildMap {
+        subgroups.mapNotNull { it.origin }.forEach { origin ->
+            if (containsKey(origin.id)) return@forEach
+
+            val name = when (origin.kind) {
+                DialectEvent.KIND -> mantraRepository.getDialect(origin.id)?.name
+                ArtifactEvent.KIND -> mantraRepository.getArtifact(origin.id)?.name
+                TranslationArtifactVersionEvent.KIND ->
+                    mantraRepository.getTranslation(origin.id)?.name
+                ProjectEvent.KIND -> mantraRepository.getProject(origin.id)?.name
+                else -> null
+            }
+
+            name?.let { put(origin.id, it) }
         }
     }
 

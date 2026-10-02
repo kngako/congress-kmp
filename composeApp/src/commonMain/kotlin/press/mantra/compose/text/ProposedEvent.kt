@@ -3,6 +3,7 @@ package press.mantra.compose.text
 import com.vitorpamplona.quartz.nip01Core.core.Event
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.managers.SharedKeyDerivation
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ArtifactEvent
@@ -277,6 +278,11 @@ object ProposedEvent {
             label = "A new subgroup of this group",
             detail = listOfNotNull(
                 SubgroupBirthCertificateEvent.parseName(event.tags),
+                // What the room is *for*, which is the most useful sentence that
+                // can be put in front of a parent admin here: a name and a count
+                // say how big the thing is, and this says what it does. It is the
+                // whole reason the certificate carries an origin.
+                SubgroupBirthCertificateEvent.parseOrigin(event.tags)?.let { describeOrigin(it, resolve) },
                 SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags)
                     .size
                     .takeIf { it > 0 }
@@ -285,6 +291,35 @@ object ProposedEvent {
         )
 
         else -> Summary(label = "Event of kind ${event.kind}", detail = event.content)
+    }
+
+    /**
+     * What a subgroup is for, in words: "for the project Gospel of John".
+     *
+     * Resolved where this device holds the row and shown as a kind and a short
+     * hash where it does not, which is [describe]'s bargain and is the honest
+     * answer here. A certificate routinely names a row the reader will never
+     * hold -- the entities live in the parent's tables and a subgroup's members
+     * need never have been in the parent -- so "for a project this device does
+     * not have" has to read as a fact rather than as a broken screen.
+     *
+     * An unrecognised kind is named by its number for the same reason
+     * [summarize] keeps the raw kind: refusing to describe something is better
+     * than describing it wrongly.
+     */
+    private fun describeOrigin(
+        origin: SubgroupOrigin.Ref,
+        resolve: (HexKey) -> String?
+    ): String {
+        val what = when (origin.kind) {
+            DialectEvent.KIND -> "dialect"
+            ArtifactEvent.KIND -> "artifact"
+            TranslationArtifactVersionEvent.KIND -> "translation"
+            ProjectEvent.KIND -> "project"
+            else -> "kind ${origin.kind}"
+        }
+
+        return "for the $what ${describe(origin.id, resolve)}"
     }
 
     /**

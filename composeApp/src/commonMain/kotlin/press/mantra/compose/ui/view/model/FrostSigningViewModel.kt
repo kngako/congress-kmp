@@ -20,7 +20,11 @@ import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.nostr.frost.FrostSigningEvents
 import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
 import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
+import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
 import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
@@ -151,6 +155,35 @@ class FrostSigningViewModel(
                         }
                     }
                     project(membership.projectId())
+                }
+
+                // What a subgroup is being made for. This is the one branch
+                // where the resolution is the point of the whole proposal: a
+                // parent admin is putting the group's signature to a room id
+                // produced by a ceremony most of them were not in, and "for the
+                // translation Setswana Luke" is the only line on the screen that
+                // says what they are agreeing to.
+                //
+                // Unresolvable is a normal answer, not a gap. The entity lives
+                // in this room's tables, so a parent admin usually does hold it
+                // -- but a certificate can be read on a device that does not,
+                // and `summarize` then shows the kind and a short hash rather
+                // than pretending.
+                SubgroupBirthCertificateEvent.KIND -> {
+                    val origin = SubgroupBirthCertificateEvent.parseOrigin(event.tags)
+                    val id = origin?.id
+
+                    if (id != null && !containsKey(id)) {
+                        val name = when (origin.kind) {
+                            DialectEvent.KIND -> mantraRepository.getDialect(id)?.name
+                            ArtifactEvent.KIND -> mantraRepository.getArtifact(id)?.name
+                            TranslationArtifactVersionEvent.KIND ->
+                                mantraRepository.getTranslation(id)?.name
+                            ProjectEvent.KIND -> mantraRepository.getProject(id)?.name
+                            else -> null
+                        }
+                        name?.let { put(id, it) }
+                    }
                 }
             }
         }

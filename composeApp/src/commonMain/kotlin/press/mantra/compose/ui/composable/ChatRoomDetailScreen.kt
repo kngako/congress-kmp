@@ -105,6 +105,11 @@ import mantra.composeapp.generated.resources.subgroups
 import press.mantra.compose.ui.composable.navigation.routes.SelectAdoptingGroupRoute
 import press.mantra.compose.ui.composable.navigation.routes.SelectSubgroupAdminsRoute
 import press.mantra.compose.ui.composable.navigation.routes.NostrEventDetailRoute
+import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.ui.composable.navigation.routes.DialectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChatRoomDetailRoute
 import press.mantra.compose.managers.SubgroupManager
@@ -115,6 +120,10 @@ import mantra.composeapp.generated.resources.add_dialect
 import mantra.composeapp.generated.resources.create_project
 import mantra.composeapp.generated.resources.delete_group
 import mantra.composeapp.generated.resources.dialects
+import mantra.composeapp.generated.resources.for_the_artifact
+import mantra.composeapp.generated.resources.for_the_dialect
+import mantra.composeapp.generated.resources.for_the_project
+import mantra.composeapp.generated.resources.for_the_translation
 import mantra.composeapp.generated.resources.direct_message_detail
 import mantra.composeapp.generated.resources.direct_message_functionality_will_be_here
 import mantra.composeapp.generated.resources.invite_new_member
@@ -733,6 +742,7 @@ fun ChatRoomDetailScreen(
                                 ) { subgroup ->
                                     SubgroupCard(
                                         subgroup = subgroup,
+                                        originNames = chatRoomDetailUIState.subgroupOriginNames,
                                         onOpen = {
                                             // Into the child where this device has
                                             // it; at the certificate where it does
@@ -1319,6 +1329,7 @@ internal fun GroupKeyStateSheetContent(
 @Composable
 private fun SubgroupCard(
     subgroup: SubgroupManager.Subgroup,
+    originNames: Map<String, String>,
     onOpen: () -> Unit
 ) {
     Card(onClick = onOpen) {
@@ -1328,6 +1339,15 @@ private fun SubgroupCard(
             },
             trailingContent = {
                 Icon(Icons.Default.ChevronRight, contentDescription = Decorative)
+            },
+            // What the room is for, above its name, where the certificate says.
+            // The supporting line below is already carrying whether this device
+            // can open the room, which is a different question and both are worth
+            // a line.
+            overlineContent = subgroup.origin?.let { origin ->
+                describeSubgroupOrigin(origin, originNames)?.let { described ->
+                    { Text(described) }
+                }
             },
             headlineContent = {
                 Text(
@@ -1352,6 +1372,36 @@ private fun SubgroupCard(
                 )
             }
         )
+    }
+}
+
+/**
+ * "For the project Gospel of John", or null for a kind this build does not know.
+ *
+ * Four complete sentences rather than a kind word interpolated into one, because
+ * a translated fragment assembled at runtime is a sentence no translator ever saw.
+ *
+ * An entity this device does not hold is named by a short hash, which is what
+ * the rest of the app does with something it has not seen. A certificate is
+ * allowed to name a row the reader will never have -- see
+ * `SubgroupManager.Subgroup.origin` -- so that case is a fact to state rather
+ * than a gap to hide. An unrecognised kind returns null and the line is simply
+ * absent: describing something wrongly is worse than not describing it.
+ */
+@Composable
+private fun describeSubgroupOrigin(
+    origin: SubgroupOrigin.Ref,
+    originNames: Map<String, String>
+): String? {
+    val name = originNames[origin.id] ?: origin.id.take(12)
+
+    return when (origin.kind) {
+        DialectEvent.KIND -> stringResource(Res.string.for_the_dialect, name)
+        ArtifactEvent.KIND -> stringResource(Res.string.for_the_artifact, name)
+        TranslationArtifactVersionEvent.KIND ->
+            stringResource(Res.string.for_the_translation, name)
+        ProjectEvent.KIND -> stringResource(Res.string.for_the_project, name)
+        else -> null
     }
 }
 

@@ -769,6 +769,17 @@ object SubgroupManager {
         val room: LocalChatRoom?,
         /** The child's key state, when this device holds one. */
         val keyState: GroupKeyState?,
+        /**
+         * The dialect, artifact, translation or project this subgroup was made
+         * for, or null when it was made for nothing in particular.
+         *
+         * Off the certificate, like the name and the admins beside it, and
+         * carrying their limits: it is the *founding* intention, it is not
+         * checked, and it routinely names a row this device does not hold. A
+         * reader that cannot resolve it says so rather than hiding it -- see
+         * `ProposedEvent.summarize`.
+         */
+        val origin: SubgroupOrigin.Ref?,
     ) {
         /** Whether this device can open the subgroup, rather than only know of it. */
         val isJoined: Boolean get() = room != null
@@ -823,6 +834,7 @@ object SubgroupManager {
                     adminPublicKeys = SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags),
                     room = database.chatRoomDao().findChatRoomById(chatRoomId),
                     keyState = database.groupKeyStateDao().getByChatRoomId(chatRoomId),
+                    origin = SubgroupBirthCertificateEvent.parseOrigin(event.tags),
                 )
             }
             .sortedByDescending { it.certificate.createdAt }

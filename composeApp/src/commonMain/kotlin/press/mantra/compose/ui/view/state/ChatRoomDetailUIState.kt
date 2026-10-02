@@ -45,6 +45,16 @@ sealed interface ChatRoomDetailUIState {
          */
         val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
         /**
+         * What each subgroup's origin is called, where this device holds the row.
+         *
+         * Resolved once in the view model rather than per card, because a
+         * composable cannot await a database. Keyed by the entity's id, and an id
+         * that is missing here is shown as a short hash -- which is what the rest
+         * of the app does with something it has not seen, and is the honest answer:
+         * a certificate can name a row this device will never hold.
+         */
+        val subgroupOriginNames: Map<HexKey, String> = emptyMap(),
+        /**
          * The groups this room is a subgroup of, empty when it is nobody's
          * child.
          *
