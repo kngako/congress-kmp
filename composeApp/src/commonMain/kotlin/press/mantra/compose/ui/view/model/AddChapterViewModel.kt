@@ -18,6 +18,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.managers.ChapterIndexing
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.nostr.nip30303.ChapterEvent
@@ -131,7 +132,17 @@ class AddChapterViewModel(
             // may have added to in a different order. The scaffolding proposed
             // below is placed at the same one, so a translation chapter agrees
             // with the chapter it stands for.
-            val chapterIndex = mantraRepository.getChaptersForArtifactVersion(artifactVersion.id).size
+            //
+            // Counting the room's open proposals as well as its rows, because a
+            // chapter proposed a second ago is not a row yet and reading the
+            // table alone would hand it this chapter's number -- see
+            // [ChapterIndexing.nextIndex].
+            val chapterIndex = ChapterIndexing.nextIndex(
+                mantraRepository = mantraRepository,
+                frostSigningRepository = frostSigningRepository,
+                chatRoomId = chatRoomId,
+                artifactVersionId = artifactVersion.id,
+            )
 
             val chapterEventTemplate = ChapterEvent.build(
                 artifactVersionId = artifactVersion.id,

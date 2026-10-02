@@ -380,25 +380,36 @@ and the last of these exists precisely for this: "A caller wanting an id … nee
 it while the first session is still running, and the id is settled at proposal
 time."
 
-```kotlin
-// MantraRepository, or a small ChapterIndexing object beside TranslationScaffold
-/**
- * The index the next chapter of [artifactVersionId] takes, counting chapters
- * the room has proposed but not yet signed.
- *
- * Rows alone are wrong by however many proposals are in flight, which at N = 1
- * is almost never and during an upload is always. A proposed chapter's index is
- * already fixed -- it is signed into the unsigned event the session will sign --
- * so it counts.
- */
-suspend fun nextChapterIndex(chatRoomId: String, artifactVersionId: String): Int
-```
+**Built as `ChapterIndexing.nextIndex`**, an object beside `TranslationScaffold`
+rather than a method on `MantraRepository`, because it needs both repositories —
+the table for what is signed and the signing repository for what is proposed —
+and a repository method that reaches into another repository is the wrong shape.
+It takes both, which also makes it testable without a view model.
 
 Implemented as: rows for the version, plus the unsigned `ChapterEvent`s of every
-open session in the room whose `artifactVersionId()` matches, de-duplicated by
-event id, and `maxOf(index) + 1` rather than a count — a count is wrong the
-moment a gap exists, and after a chapter fails to reach quorum a gap is exactly
-what there is.
+session in the room whose `artifactVersionId()` matches, and `maxOf(index) + 1`
+rather than a count — a count is wrong the moment a gap exists, and after a
+chapter fails to reach quorum a gap is exactly what there is.
+
+Three details the build settled that the plan left open:
+
+- **Every session counts, whatever stage it is at.** Filtering to open ones
+  would trade a harmless gap (a failed session's index is spent, since a
+  re-proposed chapter is a different event) for a possible collision with a
+  stalled session that still completes.
+- **Items are filtered by kind, which is not optional.** A chapter proposal is a
+  batch, and a chunk carries an `index` tag too — its position in the chapter.
+  Reading those as chapter indices would put the second chapter of a
+  two-paragraph first chapter at 2. There is a test for exactly that.
+- **Proposals are not scoped by version and rows are.** The row query takes an
+  `artifactVersionId`; `observeSessionsForChatRoom` returns the whole room, so
+  the `artifactVersionId` tag is what separates one version's proposals from
+  another's. Getting it wrong would push every version's numbering up by the
+  whole room's.
+
+Failing soft on purpose: if the proposals cannot be read, the table's answer is
+still better than nothing, and refusing to propose a chapter because its number
+could not be checked would be the wrong trade.
 
 Then `AddChapterViewModel` calls it instead of `.size`, and the upload allocates
 `base + i` for its i-th file **once**, before proposing anything, rather than
@@ -412,9 +423,11 @@ are tolerable: the index orders reading, two chapters at index 4 sort
 arbitrarily between themselves and nothing else breaks. Worth a sentence in the
 code so the next reader does not take the local fix for a global one.
 
-**Test** (`jvmTest`, beside `ChapterBatchProposalJvmTest`): propose three
-chapters back to back without completing any session, and assert the three
-signed indices are 0, 1, 2 — which is the test that fails today.
+**Tests** (`ChapterIndexingJvmTest`, beside `ChapterBatchProposalJvmTest`):
+propose three chapters back to back without completing any session, and assert
+the three indices are 0, 1, 2 — which is the test that fails today, since
+nothing is signed so the table answers 0 three times. Plus the gap, the two
+versions, and the chunk-vs-chapter confusion above.
 
 ---
 
