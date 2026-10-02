@@ -41,15 +41,18 @@ sealed interface ChatRoomDetailUIState {
          */
         val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
         /**
-         * The group this room is a subgroup of, or null when it is nobody's
+         * The groups this room is a subgroup of, empty when it is nobody's
          * child.
          *
          * Verified: it comes off the room's key state, which only carries a
          * parent whose certificate was checked. A member welcomed in after the
          * founding holds no state and so sees nothing here, even in a room that
          * really is a subgroup.
+         *
+         * Each carries the parent's room where this device holds one, so the
+         * card can name the group rather than only identify it.
          */
-        val parentChatRoomIds: List<HexKey> = emptyList(),
+        val parents: List<SubgroupManager.Parent> = emptyList(),
         /**
          * Whether this device could open a subgroup here at all.
          *

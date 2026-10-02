@@ -192,8 +192,8 @@ class DatabaseChatRepository(
         false
     }
 
-    override suspend fun parentsOf(chatRoomId: String): List<HexKey> = try {
-        SubgroupManager.parentsOf(database, chatRoomId)
+    override suspend fun parentsOf(chatRoomId: String): List<SubgroupManager.Parent> = try {
+        SubgroupManager.parentGroupsOf(database, chatRoomId)
     } catch (e: Throwable) {
         logger.e("Error reading the parents of $chatRoomId", e)
         emptyList()
