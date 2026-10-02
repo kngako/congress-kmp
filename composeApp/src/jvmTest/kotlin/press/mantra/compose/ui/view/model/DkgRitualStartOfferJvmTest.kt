@@ -111,21 +111,30 @@ class DkgRitualStartOfferJvmTest {
      *
      * Every flow folding into this state used to read it, build a `copy` and
      * assign -- and the session watcher asks the database what this member owes
-     * in the middle of that. The key-state watcher writing during that pause had
-     * its change thrown away by the assignment that followed. The same pause in
-     * the other direction is what put `session` back to null and offered to
-     * start the ceremony on screen; this is the half of it that can be forced to
-     * happen rather than raced into.
+     * in the middle of that. Whoever wrote during that pause had their change
+     * thrown away by the assignment that followed. The same pause in the other
+     * direction is what put `session` back to null and offered to start the
+     * ceremony on screen; this is the half of it that can be forced to happen
+     * rather than raced into.
+     *
+     * The pair used here is the session watcher against the room watcher, which
+     * are the two that are genuinely concurrent: both are collecting before
+     * either has written, and neither waits on the other. `roomHasCeremony` is
+     * the field they fight over, and it is the one that decides the offer.
      */
     @Test
     fun `a change written during a suspension survives the write that follows it`() = runBlocking {
-        val session = session(DkgRitualStage.COLLECTING_ROUND_1)
-        val signingSessions = MutableStateFlow<List<LocalFrostSigningSession>>(emptyList())
+        val live = session(DkgRitualStage.COLLECTING_ROUND_1)
+        val abandoned = session(DkgRitualStage.FAILED)
 
-        // Held open until the test has had the key-state watcher write. The
-        // seeding call runs before anything else is collecting, so it is let
-        // through; the session watcher's call is the one that waits.
+        val roomSessions = MutableStateFlow<DkgSession?>(live)
+
+        // Opened once the test has had the room watcher write. The seeding call
+        // runs before anything else is collecting, so it is let through; the
+        // session watcher's call is the one that waits, and `parked` says when
+        // it is in there.
         val gate = CompletableDeferred<Unit>()
+        val parked = CompletableDeferred<Unit>()
         var calls = 0
 
         val viewModel = viewModel(
@@ -133,16 +142,16 @@ class DkgRitualStartOfferJvmTest {
                 override fun observeLatestSessionForChatRoom(
                     chatRoomId: String,
                     parentChatRoomId: String?,
-                ): Flow<DkgSession?> = flowOf(session)
+                ): Flow<DkgSession?> = roomSessions
 
-                override fun observeSigningSessions(
-                    chatRoomId: String
-                ): Flow<List<LocalFrostSigningSession>> = signingSessions
+                override fun observeSessionById(sessionId: String): Flow<DkgSession?> =
+                    flowOf(live)
 
                 override suspend fun pendingApproval(session: DkgSession): DkgApprovalStep? {
                     calls += 1
                     if (calls == 1) return null
 
+                    parked.complete(Unit)
                     gate.await()
                     return DkgApprovalStep.ROUND_1
                 }
@@ -151,32 +160,36 @@ class DkgRitualStartOfferJvmTest {
 
         viewModel.initiate()
 
-        withTimeout(5_000) { viewModel.dkgRitualUIState.first { it is DkgRitualUIState.Loaded } }
+        awaitLoaded(viewModel) { it.roomHasCeremony }
 
-        // The watcher is now parked inside `pendingApproval`, holding a copy of
-        // the state as it was before this line.
-        signingSessions.value = listOf(keyStateSigningSession())
-
-        withTimeout(5_000) {
-            viewModel.dkgRitualUIState.first {
-                (it as? DkgRitualUIState.Loaded)?.keyStateSession != null
-            }
-        }
+        // The session watcher is now inside `pendingApproval`, holding -- in the
+        // shape this used to be written in -- a copy of the state as it was
+        // before the next two lines.
+        withTimeout(5_000) { parked.await() }
+        roomSessions.value = abandoned
+        awaitLoaded(viewModel) { !it.roomHasCeremony }
 
         gate.complete(Unit)
 
-        val settled = withTimeout(5_000) {
-            viewModel.dkgRitualUIState.first {
-                (it as? DkgRitualUIState.Loaded)?.pendingApproval == DkgApprovalStep.ROUND_1
-            }
-        } as DkgRitualUIState.Loaded
+        val settled = awaitLoaded(viewModel) {
+            it.pendingApproval == DkgApprovalStep.ROUND_1
+        }
 
-        assertNotNull(
-            settled.keyStateSession,
-            "the session watcher wrote back a copy taken before the key state arrived"
+        assertFalse(
+            settled.roomHasCeremony,
+            "the session watcher wrote back a copy taken before the room watcher's change"
         )
-        assertEquals(session.id, settled.session?.id)
+        assertEquals(live.id, settled.session?.id)
     }
+
+    private suspend fun awaitLoaded(
+        viewModel: DkgRitualViewModel,
+        until: (DkgRitualUIState.Loaded) -> Boolean,
+    ): DkgRitualUIState.Loaded = withTimeout(5_000) {
+        viewModel.dkgRitualUIState.first {
+            (it as? DkgRitualUIState.Loaded)?.let(until) == true
+        }
+    } as DkgRitualUIState.Loaded
 
     private fun viewModel(dkgRepository: DkgRepository) = DkgRitualViewModel(
         chatRoomId = chatRoomId,
