@@ -37,6 +37,9 @@ import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionContributor
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationContributorListEvent
 import press.mantra.compose.nostr.nip30303.TranslationEvent
 import co.touchlab.kermit.Logger
@@ -1270,6 +1273,136 @@ data class ChatMessage(
                         )
                     }
                 }
+                // A body of work the group has named: which source versions it
+                // is translating and which translations it is producing.
+                //
+                // The memberships are their own events, signed in the same
+                // session and applied after this one -- see
+                // AddProjectViewModel.addProject. Nothing to do here but the
+                // project itself.
+                //
+                // The line names the project and not its creator. On a
+                // group-signed row `senderPublicKey` is the session's
+                // coordinator, so "X started the project" would be the
+                // transcript's own guess at something the event states exactly;
+                // the creator and the owners are on the row, and the detail
+                // screen is where they are read.
+                ProjectEvent.KIND -> {
+                    MantraProject.fromProjectEvent(
+                        projectEvent = ProjectEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { mantraProject ->
+                        database.mantraProjectDao().upsert(
+                            mantraProject.copy(
+                                marmotGroupEventId = marmotGroupEventId,
+                                groupSignedEventId = groupSignedEventId,
+                            )
+                        )
+
+                        ChatMessage(
+                            giftWrapPayloadId = null,
+                            messageType = "project",
+                            marmotGroupEventId = marmotGroupEventId,
+                            marmotInnerEventId = marmotInnerEventId,
+                            senderPublicKey = senderPublicKey,
+                            isUserMessage = isUserMessage,
+                            chatRoomId = groupId,
+                            createdAt = createdAt,
+                            content = "Started the ${mantraProject.name} project"
+                        )
+                    }
+                }
+
+                // One source version is part of one project.
+                //
+                // No line of its own, the way a version writes none beside its
+                // artifact and a chunk none beside its chapter: a membership
+                // arrives as a later item of the batch that founds the project,
+                // which has already said so. One added to an existing project
+                // later is not silent either -- `FrostSigningManager.announce`
+                // writes "The group signed ..." when the session completes, and
+                // three more lines here would be a second account of it.
+                //
+                // The row may be refused: both references are foreign keys, so a
+                // membership naming a version this device does not hold cannot be
+                // written. That is the one-room scope decision doing its job
+                // rather than an error to propagate -- `applySignedEvent`
+                // swallows throwables because the signature is valid either way,
+                // and letting this one reach it would report a session that
+                // succeeded as a session that failed.
+                ProjectArtifactVersionEvent.KIND -> {
+                    MantraProjectArtifactVersion.fromProjectArtifactVersionEvent(
+                        projectArtifactVersionEvent = ProjectArtifactVersionEvent(
+                            id = event.id,
+                            pubKey = event.pubKey,
+                            createdAt = event.createdAt,
+                            tags = event.tags,
+                            content = event.content,
+                            sig = event.sig
+                        ),
+                        chatRoomId = groupId,
+                    )?.let { membership ->
+                        try {
+                            database.mantraProjectArtifactVersionDao().upsert(
+                                membership.copy(
+                                    marmotGroupEventId = marmotGroupEventId,
+                                    groupSignedEventId = groupSignedEventId,
+                                )
+                            )
+                        } catch (error: Throwable) {
+                            logger.w(
+                                "Project ${membership.projectId.take(8)} names artifact " +
+                                    "version ${membership.artifactVersionId.take(8)}, which " +
+                                    "this device does not hold",
+                                error
+                            )
+                        }
+                    }
+                    null
+                }
+
+                // The other half. See the arm above.
+                ProjectTranslationArtifactVersionEvent.KIND -> {
+                    MantraProjectTranslationArtifactVersion
+                        .fromProjectTranslationArtifactVersionEvent(
+                            projectTranslationArtifactVersionEvent =
+                                ProjectTranslationArtifactVersionEvent(
+                                    id = event.id,
+                                    pubKey = event.pubKey,
+                                    createdAt = event.createdAt,
+                                    tags = event.tags,
+                                    content = event.content,
+                                    sig = event.sig
+                                ),
+                            chatRoomId = groupId,
+                        )?.let { membership ->
+                            try {
+                                database.mantraProjectTranslationArtifactVersionDao().upsert(
+                                    membership.copy(
+                                        marmotGroupEventId = marmotGroupEventId,
+                                        groupSignedEventId = groupSignedEventId,
+                                    )
+                                )
+                            } catch (error: Throwable) {
+                                logger.w(
+                                    "Project ${membership.projectId.take(8)} names " +
+                                        "translation " +
+                                        membership.translationArtifactVersionId.take(8) +
+                                        ", which this device does not hold",
+                                    error
+                                )
+                            }
+                        }
+                    null
+                }
+
                 // A signing session's own protocol messages. FrostSigningManager
                 // applies them and writes its own transcript lines naming who did
                 // what, so an "unsupported" row here would be a second, worse
