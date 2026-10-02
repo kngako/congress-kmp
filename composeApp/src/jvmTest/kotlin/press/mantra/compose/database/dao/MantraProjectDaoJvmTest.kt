@@ -292,6 +292,42 @@ class MantraProjectDaoJvmTest {
     }
 
     @Test
+    fun `a translation says which projects it is in`() = runBlocking {
+        seed()
+        val projectId = "p".repeat(64)
+        project(id = projectId, name = "Gospel of John")
+
+        db.mantraProjectTranslationArtifactVersionDao().upsert(
+            MantraProjectTranslationArtifactVersion(
+                id = "m2".padEnd(64, '0'),
+                publicKey = roomId,
+                projectId = projectId,
+                translationArtifactVersionId = translationId,
+                chatRoomId = roomId,
+                signature = signature,
+            )
+        )
+
+        // The artifact-side twin of this had a test from the start and the
+        // translation side did not, which is the kind of asymmetry a copied
+        // query hides: both joins are three lines and one of them could have
+        // named the wrong column without anything noticing.
+        assertEquals(
+            listOf("Gospel of John"),
+            db.mantraProjectTranslationArtifactVersionDao()
+                .getProjectsByTranslationArtifactVersionId(translationId)
+                .map { it.name }
+        )
+
+        // And it is specific to the translation rather than to the project.
+        assertTrue(
+            db.mantraProjectTranslationArtifactVersionDao()
+                .getProjectsByTranslationArtifactVersionId("9".repeat(64))
+                .isEmpty()
+        )
+    }
+
+    @Test
     fun `a membership naming a version this room does not hold is refused`() = runBlocking {
         seed()
         val projectId = "p".repeat(64)
