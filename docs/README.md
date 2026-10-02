@@ -73,7 +73,7 @@ smallest of the plans: it changes the entrance to the direct-message flow and
 nothing past it, so read it with `StartDirectMessageToNpubOrNip05Dialog` and
 `ChatRoomMessagingViewModel.initiateNewChat` open, its four decisions before its
 four phases, and its table of where the build chose differently first.
-The chapter uploads note is a phased plan that has not been built, and is the
+The chapter uploads note is a phased plan that has been built, and is the
 only one that starts from another codebase: it mirrors the mantra.press web app's
 multi-file upload under this app's rule that the group, not the uploader, is the
 author. Read the batch-signing note first — its three limits are the whole shape
