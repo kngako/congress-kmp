@@ -1,6 +1,7 @@
 package press.mantra.compose.ui.composable
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,7 +37,10 @@ import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.repository.MantraRepository
 import press.mantra.compose.ui.composable.widgets.DetailRow
+import androidx.compose.material.icons.filled.UploadFile
+import mantra.composeapp.generated.resources.upload_chapters
 import press.mantra.compose.ui.composable.navigation.routes.AddChapterRoute
+import press.mantra.compose.ui.composable.navigation.routes.UploadChaptersRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -162,25 +166,61 @@ fun ArtifactDetailScreen(
                         }
 
                         item {
-                            TextButton(
-                                enabled = artifactDetailUIState.versions.isNotEmpty(),
-                                onClick = {
-                                    onNavigateToRoute.invoke(
-                                        AddChapterRoute(
-                                            activeUserPublicKey = activeUserPublicKey,
-                                            artifactId = artifact.id,
-                                            chatRoomId = chatRoomId,
-                                            relayHint = relayHint
-                                        )
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.PostAdd,
-                                    contentDescription = "Add chapter"
+                            // Two ways in, because they are two different acts.
+                            // One chapter typed or pasted is a text field and one
+                            // proposal; a folder of files is a review list and one
+                            // proposal each, which is a different thing to put in
+                            // front of the room.
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    MaterialTheme.spacing.itemGap
                                 )
-                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
-                                Text(stringResource(Res.string.add_chapter))
+                            ) {
+                                TextButton(
+                                    enabled = artifactDetailUIState.versions.isNotEmpty(),
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            AddChapterRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                artifactId = artifact.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.PostAdd,
+                                        contentDescription = "Add chapter"
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+                                    Text(stringResource(Res.string.add_chapter))
+                                }
+
+                                TextButton(
+                                    enabled = artifactDetailUIState.versions.isNotEmpty(),
+                                    onClick = {
+                                        onNavigateToRoute.invoke(
+                                            UploadChaptersRoute(
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                artifactId = artifact.id,
+                                                chatRoomId = chatRoomId,
+                                                relayHint = relayHint
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.UploadFile,
+                                        contentDescription = "Upload chapters from files"
+                                    )
+                                    Spacer(
+                                        modifier = Modifier.width(MaterialTheme.spacing.space125)
+                                    )
+                                    Text(stringResource(Res.string.upload_chapters))
+                                }
                             }
                         }
 

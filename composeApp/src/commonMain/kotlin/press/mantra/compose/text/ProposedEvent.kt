@@ -1,6 +1,7 @@
 package press.mantra.compose.text
 
 import com.vitorpamplona.quartz.nip01Core.core.Event
+import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.subgroup.SubgroupBirthCertificateEvent
@@ -8,6 +9,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactEvent
 import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -31,7 +35,52 @@ object ProposedEvent {
      */
     data class Summary(val label: String, val detail: String)
 
-    fun summarize(event: Event): Summary = when (event.kind) {
+    /**
+     * [chatRoomId] is the room the proposal is in, where one is known.
+     *
+     * Only one branch reads it, and only to leave something out: a project owned
+     * by the room it is in is the ordinary case, and saying "owned by this group"
+     * on every project trains a member not to read the line that matters when
+     * somebody else is on it. Null simply says everything.
+     *
+     * [resolve] turns a public key or an event id into something a person can
+     * read, or null when it cannot. It is synchronous on purpose -- this is
+     * called from composables as well as view models -- so a caller with a
+     * database behind it resolves what it needs first and passes a lookup into
+     * the map.
+     *
+     * The default resolves nothing, which is honest rather than ideal. A
+     * membership event carries two 64-character ids and nothing else, so without
+     * a resolver it can only be described by a truncated hash. That is tolerable
+     * inside the batch that founds a project, where the project's own line names
+     * what is happening and the memberships read as its continuation -- and in
+     * that batch the project id is unresolvable anyway, since nothing has
+     * applied it yet. It is not tolerable for a membership proposed on its own,
+     * which is the whole of what a member is being asked to agree to.
+     *
+     * [chunkCount] is how many chunks travel with a chapter in the same batch,
+     * which only a caller holding the batch can know.
+     *
+     * It used to be derived here, by re-splitting the chapter's own text. That
+     * was wrong twice over. It is a *count of the batch* dressed as a fact about
+     * the text, so across a splitter change the number a member reads in the
+     * approval gate disagrees with the chunks they are actually approving -- the
+     * batch was built by the proposer's splitter and counted by the reader's.
+     * And it re-split the whole markdown of every chapter on every emission of
+     * the room's proposal list, which at twenty open proposals is a few hundred
+     * kilobytes of prose re-scanned to produce a number already sitting in the
+     * items beside it.
+     *
+     * Null where the caller has no batch -- a transcript line, a signed event on
+     * its own -- and the summary then says nothing about chunks rather than
+     * guessing.
+     */
+    fun summarize(
+        event: Event,
+        chatRoomId: String? = null,
+        resolve: (HexKey) -> String? = { null },
+        chunkCount: Int? = null,
+    ): Summary = when (event.kind) {
         DialectEvent.KIND -> Summary(
             label = "New dialect",
             detail = DialectEvent(
@@ -74,8 +123,6 @@ object ProposedEvent {
                 // is a whole chapter, so its size stands in for it here. The chunk
                 // count says how many of the batch's other items came out of this
                 // text, which is the rest of what is being signed.
-                val chunkCount = chapter.originalText()?.let { Markdown.splitParagraphs(it).size }
-
                 listOfNotNull(
                     chapter.name(),
                     chapter.wordCount()?.let { "$it words" },
@@ -122,6 +169,56 @@ object ProposedEvent {
                     chunk.index()?.let { "Passage ${it + 1}" },
                     event.content
                 ).joinToString(" · ")
+            }
+        )
+
+        ProjectEvent.KIND -> Summary(
+            label = "New project",
+            detail = ProjectEvent(
+                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+            ).let { project ->
+                listOfNotNull(
+                    project.name(),
+                    event.content.takeIf { it.isNotBlank() },
+                    // Shown because signing this is what makes it the group's
+                    // statement that X started it. A member who cannot see the
+                    // claim cannot be said to have agreed to it -- and nothing
+                    // else checks it, since the creator signs nothing here.
+                    project.creator()?.let { "started by ${describe(it, resolve)}" },
+                    // Only the owners who are not this room. See [chatRoomId].
+                    project.owners()
+                        .filter { it != chatRoomId }
+                        .takeIf { it.isNotEmpty() }
+                        ?.joinToString(", ") { describe(it, resolve) }
+                        ?.let { "owned by $it" },
+                ).joinToString(" · ")
+            }
+        )
+
+        ProjectArtifactVersionEvent.KIND -> Summary(
+            label = "A source version joins the project",
+            detail = ProjectArtifactVersionEvent(
+                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+            ).let { membership ->
+                // The version first: in a founding batch the project is being
+                // signed two lines up and its id resolves to nothing, because
+                // nothing has applied it yet.
+                listOfNotNull(
+                    membership.artifactVersionId()?.let { describe(it, resolve) },
+                    membership.projectId()?.let { resolve(it) }?.let { "to $it" },
+                ).joinToString(" · ").ifBlank { "Unknown version" }
+            }
+        )
+
+        ProjectTranslationArtifactVersionEvent.KIND -> Summary(
+            label = "A translation joins the project",
+            detail = ProjectTranslationArtifactVersionEvent(
+                event.id, event.pubKey, event.createdAt, event.tags, event.content, event.sig
+            ).let { membership ->
+                listOfNotNull(
+                    membership.translationArtifactVersionId()?.let { describe(it, resolve) },
+                    membership.projectId()?.let { resolve(it) }?.let { "to $it" },
+                ).joinToString(" · ").ifBlank { "Unknown translation" }
             }
         )
 
@@ -189,4 +286,14 @@ object ProposedEvent {
 
         else -> Summary(label = "Event of kind ${event.kind}", detail = event.content)
     }
+
+    /**
+     * [id] as a name if [resolve] has one, and as a short hash otherwise.
+     *
+     * Twelve characters because that is what the rest of the signing screens
+     * truncate to. A short hash is a poor thing to put in front of somebody
+     * deciding whether to sign, and saying so is the point: see [summarize].
+     */
+    private fun describe(id: HexKey, resolve: (HexKey) -> String?): String =
+        resolve(id) ?: id.take(12)
 }

@@ -7,8 +7,8 @@ import press.mantra.compose.database.migrations.MIGRATION_9_10
 import press.mantra.compose.database.migrations.MIGRATION_13_14
 import press.mantra.compose.database.migrations.MIGRATION_14_15
 import press.mantra.compose.database.migrations.MIGRATION_20_21
-import press.mantra.compose.database.migrations.MIGRATION_21_22
 import press.mantra.compose.database.migrations.MIGRATION_22_23
+import press.mantra.compose.database.migrations.MIGRATION_23_24
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
@@ -38,8 +38,8 @@ fun getRoomDatabase(
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_20_21,
-            MIGRATION_21_22,
             MIGRATION_22_23,
+            MIGRATION_23_24,
         )
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)

@@ -19,8 +19,13 @@ import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.FrostSigningItem
 import press.mantra.compose.database.model.FrostSigningSession
 import press.mantra.compose.nostr.frost.FrostSigningEvents
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
+import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.repository.NostrRepository
 import press.mantra.compose.ui.view.state.FrostSigningUIState
 
 class FrostSigningViewModel(
@@ -30,6 +35,8 @@ class FrostSigningViewModel(
     initialFrostSigningUIState: FrostSigningUIState,
     val chatRepository: ChatRepository,
     val frostSigningRepository: FrostSigningRepository,
+    val mantraRepository: MantraRepository,
+    val nostrRepository: NostrRepository,
 ): ViewModel() {
 
     var frostSigningUIState: FrostSigningUIState by mutableStateOf(initialFrostSigningUIState)
@@ -72,9 +79,80 @@ class FrostSigningViewModel(
                         signed = messages
                             .filter { it.kind == FrostSigningEvents.PARTIAL_SIGNATURE }
                             .map { it.signerPublicKey }
-                            .toSet()
+                            .toSet(),
+                        names = namesIn(proposedEvents(items))
                     )
                 }
+        }
+    }
+
+    /**
+     * Whatever the proposed events refer to, as words.
+     *
+     * Only the kinds that need it, and only what this device already holds. A
+     * key with no profile and an id with no row are both left out, and
+     * `ProposedEvent.summarize` falls back to a short hash -- which is truthful
+     * rather than a gap: the device has not seen the thing.
+     *
+     * A project's own id resolves to nothing while it is being proposed,
+     * because nothing has applied it yet. That is why a membership says the
+     * version first.
+     */
+    private suspend fun namesIn(events: List<Event>): Map<HexKey, String> = buildMap {
+        suspend fun person(publicKey: HexKey) {
+            if (containsKey(publicKey)) return
+            nostrRepository.getProfileWithPublicKey(publicKey)?.let {
+                put(publicKey, it.humanReadableNameOrPubkey())
+            }
+        }
+
+        suspend fun project(projectId: HexKey?) {
+            if (projectId == null || containsKey(projectId)) return
+            mantraRepository.getProject(projectId)?.let { put(projectId, it.name) }
+        }
+
+        events.forEach { event ->
+            when (event.kind) {
+                ProjectEvent.KIND -> {
+                    val proposed = ProjectEvent(
+                        event.id, event.pubKey, event.createdAt,
+                        event.tags, event.content, event.sig
+                    )
+                    proposed.creator()?.let { person(it) }
+                    proposed.owners().forEach { person(it) }
+                }
+
+                ProjectArtifactVersionEvent.KIND -> {
+                    val membership = ProjectArtifactVersionEvent(
+                        event.id, event.pubKey, event.createdAt,
+                        event.tags, event.content, event.sig
+                    )
+                    membership.artifactVersionId()?.let { versionId ->
+                        mantraRepository.getArtifactVersion(versionId)?.let { version ->
+                            val artifact = mantraRepository.getArtifact(version.artifactId)
+                            put(
+                                versionId,
+                                listOfNotNull(artifact?.name, version.versionLabel)
+                                    .joinToString(" ")
+                            )
+                        }
+                    }
+                    project(membership.projectId())
+                }
+
+                ProjectTranslationArtifactVersionEvent.KIND -> {
+                    val membership = ProjectTranslationArtifactVersionEvent(
+                        event.id, event.pubKey, event.createdAt,
+                        event.tags, event.content, event.sig
+                    )
+                    membership.translationArtifactVersionId()?.let { translationId ->
+                        mantraRepository.getTranslation(translationId)?.let {
+                            put(translationId, it.name)
+                        }
+                    }
+                    project(membership.projectId())
+                }
+            }
         }
     }
 
@@ -133,6 +211,8 @@ class FrostSigningViewModel(
             initialFrostSigningUIState: FrostSigningUIState = FrostSigningUIState.Loading,
             chatRepository: ChatRepository,
             frostSigningRepository: FrostSigningRepository,
+            mantraRepository: MantraRepository,
+            nostrRepository: NostrRepository,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 FrostSigningViewModel(
@@ -141,7 +221,9 @@ class FrostSigningViewModel(
                     activeUserPublicKey = activeUserPublicKey,
                     initialFrostSigningUIState = initialFrostSigningUIState,
                     chatRepository = chatRepository,
-                    frostSigningRepository = frostSigningRepository
+                    frostSigningRepository = frostSigningRepository,
+                    mantraRepository = mantraRepository,
+                    nostrRepository = nostrRepository
                 )
             }
         }

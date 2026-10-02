@@ -114,9 +114,6 @@ class DkgRitualViewModel(
     /** Watches the current session's messages; replaced whenever the session changes. */
     private var messageObserver: Job? = null
 
-    /** Watches the room's signing sessions, which is where the key state is agreed. */
-    private var keyStateObserver: Job? = null
-
     /** Watches the parent certifying this subgroup; re-pointed as the purpose is learned. */
     private var certificateObserver: Job? = null
 
@@ -240,8 +237,6 @@ class DkgRitualViewModel(
                 .defaultQuorum(ChillDkgRitualManager.memberPublicKeys(localChatRoom).size)
                 .coerceIn(quorumRange())
 
-            observeKeyState()
-
             launch {
                 roomSessions.collect { newest ->
                     updateLoaded { current ->
@@ -324,43 +319,6 @@ class DkgRitualViewModel(
     }
 
     /**
-     * Follows the group agreeing what its admin room will sign with.
-     *
-     * Nothing here watches a [GroupKeyState] row, because there is no room yet
-     * for one to belong to -- being able to follow this before the room exists
-     * is the point. What is watched instead is the session, for how the signing
-     * is going, and the signed event, for whether it finished.
-     *
-     * The room a ceremony runs in signs nothing else, so the newest session in
-     * it is the key state's -- but it is matched on the kind it carries anyway,
-     * so a room that one day signs something else does not confuse the two.
-     */
-    private fun observeKeyState() {
-        keyStateObserver?.cancel()
-        keyStateObserver = viewModelScope.launch(Dispatchers.IO) {
-            // Two flows because they answer two questions off two tables. How
-            // the signing is going is the session row; whether it finished is
-            // the signed event, and only that second one can be asked at all
-            // before there is a room -- which is the whole point of asking it.
-            launch {
-                dkgRepository.observeSigningSessions(chatRoomId).collect { sessions ->
-                    val keyState = sessions.firstOrNull { local ->
-                        local.items.any { item ->
-                            runCatching {
-                                Event.fromJson(item.unsignedEventJson).kind
-                            }.getOrNull() == GroupKeyStateEvent.KIND
-                        }
-                    }?.session
-
-                    updateLoaded { it.copy(keyStateSession = keyState) }
-                }
-            }
-
-
-        }
-    }
-
-    /**
      * Follows one ceremony: whether its key state has been signed, and -- for a
      * subgroup -- whether its parent has certified it.
      *
@@ -379,12 +337,50 @@ class DkgRitualViewModel(
 
         if (dkgSessionId == null) {
             updateLoaded {
-                it.copy(isKeyStateSigned = false, isCertified = false, certificateSession = null)
+                it.copy(
+                    isKeyStateSigned = false,
+                    keyStateSession = null,
+                    isCertified = false,
+                    certificateSession = null
+                )
             }
             return
         }
 
         certificateObserver = viewModelScope.launch(Dispatchers.IO) {
+            // How the agreement is going, as opposed to whether it finished --
+            // two questions off two tables, and only the second can be asked
+            // before there is a room at all, which is the point of asking it.
+            //
+            // By the ceremony the proposal names, not by kind in this room. The
+            // room a ceremony runs in used to sign nothing else, and that is
+            // what this read assumed; a parent's Marmot room now hosts the
+            // ceremony of every subgroup the group makes, so it holds one of
+            // these per subgroup. Matching on kind alone handed the screen the
+            // newest of them -- which is some other subgroup's -- and with it a
+            // progress bar for a signing this ceremony is not in and a button
+            // disabled on the strength of it. Permanently, once that other one
+            // completed: the guard only reopens on a failure.
+            //
+            // `FrostKeyTag` is on the proposal from the moment it is made, so
+            // this works before the ceremony has a key and before anybody signs.
+            launch {
+                dkgRepository.observeSigningSessions(chatRoomId).collect { sessions ->
+                    val keyState = sessions.firstOrNull { local ->
+                        local.items.any { item ->
+                            val event = runCatching {
+                                Event.fromJson(item.unsignedEventJson)
+                            }.getOrNull() ?: return@any false
+
+                            event.kind == GroupKeyStateEvent.KIND &&
+                                GroupKeyStateEvent.parseDkgSessionId(event.tags) == dkgSessionId
+                        }
+                    }?.session
+
+                    updateLoaded { it.copy(keyStateSession = keyState) }
+                }
+            }
+
             // Whether the group has agreed what the room this ceremony's key
             // derives will sign with. Asked by ceremony rather than by room: the
             // room holds however many ceremonies it holds, and the answer is
@@ -408,14 +404,43 @@ class DkgRitualViewModel(
             }
 
             launch {
+                // The child this ceremony is making, which is what a certificate
+                // names. Resolved per emission rather than once, because the
+                // ceremony has no key until it finishes and this flow is running
+                // before it does -- the same reason `observeBirthCertificate`
+                // resolves it per emission.
+                //
+                // Scoped to that child, not to the kind. A parent certifies every
+                // subgroup it ever makes from the same room, so by kind alone this
+                // found the newest certificate signing in the parent -- some other
+                // child's -- and read its progress as this one's. Worse, the rung
+                // disables "ask the group to certify" while a certificate session
+                // is running and un-failed, so once a parent had certified one
+                // subgroup it could never be asked to certify another.
                 dkgRepository.observeSigningSessions(parentChatRoomId).collect { sessions ->
-                    val certificate = sessions.firstOrNull { local ->
-                        local.items.any { item ->
-                            runCatching {
-                                Event.fromJson(item.unsignedEventJson).kind
-                            }.getOrNull() == SubgroupBirthCertificateEvent.KIND
-                        }
-                    }?.session
+                    val subgroupChatRoomId = dkgRepository.roomDerivedBy(dkgSessionId)
+
+                    val certificate = subgroupChatRoomId?.let { child ->
+                        sessions.firstOrNull { local ->
+                            local.items.any { item ->
+                                val event = runCatching {
+                                    Event.fromJson(item.unsignedEventJson)
+                                }.getOrNull() ?: return@any false
+
+                                // `addresses`, not `certifies`: the thing being
+                                // matched is a proposal, and `certifies` ends on
+                                // a signature by the parent's quorum, which is
+                                // precisely what has not happened yet. Whether
+                                // the parent actually agreed is `isCertified`,
+                                // which does check it.
+                                SubgroupBirthCertificateEvent.addresses(
+                                    event = event,
+                                    subgroupChatRoomId = child,
+                                    parentChatRoomId = parentChatRoomId,
+                                )
+                            }
+                        }?.session
+                    }
 
                     updateLoaded { it.copy(certificateSession = certificate) }
                 }
@@ -736,7 +761,6 @@ class DkgRitualViewModel(
 
     override fun onCleared() {
         messageObserver?.cancel()
-        keyStateObserver?.cancel()
         certificateObserver?.cancel()
         super.onCleared()
     }

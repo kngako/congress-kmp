@@ -221,8 +221,8 @@ class DatabaseChatRepository(
         false
     }
 
-    override suspend fun parentsOf(chatRoomId: String): List<HexKey> = try {
-        SubgroupManager.parentsOf(database, chatRoomId)
+    override suspend fun parentsOf(chatRoomId: String): List<SubgroupManager.Parent> = try {
+        SubgroupManager.parentGroupsOf(database, chatRoomId)
     } catch (e: Throwable) {
         logger.e("Error reading the parents of $chatRoomId", e)
         emptyList()
@@ -711,7 +711,7 @@ class DatabaseChatRepository(
      * One person tidying their chat list is not the group being deleted, and it is not the
      * other profile's list changing either -- so this marks the membership rather than the
      * room. A room with no membership left archived is still the group's, and the
-     * nineteen tables hanging off it are untouched.
+     * twenty-two tables hanging off it are untouched.
      */
     override suspend fun softDeleteChatRoom(
         chatRoom: ChatRoom,

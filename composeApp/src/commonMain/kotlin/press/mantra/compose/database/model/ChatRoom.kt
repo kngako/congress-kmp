@@ -22,7 +22,7 @@ import kotlin.time.Instant
  * the group and one profile's membership of it and meant a second profile joining the
  * same group wrote over the first's ratchet state.
  *
- * Keyed by [id] alone, which is what the nineteen tables referencing a room depend on:
+ * Keyed by [id] alone, which is what the twenty-two tables referencing a room depend on:
  * most of them hold the group's signed work, which is nobody's in particular. See
  * [ChatRoomMembership] for why the room was split rather than its key widened.
  *

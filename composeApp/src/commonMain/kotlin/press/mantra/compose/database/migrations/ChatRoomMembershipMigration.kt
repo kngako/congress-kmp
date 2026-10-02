@@ -20,7 +20,7 @@ import androidx.sqlite.execSQL
  *
  * ### Nineteen cascades, and the one thing that makes this possible
  *
- * `ChatRoom` is the parent of nineteen tables, every one of them `ON DELETE CASCADE` --
+ * `ChatRoom` is the parent of twenty-two tables, every one of them `ON DELETE CASCADE` --
  * the messages, the participants, the ceremonies, the signing sessions, the key states and
  * the whole translation domain. Two of the columns to remove are named by foreign keys
  * (`userPublicKey` onto `Profile`, `initialGiftWrapPayloadId` onto `GiftWrapPayload`), and
@@ -28,7 +28,7 @@ import androidx.sqlite.execSQL
  *
  * With foreign keys enforced there is no way to rebuild it. Measured, not assumed:
  *
- * - `DROP TABLE` performs an implicit `DELETE FROM`, so all nineteen cascades fire;
+ * - `DROP TABLE` performs an implicit `DELETE FROM`, so all twenty-two cascades fire;
  * - `ALTER TABLE ... RENAME TO` rewrites the children's foreign-key clauses to follow the
  *   rename, pointing them at a table about to be dropped -- and `PRAGMA
  *   legacy_alter_table` does **not** stop it. It reads back as set and the clause is
@@ -40,7 +40,7 @@ import androidx.sqlite.execSQL
  * the ordinary rebuild-a-parent-table migration possible at all. `MIGRATION_9_10` warns
  * against taking that on trust, and it is not taken on trust:
  * `ChatRoomSplitThroughRoomJvmTest` asserts it against a real v22 file, through
- * `getRoomDatabase`, with rows seeded in four of the nineteen. If that test fails this
+ * `getRoomDatabase`, with rows seeded in four of the twenty-two. If that test fails this
  * migration is unsafe, and no reordering fixes it -- the children would have to be copied
  * out and back.
  *
@@ -49,9 +49,9 @@ import androidx.sqlite.execSQL
  * The replacement is built beside the original and renamed into its place *after* the
  * original is gone, rather than the original being renamed out of the way first. Nothing
  * ever references `ChatRoomNew`, so nothing is rewritten to follow that rename, and the
- * nineteen children go on naming `ChatRoom` throughout -- which resolves to the old table
- * before the swap and the new one after it. Renaming the original first would repoint all
- * nineteen at `ChatRoomOld` and leave them dangling.
+ * children go on naming `ChatRoom` throughout -- which resolves to the old table
+ * before the swap and the new one after it. Renaming the original first would repoint every
+ * one of them at `ChatRoomOld` and leave them dangling.
  *
  * `legacy_alter_table` is set for the rename after all, for a different reason than the
  * one above: the modern path re-parses the whole schema on rename and errors on the
@@ -63,7 +63,7 @@ import androidx.sqlite.execSQL
  * approximate: before several profiles, a room *was* one profile's, and its
  * `userPublicKey` says whose.
  */
-val MIGRATION_22_23 = object : Migration(22, 23) {
+val MIGRATION_23_24 = object : Migration(23, 24) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // 1. The membership, and one per room that exists.
         connection.execSQL(
@@ -102,7 +102,7 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
         )
 
         // 2. The group's own row, built beside the original under a name nothing
-        // references -- so the swap below rewrites none of the nineteen children.
+        // references -- so the swap below rewrites none of those children.
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `ChatRoomNew` (" +
                 "`id` TEXT NOT NULL, `subject` TEXT, `description` TEXT, " +

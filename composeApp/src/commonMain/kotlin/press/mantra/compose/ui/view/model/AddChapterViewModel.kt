@@ -18,9 +18,11 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
+import press.mantra.compose.managers.ChapterIndexing
+import press.mantra.compose.managers.ChapterScaffolding
 import press.mantra.compose.managers.FrostSigningManager
-import press.mantra.compose.managers.TranslationScaffold
 import press.mantra.compose.nostr.nip30303.ChapterEvent
+import press.mantra.compose.nostr.nip30303.ChapterProposal
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
@@ -100,12 +102,21 @@ class AddChapterViewModel(
     ) {
         val name = nameField.text.toString()
         val originalText = originalTextField.text.toString()
-        val paragraphs = Markdown.splitParagraphs(originalText)
+        val chunks = Markdown.splitChunks(originalText)
 
-        // The cap is the group's, not this screen's, and proposing past it
-        // throws rather than failing softly. The form says so as it is typed;
-        // this is the check that has to hold when it does not.
-        if (name.isBlank() || paragraphs.isEmpty() || paragraphs.size > MAX_CHUNKS_PER_CHAPTER) {
+        // Both caps are the group's, not this screen's, and proposing past
+        // either throws rather than failing softly. The form says so as it is
+        // typed; these are the checks that have to hold when it does not.
+        //
+        // Two caps rather than one because they bound different things: how many
+        // events a session signs, and how many bytes the proposal carrying them
+        // weighs. A chapter of sixty-three one-word paragraphs passes the second
+        // and fails the first; one of three very long ones does the reverse.
+        if (name.isBlank() ||
+            chunks.isEmpty() ||
+            chunks.size > MAX_CHUNKS_PER_CHAPTER ||
+            !ChapterProposal.fits(originalText, chunks)
+        ) {
             onFailure.invoke()
             return
         }
@@ -121,7 +132,17 @@ class AddChapterViewModel(
             // may have added to in a different order. The scaffolding proposed
             // below is placed at the same one, so a translation chapter agrees
             // with the chapter it stands for.
-            val chapterIndex = mantraRepository.getChaptersForArtifactVersion(artifactVersion.id).size
+            //
+            // Counting the room's open proposals as well as its rows, because a
+            // chapter proposed a second ago is not a row yet and reading the
+            // table alone would hand it this chapter's number -- see
+            // [ChapterIndexing.nextIndex].
+            val chapterIndex = ChapterIndexing.nextIndex(
+                mantraRepository = mantraRepository,
+                frostSigningRepository = frostSigningRepository,
+                chatRoomId = chatRoomId,
+                artifactVersionId = artifactVersion.id,
+            )
 
             val chapterEventTemplate = ChapterEvent.build(
                 artifactVersionId = artifactVersion.id,
@@ -177,36 +198,18 @@ class AddChapterViewModel(
 
     /**
      * Asks the group to scaffold this chapter into every translation of the
-     * version, in sessions of their own.
+     * version, in a session of its own.
      *
-     * Its own session rather than more items on the chapter's, because the two
-     * would otherwise compete for one batch: a chapter is capped at
-     * [MAX_CHUNKS_PER_CHAPTER] paragraphs, and every dialect the group works in
-     * would take one of those places away. How long a chapter may be and how
-     * many languages it is read in have nothing to do with each other, and a
-     * shared cap would make the first move whenever somebody else did the
-     * second.
+     * The reasoning and the failure policy are [ChapterScaffolding]'s; this is
+     * the one-chapter call into it. Sharing that code with the upload screen is
+     * the point -- there is one answer to what a chapter's scaffolding is, and
+     * two copies of a cross product would be two chances to disagree about what
+     * a translation covers.
      *
-     * Sessions run independently -- every message carries the session it
-     * belongs to, and each mints its own nonce material -- so a second one
-     * opened here costs the admins another approval and nothing else.
-     *
-     * **What a separate session gives up.** A batch is all-or-nothing; two
-     * sessions are not. If the chapter fails to reach a quorum while this one
-     * succeeds, these are valid signatures over rows naming a chapter nobody
-     * has: they fail a foreign key on the way in, are logged by
-     * `applySignedEvent`, and never become rows. Harmless, and not recoverable
-     * either -- a re-proposed chapter is a different id -- so the catch-up on
-     * the translation is what fills the gap afterwards.
-     *
-     * The chapter is named as the group will author it: [chapterSessionId]'s
-     * first item is the unsigned chapter, whose id is the hash its signers are
-     * putting their shares behind, and it is settled at proposal time rather
-     * than when the quorum arrives.
-     *
-     * Failure here is logged and swallowed. The chapter has already been
-     * proposed and is the thing that was asked for; losing it because its
-     * scaffolding could not be opened would be the wrong way round.
+     * Called before navigating, not after: the route this screen sits on is
+     * popped on success, which clears this view model and takes
+     * `viewModelScope` with it, so work launched afterwards would be cancelled
+     * somewhere in the middle.
      */
     private suspend fun scaffoldIntoTranslations(
         localChatRoom: LocalChatRoom,
@@ -214,40 +217,19 @@ class AddChapterViewModel(
         chapterIndex: Int,
         chapterSessionId: String,
     ) {
-        runCatching {
-            val translations = mantraRepository
-                .getTranslationsForArtifactVersion(artifactVersion.id)
-                .ifEmpty { return@runCatching }
-
-            val chapter = frostSigningRepository
-                .unsignedEvents(frostSigningRepository.getItems(chapterSessionId))
-                .firstOrNull() ?: return@runCatching
-
-            // One session per MAX_BATCH_SIZE translations. A group with more
-            // dialects than a batch holds is not a group this should refuse;
-            // it is one that answers twice.
-            translations.chunked(FrostSigningManager.MAX_BATCH_SIZE).forEach { batch ->
-                frostSigningRepository.proposeSigningBatch(
-                    localChatRoom = localChatRoom,
-                    userPublicKey = activeUserPublicKey,
-                    events = TranslationScaffold.chaptersOf(
-                        translationArtifactVersionIds = batch.map { it.id },
-                        chapters = listOf(
-                            TranslationScaffold.SourceChapter(
-                                id = chapter.id,
-                                index = chapterIndex,
-                            )
-                        ),
-                        createdAt = chapter.createdAt,
-                    )
+        ChapterScaffolding.propose(
+            mantraRepository = mantraRepository,
+            frostSigningRepository = frostSigningRepository,
+            localChatRoom = localChatRoom,
+            userPublicKey = activeUserPublicKey,
+            artifactVersionId = artifactVersion.id,
+            chapters = listOf(
+                ChapterScaffolding.ProposedChapter(
+                    sessionId = chapterSessionId,
+                    index = chapterIndex,
                 )
-            }
-        }.onFailure { error ->
-            logger.e(
-                "Proposed the chapter but could not ask for it in this version's translations",
-                error
-            )
-        }
+            ),
+        )
     }
 
     companion object {

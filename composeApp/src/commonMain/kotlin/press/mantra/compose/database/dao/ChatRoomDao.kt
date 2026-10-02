@@ -60,7 +60,7 @@ interface ChatRoomDao {
      *
      * Deliberately not scoped by profile and deliberately not filtered by anybody's
      * `deletedAt`. What a caller wants from this is the group it is about to act in --
-     * its name, its description, the row the nineteen tables hang off -- and that exists
+     * its name, its description, the row the twenty-two tables hang off -- and that exists
      * whether or not somebody archived their chat-list row for it. The memberships come
      * with it, so a caller needing one profile's MLS state asks
      * `LocalChatRoom.membershipOf`.

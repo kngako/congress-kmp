@@ -63,13 +63,13 @@ class ChunkEvent(
                 sig = chapter.sig
             ).originalText() ?: return emptyList()
 
-            return Markdown.splitParagraphs(originalText).mapIndexed { index, paragraph ->
+            return Markdown.splitChunks(originalText).mapIndexed { index, chunk ->
                 build(
                     chapterId = chapter.id,
-                    text = paragraph,
+                    text = chunk,
                     index = index,
-                    wordCount = Markdown.wordCount(paragraph),
-                    characterCount = Markdown.characterCount(paragraph),
+                    wordCount = Markdown.wordCount(chunk),
+                    characterCount = Markdown.characterCount(chunk),
                     createdAt = chapter.createdAt,
                 )
             }

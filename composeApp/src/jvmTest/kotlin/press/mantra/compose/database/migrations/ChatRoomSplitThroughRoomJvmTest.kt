@@ -18,10 +18,14 @@ import press.mantra.compose.database.MantraDatabase
 import press.mantra.compose.database.builder.getRoomDatabase
 
 /**
- * The v22 -> v23 split as a real device performs it, which is the only setting that
+ * The membership split as a real device performs it, which is the only setting that
  * answers the question this migration turns on.
  *
- * `ChatRoom` is the parent of nineteen `ON DELETE CASCADE` children -- the messages, the
+ * Starts from a v22 file and lets Room take it all the way to the current version, so it
+ * runs 22 -> 23 (the ritual keying) and 23 -> 24 (this split) in one upgrade, which is what
+ * a device coming off the projects release will actually do.
+ *
+ * `ChatRoom` is the parent of twenty-two `ON DELETE CASCADE` children -- the messages, the
  * participants, the ceremonies, the signing sessions, the key states and the whole
  * translation domain -- and splitting the membership off means rebuilding that table.
  * There is no way to rebuild it that survives foreign keys being enforced:
@@ -29,7 +33,7 @@ import press.mantra.compose.database.builder.getRoomDatabase
  * - `DROP TABLE` performs an implicit `DELETE FROM`, so the cascades fire and every child
  *   row goes;
  * - `ALTER TABLE ... RENAME TO` rewrites the children's foreign-key clauses to follow the
- *   rename, pointing all nineteen at a table about to be dropped. `PRAGMA
+ *   rename, pointing every one of them at a table about to be dropped. `PRAGMA
  *   legacy_alter_table` does **not** prevent that -- measured, not assumed: it reads back
  *   as set and the clause is rewritten anyway;
  * - `ALTER TABLE ... DROP COLUMN` cannot remove `userPublicKey` or
@@ -37,14 +41,14 @@ import press.mantra.compose.database.builder.getRoomDatabase
  * - and a migration cannot turn foreign keys off itself, because `PRAGMA foreign_keys` is
  *   a no-op inside a transaction and Room runs migrations in one.
  *
- * Backing up all nineteen children and their own twenty-two dependents is the only
+ * Backing up all twenty-two children and their own dependents is the only
  * alternative, and it is worse than what it protects against.
  *
  * So this migration depends on Room disabling foreign keys around the migration it runs,
  * which is what makes the ordinary rebuild-a-parent-table migration possible at all. That
  * dependency is exactly the kind `MIGRATION_9_10` warns against taking on trust -- so it
  * is not taken on trust. It is asserted here, against a real file, through
- * `getRoomDatabase`, with children seeded in four of the nineteen tables.
+ * `getRoomDatabase`, with children seeded in four of the twenty-two tables.
  *
  * If this test ever fails, the migration is unsafe and no amount of reordering its
  * statements will fix it; the children have to be copied out and back.
@@ -95,8 +99,8 @@ class ChatRoomSplitThroughRoomJvmTest {
      * A v22 file holding one room, its membership-to-be, and work in four of the tables
      * that cascade off it.
      *
-     * From the committed export rather than from DDL restated here: fifty-five tables is
-     * too many to copy, and the export is what a v22 device actually holds.
+     * From the committed export rather than from DDL restated here: fifty-eight tables is too
+     * many to copy, and the export is what a v22 device actually holds.
      */
     private fun createV22Database() {
         val (identity, statements) = export(22)
@@ -129,7 +133,7 @@ class ChatRoomSplitThroughRoomJvmTest {
                     "'$mlsState', 2000, 1000, 1000, 1000)"
             )
 
-            // Four of the nineteen, one per shape: the roster, a transcript line, a
+            // Four of the twenty-two, one per shape: the roster, a transcript line, a
             // ceremony and a piece of the group's signed work. They cascade identically,
             // so they are lost or kept together.
             connection.execSQL(
@@ -178,7 +182,7 @@ class ChatRoomSplitThroughRoomJvmTest {
      * left against the entities -- and the group's history is still there.
      */
     @Test
-    fun `Room splits the membership off without taking the room's nineteen children`() = runBlocking {
+    fun `Room splits the membership off without taking the room's children`() = runBlocking {
         createV22Database()
 
         val db = openThroughRoom()

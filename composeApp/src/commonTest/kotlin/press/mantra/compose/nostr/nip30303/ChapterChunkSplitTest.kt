@@ -168,7 +168,7 @@ class ChapterChunkSplitTest {
         val text = "One.\n\nTwo.\n\n\nThree.\n\n   \n\nFour."
 
         assertEquals(
-            Markdown.splitParagraphs(text).size,
+            Markdown.splitChunks(text).size,
             ChunkEvent.splitOf(unsignedChapter(originalText = text)).size
         )
     }

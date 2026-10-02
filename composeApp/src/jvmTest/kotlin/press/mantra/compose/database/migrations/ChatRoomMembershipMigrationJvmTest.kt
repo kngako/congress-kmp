@@ -10,13 +10,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The v22 -> v23 column mapping, on a bare connection.
+ * The v23 -> v24 column mapping, on a bare connection.
  *
  * What moves where, and that the group keeps only its own facts. Run with foreign keys
  * **off**, which is not a convenience -- it is the condition the migration actually runs
  * under, because Room disables them around a migration and `ChatRoom` is the parent of
- * nineteen `ON DELETE CASCADE` children that no rebuild could survive otherwise. See
- * `MIGRATION_22_23` for why there is no alternative, and
+ * twenty-two `ON DELETE CASCADE` children that no rebuild could survive otherwise. See
+ * `MIGRATION_23_24` for why there is no alternative, and
  * [ChatRoomSplitThroughRoomJvmTest] for the test that proves the condition holds rather
  * than assuming it: that one runs the real Room path with children seeded, and is where
  * the cascade question is settled.
@@ -35,7 +35,13 @@ class ChatRoomMembershipMigrationJvmTest {
     private val holder = "0a".repeat(32)
     private val mlsState = "a1".repeat(32)
 
-    /** v22's `ChatRoom`, its `Profile` parent, and four of its nineteen children. */
+    /**
+     * `ChatRoom` as it stands before the split, its `Profile` parent, and four of its
+     * twenty-two children.
+     *
+     * The room's shape is the same at v22 and v23 -- the ritual keying in between did not
+     * touch it -- so this fixture is the pre-split room whichever of the two it came from.
+     */
     private fun createV22() {
         // Off, as Room leaves them around a migration. See the note on the class.
         connection.execSQL("PRAGMA foreign_keys = OFF")
@@ -64,7 +70,7 @@ class ChatRoomMembershipMigrationJvmTest {
                 "ON UPDATE NO ACTION ON DELETE CASCADE )"
         )
 
-        // Four of the nineteen, standing in for the lot: a message, a participant, a
+        // Four of the twenty-two, standing in for the lot: a message, a participant, a
         // ceremony and a piece of the group's signed work.
         CHILDREN.forEach { (table, extra) ->
             connection.execSQL(
@@ -108,7 +114,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the group keeps its own facts and loses the rest`() = runBlocking {
         createV22()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(
             listOf("id", "subject", "description", "createdAt", "updatedAt", "savedAt"),
@@ -133,7 +139,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `every room becomes exactly one membership, carrying the profile's half`() = runBlocking {
         createV22()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(1, count("ChatRoomMembership"))
         assertEquals(
@@ -162,7 +168,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the upgraded schema takes a second profile's membership`() = runBlocking {
         createV22()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         val second = "0b".repeat(32)
         connection.execSQL("INSERT INTO `Profile` VALUES ('$second')")
@@ -176,7 +182,7 @@ class ChatRoomMembershipMigrationJvmTest {
         assertEquals(
             1,
             count("ChatRoom"),
-            "and still one room -- which is what the nineteen children point at",
+            "and still one room -- which is what the twenty-two children point at",
         )
         assertTrue(
             one("SELECT `mlsGroupState` FROM `ChatRoomMembership` WHERE `userPublicKey` = '$holder'") {
@@ -191,7 +197,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the renamed table is gone`() = runBlocking {
         createV22()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(
             emptyList(),
@@ -203,7 +209,7 @@ class ChatRoomMembershipMigrationJvmTest {
 
     private companion object {
         /**
-         * Four of `ChatRoom`'s nineteen children, one per shape that matters: a message,
+         * Four of `ChatRoom`'s twenty-two children, one per shape that matters: a message,
          * the roster, a ceremony and a piece of the group's signed work. They are all the
          * same single-column cascade onto the same parent, so they fail or survive
          * together.

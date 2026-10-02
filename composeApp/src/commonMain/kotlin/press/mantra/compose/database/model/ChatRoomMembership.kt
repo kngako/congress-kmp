@@ -20,14 +20,14 @@ import press.mantra.compose.database.model.traits.UserViewableEntity
  *
  * [ChatRoom] used to hold both, keyed by the group id alone, which made it two things
  * in one row. The group's half -- its id, its name, its description -- is the same for
- * every member and is what the nineteen tables hanging off a room point at. This half
+ * every member and is what the twenty-two tables hanging off a room point at. This half
  * is not: an MLS ratchet state belongs to one member, the moment somebody joined is
  * theirs, and a room one profile has archived is still in the other's list.
  *
  * ### Why a row rather than a wider key on the room
  *
  * Keying `ChatRoom` by (`id`, `userPublicKey`) would have been the same isolation and a
- * much worse schema. Of the nineteen tables that reference a room, fourteen hold the
+ * much worse schema. Of the twenty-two tables that reference a room, fourteen hold the
  * *group's* signed work -- `GroupSignedEvent`, `GroupKeyState` and the twelve `Mantra*`
  * tables -- and two profiles in one group read the same chapters and the same signed
  * events. Those fourteen would have had to either carry a `userPublicKey` that
@@ -35,7 +35,7 @@ import press.mantra.compose.database.model.traits.UserViewableEntity
  * deleted room up. `GroupSignedEvent` could not have carried one at all: its key is the
  * event's hash, so a second copy is not a row the table can hold.
  *
- * Splitting instead leaves all nineteen pointing at a room that is unambiguously the
+ * Splitting instead leaves all twenty-two pointing at a room that is unambiguously the
  * group's, and puts the profile in the key of the one thing that is a profile's.
  *
  * ### What this does not decide

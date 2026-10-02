@@ -6,6 +6,7 @@ import press.mantra.compose.managers.SubgroupManager
 import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MantraArtifact
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 
 sealed interface ChatRoomDetailUIState {
@@ -13,6 +14,9 @@ sealed interface ChatRoomDetailUIState {
         val localChatRoom: LocalChatRoom,
         val artifacts: List<MantraArtifact> = emptyList(),
         val dialects: List<MantraDialect> = emptyList(),
+
+        /** What the room's library is being used for. */
+        val projects: List<MantraProject> = emptyList(),
         /**
          * What the group has said this room signs with, or null while it has
          * said nothing.
@@ -41,15 +45,18 @@ sealed interface ChatRoomDetailUIState {
          */
         val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
         /**
-         * The group this room is a subgroup of, or null when it is nobody's
+         * The groups this room is a subgroup of, empty when it is nobody's
          * child.
          *
          * Verified: it comes off the room's key state, which only carries a
          * parent whose certificate was checked. A member welcomed in after the
          * founding holds no state and so sees nothing here, even in a room that
          * really is a subgroup.
+         *
+         * Each carries the parent's room where this device holds one, so the
+         * card can name the group rather than only identify it.
          */
-        val parentChatRoomIds: List<HexKey> = emptyList(),
+        val parents: List<SubgroupManager.Parent> = emptyList(),
         /**
          * Whether this device could open a subgroup here at all.
          *

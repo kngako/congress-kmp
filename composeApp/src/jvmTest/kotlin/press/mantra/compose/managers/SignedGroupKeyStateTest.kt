@@ -1213,6 +1213,169 @@ class SignedGroupKeyStateTest {
         assertEquals(before.map { it.nonceRandom }, other.items(session.id).map { it.nonceRandom })
     }
 
+    /**
+     * The byte cap, on both sides, for the same reason the count cap has both.
+     *
+     * `MAX_BATCH_SIZE` bounds how many events a batch holds; `MAX_PROPOSAL_BYTES`
+     * bounds how large they are, and a batch can pass the first and fail the
+     * second -- sixty-four dialects are a few kilobytes and one chapter is
+     * eighty. Before the cap existed the failure was silent: the proposal went
+     * out, the group event was over size, and the session stalled with nothing
+     * to blame.
+     */
+    @Test
+    fun `a proposal over the byte cap is refused when proposed`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+
+        // One event, so the count cap cannot be what refuses this.
+        assertFailsWith<IllegalArgumentException> {
+            FrostSigningManager.proposeSigning(
+                database = creator.db,
+                localChatRoom = creator.room,
+                userPublicKey = creator.publicKey,
+                kind = 1,
+                tags = emptyArray(),
+                content = "w".repeat(FrostSigningManager.MAX_PROPOSAL_BYTES + 1)
+            )
+        }
+
+        assertEquals(
+            emptyList(),
+            creator.db.frostSigningSessionDao().getSessionsForChatRoom(adminRoomId),
+            "a refused proposal must leave no session behind"
+        )
+    }
+
+    /**
+     * And dropped on arrival, which is the half that matters.
+     *
+     * The proposal is the one place a remote party decides how much work
+     * everybody else does. A proposer who could hand every member an arbitrarily
+     * large batch would have them do unbounded native work and publish an
+     * unbounded group event from a single message.
+     *
+     * **The payload has to be valid in every other way**, or this passes for the
+     * wrong reason. `acceptProposal` rebuilds each event from its own fields
+     * under the room's path and drops the whole proposal if any id does not
+     * match what it claims -- so a hand-built event with an invented id is
+     * refused whatever its size, and a test using one would stay green with the
+     * cap deleted. That is how this was first written and what
+     * [authoredProposal] exists to fix: the events come from real proposals, so
+     * their ids are the ones the manager computes.
+     */
+    @Test
+    fun `a proposal over the byte cap is dropped on arrival`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+        val sessionId = "f1".repeat(32)
+
+        // Two events, each legitimately proposed at a third of the cap, so
+        // together they are over it and apart they are unremarkable.
+        val third = FrostSigningManager.MAX_PROPOSAL_BYTES / 3
+        val oversize = authoredProposal(creator, "a".repeat(third), "b".repeat(third), "c".repeat(third))
+        assertTrue(
+            FrostSigningEvents.encodeProposal(oversize).encodeToByteArray().size >
+                FrostSigningManager.MAX_PROPOSAL_BYTES,
+            "the fixture must actually exceed the cap"
+        )
+
+        deliverProposal(other, sessionId, oversize)
+
+        assertNull(other.session(sessionId), "an over-size proposal must not open a session")
+    }
+
+    /**
+     * The count cap on arrival too, which this file claimed and did not check.
+     *
+     * The propose-side test above says in its own comment that the cap "is
+     * checked on arrival and not only when proposing" -- which was true of the
+     * code and untrue of the tests.
+     */
+    @Test
+    fun `a batch over the count cap is dropped on arrival`() = runBlocking {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+        val sessionId = "f2".repeat(32)
+
+        // Small events, so the byte cap cannot be what refuses this.
+        val tooMany = authoredProposal(
+            creator,
+            *(0..FrostSigningManager.MAX_BATCH_SIZE).map { "event $it" }.toTypedArray()
+        )
+        assertEquals(FrostSigningManager.MAX_BATCH_SIZE + 1, tooMany.size)
+
+        deliverProposal(other, sessionId, tooMany)
+
+        assertNull(
+            other.session(sessionId),
+            "a proposal of more events than the cap must not open a session"
+        )
+    }
+
+    /**
+     * The control for the two tests above.
+     *
+     * Both assert that no session is opened, and `acceptProposal` has four other
+     * reasons to open none -- an unknown key, a ceremony this device was not in,
+     * an unparseable payload, an id that does not match its fields. Without
+     * this, either could pass for a reason that has nothing to do with the cap
+     * it is named after, and the guard could be deleted with both still green.
+     *
+     * Which is not hypothetical: written with hand-built ids, both passed and
+     * this failed.
+     */
+    @Test
+    fun `a well-formed proposal of the same shape does open a session`() = runBlocking<Unit> {
+        val creator = device(members[0], signerIndex = 0)
+        val other = device(members[1], signerIndex = 1)
+        val sessionId = "f3".repeat(32)
+
+        deliverProposal(other, sessionId, authoredProposal(creator, "a dialect"))
+
+        assertNotNull(
+            other.session(sessionId),
+            "a proposal that breaks no cap must open a session, or the cap tests prove nothing"
+        )
+    }
+
+    /**
+     * The unsigned events a real proposal produced, ids and all.
+     *
+     * Taken from the manager rather than built here, because the id is a hash
+     * over the group's key at the room's derivation path and the receiving
+     * device recomputes it. Anything else is refused before a cap is consulted.
+     */
+    private suspend fun authoredProposal(device: Device, vararg contents: String): List<Event> =
+        contents.flatMap { content ->
+            val session = FrostSigningManager.proposeSigning(
+                database = device.db,
+                localChatRoom = device.room,
+                userPublicKey = device.publicKey,
+                kind = 1,
+                tags = emptyArray(),
+                content = content
+            )
+            device.items(session.id).map { Event.fromJson(it.unsignedEventJson) }
+        }
+
+    /** Hands [device] a proposal under [sessionId], as a dishonest coordinator would. */
+    private suspend fun deliverProposal(device: Device, sessionId: String, events: List<Event>) {
+        FrostSigningManager.processSigningPayload(
+            database = device.db,
+            localChatRoom = device.room,
+            innerEvent = Event(
+                id = "4".repeat(64),
+                pubKey = members[0],
+                createdAt = 1,
+                kind = FrostSigningEvents.PROPOSAL,
+                tags = FrostSigningEvents.assembleTags(sessionId, dkgSessionId = ceremonyId),
+                content = FrostSigningEvents.encodeProposal(events),
+                sig = ""
+            ),
+            userPublicKey = device.publicKey
+        )
+    }
+
     /** Three dialects, distinct enough that an order bug shows up as a wrong name. */
     private fun dialects() = listOf(
         Triple("Sepedi", "ZA", "nso"),

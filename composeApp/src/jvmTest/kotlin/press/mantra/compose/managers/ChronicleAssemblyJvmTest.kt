@@ -37,6 +37,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -295,7 +298,39 @@ class ChronicleAssemblyJvmTest {
                 createdAt = 1_700_000_060L
             )
         )
+
+        // What the work is for. Seeded here rather than in the tests that are
+        // about projects, because `a chronicle holds every kind the group
+        // signed` compares what this room produces against CHRONICLABLE_KINDS
+        // itself -- so a kind added to that set and not to this seed fails three
+        // tests at once, which is the point of writing it that way.
+        //
+        // Proposed the way the form will propose it: the project leading, its
+        // memberships taking the id and the timestamp it comes back with.
+        seededProject = apply(
+            ProjectEvent.build(
+                name = "In Detention into isiZulu",
+                description = "The first chapter, with its back-translation.",
+                creatorPublicKey = newMember,
+                ownerPublicKeys = setOf(chatRoomId),
+                createdAt = 1_700_000_070L,
+            )
+        )
+
+        apply(
+            ProjectArtifactVersionEvent
+                .membershipsOf(seededProject!!, listOf(version.id))
+                .single()
+        )
+        apply(
+            ProjectTranslationArtifactVersionEvent
+                .membershipsOf(seededProject!!, listOf(translationVersion.id))
+                .single()
+        )
     }
+
+    /** The project [seedSignedWork] signed, for the tests that are about it. */
+    private var seededProject: Event? = null
 
     private suspend fun chronicledPayloads(): List<Event> =
         ChronicleManager.assemble(db, chatRoomId, newMember)
@@ -319,6 +354,12 @@ class ChronicleAssemblyJvmTest {
     @Test
     fun `a chronicle holds every kind the group signed, and each of them once`() = runBlocking {
         seedSignedWork()
+        // On file, which is what a room signing work today looks like. Without
+        // this the chronicle is assembled entirely by the deprecated rebuild,
+        // which reaches eight of the eleven kinds -- it has no `toProjectEvent`
+        // and deliberately never will. That path is still covered, by
+        // `work held both ways travels exactly once` and the two below it.
+        recordEverythingApplied()
 
         val byKind = chronicledPayloads().groupBy { it.kind }
 
@@ -330,8 +371,31 @@ class ChronicleAssemblyJvmTest {
         assertEquals(1, byKind[TranslationArtifactVersionEvent.KIND]?.size)
         assertEquals(1, byKind[TranslationChapterEvent.KIND]?.size)
         assertEquals(1, byKind[TranslationChunkEvent.KIND]?.size)
+        assertEquals(1, byKind[ProjectEvent.KIND]?.size)
+        assertEquals(1, byKind[ProjectArtifactVersionEvent.KIND]?.size)
+        assertEquals(1, byKind[ProjectTranslationArtifactVersionEvent.KIND]?.size)
 
         assertEquals(ChronicleEvent.CHRONICLABLE_KINDS, byKind.keys)
+    }
+
+    @Test
+    fun `the rebuild alone reaches everything but the projects`() = runBlocking {
+        // The same room with nothing on file, which is the deprecated path in
+        // isolation. Pinned rather than left implicit: if somebody adds a
+        // `toProjectEvent` this fails, and the comment on `MantraProject` says
+        // why they should not.
+        seedSignedWork()
+
+        val kinds = chronicledPayloads().map { it.kind }.toSet()
+
+        assertEquals(
+            ChronicleEvent.CHRONICLABLE_KINDS - setOf(
+                ProjectEvent.KIND,
+                ProjectArtifactVersionEvent.KIND,
+                ProjectTranslationArtifactVersionEvent.KIND,
+            ),
+            kinds
+        )
     }
 
     @Test
@@ -449,7 +513,24 @@ class ChronicleAssemblyJvmTest {
 
         // Half the batch on file, the other half only as rows -- which is what
         // a room that was upgraded partway through its life looks like.
-        record(*applied.take(applied.size / 2).toTypedArray())
+        //
+        // The projects are on file whichever half they fall in, because the
+        // rebuild cannot reach them: there is no `toProjectEvent`, deliberately.
+        // That is not a gap in this scenario, it is the scenario being
+        // impossible for them -- the rebuild serves rooms whose work predates
+        // `GroupSignedEvent` at v13, and projects arrive at v21. See
+        // `a project is only ever chronicled off the record` for the edge that
+        // does follow from it.
+        val projectKinds = setOf(
+            ProjectEvent.KIND,
+            ProjectArtifactVersionEvent.KIND,
+            ProjectTranslationArtifactVersionEvent.KIND,
+        )
+        val rebuildable = applied.filterNot { it.kind in projectKinds }
+        record(
+            *(rebuildable.take(rebuildable.size / 2) +
+                applied.filter { it.kind in projectKinds }).toTypedArray()
+        )
 
         val payloads = chronicledPayloads()
 
@@ -745,6 +826,100 @@ class ChronicleAssemblyJvmTest {
         assertEquals(
             setOf(retranslated.id, other.id),
             chronicledTranslations().map { it.id }.toSet()
+        )
+    }
+
+    // ---- Projects ---------------------------------------------------------
+
+    @Test
+    fun `a room's projects travel in its chronicle`() = runBlocking {
+        seedSignedWork()
+        recordEverythingApplied()
+        val project = assertNotNull(seededProject)
+
+        val payloads = chronicledPayloads()
+
+        assertTrue(
+            payloads.any { it.kind == ProjectEvent.KIND && it.id == project.id },
+            "a late member should be told what the room's work is for"
+        )
+        assertEquals(
+            1,
+            payloads.count { it.kind == ProjectArtifactVersionEvent.KIND },
+            "the project's source version should travel with it"
+        )
+        assertEquals(
+            1,
+            payloads.count { it.kind == ProjectTranslationArtifactVersionEvent.KIND },
+            "the project's translation should travel with it"
+        )
+    }
+
+    @Test
+    fun `a chronicled project arrives in an order that applies`() = runBlocking {
+        seedSignedWork()
+        recordEverythingApplied()
+
+        val kinds = chronicledPayloads().map { it.kind }
+
+        // The assertion that matters, and the reason projects went on the end of
+        // APPLY_ORDER rather than anywhere tidier: both memberships are foreign
+        // keys into the project and into a version, so either arriving first
+        // would be refused -- silently, on the one device that has nothing else
+        // to fall back on.
+        val project = kinds.indexOf(ProjectEvent.KIND)
+        assertTrue(project >= 0, "the project is in the chronicle")
+
+        assertTrue(
+            kinds.indexOf(ProjectArtifactVersionEvent.KIND) > project &&
+                kinds.indexOf(ProjectTranslationArtifactVersionEvent.KIND) > project,
+            "memberships must come after their project"
+        )
+        assertTrue(
+            kinds.indexOf(ArtifactVersionEvent.KIND) <
+                kinds.indexOf(ProjectArtifactVersionEvent.KIND),
+            "a membership must come after the version it names"
+        )
+        assertTrue(
+            kinds.indexOf(TranslationArtifactVersionEvent.KIND) <
+                kinds.indexOf(ProjectTranslationArtifactVersionEvent.KIND),
+            "a membership must come after the translation it names"
+        )
+    }
+
+    /**
+     * The one thing "no `toProjectEvent`" costs, stated rather than discovered.
+     *
+     * Every other kind in a chronicle has two sources: the event as the group
+     * signed it, and a rebuild from the row when the signed event predates the
+     * table that keeps them. Projects have only the first, because that rebuild
+     * exists for rooms older than schema v13 and projects arrive at v21 -- there
+     * is no project row anywhere whose event was never recorded.
+     *
+     * Except by accident: `recordSignedEvents` catches its own failure and lets
+     * the session complete, correctly, since the signature is valid whether or
+     * not this device could write it down. A project applied through that gap is
+     * a row this device can show and cannot chronicle, and it will not come
+     * back -- which is worth knowing is possible rather than worth preventing,
+     * since the alternative is failing a ceremony that succeeded.
+     */
+    @Test
+    fun `a project is only ever chronicled off the record`() = runBlocking {
+        seedSignedWork()
+
+        // Everything on file except the project, which is the shape that gap
+        // leaves behind.
+        record(*applied.filterNot { it.kind == ProjectEvent.KIND }.toTypedArray())
+
+        val project = assertNotNull(seededProject)
+
+        assertNotNull(
+            db.mantraProjectDao().getProjectById(project.id),
+            "the row is here either way"
+        )
+        assertTrue(
+            chronicledPayloads().none { it.id == project.id },
+            "and without its signed event there is nothing to chronicle"
         )
     }
 }

@@ -80,6 +80,7 @@ import mantra.composeapp.generated.resources.messages_need_the_secret_key_this_p
 import mantra.composeapp.generated.resources.sign_in_with_the_nsec
 import press.mantra.compose.ui.composable.widgets.LocalCanSign
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
+import press.mantra.compose.ui.composable.widgets.ViewModelStoreScopedTo
 import press.mantra.compose.ui.composable.widgets.buttons.ExtendedFab
 import press.mantra.compose.ui.theme.ConformancePreviews
 
@@ -242,7 +243,18 @@ fun HomeScreen(
 
                                         key(true) {
                                             chatRoomListViewModel.RenderFeed(
-                                                onNavigateToDirectMessageDetail = onOpenChatRoom
+                                                onNavigateToDirectMessageDetail = onOpenChatRoom,
+                                                // Only where there is a pane to be selected
+                                                // into. The selection outlives a window
+                                                // that narrows -- it is `rememberSaveable`,
+                                                // and a tablet turned to portrait keeps it
+                                                // -- so this is read from the layout rather
+                                                // than from whether a room is selected.
+                                                isSelected = if (listPaneWidth == null) {
+                                                    null
+                                                } else {
+                                                    { id -> id == selectedChatRoomId }
+                                                },
                                             )
                                         }
 
@@ -311,10 +323,17 @@ fun HomeScreen(
                                         message = stringResource(Res.string.pick_a_conversation_to_read_it_here)
                                     )
                                 } else {
-                                    // Keyed on the room, so switching rooms rebuilds the
-                                    // screen's view models rather than feeding a new id to
-                                    // ones already subscribed to another room's relay.
+                                    // Two things, and the pane needs both. `key` rebuilds
+                                    // the composition -- the composer's draft text does not
+                                    // follow you into the next room, and the effect that
+                                    // loads a room runs again. `ViewModelStoreScopedTo`
+                                    // rebuilds the view models, which `key` cannot: they
+                                    // hang off the store, and on this screen the store is
+                                    // `HomeRoute`'s and never changes, so without it the
+                                    // pane kept answering with the first room it was given
+                                    // however many were tapped after it.
                                     key(chatRoomId) {
+                                    ViewModelStoreScopedTo(chatRoomId) {
                                     ChatRoomMessagingScreen(
                                         activeUserPublicKey = activeUserPublicKey,
                                         chatRoomId = chatRoomId,
@@ -332,6 +351,7 @@ fun HomeScreen(
                                         // The list is beside it; there is nothing to pop.
                                         onNavigateBack = null,
                                     )
+                                    }
                                     }
                                 }
                             }

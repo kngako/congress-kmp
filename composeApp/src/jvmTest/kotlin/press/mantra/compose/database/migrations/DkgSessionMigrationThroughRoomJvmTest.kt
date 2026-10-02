@@ -22,7 +22,7 @@ import press.mantra.compose.database.builder.getRoomDatabase
 /**
  * The half of a migration a bare-connection test cannot reach: Room's own wiring.
  *
- * [DkgSessionPerProfileMigrationJvmTest] drives `MIGRATION_21_22`'s SQL directly,
+ * [DkgSessionPerProfileMigrationJvmTest] drives `MIGRATION_22_23`'s SQL directly,
  * which covers the copy and the shape it leaves behind. What it cannot cover is
  * whether that shape is the one Room expects. On opening a file at an older version
  * Room runs the migrations and then compares every table against its entity, failing

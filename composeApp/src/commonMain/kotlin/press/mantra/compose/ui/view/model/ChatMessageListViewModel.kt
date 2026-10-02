@@ -255,7 +255,12 @@ class ChatMessageListViewModel(
                             // something, and the notice should say what.
                             lead = local.items.firstNotNullOfOrNull { item ->
                                 Event.fromJsonOrNull(item.unsignedEventJson)
-                                    ?.let { ProposedEvent.summarize(it) }
+                                    ?.let {
+                                        ProposedEvent.summarize(
+                                            event = it,
+                                            chatRoomId = localChatRoom.chatRoom.id,
+                                        )
+                                    }
                             },
                             eventCount = local.items.size
                         )

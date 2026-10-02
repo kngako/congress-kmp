@@ -22,6 +22,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import press.mantra.compose.database.model.types.MarmotReindexReport
 
 class ChatRoomDetailViewModel(
@@ -78,10 +79,11 @@ class ChatRoomDetailViewModel(
                     localChatRoom = localChatRoom,
                     artifacts = mantraRepository.getArtifacts(chatRoomId),
                     dialects = mantraRepository.getDialects(chatRoomId),
+                    projects = mantraRepository.getProjects(chatRoomId),
                     groupKeyState = chatRepository.groupKeyState(chatRoomId),
                     signedGroupKeyStateEvent = chatRepository.signedGroupKeyStateEvent(chatRoomId),
                     subgroups = chatRepository.subgroupsOf(chatRoomId),
-                    parentChatRoomIds = chatRepository.parentsOf(chatRoomId),
+                    parents = chatRepository.parentsOf(chatRoomId),
                     canAddSubgroup = localChatRoom.mlsGroupStateOf(activeUserPublicKey) != null &&
                         chatRepository.canSign(chatRoomId),
                     adoptionOffers = chatRepository.adoptionOffersFor(chatRoomId),
@@ -118,7 +120,13 @@ class ChatRoomDetailViewModel(
 
             if (!accepted) {
                 logger.e("Failed to ask $chatRoomId to accept $parentChatRoomId")
-                onDone("Couldn't ask this group to accept that parent. Please try again.")
+                // On the main thread, because a caller's callback may touch
+                // things an IO coroutine must not -- navigation most of all. See
+                // `SelectAdoptingGroupViewModel.finish`, where calling back from
+                // IO crashed outright.
+                withContext(Dispatchers.Main) {
+                    onDone("Couldn't ask this group to accept that parent. Please try again.")
+                }
                 return@launch
             }
 
@@ -126,7 +134,7 @@ class ChatRoomDetailViewModel(
             // which is a quorum away -- so this reloads rather than crossing it
             // off, and the card stays until the group has actually agreed.
             initiateChatRoomDetail()
-            onDone(null)
+            withContext(Dispatchers.Main) { onDone(null) }
         }
     }
 

@@ -29,6 +29,9 @@ import press.mantra.compose.database.dao.MantraChapterDao
 import press.mantra.compose.database.dao.MantraChunkDao
 import press.mantra.compose.database.dao.MantraDao
 import press.mantra.compose.database.dao.MantraDialectDao
+import press.mantra.compose.database.dao.MantraProjectArtifactVersionDao
+import press.mantra.compose.database.dao.MantraProjectDao
+import press.mantra.compose.database.dao.MantraProjectTranslationArtifactVersionDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionDao
 import press.mantra.compose.database.dao.MantraTranslationArtifactVersionContributorDao
 import press.mantra.compose.database.dao.MantraTranslationChapterDao
@@ -83,6 +86,9 @@ import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraChapter
 import press.mantra.compose.database.model.MantraChunk
 import press.mantra.compose.database.model.MantraDialect
+import press.mantra.compose.database.model.MantraProject
+import press.mantra.compose.database.model.MantraProjectArtifactVersion
+import press.mantra.compose.database.model.MantraProjectTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslation
 import press.mantra.compose.database.model.MantraTranslationArtifactVersion
 import press.mantra.compose.database.model.MantraTranslationArtifactVersionContributor
@@ -150,6 +156,9 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         MantraChapter::class,
         MantraChunk::class,
         MantraDialect::class,
+        MantraProject::class,
+        MantraProjectArtifactVersion::class,
+        MantraProjectTranslationArtifactVersion::class,
         MantraTranslation::class,
         MantraTranslationArtifactVersion::class,
         MantraTranslationArtifactVersionContributor::class,
@@ -181,7 +190,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 23,
+    version = 24,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -335,30 +344,56 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // than unused. See MIGRATION_20_21 and
         // docs/subgroups-multiple-parents.md.
         //
-        // v22 keys a DkgSession by the profile that ran the ritual as well as by the
+        // v22 adds the three project tables -- a project, and one row per source
+        // version or translation that is part of it. Three new tables and
+        // nothing existing changes shape, so Room generates this one itself.
+        //
+        // It is v22 rather than v21 because two trees allocated out of the same
+        // space in one release window: this landed as 21 on its own branch while
+        // the parentage table above took 21 on `mantra`. Renumbering was free --
+        // nothing had shipped -- but see Phase 0 of docs/project-feature.md,
+        // which says to check, and checked the wrong tree.
+        //
+        // A project's contents are foreign keys into this room's own rows, with
+        // CASCADE, like every other reference in this family. That is the
+        // one-room scope decision made load-bearing: a membership naming a
+        // version this device does not hold fails at insert rather than landing
+        // as a row pointing at nothing. Projects that span rooms take those keys
+        // away again -- see Phase 9 of docs/project-feature.md -- and that is a
+        // migration rather than something to carry unused until then.
+        //
+        // The owners are a comma-joined sorted string on the project row rather
+        // than a fourth table, which is what DkgSession.participantPublicKeys
+        // already does with a set of keys and for the same reason.
+        AutoMigration(from = 21, to = 22),
+        //
+        // v23 keys a DkgSession by the profile that ran the ritual as well as by the
         // ceremony, and gives DkgParticipantMessage the profile that received each
-        // message. A ceremony id is minted by its coordinator and travels on the
-        // wire, so it is the same string for every participant -- including two
-        // profiles on one device, which is two participants and was one row. The
-        // second of them adopted the first's host key, its randomness and in the end
-        // its share.
+        // message. A ceremony id is minted by its coordinator and travels on the wire, so
+        // it is the same string for every participant -- including two profiles on one
+        // device, which is two participants and was one row. The second of them adopted
+        // the first's host key, its randomness and in the end its share.
         //
-        // Changing a primary key is not a shape Room migrates, and the column added
-        // to the messages is NOT NULL off a value read from another table, so this is
-        // manual too and passed to the builder rather than listed here. See
-        // MIGRATION_21_22.
+        // Changing a primary key is not a shape Room migrates, and the column added to
+        // the messages is NOT NULL off a value read from another table, so this is manual
+        // and passed to the builder rather than listed here. See MIGRATION_23_24.
         //
-        // v23 splits ChatRoomMembership off ChatRoom. The room held the group's own
-        // facts and the asking profile's membership of it in one row keyed by the group
-        // id, so a second profile joining the same group wrote over the first's MLS
-        // ratchet state. The group's half stays where nineteen tables already point at
-        // it; the profile's half -- the MLS state, the join and leave times, the
-        // chronicle request, the archive flag -- moves to a row keyed by
-        // (chatRoomId, userPublicKey).
+        // v24 splits ChatRoomMembership off ChatRoom. The room held the group's own facts
+        // and the asking profile's membership of it in one row keyed by the group id, so a
+        // second profile joining the same group wrote over the first's MLS ratchet state.
+        // The group's half stays where twenty-two tables already point at it; the
+        // profile's half -- the MLS state, the join and leave times, the chronicle
+        // request, the archive flag -- moves to a row keyed by (chatRoomId, userPublicKey).
         //
-        // Not an AutoMigration twice over: it copies before it drops, and the table it
-        // rebuilds is the parent of nineteen cascades, which is why it renames rather
-        // than drops. See MIGRATION_22_23.
+        // Manual for two reasons: it copies before it drops, and the table it rebuilds is
+        // the parent of all twenty-two of those cascades. See MIGRATION_23_24, which
+        // documents the one thing it depends on and the test that proves it.
+        //
+        // Both of these were written as 21->22 and 22->23 while the projects line above
+        // took 22 on `mantra`. Renumbered here rather than there, by the rule that a
+        // version belongs to whichever tree lands first -- the third time in this release
+        // window that two branches have reached for the same number.
+
     ]
 )
 @ColumnTypeConverters(MantraConverters::class)
@@ -405,6 +440,12 @@ abstract class MantraDatabase: RoomDatabase() {
     abstract fun mantraChunkDao(): MantraChunkDao
 
     abstract fun mantraDialectDao(): MantraDialectDao
+
+    abstract fun mantraProjectDao(): MantraProjectDao
+
+    abstract fun mantraProjectArtifactVersionDao(): MantraProjectArtifactVersionDao
+
+    abstract fun mantraProjectTranslationArtifactVersionDao(): MantraProjectTranslationArtifactVersionDao
 
     abstract fun mantraTranslationArtifactVersionDao(): MantraTranslationArtifactVersionDao
 

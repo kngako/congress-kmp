@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,10 +22,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -36,7 +41,12 @@ import press.mantra.compose.database.model.intermdiate.LocalChatRoom
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.FrostSigningRepository
 import press.mantra.compose.repository.MantraRepository
+import press.mantra.compose.files.rememberFilePicker
+import press.mantra.compose.nostr.nip30303.ChapterProposal
+import press.mantra.compose.text.ChapterNaming
+import press.mantra.compose.text.ChapterText
 import press.mantra.compose.text.Markdown
+import press.mantra.compose.text.kibibytes
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.ImplementationPendingRoute
 import press.mantra.compose.ui.composable.navigation.routes.Route
@@ -55,8 +65,19 @@ import mantra.composeapp.generated.resources.paste_the_chapter_s_markdown_blank_
 import mantra.composeapp.generated.resources.propose_chapter
 import mantra.composeapp.generated.resources.this_artifact_has_no_version_for_a_chapter
 import mantra.composeapp.generated.resources.add_chapter_to
+import mantra.composeapp.generated.resources.choose_chapter_files
+import mantra.composeapp.generated.resources.d_chunks_is_more_than_the_group_can_sign
+import mantra.composeapp.generated.resources.s_kib
+import mantra.composeapp.generated.resources.s_of_s
+import mantra.composeapp.generated.resources.this_chapter_is_too_long_to_propose
+import mantra.composeapp.generated.resources.this_group_has_no_shared_key_for_a_chapter
+import mantra.composeapp.generated.resources.words_characters_size_chunks
+import mantra.composeapp.generated.resources.load_from_file
+import mantra.composeapp.generated.resources.that_file_is_too_large
+import mantra.composeapp.generated.resources.that_file_isn_t_text
 import androidx.compose.material3.SnackbarHost
 import press.mantra.compose.ui.composable.widgets.LocalSnackbarHostState
+import press.mantra.compose.ui.composable.widgets.rememberNotifier
 import press.mantra.compose.ui.theme.readableContent
 import press.mantra.compose.ui.composable.widgets.ScreenStateTransition
 import press.mantra.compose.ui.composable.widgets.NavigateBackButton
@@ -107,11 +128,48 @@ fun AddChapterScreen(
                 val nameFieldState = rememberTextFieldState()
                 val originalTextFieldState = rememberTextFieldState()
 
+                // Read above the handler, not inside it: `rememberNotifier` and
+                // `stringResource` are composable and a click lambda is not.
+                val notify = rememberNotifier(rememberCoroutineScope())
+                val notText = stringResource(Res.string.that_file_isn_t_text)
+                val tooLarge = stringResource(Res.string.that_file_is_too_large)
+
+                // One file, into the form that already works. Picking several
+                // chapters at once is the upload screen's job; here the point is
+                // to stop a chapter having to be pasted through a keyboard.
+                val picker = rememberFilePicker(
+                    title = stringResource(Res.string.choose_chapter_files)
+                ) { files ->
+                    val file = files.firstOrNull() ?: return@rememberFilePicker
+
+                    when (val decoded = ChapterText.decode(file.bytes)) {
+                        is ChapterText.Result.Text -> {
+                            originalTextFieldState.setTextAndPlaceCursorAtEnd(decoded.markdown)
+                            // The filename only fills a name nobody has typed.
+                            // Overwriting one that was typed would make loading a
+                            // file a destructive act on a field beside it.
+                            if (nameFieldState.text.isBlank()) {
+                                nameFieldState.setTextAndPlaceCursorAtEnd(
+                                    ChapterNaming.forFile(file.name, decoded.markdown)
+                                )
+                            }
+                            // No snackbar on success. The text arriving in the
+                            // field below is the feedback, and a message over
+                            // the top of it would say less than the thing
+                            // itself.
+                        }
+
+                        ChapterText.Result.NotText -> notify(notText)
+                        ChapterText.Result.TooLarge -> notify(tooLarge)
+                    }
+                }
+
                 // Live counts / paragraph (chunk) preview from the markdown text.
                 val originalText = originalTextFieldState.text.toString()
                 val wordCount = Markdown.wordCount(originalText)
                 val characterCount = Markdown.characterCount(originalText)
-                val paragraphCount = Markdown.splitParagraphs(originalText).size
+                val chunks = Markdown.splitChunks(originalText)
+                val chunkCount = chunks.size
 
                 // A chapter hangs off a version, and the group has to be able to
                 // sign; without both there is nothing this screen can propose.
@@ -121,12 +179,21 @@ fun AddChapterScreen(
                 // and a session signs a bounded number of events. Past that the
                 // chapter has to be split in two, which is worth saying while there
                 // is still a cursor in the text rather than after a failed propose.
-                val tooManyChunks = paragraphCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
+                val tooManyChunks = chunkCount > AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER
+
+                // The other cap, and the one that had been enforced nowhere: a
+                // proposal carries the chapter whole and every chunk cut from
+                // it, so it weighs a little over twice the prose plus an
+                // envelope per event. Past what a group event holds, the session
+                // used to go out and stall.
+                val proposalBytes = ChapterProposal.proposalBytes(originalText, chunks)
+                val tooLargeToPropose = !tooManyChunks && proposalBytes > ChapterProposal.MAX_PROPOSAL_BYTES
 
                 val canProposeChapter = artifactVersion != null &&
                     addChapterUIState.canSign &&
-                    paragraphCount > 0 &&
-                    !tooManyChunks
+                    chunkCount > 0 &&
+                    !tooManyChunks &&
+                    !tooLargeToPropose
 
                 // imePadding: this screen has a text field, and without it the software
                 // keyboard covers whatever is being typed into.
@@ -187,8 +254,7 @@ fun AddChapterScreen(
                     ) {
                         if (!addChapterUIState.canSign) {
                             Text(
-                                text = "This group has no shared key, so it cannot sign a " +
-                                    "chapter into existence. Run a shared key ceremony first.",
+                                text = stringResource(Res.string.this_group_has_no_shared_key_for_a_chapter),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -200,9 +266,25 @@ fun AddChapterScreen(
                             )
                         } else if (tooManyChunks) {
                             Text(
-                                text = "$paragraphCount chunks is more than the group can sign in " +
-                                    "one go. Split the chapter so that no part of it is over " +
-                                    "${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER} paragraphs.",
+                                text = stringResource(
+                                    Res.string.d_chunks_is_more_than_the_group_can_sign,
+                                    chunkCount,
+                                    AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (tooLargeToPropose) {
+                            Text(
+                                text = stringResource(
+                                    Res.string.this_chapter_is_too_long_to_propose,
+                                    chunkCount,
+                                    stringResource(Res.string.s_kib, kibibytes(proposalBytes)),
+                                    stringResource(
+                                        Res.string.s_kib,
+                                        kibibytes(ChapterProposal.MAX_PROPOSAL_BYTES),
+                                    ),
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -221,6 +303,15 @@ fun AddChapterScreen(
                             placeholder = { Text(stringResource(Res.string.eg_chapter_1_the_beginning)) },
                         )
 
+                        TextButton(onClick = { picker.launch(multiple = false) }) {
+                            Icon(
+                                Icons.Default.UploadFile,
+                                contentDescription = "Load the chapter from a file"
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.space125))
+                            Text(stringResource(Res.string.load_from_file))
+                        }
+
                         OutlinedTextField(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             state = originalTextFieldState,
@@ -229,14 +320,28 @@ fun AddChapterScreen(
                         )
 
                         Text(
-                            // The chunk count is what the group is asked to sign
-                            // alongside the chapter, so it is a count of the work
-                            // being proposed rather than a curiosity about the text.
-                            text = "$wordCount words · $characterCount characters · " +
-                                "$paragraphCount ${if (paragraphCount == 1) "chunk" else "chunks"} " +
-                                "of ${AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER}",
+                            // Both caps, as the text is typed. The chunk count and
+                            // the proposal's size are what the group is asked to
+                            // carry, so they are a measure of the work being
+                            // proposed rather than a curiosity about the text --
+                            // and either of them can be the one that binds.
+                            text = stringResource(
+                                Res.string.words_characters_size_chunks,
+                                wordCount,
+                                characterCount,
+                                stringResource(
+                                    Res.string.s_of_s,
+                                    stringResource(Res.string.s_kib, kibibytes(proposalBytes)),
+                                    stringResource(
+                                        Res.string.s_kib,
+                                        kibibytes(ChapterProposal.MAX_PROPOSAL_BYTES),
+                                    ),
+                                ),
+                                chunkCount,
+                                AddChapterViewModel.MAX_CHUNKS_PER_CHAPTER,
+                            ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (tooManyChunks) {
+                            color = if (tooManyChunks || tooLargeToPropose) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.typography.labelMedium.color

@@ -137,7 +137,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         createV21()
         insertV21Session()
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
 
         assertEquals(listOf("id", "userPublicKey"), primaryKey("DkgSession"))
         assertEquals(
@@ -178,7 +178,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(participant = bob)
         insertV21Message(participant = alice)
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
 
         assertEquals(1, count("DkgSession"))
         assertEquals(2, count("DkgParticipantMessage"), "the cascade must not have fired")
@@ -213,7 +213,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(sessionId = "alices", participant = bob)
         insertV21Message(sessionId = "bobs", participant = alice)
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
 
         assertEquals(
             listOf("alices" to alice, "bobs" to bob),
@@ -234,7 +234,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Session()
         insertV21Message()
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
         connection.execSQL("DELETE FROM `ChatRoom` WHERE `id` = 'room'")
 
         assertEquals(0, count("DkgSession"))
@@ -259,7 +259,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(sessionId = "no-such-ceremony", participant = alice)
         connection.execSQL("PRAGMA foreign_keys = ON")
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
 
         assertEquals(1, count("DkgParticipantMessage"))
         assertTrue(
@@ -274,7 +274,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         createV21()
         insertV21Session()
 
-        MIGRATION_21_22.migrate(connection)
+        MIGRATION_22_23.migrate(connection)
 
         assertEquals(
             emptyList(),

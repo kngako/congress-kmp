@@ -19,7 +19,7 @@ import com.vitorpamplona.quartz.nip01Core.signers.NostrSignerSync
 import com.vitorpamplona.quartz.nip17Dm.messages.ChatMessageEvent
 import com.vitorpamplona.quartz.nip17Dm.settings.ChatMessageRelayListEvent
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 
 interface ChatRepository {
     suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>>
@@ -78,8 +78,12 @@ interface ChatRepository {
      * may be adopted by another later. A member welcomed in after the founding
      * holds no state and gets an empty list even when the room really is a
      * subgroup.
+     *
+     * Each carries the parent's room where this device has one, which is the
+     * only place its name can come from -- a certificate names the child and
+     * never the certifier.
      */
-    suspend fun parentsOf(chatRoomId: String): List<HexKey>
+    suspend fun parentsOf(chatRoomId: String): List<SubgroupManager.Parent>
 
     /**
      * One event the group signed, as the group signed it, or null when this
@@ -308,7 +312,13 @@ interface ChatRepository {
     ): MarmotReindexReport
 
     companion object {
-        val NO_OP_CHAT_REPOSITORY = object: ChatRepository {
+        /**
+         * A chat repository with no database behind it: every room is absent, every
+         * membership change is refused with a reason, and no member throws. See
+         * [NostrRepository.NO_OP_NOSTR_REPOSITORY] for why a `TODO()` here is a silent
+         * misattribution rather than a loud failure, and for the rules a new member follows.
+         */
+        val NO_OP_CHAT_REPOSITORY: ChatRepository = object : ChatRepository {
             override suspend fun requestGroupHistoryIfMissing(
                 chatRoomId: String,
                 userPublicKey: HexKey
@@ -323,7 +333,9 @@ interface ChatRepository {
             override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
                 emptyList()
 
-            override suspend fun parentsOf(chatRoomId: String): List<HexKey> = emptyList()
+            override suspend fun parentsOf(
+                chatRoomId: String
+            ): List<SubgroupManager.Parent> = emptyList()
 
             override suspend fun groupSignedEvent(
                 chatRoomId: String,
@@ -338,9 +350,8 @@ interface ChatRepository {
                 coordinatorPublicKey: HexKey,
             ): String? = "No database"
 
-            override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> {
-                return flow {  }
-            }
+            override suspend fun observeChatRoomListByPublicKey(publicKey: String): Flow<List<LocalChatRoom>> =
+                flowOf(emptyList())
 
             override suspend fun getChatRoomListByPublicKey(publicKey: String): List<LocalChatRoom> {
                 return emptyList()
@@ -375,22 +386,18 @@ interface ChatRepository {
                 userPublicKey: HexKey
             ): Boolean = false
 
-            override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun getAllParticipantsWithPubKey(publicKey: HexKey): List<Participant> =
+                emptyList()
 
-            override suspend fun findDirectMessageRoom(userPublicKey: HexKey, peerPublicKey: HexKey): LocalChatRoom? {
-                TODO("Not yet implemented")
-            }
+            override suspend fun findDirectMessageRoom(userPublicKey: HexKey, peerPublicKey: HexKey): LocalChatRoom? =
+                null
 
             override suspend fun getChatMessageListByChatRoomId(chatRoomId: String): List<LocalChatMessage> {
                 return emptyList()
             }
 
-            override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>> {
-                return flow {
-                }
-            }
+            override suspend fun observeChatMessageListByChatRoomId(chatRoomId: String): Flow<List<LocalChatMessage>> =
+                flowOf(emptyList())
 
             override suspend fun getOrCreateChatRoom(
                 chatRoomId: String,
@@ -407,13 +414,11 @@ interface ChatRepository {
                 return null
             }
 
-            override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? {
-                TODO("Not yet implemented")
-            }
+            override suspend fun getMarmotKeyPackageForPublicKey(publicKey: HexKey): MarmotKeyPackage? =
+                null
 
-            override suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeMarmotKeyPackageForPublicKey(publicKey: HexKey): Flow<MarmotKeyPackage?> =
+                flowOf(null)
 
             override suspend fun createNip17ChatRoom(
                 userPublicKey: HexKey,
@@ -424,23 +429,30 @@ interface ChatRepository {
                 return null
             }
 
+            /**
+             * The empty id, meaning no room was created.
+             *
+             * The only member here whose return type cannot say "nothing": it owes the id
+             * of a room, and `String` has no absent value. Both creators beside it can say
+             * they failed -- [createNip17ChatRoom] returns null, [createMarmotGroup] an
+             * [MarmotGroupCreation.Outcome] -- so this one's signature is the odd one out
+             * rather than this body being the odd answer. Nothing reaches it in practice:
+             * `ChatRoomMessagingViewModel.initiateNewChat` calls it only once a profile and
+             * a key package have both resolved, and against this object neither ever does.
+             */
             override suspend fun createMlsDirectMessage(
                 name: String?,
                 description: String?,
                 userPublicKey: HexKey,
                 peerPublicKey: HexKey,
                 peerKeyPackage: MarmotKeyPackage
-            ): String {
-                TODO("Not yet implemented")
-            }
+            ): String = ""
 
             override suspend fun inviteMember(
                 localChatRoom: LocalChatRoom,
                 peerPublicKey: HexKey,
                 peerKeyPackage: MarmotKeyPackage
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun addMembers(
                 localChatRoom: LocalChatRoom,
@@ -464,45 +476,36 @@ interface ChatRepository {
                 localChatRoom: LocalChatRoom,
                 messageType: Kind,
                 directMessageRecipientPublicKey: HexKey?
-            ) {
-                // TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override fun updateChatRoomSubject(publicKey: String, subject: String): ChatRoom? {
                 return null
             }
 
-            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<List<GiftWrapPayload>> {
-                TODO("Not yet implemented")
-            }
+            override suspend fun observeUnsealedGiftWrapPayloads(publicKey: HexKey): Flow<List<GiftWrapPayload>> =
+                flowOf(emptyList())
 
             override suspend fun sealGiftWrapPayload(
                 giftWrapPayload: GiftWrapPayload,
                 nostrSignerSync: NostrSignerSync
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
+            // None of the three calls onCompletion: nothing was left or deleted, and each
+            // of these callbacks navigates away from a room that is still there.
             override suspend fun leaveChatRoom(
                 localChatRoom: LocalChatRoom,
                 onCompletion: () -> Unit
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun softDeleteChatRoom(
                 chatRoom: ChatRoom,
                 onCompletion: () -> Unit
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun deleteChatRoom(
                 chatRoom: ChatRoom,
                 onCompletion: () -> Unit
-            ) {
-                TODO("Not yet implemented")
-            }
+            ) = Unit
 
             override suspend fun reindexMarmotGroupEvents(
                 chatRoomId: String,

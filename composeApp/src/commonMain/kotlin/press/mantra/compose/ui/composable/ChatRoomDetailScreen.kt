@@ -84,8 +84,10 @@ import press.mantra.compose.ui.view.model.ChatRoomDetailViewModel
 import press.mantra.compose.ui.view.state.ChatRoomDetailUIState
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.theme.spacing
 import mantra.composeapp.generated.resources.run_by_members
 import mantra.composeapp.generated.resources.parent_group
@@ -280,15 +282,40 @@ fun ChatRoomDetailScreen(
                             // later. They are a set rather than a path -- neither
                             // is "the" parent and the order says nothing about
                             // which came first -- so each gets an equal row.
-                            chatRoomDetailUIState.parentChatRoomIds.forEach { parentChatRoomId ->
-                                item(key = "parent-$parentChatRoomId") {
+                            chatRoomDetailUIState.parents.forEach { parent ->
+                                item(key = "parent-${parent.chatRoomId}") {
+                                    // The parent's own name, which only its room
+                                    // can give: a certificate names the child and
+                                    // never the certifier, so a member of the
+                                    // subgroup who is not also in the parent has
+                                    // the id and nothing else to call it by.
+                                    val name = parent.room
+                                        ?.chatRoom
+                                        ?.subject
+                                        ?.takeIf { it.isNotBlank() }
+
+                                    // Shown either way -- as the headline where
+                                    // there is no name, and under it where there
+                                    // is, since it is the part that can be
+                                    // compared against what the lineage says.
+                                    val identifier: @Composable () -> Unit = {
+                                        Text(
+                                            text = parent.chatRoomId
+                                                .take(16)
+                                                .inComparableGroups(),
+                                            fontFamily = FontFamily.Monospace,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.MiddleEllipsis
+                                        )
+                                    }
+
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
                                             onNavigateToRoute.invoke(
                                                 ChatRoomDetailRoute(
                                                     activeUserPublicKey = activeUserPublicKey,
-                                                    chatRoomId = parentChatRoomId,
+                                                    chatRoomId = parent.chatRoomId,
                                                     relayHint = relayHint
                                                 )
                                             )
@@ -307,19 +334,25 @@ fun ChatRoomDetailScreen(
                                                     contentDescription = Decorative
                                                 )
                                             },
-                                            headlineContent = {
+                                            // The label keeps its place above the
+                                            // name rather than being replaced by
+                                            // it: a card carrying a group's name
+                                            // and nothing else says nothing about
+                                            // which way the lineage runs, and the
+                                            // signing key's card -- same icon
+                                            // column, same shape -- sits directly
+                                            // above this one.
+                                            overlineContent = {
                                                 Text(text = stringResource(Res.string.parent_group))
                                             },
-                                            supportingContent = {
-                                                Text(
-                                                    text = parentChatRoomId
-                                                        .take(16)
-                                                        .inComparableGroups(),
-                                                    fontFamily = FontFamily.Monospace,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.MiddleEllipsis
-                                                )
-                                            }
+                                            headlineContent = {
+                                                if (name != null) {
+                                                    Text(text = name)
+                                                } else {
+                                                    identifier()
+                                                }
+                                            },
+                                            supportingContent = identifier.takeIf { name != null }
                                         )
                                     }
                                 }
@@ -582,35 +615,74 @@ fun ChatRoomDetailScreen(
                                 HorizontalDivider()
                             }
 
-                            // TODO: Add projects...
-
                             item {
-                                // Artifacts
+                                // Projects -- what the library above is for
                                 Text(
                                     text = stringResource(Res.string.projects),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }
 
-                            item {
-                                Text(stringResource(Res.string.no_projects_exists_in_this_group))
+                            if (chatRoomDetailUIState.projects.isEmpty()) {
+                                item {
+                                    Text(stringResource(Res.string.no_projects_exists_in_this_group))
+                                }
+                            } else {
+                                items(
+                                    items = chatRoomDetailUIState.projects,
+                                    key = { project -> project.id }
+                                ) { project ->
+                                    Card(
+                                        onClick = {
+                                            onNavigateToRoute.invoke(
+                                                ProjectDetailRoute(
+                                                    activeUserPublicKey = activeUserPublicKey,
+                                                    projectId = project.id,
+                                                    chatRoomId = chatRoomId,
+                                                    relayHint = relayHint
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        ListItem(
+                                            leadingContent = {
+                                                Icon(
+                                                    Icons.Default.Schema,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            trailingContent = {
+                                                Icon(
+                                                    Icons.Default.ChevronRight,
+                                                    contentDescription = Decorative
+                                                )
+                                            },
+                                            headlineContent = {
+                                                Text(text = project.name)
+                                            },
+                                            supportingContent = {
+                                                Text(text = project.description)
+                                            }
+                                        )
+                                    }
+                                }
                             }
 
                             item {
                                 TextButton(
                                     onClick = {
-                                        // Navigate to the invite user screen...
                                         onNavigateToRoute.invoke(
-                                            ImplementationPendingRoute(
-                                                "Add new project"
+                                            AddProjectRoute(
+                                                chatRoomId = chatRoomId,
+                                                activeUserPublicKey = activeUserPublicKey,
+                                                relayHint = relayHint
                                             )
                                         )
                                     }
                                 ) {
-
                                     Icon(
                                         Icons.Default.Schema,
-                                        contentDescription = "create new projec"
+                                        contentDescription = Decorative
                                     )
 
                                     Spacer(

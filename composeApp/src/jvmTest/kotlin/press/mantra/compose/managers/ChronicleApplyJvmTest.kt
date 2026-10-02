@@ -28,6 +28,7 @@ import press.mantra.compose.database.builder.getRoomDatabase
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoomMembership
 import press.mantra.compose.database.model.ChatRoom
+import press.mantra.compose.database.model.GroupSignedEvent
 import press.mantra.compose.database.model.MarmotInnerEvent
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.database.model.NostrEvent
@@ -45,6 +46,9 @@ import press.mantra.compose.nostr.nip30303.ArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.ChapterEvent
 import press.mantra.compose.nostr.nip30303.ChunkEvent
 import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectArtifactVersionEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.ProjectTranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
 import press.mantra.compose.nostr.nip30303.TranslationChapterEvent
 import press.mantra.compose.nostr.nip30303.TranslationChunkEvent
@@ -312,6 +316,43 @@ class ChronicleApplyJvmTest {
                 )
             )
         )
+
+        // What the work is for. Unlike everything above it, a project has to be
+        // *recorded* as well as applied to reach a chronicle: there is no
+        // `toProjectEvent`, so the deprecated rebuild cannot produce one, and
+        // the record is its only source. That is deliberate -- the rebuild
+        // serves rooms older than schema v13 and projects arrive at v21 -- and
+        // it is why `record` appears here and nowhere else in this seed.
+        val project = signed(
+            ProjectEvent.build(
+                name = "In Detention into isiZulu",
+                description = "The first chapter, with its back-translation.",
+                creatorPublicKey = oldMember,
+                ownerPublicKeys = setOf(chatRoomId),
+                createdAt = 1_700_000_070L,
+            )
+        ).also { apply(sender, it) }
+
+        val sourceMembership = signed(
+            ProjectArtifactVersionEvent.membershipsOf(project, listOf(version.id)).single()
+        ).also { apply(sender, it) }
+
+        val translationMembership = signed(
+            ProjectTranslationArtifactVersionEvent
+                .membershipsOf(project, listOf(translationVersion.id))
+                .single()
+        ).also { apply(sender, it) }
+
+        sender.groupSignedEventDao().recordAll(
+            listOf(project, sourceMembership, translationMembership).map {
+                GroupSignedEvent.fromEvent(
+                    event = it,
+                    chatRoomId = chatRoomId,
+                    derivationPath = SharedKeyDerivation.formatPath(),
+                    frostSigningSessionId = "session-1",
+                )
+            }
+        )
     }
 
     /**
@@ -378,6 +419,23 @@ class ChronicleApplyJvmTest {
             db.mantraTranslationChunkDao().getTranslationChunksByTranslationChapterId(it.id)
         }
 
+        // The projects, and what each one holds.
+        //
+        // Counted here rather than in a test of their own, because the test that
+        // matters most for them is `pages arriving out of order still converge`
+        // -- and that test compares exactly this map. A membership is a foreign
+        // key into both a project and a version, so delivering backwards is the
+        // scenario where one gets refused and has to be retried, and this map not
+        // looking at the project tables is why that test once passed against an
+        // apply arm that swallowed the refusal and lost the row.
+        val projects = db.mantraProjectDao().getProjectsByChatRoomId(chatRoomId)
+        val projectSources = projects.flatMap {
+            db.mantraProjectArtifactVersionDao().getByProjectId(it.id)
+        }
+        val projectTranslations = projects.flatMap {
+            db.mantraProjectTranslationArtifactVersionDao().getByProjectId(it.id)
+        }
+
         return mapOf(
             "dialects" to dialects.size,
             "artifacts" to artifacts.size,
@@ -387,6 +445,9 @@ class ChronicleApplyJvmTest {
             "translationVersions" to translationVersions.size,
             "translationChapters" to translationChapters.size,
             "translationChunks" to translationChunks.size,
+            "projects" to projects.size,
+            "projectSources" to projectSources.size,
+            "projectTranslations" to projectTranslations.size,
         )
     }
 
@@ -437,7 +498,8 @@ class ChronicleApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
-                "translationChunks" to 0,
+                "translationChunks" to 0, "projects" to 0, "projectSources" to 0,
+                "projectTranslations" to 0,
             ),
             rowCounts(receiver),
             "the new member starts with nothing, which is the whole problem"
@@ -695,7 +757,8 @@ class ChronicleApplyJvmTest {
             mapOf(
                 "dialects" to 0, "artifacts" to 0, "versions" to 0, "chapters" to 0,
                 "chunks" to 0, "translationVersions" to 0, "translationChapters" to 0,
-                "translationChunks" to 0,
+                "translationChunks" to 0, "projects" to 0, "projectSources" to 0,
+                "projectTranslations" to 0,
             ),
             rowCounts(receiver),
             "a bystander already holds the work; re-applying would only rewrite its provenance"

@@ -58,7 +58,7 @@ import androidx.sqlite.execSQL
  * while foreign keys were off, and it could not satisfy the new key either --
  * keeping it would mean inventing an owner for somebody else's secret.
  */
-val MIGRATION_21_22 = object : Migration(21, 22) {
+val MIGRATION_22_23 = object : Migration(22, 23) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // 1. Backups, deliberately without constraints of any kind.
         connection.execSQL(
