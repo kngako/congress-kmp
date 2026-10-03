@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
  * **off**, which is not a convenience -- it is the condition the migration actually runs
  * under, because Room disables them around a migration and `ChatRoom` is the parent of
  * twenty-two `ON DELETE CASCADE` children that no rebuild could survive otherwise. See
- * `MIGRATION_23_24` for why there is no alternative, and
+ * `MIGRATION_24_25` for why there is no alternative, and
  * [ChatRoomSplitThroughRoomJvmTest] for the test that proves the condition holds rather
  * than assuming it: that one runs the real Room path with children seeded, and is where
  * the cascade question is settled.
@@ -114,7 +114,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the group keeps its own facts and loses the rest`() = runBlocking {
         createV22()
 
-        MIGRATION_23_24.migrate(connection)
+        MIGRATION_24_25.migrate(connection)
 
         assertEquals(
             listOf("id", "subject", "description", "createdAt", "updatedAt", "savedAt"),
@@ -139,7 +139,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `every room becomes exactly one membership, carrying the profile's half`() = runBlocking {
         createV22()
 
-        MIGRATION_23_24.migrate(connection)
+        MIGRATION_24_25.migrate(connection)
 
         assertEquals(1, count("ChatRoomMembership"))
         assertEquals(
@@ -168,7 +168,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the upgraded schema takes a second profile's membership`() = runBlocking {
         createV22()
 
-        MIGRATION_23_24.migrate(connection)
+        MIGRATION_24_25.migrate(connection)
 
         val second = "0b".repeat(32)
         connection.execSQL("INSERT INTO `Profile` VALUES ('$second')")
@@ -197,7 +197,7 @@ class ChatRoomMembershipMigrationJvmTest {
     fun `the renamed table is gone`() = runBlocking {
         createV22()
 
-        MIGRATION_23_24.migrate(connection)
+        MIGRATION_24_25.migrate(connection)
 
         assertEquals(
             emptyList(),

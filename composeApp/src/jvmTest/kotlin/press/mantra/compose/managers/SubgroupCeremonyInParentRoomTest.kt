@@ -36,6 +36,7 @@ import press.mantra.compose.database.model.types.DkgRitualStage
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.nostr.Relays
 import press.mantra.compose.nostr.dkg.DkgRitualEvents
+import press.mantra.compose.nostr.subgroup.tags.SubgroupOriginTag
 
 /**
  * A subgroup's key ceremony, held in the room of the group making it.
@@ -112,7 +113,10 @@ class SubgroupCeremonyInParentRoomTest {
 
     private val quorum = 2
 
-    private suspend fun openCeremony(room: LocalChatRoom) = ChillDkgRitualManager.proposeRitual(
+    private suspend fun openCeremony(
+        room: LocalChatRoom,
+        origin: SubgroupOrigin.Ref? = null
+    ) = ChillDkgRitualManager.proposeRitual(
         database = parent,
         localChatRoom = room,
         userPublicKey = user,
@@ -120,8 +124,79 @@ class SubgroupCeremonyInParentRoomTest {
         threshold = quorum,
         parentChatRoomId = parentRoomId,
         participantPublicKeys = admins,
-        subject = "Translation"
+        subject = "Translation",
+        origin = origin
     )
+
+    /**
+     * What the room is *for* travels the same road the name does, and has to:
+     * the certificate is proposed after the ceremony and by whoever can, so an
+     * admin who never saw the picker reads it off their own session.
+     */
+    @Test
+    fun `what the subgroup is for travels on the proposal and lands on both sessions`(): Unit =
+        runBlocking {
+            val forTheProject = SubgroupOrigin.Ref(kind = 30330, id = "a1".padEnd(64, '0'))
+
+            val room = parentRoom()
+            val session = openCeremony(room, origin = forTheProject)
+
+            assertEquals(forTheProject, session.origin(), "the coordinator's own copy")
+
+            val proposal = assertNotNull(
+                innerEvents(parent).firstOrNull { it.kind == DkgRitualEvents.PROPOSAL }
+            )
+            assertEquals(forTheProject, DkgRitualEvents.parseOrigin(proposal.tags))
+
+            // Only on the proposal, as the parent and the name are. A later
+            // message with a say in what an opened ceremony is for would be a
+            // second answer to a settled question.
+            innerEvents(parent).filterNot { it.kind == DkgRitualEvents.PROPOSAL }.forEach {
+                assertNull(
+                    DkgRitualEvents.parseOrigin(it.tags),
+                    "kind ${it.kind} repeats what the subgroup is for"
+                )
+            }
+
+            ChillDkgRitualManager.processRitualPayload(
+                database = receiver,
+                localChatRoom = receiverRoom(),
+                innerEvent = proposal.asEvent(),
+                userPublicKey = alice,
+                nostrPrivateKey = aliceKeys.privKey!!
+            )
+
+            val joined = assertNotNull(
+                receiver.dkgSessionDao().getLatestSessionForChatRoom(parentRoomId, alice)
+            )
+            assertEquals(
+                forTheProject,
+                joined.origin(),
+                "a picked admin can say what the room is for without asking the coordinator"
+            )
+        }
+
+    /**
+     * A subgroup for nothing in particular is an ordinary subgroup, and this is
+     * the path the group's own "Add subgroup" takes. It must write no tag at all
+     * rather than an empty one, or a reader gets half a reference.
+     */
+    @Test
+    fun `a ceremony for nothing in particular carries no origin`(): Unit = runBlocking {
+        val room = parentRoom()
+        val session = openCeremony(room)
+
+        assertNull(session.origin())
+
+        val proposal = assertNotNull(
+            innerEvents(parent).firstOrNull { it.kind == DkgRitualEvents.PROPOSAL }
+        )
+        assertNull(DkgRitualEvents.parseOrigin(proposal.tags))
+        assertTrue(
+            proposal.tags.none { it[0] == SubgroupOriginTag.TAG_NAME },
+            "an origin tag was written for a subgroup that is for nothing"
+        )
+    }
 
     private suspend fun innerEvents(database: MantraDatabase) = database.marmotInnerEventDao()
         .getByChatRoomAndKinds(parentRoomId, DkgRitualEvents.ALL.toList())

@@ -57,6 +57,12 @@ interface MantraRepository {
 
     suspend fun getDialect(id: String): MantraDialect?
 
+    /** The artifacts written in a dialect, newest first. */
+    suspend fun getArtifactsForDialect(dialectId: String): List<MantraArtifact>
+
+    /** The translations into a dialect, newest first. */
+    suspend fun getTranslationsForDialect(dialectId: String): List<MantraTranslationArtifactVersion>
+
     suspend fun getProjects(chatRoomId: String): List<MantraProject>
 
     suspend fun getProject(id: String): MantraProject?
@@ -127,6 +133,14 @@ interface MantraRepository {
             override suspend fun getDialects(chatRoomId: String): List<MantraDialect> = emptyList()
 
             override suspend fun getDialect(id: String): MantraDialect? = null
+
+            override suspend fun getArtifactsForDialect(
+                dialectId: String
+            ): List<MantraArtifact> = emptyList()
+
+            override suspend fun getTranslationsForDialect(
+                dialectId: String
+            ): List<MantraTranslationArtifactVersion> = emptyList()
 
             override suspend fun getProjects(chatRoomId: String): List<MantraProject> = emptyList()
 

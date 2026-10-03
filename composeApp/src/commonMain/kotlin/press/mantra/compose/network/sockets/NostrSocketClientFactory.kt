@@ -4,10 +4,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import kotlinx.serialization.json.Json
+import press.mantra.compose.network.platformHttpClientEngineFactory
 
 internal val defaultSocketsHttpClient by lazy {
 
-    HttpClient {
+    HttpClient(platformHttpClientEngineFactory()) {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(Json {
                 isLenient = true

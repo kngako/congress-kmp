@@ -1,5 +1,6 @@
 package press.mantra.compose.managers
 
+import press.mantra.compose.managers.SubgroupOrigin
 import androidx.room3.Room
 import com.vitorpamplona.quartz.marmot.mip01Groups.MarmotGroupData
 import com.vitorpamplona.quartz.marmot.mls.crypto.Ed25519
@@ -132,6 +133,103 @@ class SubgroupManagerJvmTest {
         assertNull(subgroup.room)
         assertFalse(subgroup.isJoined)
         assertNull(subgroup.keyState)
+    }
+
+    // --- the other direction: what was made for one thing ---
+
+    /**
+     * The reverse index, which is the reason the certificate carries an origin.
+     * A room certifies every subgroup it ever makes, so asking "what has been
+     * made for this project" is a filter and not a lookup -- and the case that
+     * matters is a sibling subgroup for something else, which a filter on the
+     * wrong field would include.
+     */
+    @Test
+    fun `a parent lists only the subgroups made for one thing`(): Unit = runBlocking {
+        seedRoom(parentRoomId)
+
+        val theProject = SubgroupOrigin.Ref(kind = 30330, id = "a1".padEnd(64, '0'))
+        val theDialect = SubgroupOrigin.Ref(kind = 30304, id = "b2".padEnd(64, '0'))
+
+        record(certificate(origin = theProject))
+        record(certificate(subgroupMaterial = siblingMaterial, origin = theDialect))
+
+        assertEquals(
+            listOf(childRoomId),
+            SubgroupManager.subgroupsFor(db, parentRoomId, theProject).map { it.chatRoomId }
+        )
+        assertEquals(
+            listOf(siblingRoomId),
+            SubgroupManager.subgroupsFor(db, parentRoomId, theDialect).map { it.chatRoomId }
+        )
+    }
+
+    /**
+     * A subgroup made for nothing in particular belongs to no entity's list. It
+     * is the group's own "Add subgroup", and every certificate signed before the
+     * origin tag existed is one.
+     */
+    @Test
+    fun `a subgroup for nothing in particular is in no entity's list`(): Unit = runBlocking {
+        seedRoom(parentRoomId)
+        record(certificate())
+
+        assertEquals(1, SubgroupManager.subgroupsOf(db, parentRoomId).size)
+        assertTrue(
+            SubgroupManager.subgroupsFor(
+                db,
+                parentRoomId,
+                SubgroupOrigin.Ref(kind = 30330, id = "a1".padEnd(64, '0'))
+            ).isEmpty()
+        )
+    }
+
+    /**
+     * The race this pair exists for. Two admins open a project's screen, neither
+     * can see the other's ceremony, and the group gets two rooms for one project.
+     * A finished one is not in flight -- it is a subgroup that was made -- and a
+     * failed one is nothing to offer back.
+     */
+    @Test
+    fun `only unfinished ceremonies for that thing count as in flight`(): Unit = runBlocking {
+        seedRoom(parentRoomId)
+
+        val theProject = SubgroupOrigin.Ref(kind = 30330, id = "a1".padEnd(64, '0'))
+        val somethingElse = SubgroupOrigin.Ref(kind = 30304, id = "b2".padEnd(64, '0'))
+
+        suspend fun ceremony(id: String, stage: DkgRitualStage, origin: SubgroupOrigin.Ref?) =
+            db.dkgSessionDao().upsert(
+                DkgSession(
+                    id = id,
+                    chatRoomId = parentRoomId,
+                    coordinatorPublicKey = user,
+                    userPublicKey = user,
+                    threshold = 2,
+                    participantCount = 3,
+                    stage = stage,
+                    hostPublicKey = user,
+                    round1Random = "aa".repeat(32),
+                    round2AuxRandom = "bb".repeat(32),
+                    parentChatRoomId = parentRoomId,
+                    originKind = origin?.kind,
+                    originId = origin?.id,
+                )
+            )
+
+        ceremony("running", DkgRitualStage.COLLECTING_HOST_KEYS, theProject)
+        ceremony("done", DkgRitualStage.COMPLETE, theProject)
+        ceremony("failed", DkgRitualStage.FAILED, theProject)
+        ceremony("elsewhere", DkgRitualStage.COLLECTING_HOST_KEYS, somethingElse)
+        ceremony("for-nothing", DkgRitualStage.COLLECTING_HOST_KEYS, null)
+
+        assertEquals(
+            listOf("running"),
+            SubgroupManager.ceremoniesFor(db, parentRoomId, theProject).map { it.id }
+        )
+        assertEquals(
+            listOf("elsewhere"),
+            SubgroupManager.ceremoniesFor(db, parentRoomId, somethingElse).map { it.id }
+        )
     }
 
     @Test
@@ -1124,7 +1222,8 @@ class SubgroupManagerJvmTest {
         author: KeyMaterial = parentMaterial,
         signer: KeyMaterial = author,
         signature: String? = null,
-        parentChatRoomId: String = roomOf(author)
+        parentChatRoomId: String = roomOf(author),
+        origin: SubgroupOrigin.Ref? = null
     ): Event {
         val subgroupChatRoomId = roomOf(subgroupMaterial)
         val eventTags = tags ?: SubgroupBirthCertificateEvent.assembleTags(
@@ -1133,7 +1232,8 @@ class SubgroupManagerJvmTest {
             thresholdPublicKey = subgroupMaterial.thresholdPublicKey.value.toHex(),
             adminPublicKeys = adminPublicKeys,
             name = name,
-            path = path
+            path = path,
+            origin = origin
         )
 
         val pubKey = SharedKeyDerivation

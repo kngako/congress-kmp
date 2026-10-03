@@ -34,10 +34,10 @@ import androidx.sqlite.execSQL
  * ### Why no table rebuild
  *
  * `isUserMessage` is named by no index and no constraint, so `ALTER TABLE ... DROP COLUMN`
- * will take it -- unlike the two columns `MIGRATION_23_24` had to rebuild a table for.
+ * will take it -- unlike the two columns `MIGRATION_24_25` had to rebuild a table for.
  * `ChatMessage` has three cascading children of its own, and this leaves all three alone.
  */
-val MIGRATION_24_25 = object : Migration(24, 25) {
+val MIGRATION_25_26 = object : Migration(25, 26) {
     override suspend fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `ChatMessage` ADD COLUMN `senderIdentity` TEXT")
 

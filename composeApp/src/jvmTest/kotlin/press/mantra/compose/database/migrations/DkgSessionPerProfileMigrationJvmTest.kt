@@ -63,6 +63,7 @@ class DkgSessionPerProfileMigrationJvmTest {
                 "`failureReason` TEXT, `hostKeyApprovedAt` INTEGER, " +
                 "`round1ApprovedAt` INTEGER, `round2ApprovedAt` INTEGER, " +
                 "`approvalRequestedThrough` TEXT, `parentChatRoomId` TEXT, " +
+                "`originKind` INTEGER, `originId` TEXT, " +
                 "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
                 "`savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), " +
                 "FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) " +
@@ -95,7 +96,9 @@ class DkgSessionPerProfileMigrationJvmTest {
                 "'$id', 'room', '$owner', '$owner', 2, 3, '$alice,$bob', 'Ekklesia', " +
                 "'COMPLETE', '$hostKeyPayload', '$round1Random', '$round2AuxRandom', " +
                 "NULL, NULL, '02${"ab".repeat(32)}', '$secretShare', NULL, NULL, NULL, " +
-                "1000, 1000, 1000, NULL, NULL, 1000, 1000, 1000)"
+                // ...approvals, parentChatRoomId, then what the subgroup is for, then the
+                // three timestamps.
+                "1000, 1000, 1000, NULL, NULL, NULL, NULL, 1000, 1000, 1000)"
         )
 
     private fun insertV21Message(
@@ -137,7 +140,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         createV21()
         insertV21Session()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(listOf("id", "userPublicKey"), primaryKey("DkgSession"))
         assertEquals(
@@ -155,6 +158,9 @@ class DkgSessionPerProfileMigrationJvmTest {
                 "certificate", "thresholdPublicKey", "secretShare", "publicShares",
                 "recoveryData", "failureReason", "hostKeyApprovedAt", "round1ApprovedAt",
                 "round2ApprovedAt", "approvalRequestedThrough", "parentChatRoomId",
+                // What the subgroup is for, added by the migration before this one -- a
+                // rebuild has to carry every column, including ones it knows nothing about.
+                "originKind", "originId",
                 "createdAt", "updatedAt", "savedAt",
             ),
             columns("DkgSession"),
@@ -178,7 +184,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(participant = bob)
         insertV21Message(participant = alice)
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(1, count("DkgSession"))
         assertEquals(2, count("DkgParticipantMessage"), "the cascade must not have fired")
@@ -213,7 +219,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(sessionId = "alices", participant = bob)
         insertV21Message(sessionId = "bobs", participant = alice)
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(
             listOf("alices" to alice, "bobs" to bob),
@@ -234,7 +240,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Session()
         insertV21Message()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
         connection.execSQL("DELETE FROM `ChatRoom` WHERE `id` = 'room'")
 
         assertEquals(0, count("DkgSession"))
@@ -259,7 +265,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         insertV21Message(sessionId = "no-such-ceremony", participant = alice)
         connection.execSQL("PRAGMA foreign_keys = ON")
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(1, count("DkgParticipantMessage"))
         assertTrue(
@@ -274,7 +280,7 @@ class DkgSessionPerProfileMigrationJvmTest {
         createV21()
         insertV21Session()
 
-        MIGRATION_22_23.migrate(connection)
+        MIGRATION_23_24.migrate(connection)
 
         assertEquals(
             emptyList(),

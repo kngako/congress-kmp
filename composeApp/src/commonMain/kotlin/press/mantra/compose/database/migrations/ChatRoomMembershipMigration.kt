@@ -63,7 +63,7 @@ import androidx.sqlite.execSQL
  * approximate: before several profiles, a room *was* one profile's, and its
  * `userPublicKey` says whose.
  */
-val MIGRATION_23_24 = object : Migration(23, 24) {
+val MIGRATION_24_25 = object : Migration(24, 25) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // 1. The membership, and one per room that exists.
         connection.execSQL(

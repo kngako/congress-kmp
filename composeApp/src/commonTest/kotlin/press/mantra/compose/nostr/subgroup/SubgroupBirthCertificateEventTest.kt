@@ -19,6 +19,12 @@ import kotlin.test.assertTrue
 import press.mantra.compose.extensions.toHex
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.nostr.nip30303.ArtifactEvent
+import press.mantra.compose.nostr.nip30303.DialectEvent
+import press.mantra.compose.nostr.nip30303.ProjectEvent
+import press.mantra.compose.nostr.nip30303.TranslationArtifactVersionEvent
+import press.mantra.compose.nostr.subgroup.tags.SubgroupOriginTag
 
 /**
  * What a birth certificate is allowed to convince a member of.
@@ -243,7 +249,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a certificate carrying no parent, no key or no path is refused`() {
+    fun `a certificate carrying no parent no key or no path is refused`() {
         listOf("parent_group", "subgroup_key", "frost_path").forEach { dropped ->
             val incomplete = certificate(
                 tags = SubgroupBirthCertificateEvent.assembleTags(
@@ -359,7 +365,7 @@ class SubgroupBirthCertificateEventTest {
     // signature against a room id, and a room id is a public key.
 
     @Test
-    fun `in the parent's room, a certificate is about the room's own child`() {
+    fun `in the parent's room a certificate is about the room's own child`() {
         assertEquals(
             SubgroupManager.ArrivingCertificate.OurChild(subgroupChatRoomId),
             SubgroupManager.classify(parentChatRoomId, certificate())
@@ -367,7 +373,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `in the child's room, the same certificate is an offer to adopt it`() {
+    fun `in the child's room the same certificate is an offer to adopt it`() {
         // The half of an adoption the child's members would otherwise never hear
         // about until a proposal asked for their signature. One event, two
         // meanings, and the room it arrived in is the whole of the difference.
@@ -398,7 +404,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a group is not its own child, however truthfully it says so`() {
+    fun `a group is not its own child however truthfully it says so`() {
         // The one self-referential certificate `certifies` waves through: author,
         // subject and named parent all one room, the id deriving from the key,
         // the signature verifying. Refused before either branch -- read as an
@@ -446,7 +452,7 @@ class SubgroupBirthCertificateEventTest {
     // asserting about it is where it stops.
 
     @Test
-    fun `an unsigned proposal addresses its child, and certifies nothing`() {
+    fun `an unsigned proposal addresses its child and certifies nothing`() {
         // What the ceremony screen is actually holding: the event as it was
         // assembled, before anybody signed it. Any string in `sig` serves --
         // the point is that no quorum has put one there.
@@ -472,7 +478,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `a forgery by another group addresses the pair it names, and certifies nothing`() {
+    fun `a forgery by another group addresses the pair it names and certifies nothing`() {
         // The reason `addresses` must never decide a lineage: anybody can author
         // an event naming any pair, and this says yes to it. The guard is that
         // nothing downstream of a lineage asks `addresses` -- only the screen
@@ -560,7 +566,7 @@ class SubgroupBirthCertificateEventTest {
     }
 
     @Test
-    fun `everything certifies addresses, so the weaker one cannot be the stricter`() {
+    fun `everything certifies addresses so the weaker one cannot be the stricter`() {
         // `certifies` calls `addresses` and adds to it, and this is what keeps
         // that true: a change that let one pass where the other refuses would
         // mean two different answers to "which child is this about".
@@ -580,6 +586,141 @@ class SubgroupBirthCertificateEventTest {
                 parentChatRoomId = parentChatRoomId
             )
         )
+    }
+
+    // --- what the subgroup is for ---
+
+    @Test
+    fun `an origin round trips for each of the four kinds`() {
+        listOf(
+            DialectEvent.KIND,
+            ArtifactEvent.KIND,
+            TranslationArtifactVersionEvent.KIND,
+            ProjectEvent.KIND
+        ).forEach { kind ->
+            val entityId = "a1".padEnd(64, '0')
+            val tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId,
+                thresholdPublicKey = childKey,
+                adminPublicKeys = admins,
+                name = name,
+                path = path,
+                origin = SubgroupOrigin.Ref(kind = kind, id = entityId)
+            )
+
+            assertEquals(
+                SubgroupOrigin.Ref(kind = kind, id = entityId),
+                SubgroupBirthCertificateEvent.parseOrigin(tags),
+                "kind $kind did not read back"
+            )
+        }
+    }
+
+    @Test
+    fun `a certificate made for nothing in particular has no origin`() {
+        val tags = SubgroupBirthCertificateEvent.assembleTags(
+            subgroupChatRoomId = subgroupChatRoomId,
+            parentChatRoomId = parentChatRoomId,
+            thresholdPublicKey = childKey,
+            adminPublicKeys = admins,
+            name = name,
+            path = path
+        )
+
+        assertNull(SubgroupBirthCertificateEvent.parseOrigin(tags))
+        assertTrue(
+            tags.none { it[0] == SubgroupOriginTag.TAG_NAME },
+            "an origin tag was written for a subgroup that is for nothing"
+        )
+    }
+
+    /**
+     * Half a reference is not a weaker reference. A reader without the kind
+     * cannot tell a project it does not hold from something that is not a
+     * project, and an id of the wrong length cannot be resolved by anything --
+     * nothing downstream would refuse it, because nothing resolves an origin
+     * before showing it.
+     */
+    @Test
+    fun `a malformed origin reads as none rather than as half of one`() {
+        val entityId = "a1".padEnd(64, '0')
+
+        listOf(
+            arrayOf(SubgroupOriginTag.TAG_NAME, "30330"),
+            arrayOf(SubgroupOriginTag.TAG_NAME, "not-a-kind", entityId),
+            arrayOf(SubgroupOriginTag.TAG_NAME, "30330", entityId.dropLast(1)),
+            arrayOf(SubgroupOriginTag.TAG_NAME, "30330", ""),
+            arrayOf(SubgroupOriginTag.TAG_NAME)
+        ).forEach { malformed ->
+            assertNull(
+                SubgroupBirthCertificateEvent.parseOrigin(arrayOf(malformed)),
+                "${malformed.toList()} parsed as an origin"
+            )
+        }
+    }
+
+    /**
+     * The origin joins the founding roster, and this is the second half of the
+     * test above that exists to fail loudly. A certificate naming an entity this
+     * device does not hold still certifies -- a subgroup's members need never
+     * have been in the parent, so a certificate pointing at a row they will never
+     * see is the normal case rather than a forgery.
+     */
+    @Test
+    fun `a certificate for an entity this device cannot resolve still verifies`() {
+        val signed = certificate(
+            tags = SubgroupBirthCertificateEvent.assembleTags(
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId,
+                thresholdPublicKey = childKey,
+                adminPublicKeys = admins,
+                name = name,
+                path = path,
+                origin = SubgroupOrigin.Ref(
+                    kind = ProjectEvent.KIND,
+                    id = "beef".padEnd(64, '0')
+                )
+            )
+        )
+
+        assertTrue(
+            SubgroupBirthCertificateEvent.certifies(
+                event = signed,
+                subgroupChatRoomId = subgroupChatRoomId,
+                parentChatRoomId = parentChatRoomId
+            )
+        )
+    }
+
+    /**
+     * The origin sits before the run of `p` tags, and the position is load
+     * bearing: a reader that predates it takes the tags it knows off the front,
+     * and one inserted into the admin run would split the founding roster for
+     * anybody reading positionally.
+     */
+    @Test
+    fun `an origin disturbs neither the admins nor the name`() {
+        val tags = SubgroupBirthCertificateEvent.assembleTags(
+            subgroupChatRoomId = subgroupChatRoomId,
+            parentChatRoomId = parentChatRoomId,
+            thresholdPublicKey = childKey,
+            adminPublicKeys = admins,
+            name = name,
+            path = path,
+            origin = SubgroupOrigin.Ref(
+                kind = DialectEvent.KIND,
+                id = "a1".padEnd(64, '0')
+            )
+        )
+
+        assertEquals(admins, SubgroupBirthCertificateEvent.parseAdminPublicKeys(tags))
+        assertEquals(name, SubgroupBirthCertificateEvent.parseName(tags))
+
+        val originAt = tags.indexOfFirst { it[0] == SubgroupOriginTag.TAG_NAME }
+        val firstAdminAt = tags.indexOfFirst { it[0] == "p" }
+
+        assertTrue(originAt in 0 until firstAdminAt, "the origin is inside the admin run")
     }
 
     private fun certificate(

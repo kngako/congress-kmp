@@ -32,6 +32,13 @@
     <string name="add_chapter">Add chapter</string>
     <string name="add_dialect">Add dialect</string>
     <string name="add_to_group">Add to group</string>
+    <string name="a_key_ceremony_for_a_room_is_under_way">A key ceremony for a room is already under way. Answer it in the group rather than starting another.</string>
+    <string name="for_the_artifact">For the artifact %1$s</string>
+    <string name="for_the_dialect">For the dialect %1$s</string>
+    <string name="for_the_project">For the project %1$s</string>
+    <string name="for_the_translation">For the translation %1$s</string>
+    <string name="give_this_a_room_of_its_own">Give this a room of its own</string>
+    <string name="give_this_another_room">Give this another room</string>
     <string name="add_translation">Add translation</string>
     <string name="after_this_there_is_no_turning_back">After this there is no turning back.</string>
     <string name="all_broadcasts_are_queued_so_that_we_can">All broadcasts are queued so that we can manage data usage on metered connections.</string>
@@ -89,6 +96,7 @@
     <string name="currently_no_messages_have_been_shared">Currently no messages have been shared.\nBreak the ice.</string>
     <string name="delete_group">Delete group</string>
     <string name="details">Details</string>
+    <string name="dialect_detail">Dialect detail</string>
     <string name="dialect_name">Dialect name</string>
     <string name="dialects">Dialects</string>
     <string name="direct_message_detail">Direct message detail</string>
@@ -183,6 +191,9 @@
     <string name="no_one_selected_yet">No one selected yet</string>
     <string name="no_one_to_add_yet">No one to add yet.</string>
     <string name="no_projects_exists_in_this_group">No projects exists in this group.</string>
+    <string name="no_artifacts_are_written_in_this_dialect">No artifacts are written in this dialect yet.</string>
+    <string name="no_translations_are_into_this_dialect">Nothing has been translated into this dialect yet.</string>
+    <string name="rooms_of_its_own">Rooms of its own</string>
     <string name="no_translations_yet">No translations yet.</string>
     <string name="no_versions">No versions.</string>
     <string name="not_now">Not now</string>
@@ -569,4 +580,16 @@
     <string name="abandoned_no_key_was_created">Abandoned. No key was created.</string>
     <string name="s_of_s_members_will_sign_with_it">%1$s of %2$s members will sign with it</string>
     <string name="set_up_a_shared_key">Set up a shared key</string>
+    <!-- Picking dialects out of the bundled catalogue of African languages. -->
+    <string name="add_dialects_from_a_list">Add dialects from a list</string>
+    <string name="pick_the_languages_this_group_will_translate_into">Pick the languages this group will translate into. Ones it already has, and ones it is already signing, cannot be picked again.</string>
+    <string name="search_by_language_country_or_code">Search by language, country or code</string>
+    <string name="s_of_s_selected">%1$s of %2$s selected</string>
+    <string name="select_everything_missing">Select everything missing</string>
+    <string name="clear_the_selection">Clear the selection</string>
+    <string name="propose_s_dialects">Propose %1$s dialects</string>
+    <string name="already_in_this_group">Already in this group</string>
+    <string name="waiting_for_the_group_to_sign_this_one">Waiting for the group to sign this one</string>
+    <string name="this_group_already_has_every_language_in_the_list">This group already has a dialect for every language in the list. Add one it does not list with the form.</string>
+    <string name="this_group_has_no_shared_key_so_it_cannot_sign_a_dialect">This group has no shared key, so it cannot sign a dialect into existence. Run a shared key ceremony first.</string>
 </resources>

@@ -4,6 +4,8 @@ import press.mantra.compose.nostr.dkg.tags.DkgSessionIdTag
 import press.mantra.compose.nostr.dkg.tags.DkgThresholdTag
 import com.vitorpamplona.quartz.nip01Core.core.Kind
 import com.vitorpamplona.quartz.nip14Subject.SubjectTag
+import press.mantra.compose.managers.SubgroupOrigin
+import press.mantra.compose.nostr.subgroup.tags.SubgroupOriginTag
 import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
 
 /**
@@ -76,12 +78,14 @@ object DkgRitualEvents {
         sessionId: String,
         threshold: Int? = null,
         parentChatRoomId: String? = null,
-        subject: String? = null
+        subject: String? = null,
+        origin: SubgroupOrigin.Ref? = null
     ): Array<Array<String>> = buildList {
         add(DkgSessionIdTag.assemble(sessionId))
         threshold?.let { add(DkgThresholdTag.assemble(it)) }
         parentChatRoomId?.let { add(SubgroupParentTag.assemble(it)) }
         subject?.ifBlank { null }?.let { add(SubjectTag.assemble(it)) }
+        origin?.let { add(SubgroupOriginTag.assemble(kind = it.kind, id = it.id)) }
     }.toTypedArray()
 
     fun parseSessionId(tags: Array<Array<String>>): String? =
@@ -124,4 +128,26 @@ object DkgRitualEvents {
      */
     fun parseSubject(tags: Array<Array<String>>): String? =
         tags.firstNotNullOfOrNull(SubjectTag::parse)
+
+    /**
+     * The dialect, artifact, translation or project the room this ceremony will
+     * make is for, or null for a subgroup that is for nothing in particular.
+     *
+     * **This authenticates nothing**, in exactly the way
+     * [parseParentChatRoomId] does not: anybody can put any kind and any id
+     * here, and nothing about the entity is checked when it is read. It is filed
+     * on the session by `acceptProposal` and shown by the screens, and that is
+     * the whole of what it is for. The claim that decides anything is the birth
+     * certificate, which the parent's own quorum signs.
+     *
+     * The reason to carry it is the reason the parent is carried. An admin asked
+     * to hold a key ceremony learns from this what the room is being made for,
+     * and later an admin asked to put the group's signature to a certificate
+     * reads it off their own stored session rather than taking the proposer's
+     * word for it. Being told is worth having even when the telling is not
+     * evidence.
+     */
+    fun parseOrigin(tags: Array<Array<String>>): SubgroupOrigin.Ref? =
+        tags.firstNotNullOfOrNull(SubgroupOriginTag::parse)
+            ?.let { SubgroupOrigin.Ref(kind = it.kind, id = it.id) }
 }

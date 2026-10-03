@@ -8,7 +8,9 @@ import com.vitorpamplona.quartz.nip01Core.tags.people.PTag
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.nostr.frost.GroupKeyStateEvent
 import press.mantra.compose.nostr.frost.tags.FrostDerivationPathTag
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.nostr.subgroup.tags.SubgroupKeyTag
+import press.mantra.compose.nostr.subgroup.tags.SubgroupOriginTag
 import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
 
 /**
@@ -59,6 +61,14 @@ import press.mantra.compose.nostr.subgroup.tags.SubgroupParentTag
  * somebody joined the child, and the rejection would look exactly like a
  * forgery. They are shown as history and are never a live roster.
  *
+ * The origin -- what the subgroup was made *for* -- is in the same position and
+ * is checked even less. A certificate may name a dialect, artifact, translation
+ * or project that this device does not hold and never will, because a subgroup's
+ * members need never have been in the parent; and a certificate with no origin at
+ * all is valid, which it has to be, since every one signed before the tag existed
+ * has none. What the parent's quorum signs is the *intention* that the room be
+ * for that entity. Nothing vouches that the entity exists, and nothing can.
+ *
  * ### Replaceable, by this app rather than by a relay
  *
  * Like every kind in this family it only ever exists inside an encryption a
@@ -95,13 +105,22 @@ object SubgroupBirthCertificateEvent {
         thresholdPublicKey: HexKey,
         adminPublicKeys: List<HexKey>,
         name: String,
-        path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH
+        path: List<Long> = SharedKeyDerivation.MARMOT_ADMIN_GROUP_PATH,
+        origin: SubgroupOrigin.Ref? = null
     ): Array<Array<String>> = arrayOf(
         DTag.assemble(subgroupChatRoomId),
         SubgroupParentTag.assemble(parentChatRoomId),
         SubgroupKeyTag.assemble(thresholdPublicKey),
         FrostDerivationPathTag.assemble(path),
         arrayOf(NAME_TAG_NAME, name)
+    ) + listOfNotNull(
+        // After the named tags and *before* the run of `p` tags, and the
+        // position is fixed rather than incidental. A reader that predates this
+        // takes the tags it knows off the front and ignores the rest; one
+        // inserted into the admin run would split the founding roster for
+        // anybody reading it positionally. The same reasoning fixes the order of
+        // a lineage's pairs in `SubgroupLineage`.
+        origin?.let { SubgroupOriginTag.assemble(kind = it.kind, id = it.id) }
     ) + adminPublicKeys.distinct().map { PTag.assemble(it, null) }
 
     /** The child this certificate is about, or null if it names none. */
@@ -134,6 +153,24 @@ object SubgroupBirthCertificateEvent {
     /** What the child was called at founding, or null if it was not named. */
     fun parseName(tags: Array<Array<String>>): String? =
         tags.firstOrNull { it.size > 1 && it[0] == NAME_TAG_NAME }?.get(1)?.ifBlank { null }
+
+    /**
+     * The dialect, artifact, translation or project this subgroup was made for,
+     * or null when it was made for nothing in particular.
+     *
+     * Null is the normal answer for two unrelated reasons and neither is a
+     * failure: a subgroup started from a group's own "Add subgroup" is for no
+     * entity, and every certificate signed before this tag existed carries none.
+     * Null for a *malformed* origin too -- see `SubgroupOriginTag.parse` -- since
+     * half a reference is not a weaker reference.
+     *
+     * Never consulted by [certifies]. See the class comment on the founding
+     * roster: a certificate is signed once, and nothing on it is compared against
+     * anything current.
+     */
+    fun parseOrigin(tags: Array<Array<String>>): SubgroupOrigin.Ref? =
+        tags.firstNotNullOfOrNull(SubgroupOriginTag::parse)
+            ?.let { SubgroupOrigin.Ref(kind = it.kind, id = it.id) }
 
     /**
      * Whether [event] is a certificate of [subgroupChatRoomId] that

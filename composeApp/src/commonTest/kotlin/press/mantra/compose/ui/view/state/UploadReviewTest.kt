@@ -49,7 +49,7 @@ class UploadReviewTest {
     }
 
     @Test
-    fun `counts are of the decoded text, not of the file`() {
+    fun `counts are of the decoded text not of the file`() {
         // CRLF in, LF counted: the row shows what would be signed.
         val rows = reviewed(file("a.md", "One two.\r\n\r\nThree.\r\n"))
 
@@ -58,7 +58,7 @@ class UploadReviewTest {
     }
 
     @Test
-    fun `a file that is not text is refused, and blocks only its own row`() {
+    fun `a file that is not text is refused and blocks only its own row`() {
         val rows = reviewed(
             file("good.md", "Fine.\n"),
             PickedFile("cover.png", byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x00, 0x0D)),

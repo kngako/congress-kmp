@@ -2,6 +2,7 @@ package press.mantra.compose.database
 
 import androidx.room3.ColumnTypeConverters
 import androidx.room3.AutoMigration
+import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.immediateTransaction
@@ -190,7 +191,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         UnsignedNostrEvent::class,
         Zap::class
     ],
-    version = 25,
+    version = 26,
     autoMigrations = [
         // v2 only adds the DkgSession/DkgParticipantMessage tables, so Room can
         // generate the migration itself — nothing existing changes shape.
@@ -366,19 +367,45 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // than a fourth table, which is what DkgSession.participantPublicKeys
         // already does with a set of keys and for the same reason.
         AutoMigration(from = 21, to = 22),
+        // v23 adds two nullable DkgSession columns saying what the subgroup a
+        // ceremony is running for is *for* -- the kind and id of a dialect, an
+        // artifact, a translation or a project. See
+        // docs/subgroups-for-entities.md.
         //
-        // v23 keys a DkgSession by the profile that ran the ritual as well as by the
+        // They are here rather than only on the certificate because the
+        // certificate is proposed *after* the ceremony, and by whoever is able
+        // to: any parent admin holding a share, who may never have seen the
+        // screen that started it. Every step of a subgroup reads stored rows for
+        // that reason, and this is one more row to read. They come off the ritual
+        // proposal, so every participant's session has them and not just the
+        // coordinator's -- the same route `subject` and `participantPublicKeys`
+        // took in v19.
+        //
+        // **Neither is a foreign key**, following parentChatRoomId's precedent in
+        // v17 and for a sharper version of its reason: these entities live in the
+        // *parent's* tables, and a subgroup's admins need never have been in the
+        // parent, so a value naming a row this device does not hold is the normal
+        // state rather than an error. A cascade would also mean deleting a
+        // project deletes a room.
+        //
+        // Rows written before this read back null, which is the true answer for
+        // all of them: a ceremony that ran before this column existed was opened
+        // for no entity. Nullable additions are a shape Room migrates itself.
+        AutoMigration(from = 22, to = 23),
+        //
+        // v24 keys a DkgSession by the profile that ran the ritual as well as by the
         // ceremony, and gives DkgParticipantMessage the profile that received each
         // message. A ceremony id is minted by its coordinator and travels on the wire, so
         // it is the same string for every participant -- including two profiles on one
         // device, which is two participants and was one row. The second of them adopted
         // the first's host key, its randomness and in the end its share.
         //
-        // Changing a primary key is not a shape Room migrates, and the column added to
-        // the messages is NOT NULL off a value read from another table, so this is manual
-        // and passed to the builder rather than listed here. See MIGRATION_23_24.
+        // Changing a primary key is not a shape Room migrates, and the column added to the
+        // messages is NOT NULL off a value read from another table, so this is manual and
+        // passed to the builder rather than listed here. It rebuilds the table the two
+        // columns above were just added to, and carries them. See MIGRATION_24_25.
         //
-        // v24 splits ChatRoomMembership off ChatRoom. The room held the group's own facts
+        // v25 splits ChatRoomMembership off ChatRoom. The room held the group's own facts
         // and the asking profile's membership of it in one row keyed by the group id, so a
         // second profile joining the same group wrote over the first's MLS ratchet state.
         // The group's half stays where twenty-two tables already point at it; the
@@ -386,23 +413,24 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         // request, the archive flag -- moves to a row keyed by (chatRoomId, userPublicKey).
         //
         // Manual for two reasons: it copies before it drops, and the table it rebuilds is
-        // the parent of all twenty-two of those cascades. See MIGRATION_23_24, which
+        // the parent of all twenty-two of those cascades. See MIGRATION_25_26, which
         // documents the one thing it depends on and the test that proves it.
         //
-        // v25 replaces ChatMessage.isUserMessage with senderIdentity. A boolean was the
-        // answer for one viewer stored on a row that belongs to the group: a transcript
-        // line is deduped by the group event behind it, so with two profiles in one group
-        // whichever indexed last decided whose message it looked like. The identity is the
-        // fact; whether it is yours is a question a reader asks. Manual because it copies
-        // from ChatRoomMembership before dropping the column. See MIGRATION_24_25.
+        // v26 replaces ChatMessage.isUserMessage with senderIdentity, which is what let
+        // the Welcome refusal go. A boolean was the answer for one viewer stored on a row
+        // that belongs to the group: a transcript line is deduped by the group event behind
+        // it, so with two profiles in one group whichever indexed last decided whose
+        // message it looked like. The identity is the fact; whether it is yours is a
+        // question a reader asks. Manual because it copies from ChatRoomMembership before
+        // dropping the column. See MIGRATION_25_26.
         //
-        // Both of these were written as 21->22 and 22->23 while the projects line above
-        // took 22 on `mantra`. Renumbered here rather than there, by the rule that a
-        // version belongs to whichever tree lands first -- the third time in this release
-        // window that two branches have reached for the same number.
+        // These three were written as 21->22, 22->23 and 23->24 and have now been
+        // renumbered twice, by the rule that a version belongs to whichever tree lands
+        // first. Four branches have reached into this space in one release window.
 
     ]
 )
+@ConstructedBy(MantraDatabaseConstructor::class)
 @ColumnTypeConverters(MantraConverters::class)
 abstract class MantraDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao

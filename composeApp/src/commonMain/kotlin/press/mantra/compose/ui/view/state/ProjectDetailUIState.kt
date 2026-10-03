@@ -1,5 +1,7 @@
 package press.mantra.compose.ui.view.state
 
+import press.mantra.compose.database.model.DkgSession
+import press.mantra.compose.managers.SubgroupManager
 import com.vitorpamplona.quartz.nip01Core.core.HexKey
 import press.mantra.compose.database.model.MantraArtifactVersion
 import press.mantra.compose.database.model.MantraProject
@@ -31,6 +33,36 @@ sealed interface ProjectDetailUIState {
          * pressed.
          */
         val canSign: Boolean = false,
+
+        /**
+         * Whether this device could open a subgroup for this project at all.
+         *
+         * [canSign] and a Marmot room, which is the same pair
+         * `ChatRoomDetailUIState.canAddSubgroup` states. Held separately rather
+         * than derived at the call site so there is one spelling of one rule.
+         */
+        val canAddSubgroup: Boolean = false,
+        /**
+         * The rooms this group has made for this project.
+         *
+         * The other direction of a birth certificate, and the reason the
+         * certificate carries an origin at all. Empty says only that this device
+         * holds no certificate naming it -- a room made for it by a group this
+         * device is not in is invisible here, as everywhere else.
+         */
+        val subgroups: List<SubgroupManager.Subgroup> = emptyList(),
+
+        /**
+         * Key ceremonies already under way for this project.
+         *
+         * Shown rather than refused. Two admins opening this screen at the same
+         * time both see no room and both start one, which is the race the whole
+         * pair exists for -- the screen that invites the act is the screen that
+         * cannot otherwise see the act in progress. A group may still want two
+         * rooms for one project, and that is the group's business.
+         */
+        val subgroupCeremonies: List<DkgSession> = emptyList(),
+
     ): ProjectDetailUIState
 
     data class Error(

@@ -4,6 +4,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import press.mantra.compose.database.model.traits.LocalStoreEntity
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.database.model.traits.TimestampedEntity
 import press.mantra.compose.database.model.types.DkgApprovalStep
 import press.mantra.compose.database.model.types.DkgRitualStage
@@ -212,11 +213,52 @@ data class DkgSession(
      */
     val parentChatRoomId: HexKey? = null,
 
+    /**
+     * The kind of the thing this subgroup is being made for, or null for a
+     * subgroup that is for nothing in particular.
+     *
+     * The pair with [originId], and read together or not at all -- see
+     * [origin]. Both come off the ritual proposal, so every participant's
+     * session carries them and not only the coordinator's, which is what makes
+     * the certificate proposable by somebody who was never on the picker screen.
+     *
+     * **This authenticates nothing**, exactly as [parentChatRoomId] does not:
+     * anybody can put any id on a proposal. What it is for is the certificate
+     * two steps later, which the parent's quorum signs, and the screens that say
+     * what a ceremony is for while it runs. Nothing may be granted on the
+     * strength of these two columns.
+     *
+     * Not foreign keys. The row named here is routinely one this device does not
+     * hold -- a subgroup's admins need never have been in the parent, and these
+     * entities live in the parent's tables -- so a dangling value is the normal
+     * state rather than an error, and a cascade would mean deleting a project
+     * deletes a room.
+     */
+    val originKind: Int? = null,
+
+    /** The id of the thing this subgroup is for. The pair with [originKind]. */
+    val originId: HexKey? = null,
+
     override val createdAt: Instant = Clock.System.now(),
     override val updatedAt: Instant = createdAt,
     override val savedAt: Instant = createdAt,
 ): TimestampedEntity, LocalStoreEntity {
     fun isCoordinator(): Boolean = coordinatorPublicKey == userPublicKey
+
+    /**
+     * What this subgroup is for, or null when it is for nothing in particular.
+     *
+     * Both columns or neither: half a reference is a reference with the
+     * resolvable part removed, and a row holding one is a row written by a
+     * version that disagreed with this one. Reading them through here rather than
+     * separately is what stops a caller assembling half of one.
+     */
+    fun origin(): SubgroupOrigin.Ref? {
+        val kind = originKind ?: return null
+        val id = originId ?: return null
+
+        return SubgroupOrigin.Ref(kind = kind, id = id)
+    }
 
     /** The participants' public shares in participant order, or null if unrecorded. */
     fun publicShareList(): List<PublicKey>? = publicShares

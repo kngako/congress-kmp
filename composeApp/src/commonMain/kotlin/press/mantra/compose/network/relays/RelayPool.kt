@@ -286,7 +286,7 @@ class RelayPool(
             )
         }
 
-    @Throws(press.mantra.compose.exceptions.NostrPublishException::class)
+    @Throws(press.mantra.compose.exceptions.NostrPublishException::class, kotlin.coroutines.cancellation.CancellationException::class)
     suspend fun publishEvent(nostrEvent: press.mantra.compose.database.model.NostrEvent, relays: Set<press.mantra.compose.network.dto.RelayDTO> = emptySet()): Flow<NostrPublishResult> {
         val relayUrls = relays.map { NormalizedRelayUrl(it.url).displayUrl() }
 

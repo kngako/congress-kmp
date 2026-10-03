@@ -78,7 +78,7 @@ class ChatMessageSenderIdentityMigrationJvmTest {
         line(roomId, sender = "ee".repeat(32), mine = true, content = "mine")
         line(otherRoomId, sender = "ee".repeat(32), mine = true, content = "from the other room")
 
-        MIGRATION_24_25.migrate(connection)
+        MIGRATION_25_26.migrate(connection)
 
         assertEquals(
             listOf("mine" to holder, "from the other room" to otherHolder),
@@ -92,7 +92,7 @@ class ChatMessageSenderIdentityMigrationJvmTest {
         createV24()
         line(roomId, sender = otherHolder, mine = false, content = "theirs")
 
-        MIGRATION_24_25.migrate(connection)
+        MIGRATION_25_26.migrate(connection)
 
         assertEquals(
             listOf("theirs" to null),
@@ -113,7 +113,7 @@ class ChatMessageSenderIdentityMigrationJvmTest {
         createV24()
         line(orphanRoomId, sender = holder, mine = true, content = "orphaned")
 
-        MIGRATION_24_25.migrate(connection)
+        MIGRATION_25_26.migrate(connection)
 
         assertEquals(listOf("orphaned" to null), lines())
     }
@@ -123,7 +123,7 @@ class ChatMessageSenderIdentityMigrationJvmTest {
         createV24()
         line(roomId, sender = holder, mine = true, content = "mine")
 
-        MIGRATION_24_25.migrate(connection)
+        MIGRATION_25_26.migrate(connection)
 
         assertEquals(
             listOf("id", "senderPublicKey", "content", "chatRoomId", "senderIdentity"),

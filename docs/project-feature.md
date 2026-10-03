@@ -1071,6 +1071,13 @@ want to remove within a week.
 - **Creator or owner on a membership.** One tag and one column away, deliberately
   left out — see Phase 1.
 - **Removal** until Phase 8, **cross-room** until Phase 9.
+- **A room of the project's own** — built since, in
+  [subgroups-for-entities.md](./subgroups-for-entities.md). A project can be
+  given a differently-keyed subgroup of its room, and the parent's quorum signs
+  which project the room is for. It does not move the project: the rows stay in
+  the parent's tables, signed by the parent's quorum, and the child's members may
+  hold none of them. Giving the child its own copy is the cross-room question
+  above and is still Phase 9.
 - **Project-level approval or progress.** The server has
   `artifactApproval`, `artifactVersionApproval` and
   `translationArtifactVersionApproval`, none of which exists here either. A

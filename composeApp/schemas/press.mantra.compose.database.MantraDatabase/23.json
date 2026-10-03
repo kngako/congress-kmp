@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 23,
-    "identityHash": "cb06123cecc1cc533da4e006c3b19ed4",
+    "identityHash": "a0a28e3d4985a5153bc7389cb5802d40",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -782,17 +782,11 @@
       },
       {
         "tableName": "DkgParticipantMessage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sessionId` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `participantPublicKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `payload` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`sessionId`, `userPublicKey`, `participantPublicKey`, `kind`), FOREIGN KEY(`sessionId`, `userPublicKey`) REFERENCES `DkgSession`(`id`, `userPublicKey`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sessionId` TEXT NOT NULL, `participantPublicKey` TEXT NOT NULL, `kind` INTEGER NOT NULL, `payload` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`sessionId`, `participantPublicKey`, `kind`), FOREIGN KEY(`sessionId`) REFERENCES `DkgSession`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "sessionId",
             "columnName": "sessionId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "userPublicKey",
-            "columnName": "userPublicKey",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -825,21 +819,19 @@
           "autoGenerate": false,
           "columnNames": [
             "sessionId",
-            "userPublicKey",
             "participantPublicKey",
             "kind"
           ]
         },
         "indices": [
           {
-            "name": "index_DkgParticipantMessage_sessionId_userPublicKey",
+            "name": "index_DkgParticipantMessage_sessionId",
             "unique": false,
             "columnNames": [
-              "sessionId",
-              "userPublicKey"
+              "sessionId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_DkgParticipantMessage_sessionId_userPublicKey` ON `${TABLE_NAME}` (`sessionId`, `userPublicKey`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_DkgParticipantMessage_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
           }
         ],
         "foreignKeys": [
@@ -848,19 +840,17 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "sessionId",
-              "userPublicKey"
+              "sessionId"
             ],
             "referencedColumns": [
-              "id",
-              "userPublicKey"
+              "id"
             ]
           }
         ]
       },
       {
         "tableName": "DkgSession",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `coordinatorPublicKey` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `threshold` INTEGER NOT NULL, `participantCount` INTEGER NOT NULL, `participantPublicKeys` TEXT, `subject` TEXT, `stage` TEXT NOT NULL, `hostPublicKey` TEXT NOT NULL, `round1Random` TEXT NOT NULL, `round2AuxRandom` TEXT NOT NULL, `coordinatorRound1` TEXT, `certificate` TEXT, `thresholdPublicKey` TEXT, `secretShare` TEXT, `publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, `hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, `round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, `parentChatRoomId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`, `userPublicKey`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `coordinatorPublicKey` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `threshold` INTEGER NOT NULL, `participantCount` INTEGER NOT NULL, `participantPublicKeys` TEXT, `subject` TEXT, `stage` TEXT NOT NULL, `hostPublicKey` TEXT NOT NULL, `round1Random` TEXT NOT NULL, `round2AuxRandom` TEXT NOT NULL, `coordinatorRound1` TEXT, `certificate` TEXT, `thresholdPublicKey` TEXT, `secretShare` TEXT, `publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, `hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, `round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, `parentChatRoomId` TEXT, `originKind` INTEGER, `originId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -993,6 +983,16 @@
             "affinity": "TEXT"
           },
           {
+            "fieldPath": "originKind",
+            "columnName": "originKind",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "originId",
+            "columnName": "originId",
+            "affinity": "TEXT"
+          },
+          {
             "fieldPath": "createdAt",
             "columnName": "createdAt",
             "affinity": "INTEGER",
@@ -1014,8 +1014,7 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "id",
-            "userPublicKey"
+            "id"
           ]
         },
         "indices": [
@@ -6147,7 +6146,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cb06123cecc1cc533da4e006c3b19ed4')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a0a28e3d4985a5153bc7389cb5802d40')"
     ]
   }
 }

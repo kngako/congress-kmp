@@ -29,7 +29,7 @@ class SubgroupLineageTest {
     }
 
     @Test
-    fun `one parent cannot fail, because it has nothing to repeat`() {
+    fun `one parent cannot fail because it has nothing to repeat`() {
         val lineage = SubgroupLineage.of(parentage(alpha))
 
         assertEquals(1, lineage.size)
@@ -53,14 +53,14 @@ class SubgroupLineageTest {
     }
 
     @Test
-    fun `a room id is matched case-insensitively, because it is hex`() {
+    fun `a room id is matched case-insensitively because it is hex`() {
         val lineage = SubgroupLineage.of(parentage(alpha))
 
         assertTrue(lineage.names(alpha.uppercase()))
     }
 
     @Test
-    fun `the order is the parents' ids, whatever order they arrived in`() {
+    fun `the order is the parents' ids whatever order they arrived in`() {
         // The whole reason this class sorts: two devices assembling one lineage
         // from the same certificates have to emit the same bytes, or a reader
         // that pairs the first tag of each name gets a mismatched pair.
@@ -82,7 +82,7 @@ class SubgroupLineageTest {
     }
 
     @Test
-    fun `adding a parent is an addition, not a replacement`() {
+    fun `adding a parent is an addition not a replacement`() {
         // A key state is replaceable and the newest wins wholesale, so an
         // adoption that carried only the new parent would silently drop the old
         // one. Expressing it as an addition is what stops a caller assembling

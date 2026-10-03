@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 24,
-    "identityHash": "c99c92c14e98a35c2d2a13118bc1f727",
+    "identityHash": "16d70e9be637a10e099e9ddc20bdefe0",
     "entities": [
       {
         "tableName": "BroadcastNostrEventReceipt",
@@ -282,7 +282,7 @@
       },
       {
         "tableName": "ChatMessage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `senderIdentity` TEXT, `giftWrapPayloadId` TEXT, `marmotGroupEventId` TEXT, `marmotInnerEventId` TEXT, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `messageType` TEXT NOT NULL, `directMessageRecipientPublicKey` TEXT, `frostSigningSessionId` TEXT, `dkgSessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotGroupEventId`) REFERENCES `MarmotGroupEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotInnerEventId`) REFERENCES `MarmotInnerEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `senderPublicKey` TEXT NOT NULL, `isUserMessage` INTEGER NOT NULL, `giftWrapPayloadId` TEXT, `marmotGroupEventId` TEXT, `marmotInnerEventId` TEXT, `chatRoomId` TEXT NOT NULL, `replyToMessageId` INTEGER, `quotedMessageId` INTEGER, `content` TEXT NOT NULL, `messageType` TEXT NOT NULL, `directMessageRecipientPublicKey` TEXT, `frostSigningSessionId` TEXT, `dkgSessionId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`giftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotGroupEventId`) REFERENCES `MarmotGroupEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`marmotInnerEventId`) REFERENCES `MarmotInnerEvent`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -297,9 +297,10 @@
             "notNull": true
           },
           {
-            "fieldPath": "senderIdentity",
-            "columnName": "senderIdentity",
-            "affinity": "TEXT"
+            "fieldPath": "isUserMessage",
+            "columnName": "isUserMessage",
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "giftWrapPayloadId",
@@ -670,11 +671,17 @@
       },
       {
         "tableName": "ChatRoom",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `subject` TEXT, `description` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `subject` TEXT, `description` TEXT, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` TEXT, `leftGroupAt` INTEGER, `joinedGroupAt` INTEGER, `chronicleRequestedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userPublicKey",
+            "columnName": "userPublicKey",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -687,48 +694,6 @@
             "fieldPath": "description",
             "columnName": "description",
             "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "savedAt",
-            "columnName": "savedAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "ChatRoomMembership",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`chatRoomId` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `mlsGroupState` TEXT, `initialGiftWrapPayloadId` TEXT, `leftGroupAt` INTEGER, `joinedGroupAt` INTEGER, `chronicleRequestedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `viewedAt` INTEGER, `deletedAt` INTEGER, PRIMARY KEY(`chatRoomId`, `userPublicKey`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`userPublicKey`) REFERENCES `Profile`(`publicKey`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`initialGiftWrapPayloadId`) REFERENCES `GiftWrapPayload`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "chatRoomId",
-            "columnName": "chatRoomId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "userPublicKey",
-            "columnName": "userPublicKey",
-            "affinity": "TEXT",
-            "notNull": true
           },
           {
             "fieldPath": "mlsGroupState",
@@ -787,42 +752,10 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "chatRoomId",
-            "userPublicKey"
+            "id"
           ]
         },
-        "indices": [
-          {
-            "name": "index_ChatRoomMembership_userPublicKey",
-            "unique": false,
-            "columnNames": [
-              "userPublicKey"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_ChatRoomMembership_userPublicKey` ON `${TABLE_NAME}` (`userPublicKey`)"
-          },
-          {
-            "name": "index_ChatRoomMembership_initialGiftWrapPayloadId",
-            "unique": false,
-            "columnNames": [
-              "initialGiftWrapPayloadId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_ChatRoomMembership_initialGiftWrapPayloadId` ON `${TABLE_NAME}` (`initialGiftWrapPayloadId`)"
-          }
-        ],
         "foreignKeys": [
-          {
-            "table": "ChatRoom",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "chatRoomId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
           {
             "table": "Profile",
             "onDelete": "CASCADE",
@@ -927,7 +860,7 @@
       },
       {
         "tableName": "DkgSession",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `coordinatorPublicKey` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `threshold` INTEGER NOT NULL, `participantCount` INTEGER NOT NULL, `participantPublicKeys` TEXT, `subject` TEXT, `stage` TEXT NOT NULL, `hostPublicKey` TEXT NOT NULL, `round1Random` TEXT NOT NULL, `round2AuxRandom` TEXT NOT NULL, `coordinatorRound1` TEXT, `certificate` TEXT, `thresholdPublicKey` TEXT, `secretShare` TEXT, `publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, `hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, `round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, `parentChatRoomId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`, `userPublicKey`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `chatRoomId` TEXT NOT NULL, `coordinatorPublicKey` TEXT NOT NULL, `userPublicKey` TEXT NOT NULL, `threshold` INTEGER NOT NULL, `participantCount` INTEGER NOT NULL, `participantPublicKeys` TEXT, `subject` TEXT, `stage` TEXT NOT NULL, `hostPublicKey` TEXT NOT NULL, `round1Random` TEXT NOT NULL, `round2AuxRandom` TEXT NOT NULL, `coordinatorRound1` TEXT, `certificate` TEXT, `thresholdPublicKey` TEXT, `secretShare` TEXT, `publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, `hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, `round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, `parentChatRoomId` TEXT, `originKind` INTEGER, `originId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, PRIMARY KEY(`id`, `userPublicKey`), FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1057,6 +990,16 @@
           {
             "fieldPath": "parentChatRoomId",
             "columnName": "parentChatRoomId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originKind",
+            "columnName": "originKind",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "originId",
+            "columnName": "originId",
             "affinity": "TEXT"
           },
           {
@@ -6214,7 +6157,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c99c92c14e98a35c2d2a13118bc1f727')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '16d70e9be637a10e099e9ddc20bdefe0')"
     ]
   }
 }

@@ -31,6 +31,7 @@ import press.mantra.compose.database.repository.DatabaseMarmotRepository
 import press.mantra.compose.database.repository.DatabaseNostrRepository
 import press.mantra.compose.database.repository.DatabaseSearchRepository
 import press.mantra.compose.managers.AuxDatabaseManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.ui.composable.ActiveProfileScreen
 import press.mantra.compose.ui.composable.AddMemberToChatRoomConfirmationScreen
 import press.mantra.compose.ui.composable.ChatRoomCreationScreen
@@ -141,6 +142,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddToProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectsFromCatalogueRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
@@ -151,6 +153,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddTranslationRoute
 import press.mantra.compose.ui.composable.navigation.routes.ArtifactDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ProjectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.ChapterDetailRoute
+import press.mantra.compose.ui.composable.navigation.routes.DialectDetailRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslateChunkRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationChapterRoute
 import press.mantra.compose.ui.composable.navigation.routes.TranslationArtifactVersionDetailRoute
@@ -161,10 +164,12 @@ import press.mantra.compose.ui.composable.ProjectDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.UploadChaptersScreen
 import press.mantra.compose.ui.composable.AddDialectScreen
+import press.mantra.compose.ui.composable.AddDialectsFromCatalogueScreen
 import press.mantra.compose.ui.composable.FrostSigningScreen
 import press.mantra.compose.ui.composable.ProposalListScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
 import press.mantra.compose.ui.composable.ChapterDetailScreen
+import press.mantra.compose.ui.composable.DialectDetailScreen
 import press.mantra.compose.ui.composable.TranslateChunkScreen
 import press.mantra.compose.ui.composable.TranslationChapterScreen
 import press.mantra.compose.ui.composable.TranslationArtifactVersionDetailScreen
@@ -608,6 +613,13 @@ fun MantraNavHost(
                     activeIdentityStateFlow = sovereignWalletViewModel.activeIdentity,
                     chatRepository = databaseChatRepository,
                     dkgRepository = databaseDkgRepository,
+                    suggestedName = route.name,
+                    // Both or neither. A route carrying one half of a reference
+                    // is a reference with the resolvable part missing, and
+                    // reassembling it here is the one place that can say so.
+                    origin = route.originKind?.let { kind ->
+                        route.originId?.let { id -> SubgroupOrigin.Ref(kind, id) }
+                    },
                     onNavigateToRoute = { nextRoute ->
                         navController.navigate(route = nextRoute)
                     },
@@ -1245,6 +1257,33 @@ fun MantraNavHost(
                     }
                 )
             }
+            composable<AddDialectsFromCatalogueRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddDialectsFromCatalogueRoute>()
+
+                AddDialectsFromCatalogueScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this picker so back returns to the group rather
+                        // than to a selection whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddDialectsFromCatalogueRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(route = actionRoute)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable<BroadcastGroupSignedEventRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<BroadcastGroupSignedEventRoute>()
 
@@ -1321,6 +1360,27 @@ fun MantraNavHost(
                     chatRoomId = route.chatRoomId,
                     relayHint = route.relayHint,
                     mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(
+                            route = actionRoute
+                        )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<DialectDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<DialectDetailRoute>()
+
+                DialectDetailScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    dialectId = route.dialectId,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    mantraRepository = databaseMantraRepository,
+                    chatRepository = databaseChatRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute
@@ -1342,6 +1402,7 @@ fun MantraNavHost(
                     mantraRepository = databaseMantraRepository,
                     nostrRepository = databaseNostrRepository,
                     frostSigningRepository = databaseFrostSigningRepository,
+                    chatRepository = databaseChatRepository,
                     onNavigateToRoute = { actionRoute ->
                         navController.navigate(
                             route = actionRoute

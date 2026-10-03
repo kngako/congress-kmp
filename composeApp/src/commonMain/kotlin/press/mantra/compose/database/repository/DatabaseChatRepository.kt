@@ -8,7 +8,9 @@ import press.mantra.compose.managers.ChronicleManager
 import press.mantra.compose.managers.FrostSigningManager
 import press.mantra.compose.managers.GroupKeyStateManager
 import press.mantra.compose.managers.MarmotGroupCreation
+import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.database.model.ChatMessage
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.ChatRoomMembership
@@ -130,6 +132,17 @@ class DatabaseChatRepository(
         null
     }
 
+
+    override suspend fun subgroupsFor(
+        chatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<SubgroupManager.Subgroup> =
+        SubgroupManager.subgroupsFor(database, chatRoomId, origin)
+
+    override suspend fun subgroupCeremoniesFor(
+        chatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<DkgSession> = SubgroupManager.ceremoniesFor(database, chatRoomId, origin)
 
     override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> = try {
         SubgroupManager.subgroupsOf(database, chatRoomId)

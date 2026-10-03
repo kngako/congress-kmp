@@ -15,4 +15,17 @@ interface MantraArtifactDao {
 
     @Query("SELECT * FROM MantraArtifact WHERE id = :id")
     suspend fun getArtifactById(id: String): MantraArtifact?
+
+    /**
+     * The artifacts written in [dialectId], newest first.
+     *
+     * Scoped by the dialect alone and not also by a room. `dialectId` is a
+     * foreign key into this room's own rows, so it cannot reach another room's
+     * artifacts and a second `chatRoomId` filter would be a second spelling of a
+     * constraint the key already enforces. The day a dialect can be named across
+     * rooms -- see Phase 9 of docs/project-feature.md -- this is one of the
+     * places that has to learn about it.
+     */
+    @Query("SELECT * FROM MantraArtifact WHERE dialectId = :dialectId ORDER BY createdAt DESC")
+    suspend fun getArtifactsByDialectId(dialectId: String): List<MantraArtifact>
 }

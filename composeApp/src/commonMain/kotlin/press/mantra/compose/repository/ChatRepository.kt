@@ -3,12 +3,14 @@ package press.mantra.compose.repository
 import press.mantra.compose.database.model.ChatRoom
 import press.mantra.compose.database.model.GiftWrapPayload
 import press.mantra.compose.database.model.GroupKeyState
+import press.mantra.compose.database.model.DkgSession
 import press.mantra.compose.database.model.GroupSignedEvent
 import com.vitorpamplona.quartz.nip01Core.crypto.KeyPair
 import press.mantra.compose.database.model.MarmotKeyPackage
 import press.mantra.compose.managers.SharedKeyDerivation
 import press.mantra.compose.managers.MarmotGroupCreation
 import press.mantra.compose.managers.SubgroupManager
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.database.model.Participant
 import press.mantra.compose.database.model.intermdiate.LocalChatMessage
 import press.mantra.compose.database.model.intermdiate.LocalChatRoom
@@ -68,6 +70,25 @@ interface ChatRepository {
      * `SubgroupManager.subgroupsOf`.
      */
     suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup>
+
+    /**
+     * The subgroups a room has made for one particular dialect, artifact,
+     * translation or project, and the ceremonies under way for it.
+     *
+     * The other direction of a birth certificate. See
+     * `SubgroupManager.subgroupsFor` and `SubgroupManager.ceremoniesFor` -- the
+     * second is what stops two admins opening two ceremonies for one thing
+     * because neither screen could see the other's.
+     */
+    suspend fun subgroupsFor(
+        chatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<SubgroupManager.Subgroup>
+
+    suspend fun subgroupCeremoniesFor(
+        chatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<DkgSession>
 
     /**
      * Every group that has certified this room as its child, verified, in
@@ -329,6 +350,16 @@ interface ChatRepository {
             override suspend fun signedGroupKeyStateEvent(
                 chatRoomId: String
             ): GroupSignedEvent? = null
+
+            override suspend fun subgroupsFor(
+                chatRoomId: String,
+                origin: SubgroupOrigin.Ref
+            ): List<SubgroupManager.Subgroup> = emptyList()
+
+            override suspend fun subgroupCeremoniesFor(
+                chatRoomId: String,
+                origin: SubgroupOrigin.Ref
+            ): List<DkgSession> = emptyList()
 
             override suspend fun subgroupsOf(chatRoomId: String): List<SubgroupManager.Subgroup> =
                 emptyList()

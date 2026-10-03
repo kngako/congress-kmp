@@ -53,6 +53,7 @@ import org.jetbrains.compose.resources.stringResource
 import press.mantra.compose.managers.MarmotGroupName
 import press.mantra.compose.repository.ChatRepository
 import press.mantra.compose.repository.DkgRepository
+import press.mantra.compose.managers.SubgroupOrigin
 import press.mantra.compose.ui.composable.navigation.routes.Route
 import press.mantra.compose.ui.composable.widgets.Decorative
 import press.mantra.compose.ui.composable.widgets.ErrorState
@@ -85,6 +86,10 @@ fun SelectSubgroupAdminsScreen(
     activeIdentityStateFlow: StateFlow<Identity?>,
     chatRepository: ChatRepository,
     dkgRepository: DkgRepository,
+    /** A name to open the field with, where the caller knows one. */
+    suggestedName: String? = null,
+    /** What the subgroup is for, where it was asked for from an entity. */
+    origin: SubgroupOrigin.Ref? = null,
     onNavigateToRoute: (Route) -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -94,6 +99,8 @@ fun SelectSubgroupAdminsScreen(
             parentChatRoomId = parentChatRoomId,
             initialUIState = initialUIState,
             activeIdentityStateFlow = activeIdentityStateFlow,
+            suggestedName = suggestedName,
+            origin = origin,
             chatRepository = chatRepository,
             dkgRepository = dkgRepository
         )

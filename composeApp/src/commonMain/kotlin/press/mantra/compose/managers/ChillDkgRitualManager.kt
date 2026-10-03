@@ -183,7 +183,8 @@ object ChillDkgRitualManager {
         threshold: Int,
         parentChatRoomId: HexKey? = null,
         participantPublicKeys: Set<HexKey>? = null,
-        subject: String? = null
+        subject: String? = null,
+        origin: SubgroupOrigin.Ref? = null
     ): DkgSession {
         // Built the way a receiver rebuilds it from the proposal — the p-tags
         // `broadcast` writes, plus this device — so both sides count the same `n`
@@ -289,7 +290,14 @@ object ChillDkgRitualManager {
             // proposal -- unverified there and unverified here, and read for
             // nothing but a screen's title and a way back into an unfinished
             // subgroup flow. See `DkgSession.parentChatRoomId`.
-            parentChatRoomId = parentChatRoomId
+            parentChatRoomId = parentChatRoomId,
+            // And what the subgroup is for, on the same terms: the coordinator's
+            // own copy of a claim they are about to put on the proposal,
+            // unverified on both sides. It is here rather than only in the
+            // coordinator's head because the certificate is proposed later and
+            // by whoever can -- see `DkgSession.originKind`.
+            originKind = origin?.kind,
+            originId = origin?.id
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -316,7 +324,12 @@ object ChillDkgRitualManager {
             // is routinely that payload. For a subgroup it is the only way the
             // name travels at all, since the child has no room yet and the room
             // this runs in is the parent's.
-            subject = ceremonySubject
+            subject = ceremonySubject,
+            // Only on the proposal, for the reason `includeParent` gives: a later
+            // message repeating it would be bytes per round to restate something
+            // settled, and would give a later message a say in what an opened
+            // ceremony is for.
+            includeOrigin = true
         )
 
         publishHostKey(database, localChatRoom, session)
@@ -476,7 +489,15 @@ object ChillDkgRitualManager {
             // is the p-tags and the threshold is the threshold. What it changes is
             // that the screen can say what the ceremony is for. The parent's own
             // signature turns up two steps later, on the birth certificate.
-            parentChatRoomId = DkgRitualEvents.parseParentChatRoomId(innerEvent.tags)
+            parentChatRoomId = DkgRitualEvents.parseParentChatRoomId(innerEvent.tags),
+            // Taken as said, on exactly the terms the parent above is taken as
+            // said. A proposal naming a project this member has never heard of
+            // opens the same ceremony it would have opened with no tag at all;
+            // what it changes is that the screen can say what the room is for,
+            // and that an admin asked for the certificate later reads it off
+            // their own session rather than off the proposer's word.
+            originKind = DkgRitualEvents.parseOrigin(innerEvent.tags)?.kind,
+            originId = DkgRitualEvents.parseOrigin(innerEvent.tags)?.id
         )
         database.dkgSessionDao().upsert(session)
         announceStarted(database, session)
@@ -1379,7 +1400,8 @@ object ChillDkgRitualManager {
         content: String,
         includeThreshold: Boolean = false,
         includeParent: Boolean = false,
-        subject: String? = null
+        subject: String? = null,
+        includeOrigin: Boolean = false
     ) {
         // Sorted so a receiver comparing two devices' proposals is comparing the
         // same bytes, and the sender is implied rather than tagged -- together
@@ -1401,7 +1423,8 @@ object ChillDkgRitualManager {
             sessionId = session.id,
             threshold = if (includeThreshold) session.threshold else null,
             parentChatRoomId = if (includeParent) session.parentChatRoomId else null,
-            subject = subject
+            subject = subject,
+            origin = if (includeOrigin) session.origin() else null
         )
 
         val createdAt = Clock.System.now().epochSeconds

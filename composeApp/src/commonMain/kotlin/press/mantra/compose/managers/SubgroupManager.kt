@@ -262,7 +262,14 @@ object SubgroupManager {
                 thresholdPublicKey = thresholdPublicKey,
                 adminPublicKeys = adminPublicKeys,
                 name = subgroupName,
-                path = path
+                path = path,
+                // Off the ceremony, not off a parameter. [key] is already the
+                // stored session, and every step after the ceremony is open to
+                // somebody who was never on the screen that started it -- so
+                // what the room is for has to come from the same row the key
+                // does. A parameter here would be a second source for one fact,
+                // and the proposer's copy of it at that.
+                origin = key.origin()
             ),
             content = subgroupChatRoomId
         )
@@ -772,6 +779,17 @@ object SubgroupManager {
         val room: LocalChatRoom?,
         /** The child's key state, when this device holds one. */
         val keyState: GroupKeyState?,
+        /**
+         * The dialect, artifact, translation or project this subgroup was made
+         * for, or null when it was made for nothing in particular.
+         *
+         * Off the certificate, like the name and the admins beside it, and
+         * carrying their limits: it is the *founding* intention, it is not
+         * checked, and it routinely names a row this device does not hold. A
+         * reader that cannot resolve it says so rather than hiding it -- see
+         * `ProposedEvent.summarize`.
+         */
+        val origin: SubgroupOrigin.Ref?,
     ) {
         /** Whether this device can open the subgroup, rather than only know of it. */
         val isJoined: Boolean get() = room != null
@@ -826,9 +844,64 @@ object SubgroupManager {
                     adminPublicKeys = SubgroupBirthCertificateEvent.parseAdminPublicKeys(event.tags),
                     room = database.chatRoomDao().findChatRoomById(chatRoomId),
                     keyState = database.groupKeyStateDao().getByChatRoomId(chatRoomId),
+                    origin = SubgroupBirthCertificateEvent.parseOrigin(event.tags),
                 )
             }
             .sortedByDescending { it.certificate.createdAt }
+
+    /**
+     * The subgroups [parentChatRoomId] has made for one particular thing.
+     *
+     * The other direction of the certificate: [subgroupsOf] answers "what has
+     * this group made", and this answers "what has been made for this project".
+     * It is a filter over that list rather than a query of its own, because the
+     * certificates are already the record and a second read could disagree with
+     * the first about which of them verify.
+     *
+     * Empty is the ordinary answer and says only that this device holds no
+     * certificate naming that entity. A subgroup made for it by a parent whose
+     * room this device is not in is invisible here, as it is everywhere else.
+     */
+    suspend fun subgroupsFor(
+        database: MantraDatabase,
+        parentChatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<Subgroup> =
+        subgroupsOf(database, parentChatRoomId).filter { it.origin == origin }
+
+    /**
+     * Ceremonies under way in [parentChatRoomId] for one particular thing.
+     *
+     * The race this exists for: two admins open a project's screen, both see no
+     * room, and the group gets two ceremonies and two rooms for one project. The
+     * screen that invites the act is the screen that cannot otherwise see the act
+     * in progress, so it is shown what is already running.
+     *
+     * Nothing is refused on the strength of it. A group may legitimately want two
+     * rooms for one artifact -- two teams, two bodies of work -- and deciding
+     * otherwise would be this device deciding a group's structure. What this
+     * prevents is the *accidental* second one, which is the only one anybody
+     * regrets.
+     *
+     * Finished and failed are both left out, and for different reasons. A
+     * complete ceremony is a subgroup that was made, and [subgroupsFor] is where
+     * it shows; a failed one is nothing, and offering it back would be offering a
+     * ceremony nobody can finish.
+     */
+    suspend fun ceremoniesFor(
+        database: MantraDatabase,
+        parentChatRoomId: String,
+        origin: SubgroupOrigin.Ref
+    ): List<DkgSession> =
+        database.dkgSessionDao()
+            .getSessionsForOrigin(
+                chatRoomId = parentChatRoomId,
+                originKind = origin.kind,
+                originId = origin.id
+            )
+            .filter {
+                it.stage != DkgRitualStage.FAILED && it.stage != DkgRitualStage.COMPLETE
+            }
 
     /**
      * Every group that has certified a room as its child, verified, in canonical

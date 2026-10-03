@@ -153,8 +153,36 @@ kotlin {
         if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
             iosMain.dependencies {
                 implementation(libs.sqldelight.native.driver)
+
+                // CIO has no TLS implementation on native ("TLS sessions are not
+                // supported on Native platform"), so every wss/https call it makes on
+                // a device fails at the handshake. Darwin (NSURLSession) is the engine
+                // apple targets must use.
+                implementation(libs.ktor.client.darwin)
             }
         }
+    }
+}
+
+/**
+ * Kotlin 2.4.10's release backend crashes linking this module's ios binaries:
+ *
+ *     e: java.lang.IndexOutOfBoundsException: Index 0 out of bounds for length 0
+ *         at org.jetbrains.kotlin.backend.konan.optimizations.StaticInitializersOptimization
+ *            $InterproceduralAnalysis.getCalledInitializer(StaticInitializersOptimization.kt:244)
+ *
+ * `RemoveRedundantCallsToStaticInitializersPhase` -- an LTO pass, so only optimized links hit
+ * it, which is why the debug test binary links fine -- assumes every function in the call
+ * graph has at least one statement in its body, and something in this module's graph arrives
+ * with an empty one. The pass is an optimization only; disabling it costs the redundant
+ * initializer calls it would have removed and nothing else.
+ *
+ * Nothing matches this on a non-mac host, where no ios target is declared and so no
+ * KotlinNativeLink task exists.
+ */
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink>().configureEach {
+    if (name.startsWith("linkRelease")) {
+        toolOptions.freeCompilerArgs.add("-Xdisable-phases=RemoveRedundantCallsToStaticInitializersPhase")
     }
 }
 

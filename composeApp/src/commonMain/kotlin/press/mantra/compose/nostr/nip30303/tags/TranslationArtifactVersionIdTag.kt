@@ -18,14 +18,14 @@ class TranslationArtifactVersionIdTag(
     companion object {
         const val TAG_NAME = "translationArtifactVersionId"
 
-        fun parse(tag: Array<String>): DialectIdTag? {
+        fun parse(tag: Array<String>): TranslationArtifactVersionIdTag? {
             ensure(tag.has(1)) { return null }
             ensure(tag[0] == TAG_NAME) { return null }
             ensure(tag[1].length == 64) { return null }
 
             val relayHint = tag.getOrNull(2)?.let { RelayUrlNormalizer.normalizeOrNull(it) }
 
-            return DialectIdTag(tag[1], relayHint, tag.getOrNull(3))
+            return TranslationArtifactVersionIdTag(tag[1], relayHint, tag.getOrNull(3))
         }
 
         fun assemble(

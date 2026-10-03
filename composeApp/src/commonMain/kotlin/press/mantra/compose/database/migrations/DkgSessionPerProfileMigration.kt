@@ -19,6 +19,13 @@ import androidx.sqlite.execSQL
  * Not an `AutoMigration`: Room cannot change a primary key, and the column this
  * adds is `NOT NULL` with a value that has to be read from another table.
  *
+ * It rebuilds `DkgSession`, so it has to spell out every column the table has -- including
+ * `originKind` and `originId`, which the migration before this one added for what a
+ * subgroup is *for*. A rebuild is the one kind of migration that cannot ignore a column it
+ * does not care about: leaving one out drops it, and Room's validation is what catches that
+ * -- see `DkgSessionMigrationThroughRoomJvmTest`, whose whole job is to fail when this list
+ * and the entity disagree.
+ *
  * ### Copy before dropping anything
  *
  * `DROP TABLE` fires foreign keys. `DkgParticipantMessage` references
@@ -58,7 +65,21 @@ import androidx.sqlite.execSQL
  * while foreign keys were off, and it could not satisfy the new key either --
  * keeping it would mean inventing an owner for somebody else's secret.
  */
-val MIGRATION_22_23 = object : Migration(22, 23) {
+/**
+ * Every column of `DkgSession`, in the order the entity declares them.
+ *
+ * Spelled out because a rebuild cannot use `SELECT *`: see the note at the first copy.
+ */
+private const val COLUMNS =
+    "`id`, `chatRoomId`, `coordinatorPublicKey`, `userPublicKey`, `threshold`, " +
+        "`participantCount`, `participantPublicKeys`, `subject`, `stage`, " +
+        "`hostPublicKey`, `round1Random`, `round2AuxRandom`, `coordinatorRound1`, " +
+        "`certificate`, `thresholdPublicKey`, `secretShare`, `publicShares`, " +
+        "`recoveryData`, `failureReason`, `hostKeyApprovedAt`, `round1ApprovedAt`, " +
+        "`round2ApprovedAt`, `approvalRequestedThrough`, `parentChatRoomId`, " +
+        "`originKind`, `originId`, `createdAt`, `updatedAt`, `savedAt`"
+
+val MIGRATION_23_24 = object : Migration(23, 24) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // 1. Backups, deliberately without constraints of any kind.
         connection.execSQL(
@@ -73,10 +94,20 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
                 "`publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, " +
                 "`hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, " +
                 "`round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, " +
-                "`parentChatRoomId` TEXT, `createdAt` INTEGER NOT NULL, " +
+                "`parentChatRoomId` TEXT, `originKind` INTEGER, `originId` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, " +
                 "`updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL)"
         )
-        connection.execSQL("INSERT INTO `DkgSessionBackup` SELECT * FROM `DkgSession`")
+        connection.execSQL(
+            // Named rather than `SELECT *`. An `AutoMigration` that adds a column does it
+            // with `ALTER TABLE ... ADD COLUMN`, which appends it physically at the end
+            // whatever the entity's declared order is -- so on a file that reached here
+            // through one, `SELECT *` hands the columns over in a different order than this
+            // table declares them and the copy lands shifted. `originKind` and `originId`
+            // arrived exactly that way.
+            "INSERT INTO `DkgSessionBackup` (" + COLUMNS + ") " +
+                "SELECT " + COLUMNS + " FROM `DkgSession`"
+        )
 
         connection.execSQL(
             "CREATE TABLE `DkgParticipantMessageBackup` (" +
@@ -114,7 +145,8 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
                 "`publicShares` TEXT, `recoveryData` TEXT, `failureReason` TEXT, " +
                 "`hostKeyApprovedAt` INTEGER, `round1ApprovedAt` INTEGER, " +
                 "`round2ApprovedAt` INTEGER, `approvalRequestedThrough` TEXT, " +
-                "`parentChatRoomId` TEXT, `createdAt` INTEGER NOT NULL, " +
+                "`parentChatRoomId` TEXT, `originKind` INTEGER, `originId` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, " +
                 "`updatedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, " +
                 "PRIMARY KEY(`id`, `userPublicKey`), " +
                 "FOREIGN KEY(`chatRoomId`) REFERENCES `ChatRoom`(`id`) " +
@@ -124,7 +156,10 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
             "CREATE INDEX IF NOT EXISTS `index_DkgSession_chatRoomId` " +
                 "ON `DkgSession` (`chatRoomId`)"
         )
-        connection.execSQL("INSERT INTO `DkgSession` SELECT * FROM `DkgSessionBackup`")
+        connection.execSQL(
+            "INSERT INTO `DkgSession` (" + COLUMNS + ") " +
+                "SELECT " + COLUMNS + " FROM `DkgSessionBackup`"
+        )
 
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `DkgParticipantMessage` (" +
