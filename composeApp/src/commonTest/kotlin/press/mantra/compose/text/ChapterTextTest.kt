@@ -99,7 +99,7 @@ class ChapterTextTest {
     }
 
     @Test
-    fun `utf16 is refused, because it is not supported rather than because it is binary`() {
+    fun `utf16 is refused because it is not supported rather than because it is binary`() {
         // FF FE is a UTF-16LE byte order mark and an illegal UTF-8 lead byte, so
         // this lands on NotText either way. Asserted so that a future lenient
         // decode cannot quietly turn it into a chapter of interleaved NULs.
@@ -118,7 +118,7 @@ class ChapterTextTest {
     }
 
     @Test
-    fun `an empty file is text, not a failure`() {
+    fun `an empty file is text not a failure`() {
         // Whether an empty chapter may be proposed is the form's decision; decode
         // only says what the bytes were.
         assertEquals("", decoded(ByteArray(0)))

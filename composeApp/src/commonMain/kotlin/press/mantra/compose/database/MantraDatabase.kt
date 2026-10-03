@@ -2,6 +2,7 @@ package press.mantra.compose.database
 
 import androidx.room3.ColumnTypeConverters
 import androidx.room3.AutoMigration
+import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.immediateTransaction
@@ -391,6 +392,7 @@ val GENESIS_AT = Instant.fromEpochMilliseconds(1231006505000L)
         AutoMigration(from = 22, to = 23),
     ]
 )
+@ConstructedBy(MantraDatabaseConstructor::class)
 @ColumnTypeConverters(MantraConverters::class)
 abstract class MantraDatabase: RoomDatabase() {
     abstract fun broadcastNostrEventReceiptDao(): BroadcastNostrEventReceiptDao

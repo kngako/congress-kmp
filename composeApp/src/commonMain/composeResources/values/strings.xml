@@ -580,4 +580,16 @@
     <string name="abandoned_no_key_was_created">Abandoned. No key was created.</string>
     <string name="s_of_s_members_will_sign_with_it">%1$s of %2$s members will sign with it</string>
     <string name="set_up_a_shared_key">Set up a shared key</string>
+    <!-- Picking dialects out of the bundled catalogue of African languages. -->
+    <string name="add_dialects_from_a_list">Add dialects from a list</string>
+    <string name="pick_the_languages_this_group_will_translate_into">Pick the languages this group will translate into. Ones it already has, and ones it is already signing, cannot be picked again.</string>
+    <string name="search_by_language_country_or_code">Search by language, country or code</string>
+    <string name="s_of_s_selected">%1$s of %2$s selected</string>
+    <string name="select_everything_missing">Select everything missing</string>
+    <string name="clear_the_selection">Clear the selection</string>
+    <string name="propose_s_dialects">Propose %1$s dialects</string>
+    <string name="already_in_this_group">Already in this group</string>
+    <string name="waiting_for_the_group_to_sign_this_one">Waiting for the group to sign this one</string>
+    <string name="this_group_already_has_every_language_in_the_list">This group already has a dialect for every language in the list. Add one it does not list with the form.</string>
+    <string name="this_group_has_no_shared_key_so_it_cannot_sign_a_dialect">This group has no shared key, so it cannot sign a dialect into existence. Run a shared key ceremony first.</string>
 </resources>

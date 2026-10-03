@@ -77,7 +77,7 @@ class ProjectEventTest {
     // --- owners are a set, and all of them survive ---
 
     @Test
-    fun `three owners come back, sorted`() {
+    fun `three owners come back sorted`() {
         val event = project(setOf(owner3, owner1, owner2))
 
         // `addUnique` here would leave one. Sorted because the id is a hash over

@@ -142,6 +142,7 @@ import press.mantra.compose.ui.composable.navigation.routes.AddArtifactRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddToProjectRoute
 import press.mantra.compose.ui.composable.navigation.routes.AddDialectRoute
+import press.mantra.compose.ui.composable.navigation.routes.AddDialectsFromCatalogueRoute
 import press.mantra.compose.ui.composable.navigation.routes.BroadcastGroupSignedEventRoute
 import press.mantra.compose.ui.composable.navigation.routes.FrostSigningRoute
 import press.mantra.compose.ui.composable.navigation.routes.DkgRitualListRoute
@@ -163,6 +164,7 @@ import press.mantra.compose.ui.composable.ProjectDetailScreen
 import press.mantra.compose.ui.composable.AddChapterScreen
 import press.mantra.compose.ui.composable.UploadChaptersScreen
 import press.mantra.compose.ui.composable.AddDialectScreen
+import press.mantra.compose.ui.composable.AddDialectsFromCatalogueScreen
 import press.mantra.compose.ui.composable.FrostSigningScreen
 import press.mantra.compose.ui.composable.ProposalListScreen
 import press.mantra.compose.ui.composable.AddTranslationArtifactVersionScreen
@@ -1244,6 +1246,33 @@ fun MantraNavHost(
                         navController.navigate(
                             route = actionRoute
                         )
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable<AddDialectsFromCatalogueRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<AddDialectsFromCatalogueRoute>()
+
+                AddDialectsFromCatalogueScreen(
+                    activeUserPublicKey = route.activeUserPublicKey,
+                    chatRoomId = route.chatRoomId,
+                    relayHint = route.relayHint,
+                    chatRepository = databaseChatRepository,
+                    mantraRepository = databaseMantraRepository,
+                    frostSigningRepository = databaseFrostSigningRepository,
+                    onNavigateToRouteAndPopUpInclusive = { signingRoute ->
+                        // Replace this picker so back returns to the group rather
+                        // than to a selection whose proposal has already gone out.
+                        navController.navigate(route = signingRoute) {
+                            popUpTo<AddDialectsFromCatalogueRoute> {
+                                inclusive = true
+                            }
+                        }
+                    },
+                    onNavigateToRoute = { actionRoute ->
+                        navController.navigate(route = actionRoute)
                     },
                     onNavigateBack = {
                         navController.popBackStack()
