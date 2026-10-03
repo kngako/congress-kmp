@@ -32,11 +32,22 @@ differently the table says so, and it did so seven times worth reading:
 | the empty-dialect test deletes the rows | neither DAO has a `@Delete`, and adding one for a test is a schema surface nobody asked for. It seeds a third dialect with nothing in it, which is also the truer fixture — a room defines a dialect before it has anything in it |
 
 One more worth stating because it was a *drafting* error rather than a design
-one. The first draft of this plan cited `DialectScaffold`, `AfricanLanguages` and
-`docs/african-dialect-catalogue.md` as precedent. None of them are in this tree —
-that work is on `claude/african-dialect-convenience-de2f69`, unmerged — so the
-identity rule is now stated from the schema rather than cited, and Phase 1's
-parallel is `TranslationScaffold` and `ChapterScaffolding`, which do exist here.
+one, and because it resolved itself. The first draft cited `DialectScaffold`,
+`AfricanLanguages` and [african-dialect-catalogue.md](./african-dialect-catalogue.md)
+as precedent; at the time none of them were in the tree, so the citations were
+replaced with the reasoning stated directly. The dialect catalogue landed on
+`mantra` while this was being built, so all three are here now and the
+cross-references below are real again — but the restated reasoning is kept
+rather than turned back into links, because a plan that explains its own rule
+survives the file it borrowed it from being moved.
+
+Two of them are worth following. `DialectScaffold` is the closest thing in the
+tree to Phase 1's `SubgroupOrigin`: pure, in `managers/`, derived from the rows
+rather than beside them. And `DialectScaffold.pendingIn` is Phase 7's
+`ceremoniesFor` solving the same problem one layer up — it reads the proposals
+already in flight so two admins looking at the same list do not propose the same
+forty dialects twice. The subgroup version of that race is two rooms for one
+project instead of eighty dialects, which is rarer and more expensive.
 
 ## What the four have in common
 
@@ -237,8 +248,8 @@ object SubgroupOrigin {
 }
 ```
 
-Parallel to `TranslationScaffold` and `ChapterScaffolding`: `managers/`, pure,
-tested in `commonTest`. `name` is trimmed and handed over bare — the `#` is added
+Parallel to `DialectScaffold`, `TranslationScaffold` and `ChapterScaffolding`:
+`managers/`, pure, tested in `commonTest`. `name` is trimmed and handed over bare — the `#` is added
 by `MarmotGroupName.of` where the name is used, twice, idempotently, exactly as
 the typed name is today.
 
@@ -492,7 +503,9 @@ ceremonies for it:
   reads the same list. A subgroup whose room this device does not hold still
   shows, because `Subgroup.room` is already nullable and already drawn that way.
 - **In flight.** `DkgSession` rows in that room with that origin whose stage is
-  neither `FAILED` nor `COMPLETE`. Two admins both open the project's screen,
+  neither `FAILED` nor `COMPLETE`. The same move `DialectScaffold.pendingIn`
+  makes for the dialect catalogue, and for the same reason. Two admins both open
+  the project's screen,
   both see no room, and the group gets two ceremonies and two rooms for one
   project — a race this feature would hit on first use, because the screen that
   invites the act is the screen that cannot see the act in progress. Making the
